@@ -27,3 +27,8 @@
         color: #374151;                        /* text-gray-700 */
     }
 }
+
+/* Ensure SweetAlert2 is always on top of modals */
+.swal2-container {
+    z-index: 10000 !important;
+}
