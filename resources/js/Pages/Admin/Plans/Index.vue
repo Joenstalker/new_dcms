@@ -95,6 +95,8 @@ const confirmDelete = (plan) => {
             });
         }
     });
+};
+
 const forceSync = (plan) => {
     Swal.fire({
         title: 'Sync with Stripe?',
