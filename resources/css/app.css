@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fix daisyUI theme overriding @tailwindcss/forms base styles */
+@layer base {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+    select,
+    textarea {
+        color: #111827 !important;            /* text-gray-900 */
+        background-color: #ffffff !important; /* bg-white */
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: #9ca3af !important;            /* placeholder-gray-400 */
+    }
+
+    /* Keep checkboxes and radio buttons styled properly */
+    input[type="checkbox"],
+    input[type="radio"] {
+        background-color: #ffffff !important;
+    }
+
+    /* Ensure labels remain visible */
+    label {
+        color: #374151;                        /* text-gray-700 */
+    }
+}
