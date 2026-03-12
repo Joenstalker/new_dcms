@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
+use Stripe\StripeClient;
+use Illuminate\Support\Facades\Log;
 
 class PlanController extends Controller
 {
@@ -30,9 +32,15 @@ class PlanController extends Controller
     {
         $validated = $this->validatePlan($request);
 
-        SubscriptionPlan::create($validated);
+        $plan = SubscriptionPlan::create($validated);
 
-        return redirect()->route('admin.plans.index')->with('success', 'Subscription plan created successfully.');
+        try {
+            $this->syncWithStripe($plan);
+            return redirect()->route('admin.plans.index')->with('success', 'Plan created and synced with Stripe.');
+        } catch (\Exception $e) {
+            Log::error('Stripe Sync Error: ' . $e->getMessage());
+            return redirect()->route('admin.plans.index')->with('warning', 'Plan saved locally, but Stripe sync failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -44,7 +52,13 @@ class PlanController extends Controller
 
         $plan->update($validated);
 
-        return redirect()->route('admin.plans.index')->with('success', 'Subscription plan updated successfully.');
+        try {
+            $this->syncWithStripe($plan);
+            return redirect()->route('admin.plans.index')->with('success', 'Plan updated and synced with Stripe.');
+        } catch (\Exception $e) {
+            Log::error('Stripe Sync Error: ' . $e->getMessage());
+            return redirect()->route('admin.plans.index')->with('warning', 'Plan updated locally, but Stripe sync failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -63,13 +77,55 @@ class PlanController extends Controller
     }
 
     /**
+     * Synchronize the plan with Stripe.
+     */
+    private function syncWithStripe(SubscriptionPlan $plan): void
+    {
+        $stripe = new StripeClient(config('cashier.secret'));
+
+        // 1. Handle Product
+        if (!$plan->stripe_product_id) {
+            $product = $stripe->products->create([
+                'name' => 'DCMS - ' . $plan->name,
+                'description' => 'Subscription plan for ' . $plan->name,
+            ]);
+            $plan->stripe_product_id = $product->id;
+        }
+
+        // 2. Handle Monthly Price
+        // In Stripe, prices are immutable. If price changes, we create a new one.
+        // For simplicity, we create one if it doesn't exist.
+        if (!$plan->stripe_monthly_price_id) {
+            $price = $stripe->prices->create([
+                'unit_amount' => $plan->price_monthly * 100, // cents
+                'currency' => 'php',
+                'recurring' => ['interval' => 'month'],
+                'product' => $plan->stripe_product_id,
+            ]);
+            $plan->stripe_monthly_price_id = $price->id;
+        }
+
+        // 3. Handle Yearly Price
+        if (!$plan->stripe_yearly_price_id) {
+            $price = $stripe->prices->create([
+                'unit_amount' => $plan->price_yearly * 100, // cents
+                'currency' => 'php',
+                'recurring' => ['interval' => 'year'],
+                'product' => $plan->stripe_product_id,
+            ]);
+            $plan->stripe_yearly_price_id = $price->id;
+        }
+
+        $plan->save();
+    }
+
+    /**
      * Validate the subscription plan request.
      */
     protected function validatePlan(Request $request, $id = null): array
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:subscription_plans,name' . ($id ? ",$id" : ""),
-            'stripe_id' => 'nullable|string|max:255|unique:subscription_plans,stripe_id' . ($id ? ",$id" : ""),
             'price_monthly' => 'required|numeric|min:0',
             'price_yearly' => 'required|numeric|min:0',
             'max_users' => 'required|integer|min:1',

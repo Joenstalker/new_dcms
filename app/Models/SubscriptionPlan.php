@@ -8,7 +8,10 @@ class SubscriptionPlan extends Model
     {
         protected $fillable = [
             'name',
-            'stripe_id',
+            'stripe_product_id',
+            'stripe_monthly_price_id',
+            'stripe_yearly_price_id',
+            'legacy_stripe_id',
             'price_monthly',
             'price_yearly',
             'max_users',

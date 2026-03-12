@@ -133,8 +133,21 @@ const confirmDelete = (plan) => {
                             <span class="text-sm text-gray-500 ml-1">/ mo</span>
                         </div>
                         
-                        <div class="text-xs text-gray-400 mb-6 italic">
-                            Stripe ID: {{ plan.stripe_id || 'Not configured' }}
+                        <div class="space-y-1 mb-6">
+                            <div v-if="plan.stripe_product_id" class="flex items-center space-x-1.5">
+                                <span class="flex-shrink-0 w-2 h-2 rounded-full bg-green-500"></span>
+                                <span class="text-[10px] text-gray-500 font-medium">Stripe ID: {{ plan.stripe_product_id }}</span>
+                            </div>
+                            <div v-if="plan.stripe_monthly_price_id" class="text-[9px] text-gray-400 pl-3">
+                                Monthly Price ID: {{ plan.stripe_monthly_price_id }}
+                            </div>
+                            <div v-if="plan.stripe_yearly_price_id" class="text-[9px] text-gray-400 pl-3">
+                                Yearly Price ID: {{ plan.stripe_yearly_price_id }}
+                            </div>
+                            <div v-if="!plan.stripe_product_id" class="flex items-center space-x-1.5">
+                                <span class="flex-shrink-0 w-2 h-2 rounded-full bg-amber-400"></span>
+                                <span class="text-[10px] text-amber-600 font-medium italic">Pending Stripe Sync</span>
+                            </div>
                         </div>
 
                         <ul class="space-y-4 text-sm text-gray-600">

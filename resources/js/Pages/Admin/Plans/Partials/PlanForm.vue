@@ -20,7 +20,6 @@ const emit = defineEmits(['submit', 'cancel']);
 
 const form = useForm({
     name: props.plan?.name ?? '',
-    stripe_id: props.plan?.stripe_id ?? '',
     price_monthly: props.plan?.price_monthly ?? 0,
     price_yearly: props.plan?.price_yearly ?? 0,
     max_users: props.plan?.max_users ?? 1,
@@ -43,11 +42,20 @@ const submit = () => {
 <template>
     <form @submit.prevent="submit" class="p-6 space-y-6">
         <header class="border-b border-gray-100 pb-4">
-            <h2 class="text-xl font-bold text-gray-900">
-                {{ plan ? 'Edit' : 'Create' }} <span class="text-teal-600">Subscription Plan</span>
-            </h2>
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-gray-900">
+                    {{ plan ? 'Edit' : 'Create' }} <span class="text-teal-600">Subscription Plan</span>
+                </h2>
+                <div v-if="plan?.stripe_product_id" class="flex items-center space-x-1 px-2 py-0.5 bg-green-50 rounded text-[10px] font-medium text-green-600 border border-green-100">
+                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    <span>Synced: {{ plan.stripe_product_id }}</span>
+                </div>
+                <div v-else-if="plan" class="px-2 py-0.5 bg-amber-50 rounded text-[10px] font-medium text-amber-600 border border-amber-100">
+                    Unsynchronized
+                </div>
+            </div>
             <p class="mt-1 text-xs text-gray-500">
-                Define pricing and features for this subscription tier.
+                Define pricing and features. Stripe Product & Prices will be created automatically.
             </p>
         </header>
 
@@ -73,12 +81,6 @@ const submit = () => {
                         />
                         <p v-if="plan" class="text-[9px] text-gray-400 mt-1 italic">Plan name cannot be changed.</p>
                         <InputError class="mt-1" :message="form.errors.name" />
-                    </div>
-
-                    <div>
-                        <InputLabel for="stripe_id" value="Stripe Price ID" class="text-xs font-semibold text-gray-700" />
-                        <TextInput id="stripe_id" type="text" class="mt-1 block w-full text-sm" v-model="form.stripe_id" placeholder="price_..." />
-                        <InputError class="mt-1" :message="form.errors.stripe_id" />
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
