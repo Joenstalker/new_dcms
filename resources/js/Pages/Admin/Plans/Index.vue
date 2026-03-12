@@ -34,6 +34,7 @@ const closeEditModal = () => {
 
 const handleCreateSubmit = (form) => {
     Swal.fire({
+        target: document.querySelector('dialog[open]') || 'body',
         title: 'Creating Plan',
         text: 'Syncing with Stripe, please wait...',
         allowOutsideClick: false,
@@ -56,6 +57,7 @@ const handleCreateSubmit = (form) => {
 
 const handleEditSubmit = (form) => {
     Swal.fire({
+        target: document.querySelector('dialog[open]') || 'body',
         title: 'Updating Plan',
         text: 'Syncing price changes with Stripe...',
         allowOutsideClick: false,
@@ -109,6 +111,7 @@ const confirmDelete = (plan) => {
 
 const forceSync = (plan) => {
     Swal.fire({
+        target: document.querySelector('dialog[open]') || 'body',
         title: 'Sync with Stripe?',
         text: `This will refresh the Stripe Product and Price IDs for the ${plan.name} plan.`,
         icon: 'info',

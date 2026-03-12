@@ -108,8 +108,12 @@ import Swal from 'sweetalert2';
 import { watch } from 'vue';
 
 watch(() => page.props.flash, (flash) => {
+    // Detect open native dialogs for proper layering
+    const target = document.querySelector('dialog[open]') || 'body';
+
     if (flash?.success) {
         Swal.fire({
+            target: target,
             title: 'Success!',
             text: flash.success,
             icon: 'success',
@@ -121,6 +125,7 @@ watch(() => page.props.flash, (flash) => {
     }
     if (flash?.error) {
         Swal.fire({
+            target: target,
             title: 'Error!',
             text: flash.error,
             icon: 'error',
@@ -129,6 +134,7 @@ watch(() => page.props.flash, (flash) => {
     }
     if (flash?.warning) {
         Swal.fire({
+            target: target,
             title: 'Warning!',
             text: flash.warning,
             icon: 'warning',
@@ -137,6 +143,7 @@ watch(() => page.props.flash, (flash) => {
     }
     if (flash?.info) {
         Swal.fire({
+            target: target,
             title: 'Information',
             text: flash.info,
             icon: 'info',
