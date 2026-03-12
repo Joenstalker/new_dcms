@@ -33,36 +33,46 @@ const closeEditModal = () => {
 };
 
 const handleCreateSubmit = (form) => {
+    Swal.fire({
+        title: 'Creating Plan',
+        text: 'Syncing with Stripe, please wait...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
     form.post(route('admin.plans.store'), {
         onSuccess: () => {
             closeCreateModal();
-            Swal.fire({
-                title: 'Success!',
-                text: 'Plan created successfully.',
-                icon: 'success',
-                timer: 2000,
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-            });
+            // The global watcher in AdminLayout will handle the success toast
+            Swal.close();
         },
+        onError: () => {
+            Swal.close();
+        }
     });
 };
 
 const handleEditSubmit = (form) => {
+    Swal.fire({
+        title: 'Updating Plan',
+        text: 'Syncing price changes with Stripe...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
     form.put(route('admin.plans.update', selectedPlan.value.id), {
         onSuccess: () => {
             closeEditModal();
-            Swal.fire({
-                title: 'Updated!',
-                text: 'Plan updated successfully.',
-                icon: 'success',
-                timer: 2000,
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-            });
+            // The global watcher in AdminLayout will handle the success toast
+            Swal.close();
         },
+        onError: () => {
+            Swal.close();
+        }
     });
 };
 
