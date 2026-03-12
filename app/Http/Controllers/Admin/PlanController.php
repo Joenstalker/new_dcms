@@ -93,11 +93,19 @@ class PlanController extends Controller
         }
 
         // 2. Handle Monthly Price
-        // In Stripe, prices are immutable. If price changes, we create a new one.
-        // For simplicity, we create one if it doesn't exist.
-        if (!$plan->stripe_monthly_price_id) {
+        // Stripe Prices are immutable. If price changed, we must create a new one.
+        $needsNewMonthly = !$plan->stripe_monthly_price_id;
+        
+        if ($plan->stripe_monthly_price_id) {
+            $stripePrice = $stripe->prices->retrieve($plan->stripe_monthly_price_id);
+            if ($stripePrice->unit_amount !== (int)($plan->price_monthly * 100)) {
+                $needsNewMonthly = true;
+            }
+        }
+
+        if ($needsNewMonthly) {
             $price = $stripe->prices->create([
-                'unit_amount' => $plan->price_monthly * 100, // cents
+                'unit_amount' => (int)($plan->price_monthly * 100),
                 'currency' => 'php',
                 'recurring' => ['interval' => 'month'],
                 'product' => $plan->stripe_product_id,
@@ -106,9 +114,18 @@ class PlanController extends Controller
         }
 
         // 3. Handle Yearly Price
-        if (!$plan->stripe_yearly_price_id) {
+        $needsNewYearly = !$plan->stripe_yearly_price_id;
+
+        if ($plan->stripe_yearly_price_id) {
+            $stripePrice = $stripe->prices->retrieve($plan->stripe_yearly_price_id);
+            if ($stripePrice->unit_amount !== (int)($plan->price_yearly * 100)) {
+                $needsNewYearly = true;
+            }
+        }
+
+        if ($needsNewYearly) {
             $price = $stripe->prices->create([
-                'unit_amount' => $plan->price_yearly * 100, // cents
+                'unit_amount' => (int)($plan->price_yearly * 100),
                 'currency' => 'php',
                 'recurring' => ['interval' => 'year'],
                 'product' => $plan->stripe_product_id,
@@ -117,6 +134,20 @@ class PlanController extends Controller
         }
 
         $plan->save();
+    }
+
+    /**
+     * Force sync a plan with Stripe (Manually triggered).
+     */
+    public function forceSync(SubscriptionPlan $plan): RedirectResponse
+    {
+        try {
+            $this->syncWithStripe($plan);
+            return back()->with('success', 'Plan synchronized with Stripe successfully.');
+        } catch (\Exception $e) {
+            Log::error('Stripe Force Sync Error: ' . $e->getMessage());
+            return back()->with('error', 'Sync failed: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -95,6 +95,39 @@ const confirmDelete = (plan) => {
             });
         }
     });
+const forceSync = (plan) => {
+    Swal.fire({
+        title: 'Sync with Stripe?',
+        text: `This will refresh the Stripe Product and Price IDs for the ${plan.name} plan.`,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#0d9488',
+        confirmButtonText: 'Yes, sync now',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return new Promise((resolve) => {
+                router.post(route('admin.plans.force-sync', plan.id), {}, {
+                    onSuccess: () => {
+                        Swal.fire({
+                            title: 'Synced!',
+                            text: 'Plan successfully synced with Stripe.',
+                            icon: 'success',
+                            timer: 2000,
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                        });
+                        resolve();
+                    },
+                    onError: (errors) => {
+                        Swal.fire('Error!', errors.message || 'Sync failed.', 'error');
+                        resolve();
+                    }
+                });
+            });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    });
 };
 </script>
 
@@ -144,9 +177,20 @@ const confirmDelete = (plan) => {
                             <div v-if="plan.stripe_yearly_price_id" class="text-[9px] text-gray-400 pl-3">
                                 Yearly Price ID: {{ plan.stripe_yearly_price_id }}
                             </div>
-                            <div v-if="!plan.stripe_product_id" class="flex items-center space-x-1.5">
-                                <span class="flex-shrink-0 w-2 h-2 rounded-full bg-amber-400"></span>
-                                <span class="text-[10px] text-amber-600 font-medium italic">Pending Stripe Sync</span>
+                            <div v-if="!plan.stripe_product_id" class="flex items-center justify-between">
+                                <div class="flex items-center space-x-1.5">
+                                    <span class="flex-shrink-0 w-2 h-2 rounded-full bg-amber-400"></span>
+                                    <span class="text-[10px] text-amber-600 font-medium italic">Pending Stripe Sync</span>
+                                </div>
+                                <button @click="forceSync(plan)" class="text-[9px] bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-0.5 rounded transition-colors" title="Trigger Manual Sync">
+                                    Sync Now
+                                </button>
+                            </div>
+                            <div v-else class="flex justify-end">
+                                <button @click="forceSync(plan)" class="text-[9px] text-gray-400 hover:text-teal-600 transition-colors flex items-center space-x-1" title="Force Refresh Stripe Data">
+                                    <svg class="w-2 h-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                    <span>Sync</span>
+                                </button>
                             </div>
                         </div>
 
