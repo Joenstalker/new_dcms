@@ -1,15 +1,19 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import Checkbox from '@/Components/Checkbox.vue';
+import RegistrationModal from '@/Components/RegistrationModal.vue';
+import PaymentModal from '@/Components/PaymentModal.vue';
 
 import logoImage from '../../../public/images/dcms-logo.png';
-import heroImage from '../../../public/images/OneTop.png';
+import heroImage from '../../../public/images/dentist-model.png';
+import dentalSmileImage from '../../../public/images/dental-smile-for-landingpage.png';
+import bgImage from '../../../public/images/landingpage-background.png';
 
 const props = defineProps({
     canLogin: {
@@ -24,8 +28,14 @@ const props = defineProps({
     }
 });
 
+// Modals
 const isLoginModalOpen = ref(false);
+const isRegistrationModalOpen = ref(false);
+const isPaymentModalOpen = ref(false);
+const selectedPlan = ref(null);
+const registrationData = ref(null);
 
+// Login form
 const form = useForm({
     email: '',
     password: '',
@@ -48,6 +58,51 @@ const closeLoginModal = () => {
     form.clearErrors();
 };
 
+// Registration modal handlers
+const openRegistrationModal = (plan = null) => {
+    selectedPlan.value = plan;
+    isRegistrationModalOpen.value = true;
+};
+
+const closeRegistrationModal = () => {
+    isRegistrationModalOpen.value = false;
+    selectedPlan.value = null;
+};
+
+const openPaymentModal = (data) => {
+    registrationData.value = data;
+    isRegistrationModalOpen.value = false;
+    isPaymentModalOpen.value = true;
+};
+
+const closePaymentModal = () => {
+    isPaymentModalOpen.value = false;
+    registrationData.value = null;
+};
+
+const handleChoosePlan = (plan) => {
+    openRegistrationModal(plan);
+};
+
+// Sticky header scroll effect
+const isScrolled = ref(false);
+const handleScroll = () => {
+    isScrolled.value = window.scrollY > 20;
+};
+
+// Intersection Observer for scroll animations
+const observeElements = () => {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('animate-in');
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.scroll-animate').forEach(el => observer.observe(el));
+};
+
+// Features data
 const features = [
     {
         title: 'Patient Records',
@@ -107,20 +162,79 @@ const formatFeatures = (plan) => {
 const isPopular = (planName) => {
     return planName.toLowerCase().includes('pro') || planName.toLowerCase().includes('popular');
 };
+
+// Check for payment success/cancel on page load
+onMounted(() => {
+    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    
+    // Init scroll animations after a tick
+    setTimeout(observeElements, 100);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.get('session_id')) {
+        console.log('Payment session detected');
+    }
+    
+    if (urlParams.get('cancelled') === 'true') {
+        alert('Payment was cancelled. You can try again anytime.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    if (urlParams.get('error')) {
+        const error = urlParams.get('error');
+        let message = 'An error occurred.';
+        
+        if (error === 'no_session') message = 'No payment session found.';
+        else if (error === 'payment_not_completed') message = 'Payment was not completed.';
+        else if (error === 'tenant_creation_failed') message = 'Failed to create your clinic. Please contact support.';
+        else if (error === 'verification_failed') message = 'Payment verification failed. Please contact support.';
+        
+        alert(message);
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    if (urlParams.get('success') === 'true' && urlParams.get('tenant')) {
+        const tenant = urlParams.get('tenant');
+        const tenantUrl = `http://${tenant}.dcms.test:8080`;
+        const fallbackUrl = `http://127.0.0.1:8080/tenant/${tenant}`;
+        
+        const message = `🎉 Registration Successful!\n\nYour clinic has been created.\n\nPrimary URL: ${tenantUrl}\nFallback URL: ${fallbackUrl}\n\nNote: If the primary URL doesn't work, use the fallback URL.`;
+        alert(message);
+        
+        if (confirm('Would you like to go to your clinic now? (Use fallback if primary doesn\'t work)')) {
+            window.location.href = fallbackUrl;
+        }
+        
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll);
+});
 </script>
 
 <template>
     <Head title="Dental Clinic Management System" />
 
-    <div class="min-h-screen bg-gray-50 font-sans selection:bg-teal-500 selection:text-white pb-20">
+    <div class="min-h-screen bg-gray-50 font-sans selection:bg-teal-500 selection:text-white pb-20 scroll-smooth">
         
-        <!-- Navbar -->
-        <nav class="bg-[#2E4A62] text-white">
+        <!-- Sticky Navbar -->
+        <nav 
+            :class="[
+                'fixed top-0 left-0 right-0 z-50 text-white transition-all duration-300',
+                isScrolled 
+                    ? 'bg-[#2E4A62]/95 backdrop-blur-md shadow-lg shadow-black/10' 
+                    : 'bg-[#2E4A62]'
+            ]"
+        >
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">
+                <div class="flex justify-between items-center h-16">  
                     <div class="flex items-center">
-                        <img :src="logoImage" alt="DCMS Logo" class="h-8 w-8 rounded mr-3">
-                        <span class="font-bold text-xl tracking-wider">DCMS</span>
+                        <img :src="logoImage" alt="DCMS Logo" class="h-10 w-auto drop-shadow-md mr-3">
+                        <span class="font-bold text-xl tracking-wider">Dental Clinic Management System</span>
                     </div>
                     <div class="hidden md:flex space-x-8 items-center text-sm font-medium">
                         <a href="#home" class="hover:text-teal-300 transition-colors">Home</a>
@@ -138,52 +252,76 @@ const isPopular = (planName) => {
             </div>
         </nav>
 
-        <!-- Hero Section -->
-        <main id="home" class="relative overflow-hidden bg-white">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-40 lg:pt-32 lg:pb-48 text-center lg:text-left flex flex-col lg:flex-row items-center">
+        <!-- Spacer for fixed navbar -->
+        <div class="h-16"></div>
+
+        <!-- Hero Section with Background Image -->
+        <main 
+            id="home" 
+            class="relative overflow-hidden"
+            :style="{ backgroundImage: `url(${bgImage})` }"
+            style="background-size: cover; background-position: center; background-repeat: no-repeat;"
+        >
+            <!-- Dark overlay for text readability -->
+            <div class="absolute inset-0 bg-gradient-to-r from-[#1a3350]/85 via-[#1a3350]/70 to-[#1a3350]/40 z-0"></div>
+
+            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-40 lg:pt-32 lg:pb-48 text-center lg:text-left flex flex-col lg:flex-row items-center z-10">
                 <!-- Text Content -->
-                <div class="lg:w-1/2 lg:pr-12 z-10">
-                    <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight tracking-tight">
+                <div class="lg:w-1/2 lg:pr-12">
+                    <h1 class="text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight drop-shadow-lg">
                         Managing your clinic doesn't <br class="hidden sm:block"> 
                         have to be stressful!
                     </h1>
-                    <p class="mt-6 text-lg text-gray-600 font-medium">
+                    <p class="mt-6 text-lg text-blue-100 font-medium drop-shadow">
                         Dental Practice Management App <br>
                         Made by Filipino Dentist, for every Filipino Dentist.
                     </p>
                     <div class="mt-10">
-                        <button @click="openLoginModal" class="bg-[#FF6B53] hover:bg-[#ff563b] text-white text-lg font-bold px-8 py-3.5 rounded-md shadow-lg shadow-[#FF6B53]/30 transition-all hover:-translate-y-1">
+                        <button @click="openRegistrationModal()" class="bg-[#FF6B53] hover:bg-[#ff563b] text-white text-lg font-bold px-8 py-3.5 rounded-md shadow-lg shadow-[#FF6B53]/30 transition-all hover:-translate-y-1 hover:shadow-xl">
                             GET STARTED
                         </button>
-                        <p class="mt-3 text-xs text-gray-400 italic">The app is now live!</p>
+                        <p class="mt-3 text-xs text-blue-200/70 italic">The app is now live!</p>
                     </div>
                 </div>
 
-                <!-- Hero Image -->
-                <div class="lg:w-1/2 mt-16 lg:mt-0 relative z-10">
-                    <img :src="heroImage" alt="DCMS App Preview on Desktop and Mobile" class="w-full max-w-2xl mx-auto drop-shadow-2xl object-contain h-auto max-h-[450px]" onerror="this.src='https://placehold.co/800x600/e2e8f0/475569?text=App+Preview'">
+                <!-- Hero Image (Dentist Model) -->
+                <div class="lg:w-1/2 mt-16 lg:mt-0 relative">
+                    <img :src="heroImage" alt="Smiling Dentist" class="w-full max-w-md mx-auto rounded-2xl shadow-2xl shadow-black/30 object-cover h-auto max-h-[450px] border-4 border-white/20">
                 </div>
             </div>
             
             <!-- Curved Wave Graphic -->
-            <div class="absolute bottom-0 w-full leading-none z-0">
+            <div class="absolute bottom-0 w-full leading-none z-10">
                 <svg viewBox="0 0 1440 250" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto text-[#42A1C9] block">
                     <path d="M0 120L48 135C96 150 192 180 288 185C384 190 480 170 576 135C672 100 768 50 864 35C960 20 1056 40 1152 65C1248 90 1344 120 1392 135L1440 150V250H1392C1344 250 1248 250 1152 250C1056 250 960 250 864 250C768 250 672 250 576 250C480 250 384 250 288 250C192 250 96 250 48 250H0V120Z" fill="currentColor"/>
                 </svg>
             </div>
         </main>
 
+        <!-- Dental Smile Banner -->
+        <section class="relative overflow-hidden bg-[#42A1C9]">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col md:flex-row items-center gap-8">
+                <div class="md:w-1/2 text-white text-center md:text-left scroll-animate">
+                    <h2 class="text-2xl sm:text-3xl font-bold leading-snug">Your patients deserve the <br class="hidden sm:block">best smile experience!</h2>
+                    <p class="mt-3 text-blue-100 text-sm">Let DCMS handle the paperwork while you focus on what matters most — your patients.</p>
+                </div>
+                <div class="md:w-1/2 scroll-animate">
+                    <img :src="dentalSmileImage" alt="Beautiful dental smile" class="w-full max-w-lg mx-auto rounded-xl shadow-xl shadow-black/20 object-cover h-48 md:h-56 border-2 border-white/20">
+                </div>
+            </div>
+        </section>
+
         <!-- Features Section (Teal/Blue Background) -->
         <section id="features" class="bg-[#59A5D8] py-20 text-white pb-32">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="text-center mb-16">
+                <div class="text-center mb-16 scroll-animate">
                     <p class="text-sm font-semibold tracking-wider uppercase text-blue-100 mb-2">Why Choose DCMS?</p>
                     <h2 class="text-3xl font-bold">Take control of your dental clinic<br>without being stressed out!</h2>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16 mt-16 px-4">
-                    <div v-for="(feature, index) in features" :key="index" class="text-center">
-                        <div class="w-20 h-20 mx-auto bg-[#00AEEF] rounded-full flex items-center justify-center mb-6 shadow-lg shadow-black/10 border-4 border-white/20">
+                    <div v-for="(feature, index) in features" :key="index" class="text-center scroll-animate">
+                        <div class="w-20 h-20 mx-auto bg-[#00AEEF] rounded-full flex items-center justify-center mb-6 shadow-lg shadow-black/10 border-4 border-white/20 transition-transform hover:scale-110">
                             <svg class="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" v-html="feature.icon"></svg>
                         </div>
                         <h3 class="text-xl font-bold mb-3">{{ feature.title }}</h3>
@@ -197,7 +335,7 @@ const isPopular = (planName) => {
         <div class="w-full bg-gray-50 leading-none -mt-1 border-0">
              <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto text-[#59A5D8] block rotate-180 transform translate-y-[1px]">
                   <path d="M0 60L48 55C96 50 192 40 288 45C384 50 480 70 576 85C672 100 768 110 864 105C960 100 1056 80 1152 65C1248 50 1344 40 1392 35L1440 30V120H1392C1344 120 1248 120 1152 120C1056 120 960 120 864 120C768 120 672 120 576 120C480 120 384 120 288 120C192 120 96 120 48 120H0V60Z" fill="currentColor"/>
-            </svg>
+             </svg>
         </div>
 
         <!-- Pricing Section -->
@@ -226,7 +364,7 @@ const isPopular = (planName) => {
                                 <li v-if="isPopular(plan.name)" class="font-bold text-[#FF6B53]">Custom System Features ⭐</li>
                             </ul>
                             <div class="mt-8">
-                                <button @click="openLoginModal" :class="['w-full py-3 px-4 rounded-md font-bold transition-colors', isPopular(plan.name) ? 'bg-[#FF6B53] hover:bg-[#ff563b] text-white shadow-md shadow-[#FF6B53]/20' : 'bg-gray-100 text-gray-900 hover:bg-gray-200']">
+                                <button @click="handleChoosePlan(plan)" :class="['w-full py-3 px-4 rounded-md font-bold transition-colors', isPopular(plan.name) ? 'bg-[#FF6B53] hover:bg-[#ff563b] text-white shadow-md shadow-[#FF6B53]/20' : 'bg-gray-100 text-gray-900 hover:bg-gray-200']">
                                     CHOOSE PLAN
                                 </button>
                             </div>
@@ -327,5 +465,40 @@ const isPopular = (planName) => {
             </div>
         </Modal>
 
+        <!-- Registration Modal -->
+        <RegistrationModal 
+            :show="isRegistrationModalOpen" 
+            :selected-plan="selectedPlan"
+            :plans="plans"
+            @close="closeRegistrationModal"
+            @openPayment="openPaymentModal"
+        />
+
+        <!-- Payment Modal -->
+        <PaymentModal 
+            :show="isPaymentModalOpen"
+            :registration-data="registrationData"
+            :plans="plans"
+            @close="closePaymentModal"
+        />
+
     </div>
 </template>
+
+<style scoped>
+/* Scroll animation base state */
+.scroll-animate {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+.scroll-animate.animate-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Smooth scrolling for the whole page */
+html {
+    scroll-behavior: smooth;
+}
+</style>

@@ -27,6 +27,10 @@ class SubscriptionPlanSeeder extends Seeder
                 'has_priority_support' => false,
                 'has_multi_branch' => false,
                 'report_level' => 'basic',
+                // Stripe price IDs
+                'stripe_product_id' => null,
+                'stripe_monthly_price_id' => null,
+                'stripe_yearly_price_id' => null,
             ],
             [
                 'name' => 'Pro',
@@ -42,6 +46,10 @@ class SubscriptionPlanSeeder extends Seeder
                 'has_priority_support' => false,
                 'has_multi_branch' => false,
                 'report_level' => 'enhanced',
+                // Stripe price IDs
+                'stripe_product_id' => null,
+                'stripe_monthly_price_id' => null,
+                'stripe_yearly_price_id' => null,
             ],
             [
                 'name' => 'Ultimate',
@@ -57,6 +65,10 @@ class SubscriptionPlanSeeder extends Seeder
                 'has_priority_support' => true,
                 'has_multi_branch' => true,
                 'report_level' => 'advanced',
+                // Stripe price IDs
+                'stripe_product_id' => null,
+                'stripe_monthly_price_id' => null,
+                'stripe_yearly_price_id' => null,
             ],
         ];
 
