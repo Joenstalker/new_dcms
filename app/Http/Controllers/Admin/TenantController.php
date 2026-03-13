@@ -19,7 +19,7 @@ class TenantController extends Controller
         $status = $request->query('status');
         $search = $request->query('search');
 
-        $query = Tenant::with('domains')->latest();
+        $query = Tenant::with(['domains', 'subscriptions.plan'])->latest();
 
         if ($search) {
             $query->whereHas('domains', function ($q) use ($search) {
@@ -30,6 +30,11 @@ class TenantController extends Controller
         $tenants = $query->get()->filter(function ($tenant) use ($status) {
             if (! $status) return true;
             return ($tenant->subscription_status ?? 'active') === $status;
+        })->map(function ($tenant) {
+            $latestSubscription = $tenant->subscriptions->where('stripe_status', 'active')->last() 
+                               ?? $tenant->subscriptions->last();
+            $tenant->plan = $latestSubscription ? $latestSubscription->plan->name : null;
+            return $tenant;
         })->values();
 
         // Manual pagination (simulating for simple collection mapping)
@@ -37,7 +42,7 @@ class TenantController extends Controller
         $perPage = 10;
         $page = $request->query('page', 1);
         $paginatedTenants = new \Illuminate\Pagination\LengthAwarePaginator(
-            $tenants->forPage($page, $perPage),
+            $tenants->forPage($page, $perPage)->values(), // Re-index for JSON array encoding
             $tenants->count(),
             $perPage,
             $page,
@@ -55,7 +60,13 @@ class TenantController extends Controller
      */
     public function show(Tenant $tenant): Response
     {
-        $tenant->load('domains');
+        $tenant->load(['domains', 'subscriptions.plan']);
+        
+        // Append the latest active plan name to the tenant object for the Vue frontend
+        $latestSubscription = $tenant->subscriptions->where('stripe_status', 'active')->last() 
+                           ?? $tenant->subscriptions->last();
+                           
+        $tenant->plan = $latestSubscription ? $latestSubscription->plan->name : null;
 
         return Inertia::render('Admin/Tenants/Show', [
             'tenant' => $tenant,

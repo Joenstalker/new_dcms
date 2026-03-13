@@ -225,9 +225,13 @@ class RegistrationController extends Controller
 
             // Check if already processed
             if (isset($metadata->processed) && $metadata->processed) {
-                // Already processed, redirect to tenant domain
+                // Already processed, redirect to their tenant login portal
                 $subdomain = $metadata->subdomain;
-                return redirect()->away("http://{$subdomain}." . config('app.central_domain', 'dcms.test:8080'));
+                $appUrl = config('app.url'); 
+                $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?? 'http';
+                $host = parse_url($appUrl, PHP_URL_HOST) ?? 'localhost';
+                $port = parse_url($appUrl, PHP_URL_PORT) ? ':' . parse_url($appUrl, PHP_URL_PORT) : '';
+                return redirect()->away("{$scheme}://{$subdomain}.{$host}{$port}/login");
             }
 
             // Create tenant and user after successful payment
@@ -256,7 +260,6 @@ class RegistrationController extends Controller
                     'name' => $metadata->admin_name,
                     'email' => $metadata->email,
                     'password' => Hash::make($metadata->password),
-                    'is_admin' => true,
                 ]);
 
                 // Create subscription record
@@ -280,12 +283,16 @@ class RegistrationController extends Controller
                 // Redirect to tenant via fallback route (works without wildcard DNS)
                 $subdomain = $metadata->subdomain;
 
-                // Store the tenant info in session for the fallback route
-                session(['pending_tenant_subdomain' => $subdomain]);
-
-                // Redirect to the tenant route which works without wildcard DNS
-                // This route will initialize the tenant and redirect to dashboard
-                return redirect("/tenant/{$subdomain}");
+                // Redirect to the tenant's new dedicated login portal directly
+                // (Using config('app.url') logic to dynamically inject the subdomain into the host)
+                $appUrl = config('app.url'); // e.g. http://localhost:8080 or https://dcms.com
+                $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?? 'http';
+                $host = parse_url($appUrl, PHP_URL_HOST) ?? 'localhost';
+                $port = parse_url($appUrl, PHP_URL_PORT) ? ':' . parse_url($appUrl, PHP_URL_PORT) : '';
+                
+                $tenantUrl = "{$scheme}://{$subdomain}.{$host}{$port}/login";
+                
+                return redirect()->away($tenantUrl);
 
             }
             catch (\Exception $e) {

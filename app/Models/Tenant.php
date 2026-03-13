@@ -11,5 +11,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
 {
     use HasDatabase, HasDomains;
 
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
     // Remove getCustomColumns so all extra fields map to the 'data' JSON column.
 }

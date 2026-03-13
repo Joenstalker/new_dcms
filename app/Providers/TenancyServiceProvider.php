@@ -100,7 +100,7 @@ class TenancyServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->bootEvents();
-        $this->mapRoutes();
+        // $this->mapRoutes(); // Removed to handle registration in bootstrap/app.php
 
         $this->makeTenancyMiddlewareHighestPriority();
     }
@@ -115,14 +115,6 @@ class TenancyServiceProvider extends ServiceProvider
 
                 Event::listen($event, $listener);
             }
-        }
-    }
-
-    protected function mapRoutes()
-    {
-        if (file_exists(base_path('routes/tenant.php'))) {
-            Route::namespace(static::$controllerNamespace)
-                ->group(base_path('routes/tenant.php'));
         }
     }
 
