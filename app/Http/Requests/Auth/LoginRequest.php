@@ -50,6 +50,27 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $user = Auth::user();
+
+        // Enforcement of Domain Isolation for Login
+        if (tenant()) {
+            // We are on a tenant domain
+            if ($user->is_admin) {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'email' => 'Super Admins are restricted to the central dashboard. Please login at ' . config('app.url'),
+                ]);
+            }
+        } else {
+            // We are on the central domain
+            if (! $user->is_admin) {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'email' => 'Clinic staff and owners must login through their specific clinic portal.',
+                ]);
+            }
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

@@ -33,45 +33,45 @@ const menuItems = [
         icon: 'credit-card',
         active: false
     },
-    { 
-        name: 'Billing & Revenue', 
-        route: null, 
+    {
+        name: 'Billing & Revenue',
+        route: 'admin.revenue.index',
         icon: 'cash',
         active: false
     },
-    { 
-        name: 'Platform Analytics', 
-        route: null, 
+    {
+        name: 'Platform Analytics',
+        route: 'admin.analytics.index',
         icon: 'chart',
         active: false
     },
-    { 
-        name: 'Feature Management', 
-        route: null, 
+    {
+        name: 'Feature Management',
+        route: null,
         icon: 'toggle',
         active: false
     },
-    { 
-        name: 'Support & Tickets', 
-        route: null, 
+    {
+        name: 'Support & Tickets',
+        route: null,
         icon: 'ticket',
         active: false
     },
-    { 
-        name: 'Notifications', 
-        route: null, 
+    {
+        name: 'Notifications',
+        route: null,
         icon: 'bell',
         active: false
     },
-    { 
-        name: 'Audit Logs', 
-        route: null, 
+    {
+        name: 'Audit Logs',
+        route: 'admin.audit-logs.index',
         icon: 'shield',
         active: false
     },
-    { 
-        name: 'System Settings', 
-        route: null, 
+    {
+        name: 'System Settings',
+        route: null,
         icon: 'cog',
         active: false
     },

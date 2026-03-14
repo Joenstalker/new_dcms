@@ -7,6 +7,8 @@ use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -33,12 +35,23 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = $request->user();
+
         // On central domain, redirect admins to admin dashboard
-        if ($request->user()->is_admin && ! tenant()) {
-            return redirect()->intended(route('admin.dashboard', absolute: false));
+        Log::info('Login attempt', [
+            'user' => $user->email,
+            'is_admin' => $user->is_admin,
+            'tenant' => tenant('id'),
+            'domain' => request()->getHost()
+        ]);
+
+        if (tenant()) {
+            Log::info('Redirecting to tenant dashboard');
+            return redirect()->intended(route('tenant.dashboard', absolute: false));
         }
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        Log::info('Redirecting to central dashboard');
+        return redirect()->intended(route('admin.dashboard', absolute: false));
     }
 
     /**

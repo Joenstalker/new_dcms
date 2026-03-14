@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -28,11 +29,12 @@ class TenantController extends Controller
         }
 
         $tenants = $query->get()->filter(function ($tenant) use ($status) {
-            if (! $status) return true;
+            if (!$status)
+                return true;
             return ($tenant->subscription_status ?? 'active') === $status;
         })->map(function ($tenant) {
-            $latestSubscription = $tenant->subscriptions->where('stripe_status', 'active')->last() 
-                               ?? $tenant->subscriptions->last();
+            $latestSubscription = $tenant->subscriptions->where('stripe_status', 'active')->last()
+                ?? $tenant->subscriptions->last();
             $tenant->plan = $latestSubscription ? $latestSubscription->plan->name : null;
             return $tenant;
         })->values();
@@ -46,8 +48,8 @@ class TenantController extends Controller
             $tenants->count(),
             $perPage,
             $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
+        ['path' => $request->url(), 'query' => $request->query()]
+            );
 
         return Inertia::render('Admin/Tenants/Index', [
             'tenants' => $paginatedTenants,
@@ -61,11 +63,11 @@ class TenantController extends Controller
     public function show(Tenant $tenant): Response
     {
         $tenant->load(['domains', 'subscriptions.plan']);
-        
+
         // Append the latest active plan name to the tenant object for the Vue frontend
-        $latestSubscription = $tenant->subscriptions->where('stripe_status', 'active')->last() 
-                           ?? $tenant->subscriptions->last();
-                           
+        $latestSubscription = $tenant->subscriptions->where('stripe_status', 'active')->last()
+            ?? $tenant->subscriptions->last();
+
         $tenant->plan = $latestSubscription ? $latestSubscription->plan->name : null;
 
         return Inertia::render('Admin/Tenants/Show', [

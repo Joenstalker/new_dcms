@@ -7,11 +7,20 @@ use App\Models\Invoice;
 use App\Models\Patient;
 use Carbon\Carbon;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
+        Log::info('Dashboard accessed', [
+            'tenant' => tenant('id'),
+            'connection' => DB::connection()->getName(),
+            'database' => DB::connection()->getDatabaseName(),
+            'host' => request()->getHost()
+        ]);
+
         // Check if we are in a tenant context
         if (!tenant()) {
             return Inertia::render('Dashboard', [

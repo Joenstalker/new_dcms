@@ -10,6 +10,8 @@ const roles = computed(() => user.value?.roles || []);
 const isSidebarOpen = ref(false);
 const openSubMenus = ref({});
 
+const dashboardRoute = computed(() => usePage().props.tenant ? 'tenant.dashboard' : 'dashboard');
+
 const toggleSubMenu = (name) => {
     openSubMenus.value[name] = !openSubMenus.value[name];
 };
@@ -19,7 +21,7 @@ const menuCategories = computed(() => {
         {
             title: 'Main Navigation',
             items: [
-                { name: 'Dashboard', route: 'dashboard', icon: 'home' },
+                { name: 'Dashboard', route: dashboardRoute.value, icon: 'home' },
                 { 
                     name: 'Appointments', 
                     icon: 'calendar', 
@@ -102,7 +104,7 @@ const menuCategories = computed(() => {
                         { name: 'QR Code Setup', route: 'settings.index', permissions: ['manage settings'] },
                     ]
                 },
-                { name: 'Subscription', route: 'dashboard', icon: 'diamond', permissions: ['manage subscription'] },
+                { name: 'Subscription', route: dashboardRoute.value, icon: 'diamond', permissions: ['manage subscription'] },
             ]
         }
     ];
@@ -172,7 +174,7 @@ const activeCategoryWithSubItems = computed(() => {
             <div class="flex flex-col h-full">
                 <!-- Sidebar Header -->
                 <div class="flex items-center justify-center h-20 bg-slate-950 border-b border-slate-800">
-                    <Link :href="route('dashboard')" class="flex items-center space-x-3">
+                    <Link :href="usePage().props.tenant ? route('tenant.dashboard') : route('dashboard')" class="flex items-center space-x-3">
                         <ApplicationLogo class="h-8 w-auto fill-current text-blue-400" />
                         <span class="text-xl font-bold tracking-wider text-white">DCMS</span>
                     </Link>

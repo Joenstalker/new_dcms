@@ -16,5 +16,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         return $this->hasMany(Subscription::class);
     }
 
+    public function subscription()
+    {
+        return $this->hasOne(Subscription::class)->latestOfMany();
+    }
+
     // Remove getCustomColumns so all extra fields map to the 'data' JSON column.
 }

@@ -225,13 +225,13 @@ class RegistrationController extends Controller
 
             // Check if already processed
             if (isset($metadata->processed) && $metadata->processed) {
-                // Already processed, redirect to their tenant login portal
+                // Already processed, redirect to their tenant dashboard
                 $subdomain = $metadata->subdomain;
-                $appUrl = config('app.url'); 
+                $appUrl = config('app.url');
                 $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?? 'http';
                 $host = parse_url($appUrl, PHP_URL_HOST) ?? 'localhost';
                 $port = parse_url($appUrl, PHP_URL_PORT) ? ':' . parse_url($appUrl, PHP_URL_PORT) : '';
-                return redirect()->away("{$scheme}://{$subdomain}.{$host}{$port}/login");
+                return redirect()->away("{$scheme}://{$subdomain}.{$host}{$port}/dashboard");
             }
 
             // Create tenant and user after successful payment
@@ -283,15 +283,35 @@ class RegistrationController extends Controller
                 // Redirect to tenant via fallback route (works without wildcard DNS)
                 $subdomain = $metadata->subdomain;
 
-                // Redirect to the tenant's new dedicated login portal directly
-                // (Using config('app.url') logic to dynamically inject the subdomain into the host)
-                $appUrl = config('app.url'); // e.g. http://localhost:8080 or https://dcms.com
+                // Build tenant URL dynamically based on APP_URL
+                // This works with lvh.me, localhost, or production domains
+                $appUrl = config('app.url'); // e.g. http://lvh.me:8080 or https://dcms.com
                 $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?? 'http';
                 $host = parse_url($appUrl, PHP_URL_HOST) ?? 'localhost';
                 $port = parse_url($appUrl, PHP_URL_PORT) ? ':' . parse_url($appUrl, PHP_URL_PORT) : '';
-                
-                $tenantUrl = "{$scheme}://{$subdomain}.{$host}{$port}/login";
-                
+
+                // Check if this is a local development environment (lvh.me, localhost)
+                $isLocal = in_array($host, ['lvh.me', 'localhost', '127.0.0.1']);
+
+                if ($isLocal) {
+                    // For local development, redirect to tenant subdomain
+                    // Note: This requires wildcard DNS or /etc/hosts entries
+                    $tenantUrl = "{$scheme}://{$subdomain}.{$host}{$port}/dashboard";
+
+                // If wildcard DNS is not configured, fallback to the tenant access route
+                // This works without wildcard DNS by using a path-based approach
+                // return redirect("/tenant/{$subdomain}");
+                }
+                else {
+                    // For production, redirect to tenant subdomain
+                    $tenantUrl = "{$scheme}://{$subdomain}.{$host}{$port}/dashboard";
+                }
+
+                // Store tenant info in session for cross-subdomain session sharing
+                // This helps if session cookies aren't shared across subdomains
+                session(['tenant_id' => $tenant->id, 'tenant_name' => $tenant->name]);
+
+                // Use redirect()->away() for cross-domain redirects
                 return redirect()->away($tenantUrl);
 
             }

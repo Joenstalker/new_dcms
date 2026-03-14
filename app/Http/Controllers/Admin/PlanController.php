@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\SubscriptionPlan;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -37,7 +38,8 @@ class PlanController extends Controller
         try {
             $this->syncWithStripe($plan);
             return redirect()->route('admin.plans.index')->with('success', 'Plan created and synced with Stripe.');
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Stripe Sync Error: ' . $e->getMessage());
             return redirect()->route('admin.plans.index')->with('warning', 'Plan saved locally, but Stripe sync failed: ' . $e->getMessage());
         }
@@ -55,7 +57,8 @@ class PlanController extends Controller
         try {
             $this->syncWithStripe($plan);
             return redirect()->route('admin.plans.index')->with('success', 'Plan updated and synced with Stripe.');
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Stripe Sync Error: ' . $e->getMessage());
             return redirect()->route('admin.plans.index')->with('warning', 'Plan updated locally, but Stripe sync failed: ' . $e->getMessage());
         }
@@ -95,7 +98,7 @@ class PlanController extends Controller
         // 2. Handle Monthly Price
         // Stripe Prices are immutable. If price changed, we must create a new one.
         $needsNewMonthly = !$plan->stripe_monthly_price_id;
-        
+
         if ($plan->stripe_monthly_price_id) {
             $stripePrice = $stripe->prices->retrieve($plan->stripe_monthly_price_id);
             if ($stripePrice->unit_amount !== (int)($plan->price_monthly * 100)) {
@@ -144,7 +147,8 @@ class PlanController extends Controller
         try {
             $this->syncWithStripe($plan);
             return back()->with('success', 'Plan synchronized with Stripe successfully.');
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Stripe Force Sync Error: ' . $e->getMessage());
             return back()->with('error', 'Sync failed: ' . $e->getMessage());
         }

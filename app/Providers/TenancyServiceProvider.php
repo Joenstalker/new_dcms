@@ -1,9 +1,11 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace App\Providers;
 
+use App\Jobs\SeedTenantDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -25,16 +27,16 @@ class TenancyServiceProvider extends ServiceProvider
             Events\CreatingTenant::class => [],
             Events\TenantCreated::class => [
                 JobPipeline::make([
-                    Jobs\CreateDatabase::class,
-                    Jobs\MigrateDatabase::class,
-                    // Jobs\SeedDatabase::class,
+                    Jobs\CreateDatabase::class ,
+                    Jobs\MigrateDatabase::class ,
+                    SeedTenantDatabase::class , // Seeds roles & permissions for every new tenant
 
                     // Your own jobs to prepare the tenant.
                     // Provision API keys, create S3 buckets, anything you want!
 
                 ])->send(function (Events\TenantCreated $event) {
-                    return $event->tenant;
-                })->shouldBeQueued(false), // `false` by default, but you probably want to make this `true` for production.
+            return $event->tenant;
+        })->shouldBeQueued(false), // `false` by default, but you probably want to make this `true` for production.
             ],
             Events\SavingTenant::class => [],
             Events\TenantSaved::class => [],
@@ -43,10 +45,10 @@ class TenancyServiceProvider extends ServiceProvider
             Events\DeletingTenant::class => [],
             Events\TenantDeleted::class => [
                 JobPipeline::make([
-                    Jobs\DeleteDatabase::class,
+                    Jobs\DeleteDatabase::class ,
                 ])->send(function (Events\TenantDeleted $event) {
-                    return $event->tenant;
-                })->shouldBeQueued(false), // `false` by default, but you probably want to make this `true` for production.
+            return $event->tenant;
+        })->shouldBeQueued(false), // `false` by default, but you probably want to make this `true` for production.
             ],
 
             // Domain events
@@ -69,12 +71,12 @@ class TenancyServiceProvider extends ServiceProvider
             // Tenancy events
             Events\InitializingTenancy::class => [],
             Events\TenancyInitialized::class => [
-                Listeners\BootstrapTenancy::class,
+                Listeners\BootstrapTenancy::class ,
             ],
 
             Events\EndingTenancy::class => [],
             Events\TenancyEnded::class => [
-                Listeners\RevertToCentralContext::class,
+                Listeners\RevertToCentralContext::class ,
             ],
 
             Events\BootstrappingTenancy::class => [],
@@ -84,7 +86,7 @@ class TenancyServiceProvider extends ServiceProvider
 
             // Resource syncing
             Events\SyncedResourceSaved::class => [
-                Listeners\UpdateSyncedResource::class,
+                Listeners\UpdateSyncedResource::class ,
             ],
 
             // Fired only when a synced resource is changed in a different DB than the origin DB (to avoid infinite loops)
@@ -94,7 +96,7 @@ class TenancyServiceProvider extends ServiceProvider
 
     public function register()
     {
-        //
+    //
     }
 
     public function boot()
@@ -122,13 +124,13 @@ class TenancyServiceProvider extends ServiceProvider
     {
         $tenancyMiddleware = [
             // Even higher priority than the initialization middleware
-            Middleware\PreventAccessFromCentralDomains::class,
+            Middleware\PreventAccessFromCentralDomains::class ,
 
-            Middleware\InitializeTenancyByDomain::class,
-            Middleware\InitializeTenancyBySubdomain::class,
-            Middleware\InitializeTenancyByDomainOrSubdomain::class,
-            Middleware\InitializeTenancyByPath::class,
-            Middleware\InitializeTenancyByRequestData::class,
+            Middleware\InitializeTenancyByDomain::class ,
+            Middleware\InitializeTenancyBySubdomain::class ,
+            Middleware\InitializeTenancyByDomainOrSubdomain::class ,
+            Middleware\InitializeTenancyByPath::class ,
+            Middleware\InitializeTenancyByRequestData::class ,
         ];
 
         foreach (array_reverse($tenancyMiddleware) as $middleware) {

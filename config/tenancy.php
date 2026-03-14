@@ -22,6 +22,7 @@ return [
         'localhost',
         'dcms.test',
         'dcms.local',
+        'lvh.me',
     ],
 
     /**
