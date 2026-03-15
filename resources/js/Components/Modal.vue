@@ -27,7 +27,7 @@ watch(
             document.body.style.overflow = 'hidden';
             showSlot.value = true;
 
-            dialog.value?.showModal();
+            dialog.value?.show();
         } else {
             document.body.style.overflow = '';
 

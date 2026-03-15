@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -25,6 +26,15 @@ const isLoading = ref(false);
 const selectedPlanId = ref(null);
 const billingCycle = ref('monthly');
 const selectedPaymentMethod = ref('card');
+
+// Dynamic domain from backend config
+const page = usePage();
+const clinicDomain = computed(() => {
+    const appUrl = page.props.config?.app_url || 'http://localhost:8080';
+    const url = new URL(appUrl);
+    const port = url.port ? `:${url.port}` : '';
+    return `${url.hostname}${port}`;
+});
 
 // Popup window reference
 let paymentPopup = null;
@@ -189,7 +199,7 @@ const closeModal = () => {
                     </div>
                     <div>
                         <span class="text-gray-500">URL:</span>
-                        <span class="ml-2 font-medium text-teal-600">{{ registrationData.subdomain }}.dcms.test:8080</span>
+                        <span class="ml-2 font-medium text-teal-600">{{ registrationData.subdomain }}.{{ clinicDomain }}</span>
                     </div>
                     <div>
                         <span class="text-gray-500">Admin:</span>

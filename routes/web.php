@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RegistrationController;
+use App\Http\Controllers\ContactController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -20,6 +21,11 @@ $registerCentralRoutes = function ($withNames = false) {
         );
         if ($withNames)
             $home->name('central.home');
+
+        // Contact Form
+        $contact = Route::post('/contact', [ContactController::class, 'submit']);
+        if ($withNames)
+            $contact->name('contact.submit');
 
         // Registration Routes
         $reg = Route::prefix('registration');
@@ -106,6 +112,20 @@ $registerCentralRoutes = function ($withNames = false) {
             $analyticsI = Route::get('/analytics', [\App\Http\Controllers\Admin\AnalyticsController::class , 'index']);
             if ($withNames)
                 $analyticsI->name('analytics.index');
+
+            // Support & Tickets (Contact Messages)
+            $supportI = Route::get('/support', [\App\Http\Controllers\Admin\SupportTicketController::class, 'index']);
+            $supportS = Route::get('/support/{message}', [\App\Http\Controllers\Admin\SupportTicketController::class, 'show']);
+            $supportR = Route::post('/support/{message}/reply', [\App\Http\Controllers\Admin\SupportTicketController::class, 'reply']);
+            $supportU = Route::put('/support/{message}/status', [\App\Http\Controllers\Admin\SupportTicketController::class, 'updateStatus']);
+            $supportD = Route::delete('/support/{message}', [\App\Http\Controllers\Admin\SupportTicketController::class, 'destroy']);
+            if ($withNames) {
+                $supportI->name('support.index');
+                $supportS->name('support.show');
+                $supportR->name('support.reply');
+                $supportU->name('support.updateStatus');
+                $supportD->name('support.destroy');
+            }
         }
         );
 

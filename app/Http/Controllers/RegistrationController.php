@@ -238,8 +238,9 @@ class RegistrationController extends Controller
             DB::beginTransaction();
 
             try {
-                // Generate unique tenant ID
-                $tenantId = Str::uuid()->toString();
+                // Use subdomain as tenant ID (will be sanitized to database name)
+                $namingService = app(\App\Services\TenantDatabaseNamingService::class);
+                $tenantId = $namingService->generateDatabaseName($metadata->subdomain);
 
                 // Create tenant
                 $tenant = Tenant::create([

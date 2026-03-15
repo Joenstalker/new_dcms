@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted } from 'vue';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -9,6 +9,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 import RegistrationModal from '@/Components/RegistrationModal.vue';
 import PaymentModal from '@/Components/PaymentModal.vue';
+import ContactModal from '@/Components/ContactModal.vue';
 
 import logoImage from '../../../public/images/dcms-logo.png';
 import heroImage from '../../../public/images/dentist-model.png';
@@ -32,6 +33,7 @@ const props = defineProps({
 const isLoginModalOpen = ref(false);
 const isRegistrationModalOpen = ref(false);
 const isPaymentModalOpen = ref(false);
+const isContactModalOpen = ref(false);
 const selectedPlan = ref(null);
 const registrationData = ref(null);
 
@@ -78,6 +80,14 @@ const openPaymentModal = (data) => {
 const closePaymentModal = () => {
     isPaymentModalOpen.value = false;
     registrationData.value = null;
+};
+
+const openContactModal = () => {
+    isContactModalOpen.value = true;
+};
+
+const closeContactModal = () => {
+    isContactModalOpen.value = false;
 };
 
 const handleChoosePlan = (plan) => {
@@ -198,8 +208,13 @@ onMounted(() => {
     
     if (urlParams.get('success') === 'true' && urlParams.get('tenant')) {
         const tenant = urlParams.get('tenant');
-        const tenantUrl = `http://${tenant}.dcms.test:8080`;
-        const fallbackUrl = `http://127.0.0.1:8080/tenant/${tenant}`;
+        const pageProps = usePage().props;
+        const appUrl = new URL(pageProps.config?.app_url || 'http://lvh.me:8080');
+        const scheme = appUrl.protocol.replace(':', '');
+        const host = appUrl.hostname;
+        const port = appUrl.port ? `:${appUrl.port}` : '';
+        const tenantUrl = `${scheme}://${tenant}.${host}${port}`;
+        const fallbackUrl = `${scheme}://${host}${port}/tenant/${tenant}`;
         
         const message = `🎉 Registration Successful!\n\nYour clinic has been created.\n\nPrimary URL: ${tenantUrl}\nFallback URL: ${fallbackUrl}\n\nNote: If the primary URL doesn't work, use the fallback URL.`;
         alert(message);
@@ -220,15 +235,15 @@ onUnmounted(() => {
 <template>
     <Head title="Dental Clinic Management System" />
 
-    <div class="min-h-screen bg-gray-50 font-sans selection:bg-teal-500 selection:text-white pb-20 scroll-smooth">
+    <div class="min-h-screen bg-gray-50 font-sans selection:bg-[#5EBD6A] selection:text-white scroll-smooth">
         
         <!-- Sticky Navbar -->
         <nav 
             :class="[
                 'fixed top-0 left-0 right-0 z-50 text-white transition-all duration-300',
                 isScrolled 
-                    ? 'bg-[#2E4A62]/95 backdrop-blur-md shadow-lg shadow-black/10' 
-                    : 'bg-[#2E4A62]'
+                    ? 'bg-[#1B3A4B]/95 backdrop-blur-md shadow-lg shadow-black/10' 
+                    : 'bg-[#1B3A4B]'
             ]"
         >
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -238,14 +253,14 @@ onUnmounted(() => {
                         <span class="font-bold text-xl tracking-wider">Dental Clinic Management System</span>
                     </div>
                     <div class="hidden md:flex space-x-8 items-center text-sm font-medium">
-                        <a href="#home" class="hover:text-teal-300 transition-colors">Home</a>
-                        <a href="#features" class="hover:text-teal-300 transition-colors">Features</a>
-                        <a href="#pricing" class="hover:text-teal-300 transition-colors">Pricing</a>
+                        <a href="#home" class="hover:text-green-300 transition-colors">Home</a>
+                        <a href="#features" class="hover:text-green-300 transition-colors">Features</a>
+                        <a href="#pricing" class="hover:text-green-300 transition-colors">Pricing</a>
                         
-                        <Link v-if="$page.props.auth.user" :href="route('admin.dashboard')" class="bg-teal-500 hover:bg-teal-400 text-white px-5 py-2 rounded-md transition-colors font-semibold shadow-sm">
+                        <Link v-if="$page.props.auth.user" :href="route('admin.dashboard')" class="bg-[#2B7CB3] hover:bg-[#24699A] text-white px-5 py-2 rounded-md transition-colors font-semibold shadow-sm">
                             Dashboard
                         </Link>
-                        <button v-else @click="openLoginModal" class="bg-teal-500 hover:bg-teal-400 text-white px-5 py-2 rounded-md transition-colors font-semibold shadow-sm">
+                        <button v-else @click="openLoginModal" class="bg-[#2B7CB3] hover:bg-[#24699A] text-white px-5 py-2 rounded-md transition-colors font-semibold shadow-sm">
                             LOGIN
                         </button>
                     </div>
@@ -264,7 +279,7 @@ onUnmounted(() => {
             style="background-size: cover; background-position: center; background-repeat: no-repeat;"
         >
             <!-- Dark overlay for text readability -->
-            <div class="absolute inset-0 bg-gradient-to-r from-[#1a3350]/85 via-[#1a3350]/70 to-[#1a3350]/40 z-0"></div>
+            <div class="absolute inset-0 bg-gradient-to-r from-[#1B3A4B]/85 via-[#1B3A4B]/70 to-[#1B3A4B]/40 z-0"></div>
 
             <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-40 lg:pt-32 lg:pb-48 text-center lg:text-left flex flex-col lg:flex-row items-center z-10">
                 <!-- Text Content -->
@@ -273,15 +288,15 @@ onUnmounted(() => {
                         Managing your clinic doesn't <br class="hidden sm:block"> 
                         have to be stressful!
                     </h1>
-                    <p class="mt-6 text-lg text-blue-100 font-medium drop-shadow">
+                    <p class="mt-6 text-lg text-green-100 font-medium drop-shadow">
                         Dental Practice Management App <br>
-                        Made by Filipino Dentist, for every Filipino Dentist.
+                        Made by BSIT Students, for every Filipino Dentist.
                     </p>
                     <div class="mt-10">
-                        <button @click="openRegistrationModal()" class="bg-[#FF6B53] hover:bg-[#ff563b] text-white text-lg font-bold px-8 py-3.5 rounded-md shadow-lg shadow-[#FF6B53]/30 transition-all hover:-translate-y-1 hover:shadow-xl">
+                        <button @click="openRegistrationModal()" class="bg-[#2B7CB3] hover:bg-[#24699A] text-white text-lg font-bold px-8 py-3.5 rounded-md shadow-lg shadow-[#2B7CB3]/30 transition-all hover:-translate-y-1 hover:shadow-xl">
                             GET STARTED
                         </button>
-                        <p class="mt-3 text-xs text-blue-200/70 italic">The app is now live!</p>
+                        <p class="mt-3 text-xs text-green-200/70 italic">Join the future of dental practice management!</p>
                     </div>
                 </div>
 
@@ -293,18 +308,18 @@ onUnmounted(() => {
             
             <!-- Curved Wave Graphic -->
             <div class="absolute bottom-0 w-full leading-none z-10">
-                <svg viewBox="0 0 1440 250" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto text-[#42A1C9] block">
+                <svg viewBox="0 0 1440 250" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto text-[#5EBD6A] block">
                     <path d="M0 120L48 135C96 150 192 180 288 185C384 190 480 170 576 135C672 100 768 50 864 35C960 20 1056 40 1152 65C1248 90 1344 120 1392 135L1440 150V250H1392C1344 250 1248 250 1152 250C1056 250 960 250 864 250C768 250 672 250 576 250C480 250 384 250 288 250C192 250 96 250 48 250H0V120Z" fill="currentColor"/>
                 </svg>
             </div>
         </main>
 
         <!-- Dental Smile Banner -->
-        <section class="relative overflow-hidden bg-[#42A1C9]">
+        <section class="relative overflow-hidden bg-[#5EBD6A]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col md:flex-row items-center gap-8">
                 <div class="md:w-1/2 text-white text-center md:text-left scroll-animate">
                     <h2 class="text-2xl sm:text-3xl font-bold leading-snug">Your patients deserve the <br class="hidden sm:block">best smile experience!</h2>
-                    <p class="mt-3 text-blue-100 text-sm">Let DCMS handle the paperwork while you focus on what matters most — your patients.</p>
+                    <p class="mt-3 text-green-50 text-sm">Let DCMS handle the paperwork while you focus on what matters most — your patients.</p>
                 </div>
                 <div class="md:w-1/2 scroll-animate">
                     <img :src="dentalSmileImage" alt="Beautiful dental smile" class="w-full max-w-lg mx-auto rounded-xl shadow-xl shadow-black/20 object-cover h-48 md:h-56 border-2 border-white/20">
@@ -313,20 +328,20 @@ onUnmounted(() => {
         </section>
 
         <!-- Features Section (Teal/Blue Background) -->
-        <section id="features" class="bg-[#59A5D8] py-20 text-white pb-32">
+        <section id="features" class="bg-[#E8F5E9] py-20 pb-32">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16 scroll-animate">
-                    <p class="text-sm font-semibold tracking-wider uppercase text-blue-100 mb-2">Why Choose DCMS?</p>
-                    <h2 class="text-3xl font-bold">Take control of your dental clinic<br>without being stressed out!</h2>
+                    <p class="text-sm font-semibold tracking-wider uppercase text-[#2B7CB3] mb-2">Why Choose DCMS?</p>
+                    <h2 class="text-3xl font-bold text-gray-800">Take control of your dental clinic<br>without being stressed out!</h2>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16 mt-16 px-4">
                     <div v-for="(feature, index) in features" :key="index" class="text-center scroll-animate">
-                        <div class="w-20 h-20 mx-auto bg-[#00AEEF] rounded-full flex items-center justify-center mb-6 shadow-lg shadow-black/10 border-4 border-white/20 transition-transform hover:scale-110">
+                        <div class="w-20 h-20 mx-auto bg-[#5EBD6A] rounded-full flex items-center justify-center mb-6 shadow-lg shadow-green-900/10 border-4 border-white/40 transition-transform hover:scale-110">
                             <svg class="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" v-html="feature.icon"></svg>
                         </div>
-                        <h3 class="text-xl font-bold mb-3">{{ feature.title }}</h3>
-                        <p class="text-blue-50 text-sm leading-relaxed max-w-xs mx-auto text-balance">{{ feature.description }}</p>
+                        <h3 class="text-xl font-bold mb-3 text-gray-800">{{ feature.title }}</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed max-w-xs mx-auto text-balance">{{ feature.description }}</p>
                     </div>
                 </div>
             </div>
@@ -334,38 +349,46 @@ onUnmounted(() => {
 
         <!-- Curved Wave Bottom -->
         <div class="w-full bg-gray-50 leading-none -mt-1 border-0">
-             <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto text-[#59A5D8] block rotate-180 transform translate-y-[1px]">
+             <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto text-[#E8F5E9] block rotate-180 transform translate-y-[1px]">
                   <path d="M0 60L48 55C96 50 192 40 288 45C384 50 480 70 576 85C672 100 768 110 864 105C960 100 1056 80 1152 65C1248 50 1344 40 1392 35L1440 30V120H1392C1344 120 1248 120 1152 120C1056 120 960 120 864 120C768 120 672 120 576 120C480 120 384 120 288 120C192 120 96 120 48 120H0V60Z" fill="currentColor"/>
              </svg>
         </div>
 
         <!-- Pricing Section -->
-        <section id="pricing" class="py-20 bg-gray-50 pt-10">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section 
+            id="pricing" 
+            class="py-20 pt-10 relative overflow-hidden"
+            :style="{ backgroundImage: `url(${bgImage})` }"
+            style="background-size: cover; background-position: center; background-attachment: fixed;"
+        >
+            <!-- Dark overlay for readability -->
+            <div class="absolute inset-0 bg-[#1B3A4B]/80 z-0"></div>
+
+            <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16">
-                    <h2 class="text-3xl font-bold text-gray-900">Check our affordable plans!</h2>
-                    <p class="mt-3 text-gray-500">Get started without breaking the bank!</p>
+                    <h2 class="text-3xl font-bold text-white">Check our affordable plans!</h2>
+                    <p class="mt-3 text-gray-300">Get started without breaking the bank!</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start justify-center max-w-6xl mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start justify-center max-w-5xl mx-auto">
                     <div v-for="plan in plans" :key="plan.id" 
-                        :class="['bg-white rounded-xl overflow-hidden shadow-xl shadow-gray-200/50 border-t-8 transition-transform hover:-translate-y-2', 
-                        isPopular(plan.name) ? 'border-[#FF6B53]' : 'border-teal-400']"
+                        :class="['bg-white/95 backdrop-blur-sm rounded-xl overflow-hidden shadow-2xl shadow-black/30 border-t-[6px] transition-transform hover:-translate-y-2', 
+                        isPopular(plan.name) ? 'border-[#FF6B53]' : 'border-[#5EBD6A]']"
                     >
-                        <div class="p-8 text-center border-b border-gray-100">
-                            <h3 :class="['text-xs font-bold tracking-widest uppercase mb-4', isPopular(plan.name) ? 'text-[#FF6B53]' : 'text-teal-500']">{{ plan.name }}</h3>
+                        <div class="p-5 text-center border-b border-gray-100">
+                            <h3 :class="['text-xs font-bold tracking-widest uppercase mb-3', isPopular(plan.name) ? 'text-[#FF6B53]' : 'text-[#5EBD6A]']">{{ plan.name }}</h3>
                             <div class="flex items-baseline justify-center text-gray-900">
-                                <span class="text-4xl font-extrabold tracking-tight">₱{{ Number(plan.price_monthly).toLocaleString() }}</span>
+                                <span class="text-3xl font-extrabold tracking-tight">₱{{ Number(plan.price_monthly).toLocaleString() }}</span>
                                 <span class="text-sm font-semibold text-gray-500 ml-1">/mo</span>
                             </div>
                         </div>
-                        <div class="p-8">
-                            <ul class="space-y-4 text-sm text-gray-600 text-center font-medium">
+                        <div class="p-5">
+                            <ul class="space-y-3 text-sm text-gray-600 text-center font-medium">
                                 <li v-for="feature in formatFeatures(plan)" :key="feature">{{ feature }}</li>
                                 <li v-if="isPopular(plan.name)" class="font-bold text-[#FF6B53]">Custom System Features ⭐</li>
                             </ul>
-                            <div class="mt-8">
-                                <button @click="handleChoosePlan(plan)" :class="['w-full py-3 px-4 rounded-md font-bold transition-colors', isPopular(plan.name) ? 'bg-[#FF6B53] hover:bg-[#ff563b] text-white shadow-md shadow-[#FF6B53]/20' : 'bg-gray-100 text-gray-900 hover:bg-gray-200']">
+                            <div class="mt-6">
+                                <button @click="handleChoosePlan(plan)" :class="['w-full py-2.5 px-4 rounded-md font-bold transition-colors', isPopular(plan.name) ? 'bg-[#FF6B53] hover:bg-[#ff563b] text-white shadow-md shadow-[#FF6B53]/20' : 'bg-[#2B7CB3] hover:bg-[#24699A] text-white']">
                                     CHOOSE PLAN
                                 </button>
                             </div>
@@ -380,15 +403,15 @@ onUnmounted(() => {
         </section>
 
         <!-- Footer / Contact -->
-        <footer class="bg-[#2E4A62] text-white py-16 mt-10">
+        <footer class="bg-[#1A3C34] text-white py-16 mt-10">
             <div class="max-w-4xl mx-auto px-4 text-center">
                 <h2 class="text-3xl font-bold mb-6">Contact Us</h2>
-                <p class="mb-10 text-gray-300">We know that you have some questions in mind regarding how the app works.<br>Let us help you get through it by clicking the button below.</p>
-                <a href="mailto:admin@dcms.com" class="inline-block bg-[#FF6B53] hover:bg-[#ff563b] text-white font-bold px-10 py-3 rounded-md transition-colors shadow-lg shadow-black/20">
+                <p class="mb-10 text-green-200/70">We know that you have some questions in mind regarding how the app works.<br>Let us help you get through it by clicking the button below.</p>
+                <button @click="openContactModal" class="inline-block bg-[#2B7CB3] hover:bg-[#24699A] text-white font-bold px-10 py-3 rounded-md transition-colors shadow-lg shadow-black/20 cursor-pointer">
                     CONTACT US
-                </a>
+                </button>
             </div>
-            <div class="mt-20 text-center text-xs text-gray-400 border-t border-gray-600/50 pt-8">
+            <div class="mt-20 text-center text-xs text-green-300/50 border-t border-green-700/50 pt-8">
                 Copyright © 2026 DCMS. All Rights Reserved.<br>
                 <a href="#" class="hover:text-white transition-colors">Terms</a> | <a href="#" class="hover:text-white transition-colors">Privacy Policy</a>
             </div>
@@ -447,7 +470,7 @@ onUnmounted(() => {
                         <Link
                             v-if="canResetPassword"
                             :href="route('password.request')"
-                            class="text-sm font-semibold text-teal-600 hover:text-teal-500"
+                            class="text-sm font-semibold text-[#2B7CB3] hover:text-[#24699A]"
                         >
                             Forgot password?
                         </Link>
@@ -455,7 +478,7 @@ onUnmounted(() => {
 
                     <div class="pt-2">
                         <PrimaryButton
-                            class="w-full justify-center py-3 text-sm font-bold bg-[#FF6B53] hover:bg-[#ff563b] focus:bg-[#e04f38] active:bg-[#e04f38]"
+                            class="w-full justify-center py-3 text-sm font-bold bg-[#2B7CB3] hover:bg-[#24699A] focus:bg-[#24699A] active:bg-[#1e5a82]"
                             :class="{ 'opacity-50 cursor-not-allowed': form.processing }"
                             :disabled="form.processing"
                         >
@@ -481,6 +504,12 @@ onUnmounted(() => {
             :registration-data="registrationData"
             :plans="plans"
             @close="closePaymentModal"
+        />
+
+        <!-- Contact Modal -->
+        <ContactModal
+            :show="isContactModalOpen"
+            @close="closeContactModal"
         />
 
     </div>

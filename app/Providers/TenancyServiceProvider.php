@@ -6,6 +6,7 @@ declare(strict_types = 1)
 namespace App\Providers;
 
 use App\Jobs\SeedTenantDatabase;
+use App\Jobs\CreateDatabaseUser;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -30,6 +31,7 @@ class TenancyServiceProvider extends ServiceProvider
                     Jobs\CreateDatabase::class ,
                     Jobs\MigrateDatabase::class ,
                     SeedTenantDatabase::class , // Seeds roles & permissions for every new tenant
+                    CreateDatabaseUser::class , // Creates dedicated DB user for tenant isolation
 
                     // Your own jobs to prepare the tenant.
                     // Provision API keys, create S3 buckets, anything you want!

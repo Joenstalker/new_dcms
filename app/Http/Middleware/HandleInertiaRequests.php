@@ -48,6 +48,11 @@ class HandleInertiaRequests extends Middleware
                     'permissions' => $request->user()->getAllPermissions()->pluck('name')->toArray(),
                 ] : null,
             ],
+            'config' => [
+                'central_domain' => config('tenancy.central_domains.0', 'localhost'),
+                'app_url' => config('app.url'),
+                'recaptcha_site_key' => env('RECAPTCHA_SITE_KEY', ''),
+            ],
             'tenant' => tenant(),
             'flash' => [
                 'success' => $request->session()->get('success'),

@@ -53,7 +53,7 @@ const menuItems = [
     },
     {
         name: 'Support & Tickets',
-        route: null,
+        route: 'admin.support.index',
         icon: 'ticket',
         active: false
     },

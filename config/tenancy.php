@@ -8,7 +8,7 @@ use Stancl\Tenancy\Database\Models\Tenant;
 
 return [
     'tenant_model' => \App\Models\Tenant::class ,
-    'id_generator' => Stancl\Tenancy\UUIDGenerator::class ,
+    'id_generator' => \App\Database\IdGenerators\DomainBasedIdGenerator::class ,
 
     'domain_model' => Domain::class ,
 
@@ -54,9 +54,20 @@ return [
         /**
          * Tenant database names are created like this:
          * prefix + tenant_id + suffix.
+         * 
+         * For domain-based naming (e.g., dental_dcms_db):
+         *   - prefix: '' (empty)
+         *   - suffix: '_dcms_db'
+         *   - The tenant_id will be the sanitized subdomain name
          */
-        'prefix' => 'tenant',
-        'suffix' => '',
+        'prefix' => env('TENANT_DB_PREFIX', ''),
+        'suffix' => env('TENANT_DB_SUFFIX', '_dcms_db'),
+
+        /**
+         * Database username prefix for tenant-specific users
+         * Used with PermissionControlledMySQLDatabaseManager
+         */
+        'user_prefix' => env('TENANT_DB_USER_PREFIX', 'tenant_user_'),
 
         /**
          * TenantDatabaseManagers are classes that handle the creation & deletion of tenant databases.
@@ -68,6 +79,7 @@ return [
 
             /**
              * Use this database manager for MySQL to have a DB user created for each tenant database.
+             * This provides additional security by creating separate database users for each tenant.
              * You can customize the grants given to these users by changing the $grants property.
              */
             // 'mysql' => Stancl\Tenancy\TenantDatabaseManagers\PermissionControlledMySQLDatabaseManager::class,

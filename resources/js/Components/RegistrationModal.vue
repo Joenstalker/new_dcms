@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -22,11 +22,20 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'openPayment']);
 
+const page = usePage();
 const currentStep = ref(1);
 const isLoading = ref(false);
 const subdomainSuggestions = ref([]);
 const subdomainChecking = ref(false);
 const subdomainAvailable = ref(null);
+
+// Dynamic domain from backend config
+const clinicDomain = computed(() => {
+    const appUrl = page.props.config?.app_url || 'http://localhost:8080';
+    const url = new URL(appUrl);
+    const port = url.port ? `:${url.port}` : '';
+    return `${url.hostname}${port}`;
+});
 
 // Form data
 const form = useForm({
@@ -304,7 +313,7 @@ const paymentMethods = [
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                     <p class="text-sm text-blue-800">
                         <strong>🌐 Your clinic URL:</strong> 
-                        <span class="font-mono">{{ form.subdomain || 'yourclinic' }}.dcms.test:8080</span>
+                        <span class="font-mono">{{ form.subdomain || 'yourclinic' }}.{{ clinicDomain }}</span>
                     </p>
                 </div>
 
@@ -312,7 +321,7 @@ const paymentMethods = [
                     <InputLabel for="subdomain" value="Subdomain *" />
                     <div class="mt-1 flex rounded-md shadow-sm">
                         <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                            dcms.test/
+                            {{ clinicDomain }}/
                         </span>
                         <input
                             id="subdomain"
@@ -386,7 +395,7 @@ const paymentMethods = [
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-500">Your URL:</span>
-                        <span class="font-medium text-teal-600">{{ form.subdomain }}.dcms.test:8080</span>
+                        <span class="font-medium text-teal-600">{{ form.subdomain }}.{{ clinicDomain }}</span>
                     </div>
                     <div v-if="selectedPlan" class="flex justify-between pt-3 border-t border-gray-200">
                         <span class="text-gray-500">Selected Plan:</span>
