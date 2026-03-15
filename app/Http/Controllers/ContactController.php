@@ -38,13 +38,14 @@ class ContactController extends Controller
                         'message' => 'reCAPTCHA verification failed. Please try again.',
                     ], 422);
                 }
-            } catch (\Exception $e) {
+            }
+            catch (\Exception $e) {
                 Log::warning('reCAPTCHA verification error: ' . $e->getMessage());
             }
         }
 
         // Store in database
-        ContactMessage::create([
+        $message = ContactMessage::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'message' => $validated['message'],
@@ -52,6 +53,20 @@ class ContactController extends Controller
             'ip_address' => $request->ip(),
             'recaptcha_score' => $recaptchaScore,
         ]);
+
+        // Notify admins about new support ticket
+        $notificationService = app(\App\Services\NotificationService::class);
+        $notificationService->notifyAdmins(
+            'new_support_ticket',
+            'New Support Ticket',
+            "New support ticket from {$validated['name']} ({$validated['email']}): " . substr($validated['message'], 0, 100) . '...',
+        [
+            'message_id' => $message->id,
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+        ],
+            'both'
+        );
 
         Log::info('Contact form submitted', [
             'name' => $validated['name'],

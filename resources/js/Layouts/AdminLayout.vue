@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
+import NotificationBell from '@/Components/NotificationBell.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -59,7 +61,7 @@ const menuItems = [
     },
     {
         name: 'Notifications',
-        route: null,
+        route: 'admin.notifications.index',
         icon: 'bell',
         active: false
     },
@@ -157,7 +159,7 @@ watch(() => page.props.flash, (flash) => {
 </script>
 
 <template>
-    <div class="flex h-screen bg-gray-50 overflow-hidden font-sans">
+    <div class="flex h-screen bg-base-200 overflow-hidden font-sans">
         <!-- Sidebar -->
         <aside 
             :class="[isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']"
@@ -251,11 +253,11 @@ watch(() => page.props.flash, (flash) => {
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
             <!-- Top Bar -->
-            <header class="bg-white border-b border-gray-200 sticky top-0 z-40 h-16 flex items-center px-4 sm:px-6 lg:px-8 shrink-0">
+            <header class="bg-base-100 border-b border-base-300 sticky top-0 z-40 h-16 flex items-center px-4 sm:px-6 lg:px-8 shrink-0">
                 <div class="flex items-center lg:hidden mr-4">
                     <button 
                         @click="isSidebarOpen = !isSidebarOpen"
-                        class="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-lg transition"
+                        class="p-2 text-base-content/50 hover:text-base-content/70 hover:bg-base-200 rounded-lg transition"
                     >
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -268,7 +270,9 @@ watch(() => page.props.flash, (flash) => {
                 </div>
 
                 <div class="flex items-center space-x-3 ml-4">
-                    <span class="text-xs text-gray-400 hidden sm:inline">SaaS Provider Panel</span>
+                    <span class="text-xs text-base-content/50 hidden sm:inline">SaaS Provider Panel</span>
+                    <ThemeSwitcher />
+                    <NotificationBell type="admin" />
                     <div class="h-8 w-8 rounded-full bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-white text-xs font-bold">
                         {{ user?.name?.charAt(0) || 'A' }}
                     </div>
@@ -276,7 +280,7 @@ watch(() => page.props.flash, (flash) => {
             </header>
 
             <!-- Content Area -->
-            <main class="flex-1 overflow-y-auto bg-gray-50 custom-scrollbar p-6">
+            <main class="flex-1 overflow-y-auto bg-base-200 custom-scrollbar p-6">
                 <slot />
             </main>
         </div>

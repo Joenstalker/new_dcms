@@ -23,7 +23,7 @@ const statCards = [
     <Head title="Admin Dashboard" />
     <AdminLayout>
         <template #header>
-            <h1 class="text-xl font-bold text-gray-900">Dashboard</h1>
+            <h1 class="text-xl font-bold text-base-content">Dashboard</h1>
         </template>
 
         <div class="max-w-7xl mx-auto space-y-8">
@@ -42,12 +42,12 @@ const statCards = [
                 <div 
                     v-for="card in statCards" 
                     :key="card.key"
-                    class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 group"
+                    class="bg-base-100 rounded-2xl p-6 border border-base-300 shadow-sm hover:shadow-md transition-shadow duration-300 group"
                 >
                     <div class="flex items-start justify-between">
                         <div>
-                            <p class="text-sm font-medium text-gray-500">{{ card.label }}</p>
-                            <p class="mt-2 text-3xl font-bold text-gray-900">
+                            <p class="text-sm font-medium text-base-content/60">{{ card.label }}</p>
+                            <p class="mt-2 text-3xl font-bold text-base-content">
                                 {{ card.prefix || '' }}{{ stats[card.key]?.toLocaleString() || '0' }}
                             </p>
                         </div>
@@ -84,12 +84,12 @@ const statCards = [
             <!-- Placeholder Sections -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Recent Activity -->
-                <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+                <div class="bg-base-100 rounded-2xl p-6 border border-base-300 shadow-sm">
+                    <h3 class="text-lg font-semibold text-base-content mb-4">Recent Activity</h3>
                     <div class="space-y-4">
-                        <div class="flex items-center justify-center h-40 text-gray-400">
+                        <div class="flex items-center justify-center h-40 text-base-content/40">
                             <div class="text-center">
-                                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+                                <svg class="w-12 h-12 mx-auto mb-2 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                 </svg>
                                 <p class="text-sm">Activity feed coming in Phase 2</p>
@@ -99,12 +99,12 @@ const statCards = [
                 </div>
 
                 <!-- Quick Overview -->
-                <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Subscription Distribution</h3>
+                <div class="bg-base-100 rounded-2xl p-6 border border-base-300 shadow-sm">
+                    <h3 class="text-lg font-semibold text-base-content mb-4">Subscription Distribution</h3>
                     <div class="space-y-4">
-                        <div class="flex items-center justify-center h-40 text-gray-400">
+                        <div class="flex items-center justify-center h-40 text-base-content/40">
                             <div class="text-center">
-                                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+                                <svg class="w-12 h-12 mx-auto mb-2 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
                                 </svg>

@@ -96,5 +96,17 @@ Route::middleware([
                     Route::post('services/{service}/reject', [\App\Http\Controllers\ServiceController::class , 'reject'])->name('services.reject');
                 }
                 );
+
+                // Notifications
+                Route::get('notifications', [\App\Http\Controllers\Tenant\NotificationController::class , 'index'])->name('notifications.index');
+                Route::get('notifications/recent', [\App\Http\Controllers\Tenant\NotificationController::class , 'getRecent'])->name('notifications.recent');
+                Route::get('notifications/count', [\App\Http\Controllers\Tenant\NotificationController::class , 'getUnreadCount'])->name('notifications.count');
+                Route::put('notifications/{id}/read', [\App\Http\Controllers\Tenant\NotificationController::class , 'markAsRead'])->name('notifications.mark-read');
+                Route::put('notifications/read-all', [\App\Http\Controllers\Tenant\NotificationController::class , 'markAllAsRead'])->name('notifications.mark-all-read');
+                Route::delete('notifications/{id}', [\App\Http\Controllers\Tenant\NotificationController::class , 'destroy'])->name('notifications.destroy');
+                Route::get('notifications/settings', [\App\Http\Controllers\Tenant\NotificationController::class , 'settings'])->name('notifications.settings');
+                Route::put('notifications/settings', [\App\Http\Controllers\Tenant\NotificationController::class , 'updateSettings'])->name('notifications.settings.update');
+                Route::post('notifications/send-message', [\App\Http\Controllers\Tenant\NotificationController::class , 'sendMessage'])->name('notifications.send-message');
             }
-            );        });
+            );
+        });

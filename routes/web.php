@@ -145,6 +145,26 @@ $registerCentralRoutes = function ($withNames = false) {
                 $supportU->name('support.updateStatus');
                 $supportD->name('support.destroy');
             }
+
+            // Notifications
+            $notifI = Route::get('/notifications', [\App\Http\Controllers\Admin\NotificationController::class , 'index']);
+            $notifRec = Route::get('/notifications/recent', [\App\Http\Controllers\Admin\NotificationController::class , 'getRecent']);
+            $notifCount = Route::get('/notifications/count', [\App\Http\Controllers\Admin\NotificationController::class , 'getUnreadCount']);
+            $notifMark = Route::put('/notifications/{id}/read', [\App\Http\Controllers\Admin\NotificationController::class , 'markAsRead']);
+            $notifMarkAll = Route::put('/notifications/read-all', [\App\Http\Controllers\Admin\NotificationController::class , 'markAllAsRead']);
+            $notifD = Route::delete('/notifications/{id}', [\App\Http\Controllers\Admin\NotificationController::class , 'destroy']);
+            $notifSettings = Route::get('/notifications/settings', [\App\Http\Controllers\Admin\NotificationController::class , 'settings']);
+            $notifSettingsU = Route::put('/notifications/settings', [\App\Http\Controllers\Admin\NotificationController::class , 'updateSettings']);
+            if ($withNames) {
+                $notifI->name('notifications.index');
+                $notifRec->name('notifications.recent');
+                $notifCount->name('notifications.count');
+                $notifMark->name('notifications.mark-read');
+                $notifMarkAll->name('notifications.mark-all-read');
+                $notifD->name('notifications.destroy');
+                $notifSettings->name('notifications.settings');
+                $notifSettingsU->name('notifications.settings.update');
+            }
         }
         );
 

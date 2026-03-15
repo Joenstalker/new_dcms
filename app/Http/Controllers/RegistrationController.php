@@ -281,6 +281,21 @@ class RegistrationController extends Controller
                     'metadata' => array_merge((array)$metadata, ['processed' => true]),
                 ]);
 
+                // Send notification to admins about new tenant
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notifyAdmins(
+                    'new_tenant',
+                    'New Tenant Registration',
+                    "A new clinic '{$metadata->clinic_name}' has registered with subdomain '{$metadata->subdomain}'",
+                [
+                    'tenant_id' => $tenantId,
+                    'clinic_name' => $metadata->clinic_name,
+                    'subdomain' => $metadata->subdomain,
+                    'admin_email' => $metadata->email,
+                ],
+                    'both'
+                );
+
                 // Redirect to tenant via fallback route (works without wildcard DNS)
                 $subdomain = $metadata->subdomain;
 

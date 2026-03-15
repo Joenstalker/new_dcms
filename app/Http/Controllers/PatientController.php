@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Patient;
+use App\Services\TenantNotificationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -33,7 +34,17 @@ class PatientController extends Controller
             'medical_history' => 'nullable|string',
         ]);
 
-        Patient::create($validated);
+        $patient = Patient::create($validated);
+
+        // Send notification to owners about new patient
+        $notificationService = app(TenantNotificationService::class);
+        $notificationService->notifyPatientAdded(
+            auth()->user(),
+        [
+            'id' => $patient->id,
+            'name' => $patient->first_name . ' ' . $patient->last_name,
+        ]
+        );
 
         return redirect()->route('tenant.patients.index')->with('success', 'Patient created successfully.');
     }
