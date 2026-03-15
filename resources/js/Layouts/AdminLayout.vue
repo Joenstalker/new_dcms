@@ -47,7 +47,7 @@ const menuItems = [
     },
     {
         name: 'Feature Management',
-        route: null,
+        route: 'admin.features.index',
         icon: 'toggle',
         active: false
     },

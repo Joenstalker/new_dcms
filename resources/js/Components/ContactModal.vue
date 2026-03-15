@@ -32,10 +32,6 @@ const isFormValid = computed(() => {
            acceptTerms.value;
 });
 
-const isReadyToSubmit = computed(() => {
-    return isFormValid.value && recaptchaToken.value !== '';
-});
-
 // Load reCAPTCHA v2 script
 onMounted(() => {
     if (recaptchaSiteKey.value && !document.querySelector('#recaptcha-v2-script')) {
@@ -47,48 +43,69 @@ onMounted(() => {
         document.head.appendChild(script);
     }
 
-    // Global callback for reCAPTCHA script load
-    window.onRecaptchaLoad = () => {
-        // Will render when modal opens
-    };
-});
+// Render reCAPTCHA 
+const initRecaptcha = () => {
+    if (!window.grecaptcha || !recaptchaSiteKey.value) return;
 
-// Render reCAPTCHA when modal opens
-watch(() => props.show, async (newVal) => {
+    window.grecaptcha.ready(() => {
+        const container = document.getElementById('contact-recaptcha-container');
+        if (!container) return;
+
+        // If it has children, it's already rendered in this DOM instance. Just reset it.
+        if (container.hasChildNodes() && recaptchaWidgetId.value !== null) {
+             try {
+                 window.grecaptcha.reset(recaptchaWidgetId.value);
+             } catch(e) {
+                 console.warn("Could not reset", e);
+             }
+             return;
+        }
+
+        try {
+            // Render freshly
+            container.innerHTML = '';
+            recaptchaWidgetId.value = window.grecaptcha.render(container, {
+                sitekey: recaptchaSiteKey.value,
+                callback: onRecaptchaSuccess,
+                'expired-callback': onRecaptchaExpired,
+                'error-callback': onRecaptchaError,
+                theme: 'light',
+                size: 'normal',
+            });
+        } catch (e) {
+            console.warn('reCAPTCHA render error:', e);
+        }
+    });
+};
+
+// Handle modal opening
+watch(() => props.show, (newVal) => {
     if (newVal) {
         recaptchaToken.value = '';
-        await nextTick();
-        // Wait a bit for DOM to settle
-        setTimeout(() => {
-            renderRecaptcha();
-        }, 300);
+        
+        // Use nextTick to ensure the v-if slot in Modal has rendered the DOM
+        nextTick(() => {
+            setTimeout(() => {
+                initRecaptcha();
+            }, 100);
+        });
     }
 });
 
-const renderRecaptcha = () => {
-    if (!window.grecaptcha || !recaptchaContainer.value || !recaptchaSiteKey.value) return;
+    window.onRecaptchaLoad = () => {
+        initRecaptcha();
+    };
 
-    // Clear previous widget
-    if (recaptchaContainer.value) {
-        recaptchaContainer.value.innerHTML = '';
+    // If already loaded (e.g., navigated back)
+    if (window.grecaptcha) {
+        initRecaptcha();
     }
-
-    try {
-        recaptchaWidgetId.value = window.grecaptcha.render(recaptchaContainer.value, {
-            sitekey: recaptchaSiteKey.value,
-            callback: onRecaptchaSuccess,
-            'expired-callback': onRecaptchaExpired,
-            'error-callback': onRecaptchaError,
-            theme: 'light',
-            size: 'normal',
-        });
-    } catch (e) {
-        console.warn('reCAPTCHA render error:', e);
-    }
-};
+});
 
 const onRecaptchaSuccess = (token) => {
     recaptchaToken.value = token;
+    // Trigger submission after successful reCAPTCHA validation
+    actuallySubmit();
 };
 
 const onRecaptchaExpired = () => {
@@ -134,15 +151,42 @@ const submitForm = async () => {
         Swal.fire({ icon: 'warning', title: 'Terms Required', text: 'Please accept the Terms & Conditions to continue.', confirmButtonColor: '#2B7CB3' });
         return;
     }
-    if (!recaptchaToken.value) {
-        Swal.fire({ icon: 'warning', title: 'Verify reCAPTCHA', text: 'Please complete the reCAPTCHA verification before sending your message.', confirmButtonColor: '#2B7CB3' });
-        return;
-    }
 
+    if (isSubmitting.value) return;
+
+    // Trigger invisible reCAPTCHA
+    if (window.grecaptcha && recaptchaWidgetId.value !== null) {
+        // Show loading state *before* reCAPTCHA execution in case it takes a moment
+        Swal.fire({
+            title: 'Verifying...',
+            text: 'Please complete the security check if prompted.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            window.grecaptcha.execute(recaptchaWidgetId.value);
+            // Note: The execution will call onRecaptchaSuccess callback which then calls actuallySubmit()
+        } catch (error) {
+            console.error('reCAPTCHA execute failed:', error);
+            Swal.close();
+            onRecaptchaError();
+        }
+    } else {
+        // Fallback if reCAPTCHA is not loaded or key is missing
+        actuallySubmit();
+    }
+};
+
+const actuallySubmit = async () => {
     if (isSubmitting.value) return;
     isSubmitting.value = true;
 
-    // Show loading via SweetAlert
+    // Show sending loading state (might replace the verifying one)
     Swal.fire({
         title: 'Sending your message...',
         text: 'Please wait while we process your request.',
@@ -194,7 +238,7 @@ const submitForm = async () => {
             // Reset reCAPTCHA on failure
             recaptchaToken.value = '';
             if (window.grecaptcha && recaptchaWidgetId.value !== null) {
-                window.grecaptcha.reset(recaptchaWidgetId.value);
+                window.grecaptcha.ready(() => window.grecaptcha.reset(recaptchaWidgetId.value));
             }
 
             if (data.errors) {
@@ -218,7 +262,7 @@ const submitForm = async () => {
         console.error('Contact form error:', error);
         recaptchaToken.value = '';
         if (window.grecaptcha && recaptchaWidgetId.value !== null) {
-            window.grecaptcha.reset(recaptchaWidgetId.value);
+            window.grecaptcha.ready(() => window.grecaptcha.reset(recaptchaWidgetId.value));
         }
         Swal.fire({
             icon: 'error',
@@ -237,112 +281,118 @@ const closeModal = () => {
 </script>
 
 <template>
-    <Modal :show="show" @close="closeModal" maxWidth="md">
-        <div class="relative overflow-hidden">
+    <Modal :show="show" @close="closeModal" maxWidth="lg">
+        <div class="relative flex flex-col max-h-[85vh] bg-white overflow-hidden">
             <!-- Top accent bar -->
-            <div class="h-1.5 w-full bg-gradient-to-r from-[#2B7CB3] via-[#5EBD6A] to-[#2B7CB3]"></div>
+            <div class="h-1.5 w-full shrink-0 bg-gradient-to-r from-[#2B7CB3] via-[#5EBD6A] to-[#2B7CB3]"></div>
 
-            <div class="p-8">
+            <div class="p-8 flex flex-col flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                 <!-- Logo & Header -->
-                <div class="text-center mb-8">
-                    <img :src="logoImage" alt="DCMS Logo" class="h-14 mx-auto mb-4">
+                <div class="text-center mb-6 shrink-0">
+                    <img :src="logoImage" alt="DCMS Logo" class="h-10 mx-auto mb-3">
                     <h2 class="text-2xl font-bold text-gray-900">Contact Us</h2>
                     <p class="text-sm text-gray-500 mt-1">We'd love to hear from you. Send us a message!</p>
                 </div>
 
                 <!-- Close Button -->
-                <button @click="closeModal" class="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors z-10">
+                <button @click="closeModal" class="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors z-10 shrink-0">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
 
                 <!-- Form -->
-                <form @submit.prevent="submitForm" class="space-y-5">
-                    <!-- Name -->
-                    <div>
-                        <label for="contact_name" class="block text-sm font-semibold text-gray-700 mb-1">Name</label>
-                        <input
-                            id="contact_name"
-                            type="text"
-                            v-model="name"
-                            placeholder="Your full name"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B7CB3]/40 focus:border-[#2B7CB3] outline-none transition-colors text-sm"
-                        />
+                <form @submit.prevent="submitForm" class="flex flex-col flex-1 min-h-0 gap-4">
+                    <!-- Top section (Name & Email side-by-side) -->
+                    <div class="flex flex-col sm:flex-row gap-4 shrink-0">
+                        <!-- Name -->
+                        <div class="flex-1">
+                            <label for="contact_name" class="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+                            <input
+                                id="contact_name"
+                                type="text"
+                                v-model="name"
+                                placeholder="Your full name"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B7CB3]/40 focus:border-[#2B7CB3] outline-none transition-colors text-sm"
+                            />
+                        </div>
+
+                        <!-- Email -->
+                        <div class="flex-1">
+                            <label for="contact_email" class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                            <input
+                                id="contact_email"
+                                type="email"
+                                v-model="email"
+                                placeholder="your@email.com"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B7CB3]/40 focus:border-[#2B7CB3] outline-none transition-colors text-sm"
+                            />
+                        </div>
                     </div>
 
-                    <!-- Email -->
-                    <div>
-                        <label for="contact_email" class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                        <input
-                            id="contact_email"
-                            type="email"
-                            v-model="email"
-                            placeholder="your@email.com"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B7CB3]/40 focus:border-[#2B7CB3] outline-none transition-colors text-sm"
-                        />
-                    </div>
-
-                    <!-- Message -->
-                    <div>
-                        <label for="contact_message" class="block text-sm font-semibold text-gray-700 mb-1">Message</label>
+                    <!-- Message (Scrollable area) -->
+                    <div class="flex flex-col flex-1 min-h-[120px] mt-1">
+                        <label for="contact_message" class="block text-sm font-semibold text-gray-700 mb-1 shrink-0">Message</label>
                         <textarea
                             id="contact_message"
                             v-model="message"
                             rows="4"
                             placeholder="Tell us what's on your mind..."
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B7CB3]/40 focus:border-[#2B7CB3] outline-none transition-colors text-sm resize-none"
+                            class="w-full flex-1 min-h-[100px] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B7CB3]/40 focus:border-[#2B7CB3] outline-none transition-colors text-sm resize-none custom-scrollbar"
                         ></textarea>
                     </div>
 
-                    <!-- Terms Checkbox -->
-                    <label for="accept_terms_cb" class="flex items-start gap-3 cursor-pointer select-none group">
-                        <div class="relative flex items-center justify-center w-5 h-5 mt-0.5 rounded border transition-colors duration-200 shadow-sm flex-shrink-0"
-                             :class="acceptTerms ? 'bg-[#2B7CB3] border-[#2B7CB3]' : 'bg-white border-gray-300 group-hover:border-[#2B7CB3]/50'">
-                            <input
-                                id="accept_terms_cb"
-                                type="checkbox"
-                                v-model="acceptTerms"
-                                class="absolute opacity-0 w-0 h-0 cursor-pointer"
-                            />
-                            <svg v-if="acceptTerms" class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
+                    <!-- Bottom section (Fixed) -->
+                    <div class="shrink-0 space-y-4 mt-2">
+                        <!-- Terms Checkbox -->
+                        <label for="accept_terms_cb" class="flex items-start gap-3 cursor-pointer select-none group">
+                            <div class="relative flex items-center justify-center w-5 h-5 mt-0.5 rounded border transition-colors duration-200 shadow-sm flex-shrink-0"
+                                 :class="acceptTerms ? 'bg-[#2B7CB3] border-[#2B7CB3]' : 'bg-white border-gray-300 group-hover:border-[#2B7CB3]/50'">
+                                <input
+                                    id="accept_terms_cb"
+                                    type="checkbox"
+                                    v-model="acceptTerms"
+                                    class="absolute opacity-0 w-0 h-0 cursor-pointer"
+                                />
+                                <svg v-if="acceptTerms" class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <span class="text-sm text-gray-600 leading-relaxed">
+                                I accept the <a href="#" @click.prevent class="text-[#2B7CB3] hover:underline font-medium">Terms & Conditions</a> and <a href="#" @click.prevent class="text-[#2B7CB3] hover:underline font-medium">Privacy Policy</a>
+                            </span>
+                        </label>
+
+                        <!-- reCAPTCHA v2 Container -->
+                        <div class="flex justify-center">
+                            <div id="contact-recaptcha-container"></div>
                         </div>
-                        <span class="text-sm text-gray-600 leading-relaxed">
-                            I accept the <a href="#" @click.prevent class="text-[#2B7CB3] hover:underline font-medium">Terms & Conditions</a> and <a href="#" @click.prevent class="text-[#2B7CB3] hover:underline font-medium">Privacy Policy</a>
-                        </span>
-                    </label>
 
-                    <!-- reCAPTCHA v2 Widget -->
-                    <div class="flex justify-center">
-                        <div ref="recaptchaContainer"></div>
+                        <!-- Submit Button -->
+                        <button
+                            type="submit"
+                            :disabled="isSubmitting || !acceptTerms"
+                            :class="[
+                                'w-full py-2.5 px-6 rounded-lg font-bold text-white text-sm tracking-wide transition-all duration-200',
+                                (!isSubmitting && acceptTerms)
+                                    ? 'bg-[#2B7CB3] hover:bg-[#24699A] shadow-lg shadow-[#2B7CB3]/25 hover:-translate-y-0.5'
+                                    : 'bg-gray-300 cursor-not-allowed opacity-70'
+                            ]"
+                        >
+                            <span v-if="isSubmitting" class="flex items-center justify-center gap-2">
+                                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Sending...
+                            </span>
+                            <span v-else>Send Message</span>
+                        </button>
                     </div>
-
-                    <!-- Submit Button -->
-                    <button
-                        type="submit"
-                        :disabled="isSubmitting"
-                        :class="[
-                            'w-full py-3 px-6 rounded-lg font-bold text-white text-sm tracking-wide transition-all duration-200',
-                            !isSubmitting
-                                ? 'bg-[#2B7CB3] hover:bg-[#24699A] shadow-lg shadow-[#2B7CB3]/25 hover:-translate-y-0.5'
-                                : 'bg-gray-300 cursor-not-allowed'
-                        ]"
-                    >
-                        <span v-if="isSubmitting" class="flex items-center justify-center gap-2">
-                            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Sending...
-                        </span>
-                        <span v-else>Send Message</span>
-                    </button>
                 </form>
 
                 <!-- reCAPTCHA Notice -->
-                <p class="text-center text-[10px] text-gray-400 mt-4">
+                <p class="text-center text-[10px] text-gray-400 mt-3 shrink-0">
                     This form is protected by Google reCAPTCHA.
                 </p>
             </div>

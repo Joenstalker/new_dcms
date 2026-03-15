@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\FeatureController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ContactController;
@@ -23,7 +24,7 @@ $registerCentralRoutes = function ($withNames = false) {
             $home->name('central.home');
 
         // Contact Form
-        $contact = Route::post('/contact', [ContactController::class, 'submit']);
+        $contact = Route::post('/contact', [ContactController::class , 'submit']);
         if ($withNames)
             $contact->name('contact.submit');
 
@@ -113,12 +114,30 @@ $registerCentralRoutes = function ($withNames = false) {
             if ($withNames)
                 $analyticsI->name('analytics.index');
 
+            // Feature Management
+            $featuresI = Route::get('/features', [FeatureController::class , 'index']);
+            $featuresS = Route::post('/features', [FeatureController::class , 'store']);
+            $featuresU = Route::put('/features/{feature}', [FeatureController::class , 'update']);
+            $featuresD = Route::delete('/features/{feature}', [FeatureController::class , 'destroy']);
+            $featuresT = Route::put('/features/{feature}/toggle', [FeatureController::class , 'toggleActive']);
+            $featuresA = Route::post('/features/{feature}/assign', [FeatureController::class , 'assignToPlan']);
+            $featuresR = Route::delete('/features/{feature}/remove', [FeatureController::class , 'removeFromPlan']);
+            if ($withNames) {
+                $featuresI->name('features.index');
+                $featuresS->name('features.store');
+                $featuresU->name('features.update');
+                $featuresD->name('features.destroy');
+                $featuresT->name('features.toggle');
+                $featuresA->name('features.assign');
+                $featuresR->name('features.remove');
+            }
+
             // Support & Tickets (Contact Messages)
-            $supportI = Route::get('/support', [\App\Http\Controllers\Admin\SupportTicketController::class, 'index']);
-            $supportS = Route::get('/support/{message}', [\App\Http\Controllers\Admin\SupportTicketController::class, 'show']);
-            $supportR = Route::post('/support/{message}/reply', [\App\Http\Controllers\Admin\SupportTicketController::class, 'reply']);
-            $supportU = Route::put('/support/{message}/status', [\App\Http\Controllers\Admin\SupportTicketController::class, 'updateStatus']);
-            $supportD = Route::delete('/support/{message}', [\App\Http\Controllers\Admin\SupportTicketController::class, 'destroy']);
+            $supportI = Route::get('/support', [\App\Http\Controllers\Admin\SupportTicketController::class , 'index']);
+            $supportS = Route::get('/support/{message}', [\App\Http\Controllers\Admin\SupportTicketController::class , 'show']);
+            $supportR = Route::post('/support/{message}/reply', [\App\Http\Controllers\Admin\SupportTicketController::class , 'reply']);
+            $supportU = Route::put('/support/{message}/status', [\App\Http\Controllers\Admin\SupportTicketController::class , 'updateStatus']);
+            $supportD = Route::delete('/support/{message}', [\App\Http\Controllers\Admin\SupportTicketController::class , 'destroy']);
             if ($withNames) {
                 $supportI->name('support.index');
                 $supportS->name('support.show');
@@ -134,27 +153,44 @@ $registerCentralRoutes = function ($withNames = false) {
             $edit = Route::get('/profile', [ProfileController::class , 'edit']);
             $update = Route::patch('/profile', [ProfileController::class , 'update']);
             $dest = Route::delete('/profile', [ProfileController::class , 'destroy']);
-            if ($withNames) {
-                $edit->name('profile.edit');
-                $update->name('profile.update');
-                $dest->name('profile.destroy');
-            }
-        }
-        );
 
-        // Auth Routes
-        // ONLY names for primary domain
-        if ($withNames) {
-            require __DIR__ . '/auth.php';
-        }
-        else {
-        // Alias domains don't get the named auth routes to avoid clashing
-        // If someone goes to localhost/login, it will still match if we define them unnamed,
-        // but it's simpler to just require it and NOT assign names.
-        // However, require __DIR__.'/auth.php' includes names.
-        // So we just skip it for aliases.
-        }
-    };
+            // Settings Routes
+            $settings = Route::prefix('settings');
+            if ($withNames)
+                $settings->name('settings.');
+            $settings->group(function () use ($withNames) {
+                    $sI = Route::get('/', [\App\Http\Controllers\SettingsController::class , 'index']);
+                    $sF = Route::get('/features', [\App\Http\Controllers\SettingsController::class , 'features']);
+                    $sU = Route::patch('/', [\App\Http\Controllers\SettingsController::class , 'update']);
+                    if ($withNames) {
+                        $sI->name('index');
+                        $sF->name('features');
+                        $sU->name('update');
+                    }
+                }
+                );
+
+                if ($withNames) {
+                    $edit->name('profile.edit');
+                    $update->name('profile.update');
+                    $dest->name('profile.destroy');
+                }
+            }
+            );
+
+            // Auth Routes
+            // ONLY names for primary domain
+            if ($withNames) {
+                require __DIR__ . '/auth.php';
+            }
+            else {
+            // Alias domains don't get the named auth routes to avoid clashing
+            // If someone goes to localhost/login, it will still match if we define them unnamed,
+            // but it's simpler to just require it and NOT assign names.
+            // However, require __DIR__.'/auth.php' includes names.
+            // So we just skip it for aliases.
+            }
+        };
 
 /* |-------------------------------------------------------------------------- | Group A: Central Domain (Primary & Aliases) |-------------------------------------------------------------------------- */
 $centralDomains = config('tenancy.central_domains', ['lvh.me', 'localhost', '127.0.0.1']);

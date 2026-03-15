@@ -15,14 +15,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(RolesAndPermissionsSeeder::class);
+        $this->call([
+            RolesAndPermissionsSeeder::class ,
+            SubscriptionPlanSeeder::class ,
+            FeatureSeeder::class ,
+        ]);
 
         User::firstOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => bcrypt('password'),
-            ]
+        ['email' => 'test@example.com'],
+        [
+            'name' => 'Test User',
+            'password' => bcrypt('password'),
+        ]
         );
 
         if (tenant()) {

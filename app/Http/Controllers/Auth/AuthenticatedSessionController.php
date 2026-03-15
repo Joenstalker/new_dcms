@@ -59,11 +59,18 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $isCentral = !tenant();
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+
+        // Redirect admin to the landing page after logout
+        if ($isCentral) {
+            return redirect()->route('central.home');
+        }
 
         return redirect('/');
     }

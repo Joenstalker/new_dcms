@@ -102,6 +102,7 @@ const menuCategories = computed(() => {
                         { name: 'Clinic Profile', route: 'settings.index', permissions: ['manage settings'] },
                         { name: 'Operating Hours', route: 'settings.index', permissions: ['manage settings'] },
                         { name: 'QR Code Setup', route: 'settings.index', permissions: ['manage settings'] },
+                        { name: 'Your Features', route: 'settings.features', permissions: ['manage settings'] },
                     ]
                 },
                 { name: 'Subscription', route: dashboardRoute.value, icon: 'diamond', permissions: ['manage subscription'] },
