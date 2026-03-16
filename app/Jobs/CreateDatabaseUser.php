@@ -10,8 +10,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
-use Stancl\Contracts\Tenant;
-use Stancl\Tenancy\Facades\TenancyFacade;
+use Stancl\Tenancy\Contracts\Tenant;
+
 
 /**
  * Create Database User Job
@@ -39,7 +39,7 @@ class CreateDatabaseUser implements ShouldQueue
      */
     public function handle(TenantDatabaseUserManager $userManager): void
     {
-        $tenant = TenancyFacade::getTenant();
+        $tenant = tenancy()->tenant;
 
         if (!$tenant) {
             Log::error('CreateDatabaseUser: No tenant context found');
@@ -91,7 +91,7 @@ class CreateDatabaseUser implements ShouldQueue
     protected function generateUsername(string $databaseName): string
     {
         $prefix = config('tenancy.database.user_prefix', 'tenant_user_');
-        $suffix = config('tenancy.database.suffix', '_dcms_db');
+        $suffix = config('tenancy.database.suffix', '_db');
 
         $baseName = str_replace($suffix, '', $databaseName);
         $baseName = preg_replace('/[^a-z0-9_]/i', '', $baseName);

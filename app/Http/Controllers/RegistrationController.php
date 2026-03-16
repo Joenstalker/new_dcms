@@ -238,9 +238,7 @@ class RegistrationController extends Controller
             DB::beginTransaction();
 
             try {
-                // Use subdomain as tenant ID (will be sanitized to database name)
-                $namingService = app(\App\Services\TenantDatabaseNamingService::class);
-                $tenantId = $namingService->generateDatabaseName($metadata->subdomain);
+                $tenantId = strtolower(trim($metadata->subdomain));
 
                 // Create tenant
                 $tenant = Tenant::create([
@@ -262,6 +260,9 @@ class RegistrationController extends Controller
                     'email' => $metadata->email,
                     'password' => Hash::make($metadata->password),
                 ]);
+
+                // ✨ Assign Owner role to the new admin
+                $user->assignRole('Owner');
 
                 // Create subscription record
                 $subscription = $tenant->subscriptions()->create([

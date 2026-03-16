@@ -159,7 +159,7 @@ class TenantDatabaseUserManager
         $prefix = config('tenancy.database.user_prefix', 'tenant_user_');
 
         // Remove suffix from database name
-        $suffix = config('tenancy.database.suffix', '_dcms_db');
+        $suffix = config('tenancy.database.suffix', '_db');
         $baseName = str_replace($suffix, '', $databaseName);
 
         // Sanitize for username

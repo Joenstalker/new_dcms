@@ -4,7 +4,7 @@
 
 [CENTRAL DATABASE]
 --------------------
- - admin@dcms.com                 | Admin: YES
+No Super Admins found.
 
 [TENANT DATABASES]
 --------------------

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class SupportTicket extends Model
 {
+    protected $connection = 'central';
     use HasFactory;
 
     protected $fillable = [

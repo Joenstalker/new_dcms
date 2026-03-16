@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Detection\MobileDetect;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Models\SystemSetting;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -58,6 +59,22 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
+            // Branding settings shared globally
+            'branding' => $this->getBrandingSettings(),
+        ];
+    }
+
+    /**
+     * Get branding settings from the database.
+     */
+    private function getBrandingSettings(): array
+    {
+        return [
+            'platform_name' => SystemSetting::get('platform_name', 'DCMS'),
+            'platform_logo' => SystemSetting::get('platform_logo'),
+            'primary_color' => SystemSetting::get('primary_color', '#0ea5e9'),
+            'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
+            'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
         ];
     }
 }

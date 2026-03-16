@@ -18,6 +18,8 @@ return new class extends Migration
             $table->string('gender')->nullable();
             $table->text('address')->nullable();
             $table->text('medical_history')->nullable();
+            $table->text('allergies')->nullable();
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }

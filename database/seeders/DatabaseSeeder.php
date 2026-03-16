@@ -15,21 +15,27 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Central Seeding
         $this->call([
-            RolesAndPermissionsSeeder::class ,
-            SubscriptionPlanSeeder::class ,
-            FeatureSeeder::class ,
+            AdminUserSeeder::class,
+            SubscriptionPlanSeeder::class,
+            FeatureSeeder::class,
         ]);
 
-        User::firstOrCreate(
-        ['email' => 'test@example.com'],
-        [
-            'name' => 'Test User',
-            'password' => bcrypt('password'),
-        ]
-        );
-
+        // Tenant Seeding
         if (tenant()) {
+            $this->call([
+                RolesAndPermissionsSeeder::class,
+            ]);
+
+            User::firstOrCreate(
+                ['email' => 'test@example.com'],
+                [
+                    'name' => 'Test User',
+                    'password' => bcrypt('password'),
+                ]
+            );
+
             $user = User::where('email', 'test@example.com')->first();
             if ($user) {
                 $user->assignRole('Owner');

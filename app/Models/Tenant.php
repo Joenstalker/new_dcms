@@ -59,7 +59,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      */
     public function getSubdomainAttribute(): string
     {
-        $suffix = config('tenancy.database.suffix', '_dcms_db');
+        $suffix = config('tenancy.database.suffix', '_db');
         return str_replace($suffix, '', $this->id);
     }
 

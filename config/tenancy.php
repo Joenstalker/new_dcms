@@ -55,13 +55,13 @@ return [
          * Tenant database names are created like this:
          * prefix + tenant_id + suffix.
          * 
-         * For domain-based naming (e.g., dental_dcms_db):
-         *   - prefix: '' (empty)
-         *   - suffix: '_dcms_db'
+         * For domain-based naming (e.g., tenant_dental_db):
+         *   - prefix: 'tenant_'
+         *   - suffix: '_db'
          *   - The tenant_id will be the sanitized subdomain name
          */
-        'prefix' => env('TENANT_DB_PREFIX', ''),
-        'suffix' => env('TENANT_DB_SUFFIX', '_dcms_db'),
+        'prefix' => env('TENANT_DB_PREFIX', 'tenant_'),
+        'suffix' => env('TENANT_DB_SUFFIX', '_db'),
 
         /**
          * Database username prefix for tenant-specific users
@@ -182,7 +182,7 @@ return [
         // Stancl\Tenancy\Features\UserImpersonation::class,
         // Stancl\Tenancy\Features\TelescopeTags::class,
         // Stancl\Tenancy\Features\UniversalRoutes::class,
-        // Stancl\Tenancy\Features\TenantConfig::class, // https://tenancyforlaravel.com/docs/v3/features/tenant-config
+         Stancl\Tenancy\Features\TenantConfig::class,
         // Stancl\Tenancy\Features\CrossDomainRedirect::class, // https://tenancyforlaravel.com/docs/v3/features/cross-domain-redirect
         // Stancl\Tenancy\Features\ViteBundler::class,
     ],
@@ -205,11 +205,15 @@ return [
         '--realpath' => true,
     ],
 
-    /**
-     * Parameters used by the tenants:seed command.
-     */
     'seeder_parameters' => [
         '--class' => 'DatabaseSeeder', // root seeder class
         // '--force' => true, // This needs to be true to seed tenant databases in production
+    ],
+
+    'tenant_config' => [
+        'storage_to_config_map' => [
+            // We can use this to override app.url per tenant if needed
+            // Example: 'url' => 'app.url',
+        ],
     ],
 ];

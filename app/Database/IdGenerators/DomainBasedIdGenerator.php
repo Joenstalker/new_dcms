@@ -11,9 +11,11 @@ use Stancl\Tenancy\Contracts\IdGenerator;
  * Generates tenant IDs based on the domain/subdomain name instead of UUID.
  * This allows for human-readable tenant IDs that match database naming.
  * 
+ * Final DB name: tenant_{id}_db (e.g., tenant_dental_db)
+ * 
  * Example:
- *   Input: "Dental Clinic" -> Output: "dental_clinic_dcms_db"
- *   Input: "Smile"         -> Output: "smile_dcms_db"
+ *   Input: "Dental Clinic" -> ID: "dental_clinic" -> DB: "tenant_dental_clinic_db"
+ *   Input: "Smile"         -> ID: "smile"         -> DB: "tenant_smile_db"
  */
 class DomainBasedIdGenerator implements IdGenerator
 {
@@ -67,11 +69,7 @@ class DomainBasedIdGenerator implements IdGenerator
             $name = 'tenant_' . $name;
         }
 
-        // Get suffix from config
-        $suffix = config('tenancy.database.suffix', '_dcms_db');
-
-        // Append suffix
-        $name = $name . $suffix;
+        // Suffix is applied by Stancl Tenancy via config
 
         // Truncate to max length (MySQL limit is 64 characters)
         $name = substr($name, 0, 64);

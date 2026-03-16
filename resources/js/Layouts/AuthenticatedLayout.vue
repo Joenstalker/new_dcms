@@ -8,6 +8,19 @@ import { Link, usePage } from '@inertiajs/vue3';
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const roles = computed(() => user.value?.roles || []);
+const branding = computed(() => page.props.branding || {});
+
+// Sidebar position (left or right)
+const sidebarPosition = computed(() => branding.value.sidebar_position || 'left');
+const isRightSidebar = computed(() => sidebarPosition.value === 'right');
+
+// Primary color with auto contrast calculation
+const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+
+// Platform info
+const platformName = computed(() => branding.value.platform_name || 'DCMS');
+const platformLogo = computed(() => branding.value.platform_logo ? '/storage/logos/' + branding.value.platform_logo : null);
+const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');
 
 const isSidebarOpen = ref(false);
 const openSubMenus = ref({});
@@ -171,15 +184,19 @@ const activeCategoryWithSubItems = computed(() => {
     <div class="flex h-screen bg-base-200 overflow-hidden font-sans">
         <!-- Sidebar for Desktop -->
         <aside 
-            :class="[isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']"
-            class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transition-transform duration-300 ease-in-out lg:static lg:inset-0"
+            :class="[
+                isSidebarOpen ? 'translate-x-0' : (isRightSidebar ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0'),
+                isRightSidebar ? 'right-0 left-auto' : 'left-0'
+            ]"
+            class="fixed inset-y-0 z-50 w-64 bg-slate-900 text-white transition-transform duration-300 ease-in-out lg:static lg:inset-0"
         >
             <div class="flex flex-col h-full">
                 <!-- Sidebar Header -->
                 <div class="flex items-center justify-center h-20 bg-slate-950 border-b border-slate-800">
                     <Link :href="usePage().props.tenant ? route('tenant.dashboard') : route('dashboard')" class="flex items-center space-x-3">
-                        <ApplicationLogo class="h-8 w-auto fill-current text-blue-400" />
-                        <span class="text-xl font-bold tracking-wider text-white">DCMS</span>
+                        <img v-if="platformLogo" :src="platformLogo" :alt="platformName" class="h-8 w-auto rounded-lg object-cover" />
+                        <ApplicationLogo v-else class="h-8 w-auto fill-current" :style="{ color: primaryColor }" />
+                        <span class="text-xl font-bold tracking-wider text-white">{{ platformName }}</span>
                     </Link>
                 </div>
 
@@ -195,14 +212,15 @@ const activeCategoryWithSubItems = computed(() => {
                                     :href="route(item.route)"
                                     :class="[
                                         route().current(item.route) 
-                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' 
+                                            ? 'text-white shadow-lg' 
                                             : 'text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200'
                                     ]"
                                     class="flex items-center px-4 py-2.5 rounded-xl group"
+                                    :style="route().current(item.route) ? { backgroundColor: primaryColor } : {}"
                                 >
                                     <svg 
                                         class="h-5 w-5 mr-3 transition-colors duration-200" 
-                                        :class="[route().current(item.route) ? 'text-white' : 'text-slate-500 group-hover:text-blue-400']"
+                                        :class="[route().current(item.route) ? 'text-white' : 'text-slate-500 group-hover:text-white']"
                                         fill="none" 
                                         viewBox="0 0 24 24" 
                                         stroke-width="1.5" 
@@ -223,7 +241,7 @@ const activeCategoryWithSubItems = computed(() => {
                                     >
                                         <div class="flex items-center">
                                             <svg 
-                                                class="h-5 w-5 mr-3 transition-colors duration-200 text-slate-500 group-hover:text-blue-400" 
+                                                class="h-5 w-5 mr-3 transition-colors duration-200 text-slate-500 group-hover:text-white" 
                                                 fill="none" 
                                                 viewBox="0 0 24 24" 
                                                 stroke-width="1.5" 
@@ -251,9 +269,10 @@ const activeCategoryWithSubItems = computed(() => {
                                             :key="sub.name"
                                             :href="route(sub.route, sub.routeParams || {})"
                                             :class="[
-                                                route().current(sub.route, sub.routeParams || {}) ? 'text-blue-400 font-semibold' : 'text-slate-500 hover:text-white'
+                                                route().current(sub.route, sub.routeParams || {}) ? 'font-semibold' : 'text-slate-500 hover:text-white'
                                             ]"
-                                            class="block py-2 text-xs transition-colors duration-200 relative pl-4 border-l border-slate-700 hover:border-blue-400"
+                                            :style="route().current(sub.route, sub.routeParams || {}) ? { color: primaryColor } : {}"
+                                            class="block py-2 text-xs transition-colors duration-200 relative pl-4 border-l border-slate-700 hover:border-white"
                                         >
                                             {{ sub.name }}
                                         </Link>
@@ -268,7 +287,10 @@ const activeCategoryWithSubItems = computed(() => {
                 <div class="p-4 bg-slate-950 border-t border-slate-800">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3 truncate">
-                            <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold flex-shrink-0 shadow-inner">
+                            <div 
+                                class="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-inner"
+                                :style="{ backgroundColor: primaryColor }"
+                            >
                                 {{ user.name.charAt(0) }}
                             </div>
                             <div class="truncate">
@@ -318,7 +340,10 @@ const activeCategoryWithSubItems = computed(() => {
                         class="flex items-center space-x-2 text-sm text-base-content/70 hover:text-base-content transition"
                     >
                         <span class="hidden sm:inline">Profile</span>
-                        <div class="h-8 w-8 rounded-full border border-base-300 bg-base-200 flex items-center justify-center">
+                        <div 
+                            class="h-8 w-8 rounded-full border border-base-300 bg-base-200 flex items-center justify-center"
+                            :style="{ borderColor: primaryColor }"
+                        >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
@@ -339,10 +364,11 @@ const activeCategoryWithSubItems = computed(() => {
                         :href="route(sub.route)"
                         :class="[
                             route().current(sub.route)
-                                ? 'border-primary text-primary' 
+                                ? 'font-medium' 
                                 : 'border-transparent text-base-content/50 hover:text-base-content/70 hover:border-base-300'
                         ]"
-                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200"
+                        :style="route().current(sub.route) ? { borderColor: primaryColor, color: primaryColor } : {}"
+                        class="whitespace-nowrap py-4 px-1 border-b-2 text-sm transition-all duration-200"
                     >
                         {{ sub.name }}
                     </Link>
@@ -353,6 +379,11 @@ const activeCategoryWithSubItems = computed(() => {
             <main class="flex-1 overflow-y-auto bg-base-200 custom-scrollbar p-6">
                 <slot />
             </main>
+
+            <!-- Footer -->
+            <footer class="bg-base-100 border-t border-base-300 py-3 px-6">
+                <p class="text-xs text-center text-base-content/50">{{ footerText }}</p>
+            </footer>
         </div>
 
         <!-- Overlay for Mobile Sidebar -->

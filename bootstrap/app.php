@@ -26,7 +26,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'check.subscription' => \App\Http\Middleware\CheckSubscription::class,
         ]);
+
+        $middleware->redirectGuestsTo(function ($request) {
+            if (tenant()) {
+                return route('login');
+            }
+            
+            return route('central.home'); // Or anywhere else for central guests
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Stancl\Tenancy\Exceptions\TenantCouldNotBeIdentifiedOnDomainException $e, \Illuminate\Http\Request $request) {

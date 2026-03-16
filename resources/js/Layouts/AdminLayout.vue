@@ -6,6 +6,29 @@ import NotificationBell from '@/Components/NotificationBell.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
+const branding = computed(() => page.props.branding || {});
+
+// Sidebar position (left or right)
+const sidebarPosition = computed(() => branding.value.sidebar_position || 'left');
+const isRightSidebar = computed(() => sidebarPosition.value === 'right');
+
+// Primary color with auto contrast calculation
+const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+
+// Calculate text color based on primary color luminance
+const primaryTextColor = computed(() => {
+    const color = primaryColor.value.replace('#', '');
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '#1f2937' : '#ffffff';
+});
+
+// Platform info
+const platformName = computed(() => branding.value.platform_name || 'DCMS');
+const platformLogo = computed(() => branding.value.platform_logo ? '/storage/logos/' + branding.value.platform_logo : '/images/dcms-logo.png');
+const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');
 
 const isSidebarOpen = ref(false);
 
@@ -73,7 +96,7 @@ const menuItems = [
     },
     {
         name: 'System Settings',
-        route: null,
+        route: 'admin.system-settings.index',
         icon: 'cog',
         active: false
     },
@@ -162,17 +185,20 @@ watch(() => page.props.flash, (flash) => {
     <div class="flex h-screen bg-base-200 overflow-hidden font-sans">
         <!-- Sidebar -->
         <aside 
-            :class="[isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0']"
-            class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transition-transform duration-300 ease-in-out lg:static lg:inset-0"
+            :class="[
+                isSidebarOpen ? 'translate-x-0' : (isRightSidebar ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0'),
+                isRightSidebar ? 'right-0 left-auto' : 'left-0'
+            ]"
+            class="fixed inset-y-0 z-50 w-64 bg-slate-900 text-white transition-transform duration-300 ease-in-out lg:static lg:inset-0"
         >
             <div class="flex flex-col h-full">
                 <!-- Sidebar Header -->
                 <div class="flex items-center justify-center h-20 bg-slate-950 border-b border-slate-800">
                     <div class="flex items-center space-x-3">
-                        <img src="/images/dcms-logo.png" alt="DCMS" class="h-9 w-9 rounded-lg" />
+                        <img :src="platformLogo" :alt="platformName" class="h-9 w-9 rounded-lg object-cover" />
                         <div>
-                            <span class="text-lg font-bold tracking-wider text-white">DCMS</span>
-                            <p class="text-[10px] text-teal-400 uppercase tracking-widest font-semibold">Admin Portal</p>
+                            <span class="text-lg font-bold tracking-wider text-white">{{ platformName }}</span>
+                            <p class="text-[10px] uppercase tracking-widest font-semibold" :style="{ color: primaryColor }">Admin Portal</p>
                         </div>
                     </div>
                 </div>
@@ -186,14 +212,15 @@ watch(() => page.props.flash, (flash) => {
                             :href="route(item.route)"
                             :class="[
                                 isCurrentRoute(item.route) 
-                                    ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/50' 
+                                    ? 'text-white shadow-lg' 
                                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                             ]"
                             class="flex items-center px-4 py-2.5 rounded-xl group transition-all duration-200"
+                            :style="isCurrentRoute(item.route) ? { backgroundColor: primaryColor } : {}"
                         >
                             <svg 
                                 class="h-5 w-5 mr-3 transition-colors duration-200" 
-                                :class="[isCurrentRoute(item.route) ? 'text-white' : 'text-slate-500 group-hover:text-teal-400']"
+                                :class="[isCurrentRoute(item.route) ? 'text-white' : 'text-slate-500 group-hover:text-white']"
                                 fill="none" 
                                 viewBox="0 0 24 24" 
                                 stroke-width="1.5" 
@@ -227,12 +254,15 @@ watch(() => page.props.flash, (flash) => {
                 <div class="p-4 bg-slate-950 border-t border-slate-800">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3 truncate">
-                            <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-teal-600 to-emerald-500 flex items-center justify-center text-white font-bold flex-shrink-0 shadow-inner">
+                            <div 
+                                class="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-inner"
+                                :style="{ backgroundColor: primaryColor }"
+                            >
                                 {{ user?.name?.charAt(0) || 'A' }}
                             </div>
                             <div class="truncate">
                                 <p class="text-sm font-semibold truncate text-white">{{ user?.name || 'Admin' }}</p>
-                                <p class="text-[10px] text-teal-400 uppercase tracking-tighter font-semibold">SaaS Admin</p>
+                                <p class="text-[10px] uppercase tracking-tighter font-semibold" :style="{ color: primaryColor }">SaaS Admin</p>
                             </div>
                         </div>
                         <Link 
@@ -273,7 +303,10 @@ watch(() => page.props.flash, (flash) => {
                     <span class="text-xs text-base-content/50 hidden sm:inline">SaaS Provider Panel</span>
                     <ThemeSwitcher />
                     <NotificationBell type="admin" />
-                    <div class="h-8 w-8 rounded-full bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-white text-xs font-bold">
+                    <div 
+                        class="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                        :style="{ backgroundColor: primaryColor }"
+                    >
                         {{ user?.name?.charAt(0) || 'A' }}
                     </div>
                 </div>
@@ -283,6 +316,11 @@ watch(() => page.props.flash, (flash) => {
             <main class="flex-1 overflow-y-auto bg-base-200 custom-scrollbar p-6">
                 <slot />
             </main>
+
+            <!-- Footer -->
+            <footer class="bg-base-100 border-t border-base-300 py-3 px-6">
+                <p class="text-xs text-center text-base-content/50">{{ footerText }}</p>
+            </footer>
         </div>
 
         <!-- Overlay for Mobile Sidebar -->

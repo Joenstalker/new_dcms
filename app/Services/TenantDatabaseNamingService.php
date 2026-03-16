@@ -11,10 +11,12 @@ use Illuminate\Support\Str;
  * Ensures database names are safe, unique, and follow naming conventions.
  * 
  * Example transformations:
- *   "dental"        -> "dental_dcms_db"
- *   "Smile-Clinic"  -> "smile_clinic_dcms_db"
- *   "Dr. John's"    -> "dr_john_s_dcms_db"
- *   "Clinic 123"    -> "clinic_123_dcms_db"
+ *   "dental"        -> "dental" (tenant ID, prefix/suffix applied by Stancl)
+ *   "Smile-Clinic"  -> "smile_clinic"
+ *   "Dr. John's"    -> "dr_john_s"
+ *   "Clinic 123"    -> "clinic_123"
+ *
+ * Final DB name: tenant_{id}_db (e.g., tenant_dental_db)
  */
 class TenantDatabaseNamingService
 {
@@ -35,14 +37,14 @@ class TenantDatabaseNamingService
 
     public function __construct()
     {
-        $this->suffix = config('tenancy.database.suffix', '_dcms_db');
+        $this->suffix = config('tenancy.database.suffix', '_db');
     }
 
     /**
      * Generate a database name from a subdomain
      * 
      * @param string $subdomain The subdomain (e.g., "dental", "smile-clinic")
-     * @return string The sanitized database name (e.g., "dental_dcms_db")
+     * @return string The sanitized tenant ID (e.g., "dental")
      */
     public function generateDatabaseName(string $subdomain): string
     {
@@ -69,8 +71,7 @@ class TenantDatabaseNamingService
             $name = 'tenant_' . $name;
         }
 
-        // Step 8: Append suffix
-        $name = $name . $this->suffix;
+        // Step 8: Suffix is applied by Stancl Tenancy via config, so we don't append it to the ID itself
 
         // Step 9: Truncate to max length
         $name = substr($name, 0, self::MAX_LENGTH);

@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\FeatureController;
+use App\Http\Controllers\Admin\SystemSettingsController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ContactController;
@@ -20,8 +23,9 @@ $registerCentralRoutes = function ($withNames = false) {
             ]);
         }
         );
-        if ($withNames)
+        if ($withNames) {
             $home->name('central.home');
+        }
 
         // Contact Form
         $contact = Route::post('/contact', [ContactController::class , 'submit']);
@@ -165,6 +169,22 @@ $registerCentralRoutes = function ($withNames = false) {
                 $notifSettings->name('notifications.settings');
                 $notifSettingsU->name('notifications.settings.update');
             }
+
+            // System Settings
+            $sysSetI = Route::get('/system-settings', [SystemSettingsController::class , 'index']);
+            $sysSetU = Route::post('/system-settings', [SystemSettingsController::class , 'update']);
+            $sysSetUG = Route::post('/system-settings/group/{group}', [SystemSettingsController::class , 'updateByGroup']);
+            $sysSetT = Route::post('/system-settings/toggle', [SystemSettingsController::class , 'toggle']);
+            $sysSetLogoU = Route::post('/system-settings/logo/upload', [SystemSettingsController::class , 'uploadLogo']);
+            $sysSetLogoD = Route::delete('/system-settings/logo/delete', [SystemSettingsController::class , 'deleteLogo']);
+            if ($withNames) {
+                $sysSetI->name('system-settings.index');
+                $sysSetU->name('system-settings.update');
+                $sysSetUG->name('system-settings.update-group');
+                $sysSetT->name('system-settings.toggle');
+                $sysSetLogoU->name('system-settings.logo.upload');
+                $sysSetLogoD->name('system-settings.logo.delete');
+            }
         }
         );
 
@@ -199,16 +219,19 @@ $registerCentralRoutes = function ($withNames = false) {
             );
 
             // Auth Routes
-            // ONLY names for primary domain
+            // For central domain, we only want POST routes for the login modal
+            // and we don't want the GET routes (login, register, etc.) to avoid clashing or appearing.
             if ($withNames) {
-                require __DIR__ . '/auth.php';
-            }
-            else {
-            // Alias domains don't get the named auth routes to avoid clashing
-            // If someone goes to localhost/login, it will still match if we define them unnamed,
-            // but it's simpler to just require it and NOT assign names.
-            // However, require __DIR__.'/auth.php' includes names.
-            // So we just skip it for aliases.
+                Route::middleware('guest')->group(function () {
+                    Route::post('login', [AuthenticatedSessionController::class , 'store'])->name('login');
+                    Route::post('register', [RegisteredUserController::class , 'store'])->name('register');
+                }
+                );
+
+                Route::middleware('auth')->group(function () {
+                    Route::post('logout', [AuthenticatedSessionController::class , 'destroy'])->name('logout');
+                }
+                );
             }
         };
 
