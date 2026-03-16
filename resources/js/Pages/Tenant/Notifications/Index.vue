@@ -274,6 +274,7 @@ const getSenderInfo = (notification) => {
                 </div>
             </div>
             </div>
+            </div>
         </div>
     </AuthenticatedLayout>
 </template>

@@ -136,109 +136,124 @@ const featuresByCategory = computed(() => {
     <Head title="Feature Management" />
 
     <AdminLayout>
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <!-- Header -->
-                <div class="mb-6 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-900">Feature Management</h2>
-                        <p class="mt-1 text-sm text-gray-600">
-                            Manage subscription plan features dynamically. Add, edit, or remove features.
-                        </p>
-                    </div>
-                    <button
-                        @click="openCreateModal"
-                        class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                    >
-                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Feature
-                    </button>
+        <template #header>
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">Feature Management</h2>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Manage subscription plan features dynamically. Add, edit, or remove features.
+                    </p>
                 </div>
+                <button
+                    @click="openCreateModal"
+                    class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-medium text-sm text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+                >
+                    <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Feature
+                </button>
+            </div>
+        </template>
 
+        <div class="py-6">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <!-- Features by Category -->
-                <div v-for="(features, category) in featuresByCategory" :key="category" class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 mr-2">
-                            {{ categoryLabels[category] || category }}
-                        </span>
-                        <span class="text-gray-500 font-normal text-sm">({{ features.length }} features)</span>
-                    </h3>
-                    
-                    <div class="bg-white shadow overflow-hidden sm:rounded-md">
-                        <ul role="list" class="divide-y divide-gray-200">
-                            <li v-for="feature in features" :key="feature.id" class="px-6 py-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center gap-3">
-                                            <span class="text-sm font-medium text-indigo-600 truncate">
-                                                {{ feature.name }}
-                                            </span>
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                                {{ feature.key }}
-                                            </span>
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                                                :class="{
-                                                    'bg-blue-100 text-blue-800': feature.type === 'boolean',
-                                                    'bg-green-100 text-green-800': feature.type === 'numeric',
-                                                    'bg-purple-100 text-purple-800': feature.type === 'tiered',
-                                                }"
-                                            >
-                                                {{ getTypeLabel(feature.type) }}
-                                            </span>
-                                            <span v-if="!feature.is_active" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                                Inactive
-                                            </span>
+                <div class="space-y-8">
+                    <div v-for="(features, category) in featuresByCategory" :key="category">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 mr-3">
+                                {{ categoryLabels[category] || category }}
+                            </span>
+                            <span class="text-gray-500 font-normal text-sm">{{ features.length }} features</span>
+                        </h3>
+                        
+                        <div class="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl overflow-hidden">
+                            <ul role="list" class="divide-y divide-gray-100">
+                                <li v-for="feature in features" :key="feature.id" class="px-6 py-5 hover:bg-gray-50 transition-colors">
+                                    <div class="flex items-center justify-between gap-x-6">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-x-3">
+                                                <p class="text-sm font-semibold leading-6 text-gray-900">
+                                                    {{ feature.name }}
+                                                </p>
+                                                <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                                                    {{ feature.key }}
+                                                </span>
+                                                <span 
+                                                    class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset"
+                                                    :class="{
+                                                        'bg-blue-50 text-blue-700 ring-blue-700/10': feature.type === 'boolean',
+                                                        'bg-emerald-50 text-emerald-700 ring-emerald-600/10': feature.type === 'numeric',
+                                                        'bg-purple-50 text-purple-700 ring-purple-700/10': feature.type === 'tiered',
+                                                    }"
+                                                >
+                                                    {{ getTypeLabel(feature.type) }}
+                                                </span>
+                                                <span 
+                                                    v-if="!feature.is_active" 
+                                                    class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10"
+                                                >
+                                                    Inactive
+                                                </span>
+                                            </div>
+                                            <div class="mt-1 flex items-center gap-x-2 text-sm leading-5 text-gray-500">
+                                                <p v-if="feature.description" class="truncate">{{ feature.description }}</p>
+                                                <svg v-if="feature.description && feature.options?.length" viewBox="0 0 2 2" class="h-0.5 w-0.5 fill-current"><circle cx="1" cy="1" r="1" /></svg>
+                                                <p v-if="feature.options && feature.options.length">Options: {{ feature.options.join(', ') }}</p>
+                                            </div>
                                         </div>
-                                        <p v-if="feature.description" class="mt-1 text-sm text-gray-500">
-                                            {{ feature.description }}
-                                        </p>
-                                        <p v-if="feature.options && feature.options.length" class="mt-1 text-xs text-gray-400">
-                                            Options: {{ feature.options.join(', ') }}
-                                        </p>
+                                        <div class="flex flex-none items-center gap-x-2">
+                                            <button
+                                                @click="openViewModal(feature)"
+                                                class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors"
+                                            >
+                                                View
+                                            </button>
+                                            <button
+                                                @click="openEditModal(feature)"
+                                                class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                @click="form.delete(`/admin/features/${feature.id}`, { preserveScroll: true })"
+                                                class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-red-300 hover:bg-red-50 transition-colors"
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="ml-4 flex items-center gap-2">
-                                        <button
-                                            @click="openViewModal(feature)"
-                                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                        >
-                                            View
-                                        </button>
-                                        <button
-                                            @click="openEditModal(feature)"
-                                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
-                                            @click="form.delete(`/admin/features/${feature.id}`, { preserveScroll: true })"
-                                            class="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                        >
-                                            Delete
-                                        </button>
-                                    </div>
-                                </div>
-                            </li>
-                        </ul>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Plans Section -->
-                <div class="mt-12">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Subscription Plans</h3>
+                <div class="mt-12 bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl p-6 lg:p-8">
+                    <div class="sm:flex sm:items-center sm:justify-between mb-6">
+                        <div>
+                            <h3 class="text-base font-semibold leading-6 text-gray-900">Subscription Plans Overview</h3>
+                            <p class="mt-2 text-sm text-gray-500">A quick glance at how features map to your current pricing tiers.</p>
+                        </div>
+                    </div>
+                    
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div v-for="plan in plans" :key="plan.id" class="bg-white shadow rounded-lg p-6">
-                            <h4 class="text-lg font-medium text-gray-900">{{ plan.name }}</h4>
-                            <p class="text-sm text-gray-500 mt-1">
-                                ₱{{ plan.price_monthly }}/month or ₱{{ plan.price_yearly }}/year
-                            </p>
-                            <div class="mt-4">
+                        <div v-for="plan in plans" :key="plan.id" class="rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-col justify-between hover:border-indigo-300 transition-colors">
+                            <div>
+                                <h4 class="text-lg font-semibold leading-8 text-gray-900">{{ plan.name }}</h4>
+                                <p class="mt-4 flex items-baseline gap-x-2">
+                                    <span class="text-3xl font-bold tracking-tight text-gray-900">₱{{ plan.price_monthly }}</span>
+                                    <span class="text-sm font-semibold leading-6 text-gray-500">/mo</span>
+                                </p>
+                            </div>
+                            <div class="mt-6">
                                 <Link
                                     :href="`/admin/plans/${plan.id}/edit`"
-                                    class="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                                    class="text-indigo-600 hover:text-indigo-500 text-sm font-semibold leading-6 inline-flex items-center gap-1"
                                 >
-                                    Manage Features →
+                                    Manage Plan Features <span aria-hidden="true">&rarr;</span>
                                 </Link>
                             </div>
                         </div>

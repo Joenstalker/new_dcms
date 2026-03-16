@@ -23,7 +23,9 @@ class ContactController extends Controller
         $recaptchaSecret = env('RECAPTCHA_SECRET_KEY');
         if ($recaptchaSecret && $request->recaptcha_token) {
             try {
-                $response = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
+                $response = Http::withOptions(['force_ip_resolve' => 'v4'])
+                    ->asForm()
+                    ->post('https://www.google.com/recaptcha/api/siteverify', [
                     'secret' => $recaptchaSecret,
                     'response' => $request->recaptcha_token,
                     'remoteip' => $request->ip(),

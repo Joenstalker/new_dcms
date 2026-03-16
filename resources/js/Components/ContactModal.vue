@@ -104,8 +104,7 @@ watch(() => props.show, (newVal) => {
 
 const onRecaptchaSuccess = (token) => {
     recaptchaToken.value = token;
-    // Trigger submission after successful reCAPTCHA validation
-    actuallySubmit();
+    // Token stored, wait for user to click Submit
 };
 
 const onRecaptchaExpired = () => {
@@ -136,50 +135,33 @@ window.onRecaptchaError = onRecaptchaError;
 const submitForm = async () => {
     // Validate fields with SweetAlert
     if (name.value.trim().length < 2) {
-        Swal.fire({ icon: 'warning', title: 'Name Required', text: 'Please enter your name (at least 2 characters).', confirmButtonColor: '#2B7CB3' });
+        Swal.fire({ icon: 'warning', title: 'Name Required', text: 'Name is required.', confirmButtonColor: '#2B7CB3' });
         return;
     }
     if (!email.value.includes('@') || !email.value.includes('.')) {
-        Swal.fire({ icon: 'warning', title: 'Invalid Email', text: 'Please enter a valid email address.', confirmButtonColor: '#2B7CB3' });
+        Swal.fire({ icon: 'warning', title: 'Email Required', text: 'A valid email address is required.', confirmButtonColor: '#2B7CB3' });
         return;
     }
     if (message.value.trim().length < 10) {
-        Swal.fire({ icon: 'warning', title: 'Message Too Short', text: 'Your message must be at least 10 characters.', confirmButtonColor: '#2B7CB3' });
+        Swal.fire({ icon: 'warning', title: 'Message Required', text: 'A message is required.', confirmButtonColor: '#2B7CB3' });
         return;
     }
     if (!acceptTerms.value) {
-        Swal.fire({ icon: 'warning', title: 'Terms Required', text: 'Please accept the Terms & Conditions to continue.', confirmButtonColor: '#2B7CB3' });
+        Swal.fire({ icon: 'warning', title: 'Terms Required', text: 'Please check the box to accept the Terms & Conditions before sending.', confirmButtonColor: '#2B7CB3' });
         return;
+    }
+
+    // Verify reCAPTCHA was completed
+    if (recaptchaSiteKey.value && window.grecaptcha && recaptchaWidgetId.value !== null) {
+        if (!recaptchaToken.value) {
+            Swal.fire({ icon: 'warning', title: 'reCAPTCHA Required', text: 'Please verify that you are not a robot.', confirmButtonColor: '#2B7CB3' });
+            return;
+        }
     }
 
     if (isSubmitting.value) return;
 
-    // Trigger invisible reCAPTCHA
-    if (window.grecaptcha && recaptchaWidgetId.value !== null) {
-        // Show loading state *before* reCAPTCHA execution in case it takes a moment
-        Swal.fire({
-            title: 'Verifying...',
-            text: 'Please complete the security check if prompted.',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-
-        try {
-            window.grecaptcha.execute(recaptchaWidgetId.value);
-            // Note: The execution will call onRecaptchaSuccess callback which then calls actuallySubmit()
-        } catch (error) {
-            console.error('reCAPTCHA execute failed:', error);
-            Swal.close();
-            onRecaptchaError();
-        }
-    } else {
-        // Fallback if reCAPTCHA is not loaded or key is missing
-        actuallySubmit();
-    }
+    actuallySubmit();
 };
 
 const actuallySubmit = async () => {
@@ -302,7 +284,7 @@ const closeModal = () => {
                 </button>
 
                 <!-- Form -->
-                <form @submit.prevent="submitForm" class="flex flex-col flex-1 min-h-0 gap-4">
+                <form @submit.prevent="submitForm" class="flex flex-col flex-1 gap-4">
                     <!-- Top section (Name & Email side-by-side) -->
                     <div class="flex flex-col sm:flex-row gap-4 shrink-0">
                         <!-- Name -->
@@ -343,7 +325,7 @@ const closeModal = () => {
                     </div>
 
                     <!-- Bottom section (Fixed) -->
-                    <div class="shrink-0 space-y-4 mt-2">
+                    <div class="shrink-0 flex flex-col gap-4 mt-2">
                         <!-- Terms Checkbox -->
                         <label for="accept_terms_cb" class="flex items-start gap-3 cursor-pointer select-none group">
                             <div class="relative flex items-center justify-center w-5 h-5 mt-0.5 rounded border transition-colors duration-200 shadow-sm flex-shrink-0"
@@ -371,10 +353,10 @@ const closeModal = () => {
                         <!-- Submit Button -->
                         <button
                             type="submit"
-                            :disabled="isSubmitting || !acceptTerms"
+                            :disabled="isSubmitting"
                             :class="[
                                 'w-full py-2.5 px-6 rounded-lg font-bold text-white text-sm tracking-wide transition-all duration-200',
-                                (!isSubmitting && acceptTerms)
+                                (!isSubmitting)
                                     ? 'bg-[#2B7CB3] hover:bg-[#24699A] shadow-lg shadow-[#2B7CB3]/25 hover:-translate-y-0.5'
                                     : 'bg-gray-300 cursor-not-allowed opacity-70'
                             ]"
