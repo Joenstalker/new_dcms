@@ -11,17 +11,17 @@
         <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <!-- Header -->
             <div class="bg-teal-600 px-6 py-4">
-                <h1 class="text-2xl font-bold text-white">Registration Received!</h1>
+                <h1 class="text-2xl font-bold text-white">Welcome, {{ $registration->clinic_name }}!</h1>
             </div>
             
             <!-- Content -->
             <div class="p-6">
                 <p class="text-gray-700 mb-6">
-                    Dear <strong>{{ $registration->first_name }}</strong>,
+                    Dear <strong>{{ $registration->first_name }} {{ $registration->last_name }}</strong>,
                 </p>
                 
                 <p class="text-gray-700 mb-6">
-                    Thank you for registering your dental clinic with <strong>{{ $registration->clinic_name }}</strong>. 
+                    Thank you for registering your dental clinic, <strong>{{ $registration->clinic_name }}</strong>. 
                     Your payment has been successfully processed. However, your clinic is currently pending verification.
                 </p>
                 
@@ -50,22 +50,22 @@
                         <tr>
                             <td class="py-2 text-gray-600 font-medium w-32">URL:</td>
                             <td class="py-2">
-                                <a href="{{ $registration->getVerificationUrl() }}" class="text-teal-600 hover:text-teal-800 underline">
+                                <a href="{{ config('app.url') }}/tenant/{{ $registration->subdomain }}" class="text-teal-600 hover:text-teal-800 underline">
                                     {{ config('app.url') }}/tenant/{{ $registration->subdomain }}
                                 </a>
                             </td>
                         </tr>
                         <tr>
-                            <td class="py-2 text-gray-600 font-medium">Username:</td>
+                            <td class="py-2 text-gray-600 font-medium">Fullname:</td>
                             <td class="py-2 text-gray-900 font-semibold">{{ $registration->first_name }} {{ $registration->last_name }}</td>
                         </tr>
                         <tr>
-                            <td class="py-2 text-gray-600 font-medium">Email:</td>
+                            <td class="py-2 text-gray-600 font-medium">EMAIL:</td>
                             <td class="py-2 text-gray-900">{{ $registration->email }}</td>
                         </tr>
                         <tr>
-                            <td class="py-2 text-gray-600 font-medium">Password:</td>
-                            <td class="py-2 text-gray-900 font-mono">{{ $registration->plain_password ?? 'As entered during registration' }}</td>
+                            <td class="py-2 text-gray-600 font-medium">PASSWORD:</td>
+                            <td class="py-2 text-gray-900 font-mono">{{ $registration->plain_password }}</td>
                         </tr>
                     </table>
                 </div>

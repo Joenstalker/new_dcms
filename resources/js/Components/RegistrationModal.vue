@@ -164,8 +164,15 @@ const nextStep = async () => {
                 },
                 body: JSON.stringify({
                     clinic_name: form.clinic_name,
+                    first_name: form.first_name,
+                    last_name: form.last_name,
                     admin_name: fullAdminName.value,
                     email: form.email,
+                    phone: form.phone,
+                    street: form.street,
+                    barangay: form.barangay,
+                    city: form.city,
+                    province: form.province,
                 })
             });
             const data = await response.json();

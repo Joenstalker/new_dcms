@@ -43,7 +43,7 @@ class TenantController extends Controller
         $tenants = $query->get()->filter(function ($tenant) use ($status) {
             if (!$status)
                 return true;
-            return ($tenant->subscription_status ?? 'active') === $status;
+            return $tenant->status === $status;
         })->map(function ($tenant) {
             $latestSubscription = $tenant->subscriptions->where('stripe_status', 'active')->last()
                 ?? $tenant->subscriptions->last();
@@ -52,7 +52,7 @@ class TenantController extends Controller
             $tenant->plan_id = $latestSubscription ? $latestSubscription->subscription_plan_id : null;
             $tenant->database_name = $tenant->getDatabaseName();
             
-            // Extra details from data column
+            // Extra details from database columns
             $tenant->email = $tenant->email ?? 'N/A';
             $tenant->phone = $tenant->phone ?? 'N/A';
             $tenant->full_address = implode(', ', array_filter([
@@ -61,6 +61,10 @@ class TenantController extends Controller
                 $tenant->city,
                 $tenant->province
             ])) ?: 'N/A';
+
+            // Tenant URL
+            $primaryDomain = $tenant->domains->first()?->domain;
+            $tenant->tenant_url = $primaryDomain ? $this->getTenantUrl($primaryDomain) : null;
 
             // Subscription details
             if ($latestSubscription) {
@@ -137,8 +141,9 @@ class TenantController extends Controller
             'status' => 'required|in:active,suspended,pending_payment,cancelled',
         ]);
 
-        // Stancl Tenancy models store unknown attributes in the JSON 'data' column
+        // Update the status column and the subscription_status in data
         $tenant->update([
+            'status' => $validated['status'],
             'subscription_status' => $validated['status']
         ]);
 
@@ -173,6 +178,12 @@ class TenantController extends Controller
                 'owner_name' => $validated['owner_name'],
                 'status' => $validated['status'],
                 'subscription_status' => $validated['status'], // Keep in sync
+                'email' => $request->email, // Also update email if provided
+                'phone' => $request->phone,
+                'street' => $request->street,
+                'barangay' => $request->barangay,
+                'city' => $request->city,
+                'province' => $request->province,
             ]);
 
             // Update Subscription
@@ -311,9 +322,12 @@ class TenantController extends Controller
             ]);
 
             // Create domain
-            $tenant->domains()->create([
+            $domain = $tenant->domains()->create([
                 'domain' => $pendingRegistration->subdomain,
             ]);
+
+            // Update tenant with domain_id
+            $tenant->update(['domain_id' => $domain->id]);
 
             // Initialize tenancy to create database and user
             tenancy()->initialize($tenant);

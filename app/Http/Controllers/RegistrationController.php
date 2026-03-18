@@ -26,9 +26,16 @@ class RegistrationController extends Controller
     {
         $validated = $request->validate([
             'clinic_name' => 'required|string|max:255|min:3',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'admin_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'sometimes|required|string|min:8|confirmed',
+            'phone' => 'required|string|max:20',
+            'street' => 'required|string|max:255',
+            'barangay' => 'required|string|max:255',
+            'city' => 'required|string|max:100',
+            'province' => 'required|string|max:100',
+            'password' => 'sometimes|required|string|min:8',
         ]);
 
         return response()->json([
@@ -129,8 +136,15 @@ class RegistrationController extends Controller
     {
         $validated = $request->validate([
             'clinic_name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'admin_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
+            'phone' => 'required|string|max:20',
+            'street' => 'required|string|max:255',
+            'barangay' => 'required|string|max:255',
+            'city' => 'required|string|max:100',
+            'province' => 'required|string|max:100',
             'password' => 'required|string|min:8',
             'subdomain' => 'required|string|max:63',
             'plan_id' => 'required|exists:subscription_plans,id',
@@ -163,8 +177,15 @@ class RegistrationController extends Controller
             // Create a metadata object to store registration data
             $metadata = [
                 'clinic_name' => $validated['clinic_name'],
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
                 'admin_name' => $validated['admin_name'],
                 'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'street' => $validated['street'],
+                'barangay' => $validated['barangay'],
+                'city' => $validated['city'],
+                'province' => $validated['province'],
                 'password' => $validated['password'], // Will be hashed after payment
                 'subdomain' => $validated['subdomain'],
                 'plan_id' => $validated['plan_id'],
@@ -253,12 +274,22 @@ class RegistrationController extends Controller
                     'id' => $tenantId,
                     'name' => $metadata->clinic_name,
                     'owner_name' => $metadata->admin_name,
+                    'email' => $metadata->email,
+                    'phone' => $metadata->phone,
+                    'street' => $metadata->street,
+                    'barangay' => $metadata->barangay,
+                    'city' => $metadata->city,
+                    'province' => $metadata->province,
+                    'status' => 'pending', // Set to pending for verification
                 ]);
 
                 // Create domain
-                $tenant->domains()->create([
+                $domain = $tenant->domains()->create([
                     'domain' => $metadata->subdomain,
                 ]);
+
+                // Update tenant with domain_id
+                $tenant->update(['domain_id' => $domain->id]);
 
                 // Switch to tenant database
                 tenancy()->initialize($tenant);
@@ -267,6 +298,13 @@ class RegistrationController extends Controller
                 $user = User::create([
                     'name' => $metadata->admin_name,
                     'email' => $metadata->email,
+                    'phone' => $metadata->phone,
+                    'address' => implode(', ', array_filter([
+                        $metadata->street,
+                        $metadata->barangay,
+                        $metadata->city,
+                        $metadata->province
+                    ])),
                     'password' => Hash::make($metadata->password),
                 ]);
 
@@ -297,14 +335,33 @@ class RegistrationController extends Controller
                     'new_tenant',
                     'New Tenant Registration',
                     "A new clinic '{$metadata->clinic_name}' has registered with subdomain '{$metadata->subdomain}'",
-                [
-                    'tenant_id' => $tenantId,
-                    'clinic_name' => $metadata->clinic_name,
-                    'subdomain' => $metadata->subdomain,
-                    'admin_email' => $metadata->email,
-                ],
+                    [
+                        'tenant_id' => $tenantId,
+                        'clinic_name' => $metadata->clinic_name,
+                        'subdomain' => $metadata->subdomain,
+                        'admin_email' => $metadata->email,
+                    ],
                     'both'
                 );
+
+                // Create mail instance for the "pending" email
+                $registration = (object)[
+                    'first_name' => $metadata->first_name,
+                    'last_name' => $metadata->last_name,
+                    'clinic_name' => $metadata->clinic_name,
+                    'email' => $metadata->email,
+                    'subdomain' => $metadata->subdomain,
+                    'plain_password' => $metadata->password,
+                ];
+
+                // Send pending email
+                try {
+                    \Illuminate\Support\Facades\Mail::to($metadata->email)->send(
+                        new \App\Mail\RegistrationPending($registration)
+                    );
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning('Failed to send pending email: ' . $e->getMessage());
+                }
 
                 // Redirect to tenant via fallback route (works without wildcard DNS)
                 $subdomain = $metadata->subdomain;
@@ -448,6 +505,15 @@ class RegistrationController extends Controller
 
         // Initialize tenancy for this tenant
         $tenant = $domain->tenant;
+
+        // Check if tenant is pending verification
+        if ($tenant->status === 'pending') {
+            return response()->view('errors.pending', [
+                'tenant' => $tenant,
+                'created_at' => $tenant->created_at
+            ], 403);
+        }
+
         tenancy()->initialize($tenant);
 
         // Redirect to the tenant dashboard

@@ -14,7 +14,7 @@ class RegistrationPending extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public PendingRegistration $registration
+        public mixed $registration
     ) {}
 
     public function envelope(): Envelope

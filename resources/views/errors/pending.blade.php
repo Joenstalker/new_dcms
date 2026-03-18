@@ -19,7 +19,43 @@
         </p>
         
         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <h2 class="text-sm font-semibold text-yellow-800 mb-2">What happens next?</h2>
+            <h2 class="text-sm font-semibold text-yellow-800 mb-2">Verification Countdown</h2>
+            <div id="countdown" class="text-2xl font-mono font-bold text-yellow-600 mb-2">
+                60:00
+            </div>
+            <p class="text-xs text-yellow-700">
+                Please wait while we verify your application.
+            </p>
+        </div>
+
+        <script>
+            function startCountdown() {
+                const createdAt = new Date("{{ $created_at }}").getTime();
+                const targetTime = createdAt + (60 * 60 * 1000); // 1 hour later
+                
+                const timer = setInterval(function() {
+                    const now = new Date().getTime();
+                    const distance = targetTime - now;
+                    
+                    if (distance < 0) {
+                        clearInterval(timer);
+                        document.getElementById("countdown").innerHTML = "Checking status...";
+                        window.location.reload();
+                        return;
+                    }
+                    
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    
+                    document.getElementById("countdown").innerHTML = 
+                        (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+                }, 1000);
+            }
+            startCountdown();
+        </script>
+        
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+            <h2 class="text-sm font-semibold text-gray-800 mb-2">What happens next?</h2>
             <ul class="text-xs text-yellow-700 text-left space-y-2">
                 <li class="flex items-start">
                     <svg class="w-4 h-4 mr-1 mt-0.5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">

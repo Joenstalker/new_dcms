@@ -150,18 +150,7 @@ const isFormValid = computed(() => {
     <Head title="Tenants Management" />
     <AdminLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <h1 class="text-xl font-bold text-gray-900">Clinics Management</h1>
-                <button
-                    @click="openCreateModal"
-                    class="inline-flex items-center px-4 py-2 bg-teal-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-wider hover:bg-teal-700 focus:bg-teal-700 active:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                >
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Clinic
-                </button>
-            </div>
+            <h1 class="text-xl font-bold text-gray-900">Clinics Management</h1>
         </template>
 
         <div class="max-w-7xl mx-auto space-y-6">
@@ -194,7 +183,19 @@ const isFormValid = computed(() => {
                         <option value="pending_payment">Pending Payment</option>
                         <option value="suspended">Suspended</option>
                     </select>
+
                 </div>
+
+                <!-- Add Clinic Button -->
+                <button
+                    @click="openCreateModal"
+                    class="inline-flex items-center justify-center px-4 py-2 bg-teal-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-wider hover:bg-teal-700 focus:bg-teal-700 active:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition ease-in-out duration-150 whitespace-nowrap"
+                >
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Clinic
+                </button>
             </div>
 
             <!-- Tenants Table -->
