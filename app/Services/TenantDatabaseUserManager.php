@@ -33,18 +33,12 @@ class TenantDatabaseUserManager
         $password = $this->generatePassword();
 
         try {
-            // Create the MySQL user
-            DB::statement("CREATE USER ?@? IDENTIFIED BY ?", [
-                $username,
-                '%', // Allow from any host (can be restricted in production)
-                $password
-            ]);
+            // Create the MySQL user using string interpolation for DDL
+            DB::statement("CREATE USER '{$username}'@'%' IDENTIFIED BY '{$password}'");
 
             // Grant privileges to the specific database only
-            DB::statement("GRANT SELECT, INSERT, UPDATE, DELETE ON {$databaseName}.* TO ?@?", [
-                $username,
-                '%'
-            ]);
+            DB::statement("GRANT SELECT, INSERT, UPDATE, DELETE ON `{$databaseName}`.* TO '{$username}'@'%'");
+
 
             // Apply changes
             DB::statement("FLUSH PRIVILEGES");
@@ -78,7 +72,7 @@ class TenantDatabaseUserManager
     public function dropDatabaseUser(string $username): bool
     {
         try {
-            DB::statement("DROP USER IF EXISTS ?@?", [$username, '%']);
+            DB::statement("DROP USER IF EXISTS '{$username}'@'%'");
             DB::statement("FLUSH PRIVILEGES");
 
             Log::info('Tenant database user dropped', [
@@ -106,10 +100,7 @@ class TenantDatabaseUserManager
     public function updatePassword(string $username, string $newPassword): bool
     {
         try {
-            DB::statement("ALTER USER ?@? IDENTIFIED BY ?", [
-                $username,
-                $newPassword
-            ]);
+            DB::statement("ALTER USER '{$username}'@'%' IDENTIFIED BY '{$newPassword}'");
             DB::statement("FLUSH PRIVILEGES");
 
             Log::info('Tenant database user password updated', [
@@ -192,7 +183,7 @@ class TenantDatabaseUserManager
     public function getGrants(string $username): array
     {
         try {
-            return DB::select("SHOW GRANTS FOR ?@?", [$username, '%']);
+            return DB::select("SHOW GRANTS FOR '{$username}'@'%'");
         }
         catch (\Exception $e) {
             Log::error('Failed to get database user grants', [

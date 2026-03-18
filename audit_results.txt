@@ -4,11 +4,22 @@
 
 [CENTRAL DATABASE]
 --------------------
-No Super Admins found.
+ - admin@dcms.com                 | Admin: YES
 
 [TENANT DATABASES]
 --------------------
-No tenants found.
+TENANT: acero (no domain)
+   No users found.
+
+TENANT: goc-ong (no domain)
+   No users found.
+
+TENANT: joemar (no domain)
+   No users found.
+
+TENANT: joenil (joenil)
+   - 2301107552@student.buksu.edu.ph | Roles: Owner
+
 ==================================================
 Audit Complete.
 ==================================================

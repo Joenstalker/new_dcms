@@ -3,6 +3,7 @@
 use App\Providers\AppServiceProvider;
 
 return [
-    AppServiceProvider::class,
-    App\Providers\TenancyServiceProvider::class,
+    AppServiceProvider::class ,
+    App\Providers\TenancyServiceProvider::class ,
+    App\Providers\TenantDatabaseServiceProvider::class ,
 ];

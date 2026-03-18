@@ -26,6 +26,7 @@ class SubscriptionPlan extends Model
         'has_priority_support',
         'has_multi_branch',
         'report_level',
+        'max_storage_mb',
     ];
 
     protected $casts = [
@@ -40,6 +41,7 @@ class SubscriptionPlan extends Model
         'has_analytics' => 'boolean',
         'has_priority_support' => 'boolean',
         'has_multi_branch' => 'boolean',
+        'max_storage_mb' => 'integer',
     ];
 
     public function subscriptions()

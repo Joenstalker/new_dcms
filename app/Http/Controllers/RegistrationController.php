@@ -28,7 +28,7 @@ class RegistrationController extends Controller
             'clinic_name' => 'required|string|max:255|min:3',
             'admin_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => 'sometimes|required|string|min:8|confirmed',
         ]);
 
         return response()->json([
@@ -210,7 +210,11 @@ class RegistrationController extends Controller
         $sessionId = $request->session_id;
 
         if (!$sessionId) {
-            return redirect('/?error=no_session');
+            return view('errors.registration-failed', [
+                'code' => '400',
+                'title' => 'Session Error',
+                'message' => 'No payment session found.'
+            ]);
         }
 
         try {
@@ -218,7 +222,11 @@ class RegistrationController extends Controller
             $session = $stripe->checkout->sessions->retrieve($sessionId);
 
             if ($session->payment_status !== 'paid') {
-                return redirect('/?error=payment_not_completed');
+                return view('errors.registration-failed', [
+                    'code' => '402',
+                    'title' => 'Payment Incomplete',
+                    'message' => 'Payment was not completed. Please try again.'
+                ]);
             }
 
             $metadata = $session->metadata;
@@ -244,6 +252,7 @@ class RegistrationController extends Controller
                 $tenant = Tenant::create([
                     'id' => $tenantId,
                     'name' => $metadata->clinic_name,
+                    'owner_name' => $metadata->admin_name,
                 ]);
 
                 // Create domain
@@ -335,13 +344,21 @@ class RegistrationController extends Controller
             catch (\Exception $e) {
                 DB::rollBack();
                 Log::error('Tenant creation failed: ' . $e->getMessage());
-                return redirect('/?error=tenant_creation_failed');
+                return view('errors.registration-failed', [
+                    'code' => '500',
+                    'title' => 'Tenant Creation Failed',
+                    'message' => 'Failed to build your clinic database. Please contact support.'
+                ]);
             }
 
         }
         catch (\Exception $e) {
             Log::error('Payment success handling failed: ' . $e->getMessage());
-            return redirect('/?error=verification_failed');
+            return view('errors.registration-failed', [
+                'code' => '500',
+                'title' => 'Verification Failed',
+                'message' => 'Payment verification failed. Please contact support.'
+            ]);
         }
     }
 

@@ -9,8 +9,8 @@ $app = require_once __DIR__.'/bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
-// Assuming tenant 'foo'
-$tenant = \App\Models\Tenant::find('foo');
+// Assuming tenant 'acero_db'
+$tenant = \App\Models\Tenant::where('id', 'acero_db')->first();
 tenancy()->initialize($tenant);
 
 $user = User::first();

@@ -53,6 +53,14 @@ class FeatureController extends Controller
         // Automatically assign this feature to all subscription plans with default value
         $this->assignFeatureToAllPlans($feature);
 
+        \App\Models\AuditLog::record(
+            'feature_created',
+            "Created system feature '{$feature->name}'.",
+            'Feature',
+            $feature->id,
+            ['key' => $feature->key, 'type' => $feature->type]
+        );
+
         return redirect()->route('admin.features.index')
             ->with('success', 'Feature created and assigned to all plans.');
     }
@@ -101,6 +109,14 @@ class FeatureController extends Controller
 
         $feature->update($validated);
 
+        \App\Models\AuditLog::record(
+            'feature_updated',
+            "Updated system feature '{$feature->name}'.",
+            'Feature',
+            $feature->id,
+            ['changes' => $validated]
+        );
+
         return redirect()->route('admin.features.index')
             ->with('success', 'Feature updated successfully.');
     }
@@ -115,7 +131,16 @@ class FeatureController extends Controller
             return back()->with('error', 'Cannot delete feature that is assigned to plans. Please remove from all plans first.');
         }
 
+        $featureName = $feature->name;
+        $featureId = $feature->id;
         $feature->delete();
+
+        \App\Models\AuditLog::record(
+            'feature_deleted',
+            "Deleted system feature '{$featureName}'.",
+            'Feature',
+            $featureId
+        );
 
         return redirect()->route('admin.features.index')
             ->with('success', 'Feature deleted successfully.');
@@ -147,6 +172,14 @@ class FeatureController extends Controller
             $feature->id => $pivotData,
         ]);
 
+        \App\Models\AuditLog::record(
+            'plan_feature_assigned',
+            "Assigned feature '{$feature->name}' to plan '{$plan->name}'.",
+            'SubscriptionPlan',
+            $plan->id,
+            ['feature_id' => $feature->id, 'values' => $pivotData]
+        );
+
         return back()->with('success', "Feature assigned to {$plan->name}.");
     }
 
@@ -156,6 +189,14 @@ class FeatureController extends Controller
     public function removeFromPlan(Feature $feature, SubscriptionPlan $plan): RedirectResponse
     {
         $plan->features()->detach($feature->id);
+
+        \App\Models\AuditLog::record(
+            'plan_feature_removed',
+            "Removed feature '{$feature->name}' from plan '{$plan->name}'.",
+            'SubscriptionPlan',
+            $plan->id,
+            ['feature_id' => $feature->id]
+        );
 
         return back()->with('success', "Feature removed from {$plan->name}.");
     }
@@ -201,6 +242,13 @@ class FeatureController extends Controller
             ]);
         }
 
+        \App\Models\AuditLog::record(
+            'plan_features_bulk_updated',
+            "Updated feature configuration for plan '{$plan->name}'.",
+            'SubscriptionPlan',
+            $plan->id
+        );
+
         return back()->with('success', 'Plan features updated successfully.');
     }
 
@@ -212,6 +260,14 @@ class FeatureController extends Controller
         $feature->update(['is_active' => !$feature->is_active]);
 
         $status = $feature->is_active ? 'enabled' : 'disabled';
+
+        \App\Models\AuditLog::record(
+            'feature_toggled',
+            "Toggled system feature '{$feature->name}' status to {$status}.",
+            'Feature',
+            $feature->id,
+            ['is_active' => $feature->is_active]
+        );
 
         return back()->with('success', "Feature {$status} successfully.");
     }

@@ -4,6 +4,10 @@ import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import Swal from 'sweetalert2';
 
+import ServicesTabs from './Partials/ServicesTabs.vue';
+import ServicesTable from './Partials/ServicesTable.vue';
+import ServiceFormModal from './Partials/ServiceFormModal.vue';
+
 const props = defineProps({
     services: Array
 });
@@ -14,12 +18,6 @@ const roles = computed(() => user.value?.roles || []);
 const isOwnerOrDentist = computed(() => roles.value.includes('Owner') || roles.value.includes('Dentist'));
 
 const activeTab = ref('all');
-const tabs = [
-    { id: 'all', label: 'All Services', icon: 'list' },
-    { id: 'approved', label: 'Approved', icon: 'check', color: 'text-success' },
-    { id: 'pending', label: 'Pending', icon: 'clock', color: 'text-warning' },
-    { id: 'rejected', label: 'Rejected', icon: 'x', color: 'text-error' },
-];
 
 const filteredServices = computed(() => {
     if (activeTab.value === 'all') return props.services;
@@ -115,13 +113,9 @@ const rejectService = (id) => {
     });
 };
 
-const getStatusBadge = (status) => {
-    const classes = {
-        approved: 'badge-success text-white',
-        pending: 'badge-warning text-white',
-        rejected: 'badge-error text-white'
-    };
-    return classes[status] || 'badge-ghost';
+const closeModal = () => {
+    isModalOpen.value = false;
+    editingService.value = null;
 };
 </script>
 
@@ -143,132 +137,27 @@ const getStatusBadge = (status) => {
 
         <div class="py-6">
             <!-- Tabs Navigation -->
-            <div class="tabs tabs-boxed mb-8 bg-white p-2 shadow-sm rounded-2xl border border-gray-100 max-w-2xl">
-                <a 
-                    v-for="tab in tabs" 
-                    :key="tab.id"
-                    @click="activeTab = tab.id"
-                    class="tab tab-lg transition-all duration-300 rounded-xl"
-                    :class="[activeTab === tab.id ? 'tab-active bg-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50']"
-                >
-                    <span class="flex items-center gap-2">
-                        <span :class="activeTab === tab.id ? 'text-white' : tab.color">{{ tab.label }}</span>
-                    </span>
-                </a>
-            </div>
+            <ServicesTabs v-model:activeTab="activeTab" />
 
-            <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-                <div class="overflow-x-auto">
-                    <table class="table table-lg w-full">
-                        <thead class="bg-slate-50">
-                            <tr class="text-slate-500">
-                                <th>Service Name</th>
-                                <th>Price</th>
-                                <th>Status</th>
-                                <th>Created By</th>
-                                <th class="text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="service in filteredServices" :key="service.id" class="hover:bg-slate-50/50 transition-colors">
-                                <td>
-                                    <div class="flex flex-col">
-                                        <span class="font-bold text-slate-800">{{ service.name }}</span>
-                                        <span class="text-xs text-slate-500 max-w-xs truncate">{{ service.description }}</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="font-mono font-semibold text-primary">${{ Number(service.price).toFixed(2) }}</span>
-                                </td>
-                                <td>
-                                    <div :class="['badge badge-md uppercase font-bold text-[10px] tracking-widest px-3 py-3 border-none', getStatusBadge(service.status)]">
-                                        {{ service.status }}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="flex items-center gap-2">
-                                        <div class="avatar placeholder">
-                                            <div class="bg-neutral text-neutral-content rounded-full w-8">
-                                                <span class="text-xs">{{ service.creator?.name.charAt(0) }}</span>
-                                            </div>
-                                        </div>
-                                        <span class="text-sm font-medium text-slate-600">{{ service.creator?.name }}</span>
-                                    </div>
-                                </td>
-                                <td class="text-right space-x-2">
-                                    <!-- Approval Actions -->
-                                    <template v-if="isOwnerOrDentist && service.status === 'pending'">
-                                        <button @click="approveService(service.id)" class="btn btn-sm btn-success text-white">Approve</button>
-                                        <button @click="rejectService(service.id)" class="btn btn-sm btn-outline btn-error">Reject</button>
-                                    </template>
-                                    
-                                    <!-- Regular Actions -->
-                                    <button @click="openModal(service)" class="btn btn-sm btn-ghost hover:bg-indigo-50 text-indigo-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                        </svg>
-                                    </button>
-                                    <button @click="deleteService(service.id)" class="btn btn-sm btn-ghost hover:bg-red-50 text-red-500">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr v-if="filteredServices.length === 0">
-                                <td colspan="5" class="py-20 text-center">
-                                    <div class="flex flex-col items-center gap-2 opacity-40">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                        </svg>
-                                        <p class="text-xl font-bold">No services found in this category.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <!-- Services Table -->
+            <ServicesTable 
+                :services="filteredServices"
+                :is-owner-or-dentist="isOwnerOrDentist"
+                @edit="openModal"
+                @delete="deleteService"
+                @approve="approveService"
+                @reject="rejectService"
+            />
         </div>
 
-        <!-- Create/Edit Modal using daisyUI -->
-        <div class="modal" :class="{'modal-open': isModalOpen}">
-            <div class="modal-box rounded-3xl max-w-lg">
-                <h3 class="font-bold text-2xl mb-6">{{ editingService ? 'Edit Service' : 'New Service' }}</h3>
-                <form @submit.prevent="submit" class="space-y-4">
-                    <div class="form-control w-full">
-                        <label class="label font-semibold text-slate-600">Service Name</label>
-                        <input v-model="form.name" type="text" placeholder="e.g. Tooth Extraction" class="input input-bordered w-full rounded-xl focus:ring-2 focus:ring-primary shadow-sm" required />
-                        <label v-if="form.errors.name" class="label text-error text-xs">{{ form.errors.name }}</label>
-                    </div>
-
-                    <div class="form-control w-full">
-                        <label class="label font-semibold text-slate-600">Price ($)</label>
-                        <input v-model="form.price" type="number" step="0.01" placeholder="0.00" class="input input-bordered w-full rounded-xl focus:ring-2 focus:ring-primary shadow-sm" required />
-                        <label v-if="form.errors.price" class="label text-error text-xs">{{ form.errors.price }}</label>
-                    </div>
-
-                    <div class="form-control w-full">
-                        <label class="label font-semibold text-slate-600">Description</label>
-                        <textarea v-model="form.description" class="textarea textarea-bordered h-24 rounded-xl focus:ring-2 focus:ring-primary shadow-sm" placeholder="Details about the service..."></textarea>
-                        <label v-if="form.errors.description" class="label text-error text-xs">{{ form.errors.description }}</label>
-                    </div>
-
-                    <div v-if="!isOwnerOrDentist" class="alert alert-info py-2 rounded-xl text-xs flex gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current flex-shrink-0 w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <span>Note: Your changes will require approval from the Owner or Dentist.</span>
-                    </div>
-
-                    <div class="modal-action mt-8 flex justify-end gap-2">
-                        <button type="button" @click="isModalOpen = false" class="btn btn-ghost rounded-xl">Cancel</button>
-                        <button type="submit" class="btn btn-primary rounded-xl px-8 shadow-md" :disabled="form.processing">
-                            {{ editingService ? 'Save Changes' : 'Create Service' }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-backdrop bg-slate-900/40" @click="isModalOpen = false"></div>
-        </div>
+        <!-- Create/Edit Modal -->
+        <ServiceFormModal
+            :show="isModalOpen"
+            :editing-service="editingService"
+            :is-owner-or-dentist="isOwnerOrDentist"
+            @close="closeModal"
+            @submit="submit"
+        />
     </AuthenticatedLayout>
 </template>
 

@@ -35,11 +35,18 @@ class PlanController extends Controller
 
         $plan = SubscriptionPlan::create($validated);
 
+        AuditLog::record(
+            action: 'plan.created',
+            description: "Subscription plan '{$plan->name}' created.",
+            targetType: 'SubscriptionPlan',
+            targetId: (string) $plan->id,
+            metadata: ['name' => $plan->name, 'price_monthly' => $plan->price_monthly]
+        );
+
         try {
             $this->syncWithStripe($plan);
             return redirect()->route('admin.plans.index')->with('success', 'Plan created and synced with Stripe.');
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Stripe Sync Error: ' . $e->getMessage());
             return redirect()->route('admin.plans.index')->with('warning', 'Plan saved locally, but Stripe sync failed: ' . $e->getMessage());
         }
@@ -54,11 +61,18 @@ class PlanController extends Controller
 
         $plan->update($validated);
 
+        AuditLog::record(
+            action: 'plan.updated',
+            description: "Subscription plan '{$plan->name}' updated.",
+            targetType: 'SubscriptionPlan',
+            targetId: (string) $plan->id,
+            metadata: ['name' => $plan->name, 'price_monthly' => $plan->price_monthly]
+        );
+
         try {
             $this->syncWithStripe($plan);
             return redirect()->route('admin.plans.index')->with('success', 'Plan updated and synced with Stripe.');
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Stripe Sync Error: ' . $e->getMessage());
             return redirect()->route('admin.plans.index')->with('warning', 'Plan updated locally, but Stripe sync failed: ' . $e->getMessage());
         }
@@ -74,7 +88,16 @@ class PlanController extends Controller
             return back()->with('error', 'Cannot delete plan with active subscribers.');
         }
 
+        $planName = $plan->name;
+        $planId = $plan->id;
         $plan->delete();
+
+        AuditLog::record(
+            action: 'plan.deleted',
+            description: "Subscription plan '{$planName}' deleted.",
+            targetType: 'SubscriptionPlan',
+            targetId: (string) $planId
+        );
 
         return redirect()->route('admin.plans.index')->with('success', 'Subscription plan deleted successfully.');
     }
@@ -146,6 +169,14 @@ class PlanController extends Controller
     {
         try {
             $this->syncWithStripe($plan);
+
+            AuditLog::record(
+                action: 'plan.synced',
+                description: "Manually synchronized plan '{$plan->name}' with Stripe.",
+                targetType: 'SubscriptionPlan',
+                targetId: (string) $plan->id
+            );
+
             return back()->with('success', 'Plan synchronized with Stripe successfully.');
         }
         catch (\Exception $e) {

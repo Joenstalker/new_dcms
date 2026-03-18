@@ -191,18 +191,8 @@ onMounted(() => {
         alert('Payment was cancelled. You can try again anytime.');
         window.history.replaceState({}, document.title, window.location.pathname);
     }
-    
-    if (urlParams.get('error')) {
-        const error = urlParams.get('error');
-        let message = 'An error occurred.';
-        
-        if (error === 'no_session') message = 'No payment session found.';
-        else if (error === 'payment_not_completed') message = 'Payment was not completed.';
-        else if (error === 'tenant_creation_failed') message = 'Failed to create your clinic. Please contact support.';
-        else if (error === 'verification_failed') message = 'Payment verification failed. Please contact support.';
-        else if (error === 'clinic_not_found') message = 'The clinic domain you are trying to access does not exist.';
-        
-        alert(message);
+    if (urlParams.get('error') === 'clinic_not_found') {
+        alert('The clinic domain you are trying to access does not exist.');
         window.history.replaceState({}, document.title, window.location.pathname);
     }
     

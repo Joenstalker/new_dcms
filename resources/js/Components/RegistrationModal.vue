@@ -39,21 +39,45 @@ const clinicDomain = computed(() => {
 
 // Form data
 const form = useForm({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    street: '',
+    barangay: '',
+    city: '',
+    province: '',
     clinic_name: '',
     admin_name: '',
-    email: '',
     password: '',
-    password_confirmation: '',
     subdomain: '',
 });
 
-// Computed
+// Computed - Combine first and last name for backend
+const fullAdminName = computed(() => {
+    return `${form.first_name} ${form.last_name}`.trim();
+});
+
+// Generate random password
+const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+};
+
+// Step 1 Validation - Account Information
 const isStep1Valid = computed(() => {
-    return form.clinic_name.length >= 3 &&
-           form.admin_name.length >= 2 &&
+    return form.first_name.length >= 2 &&
+           form.last_name.length >= 2 &&
            form.email.includes('@') &&
-           form.password.length >= 8 &&
-           form.password === form.password_confirmation;
+           form.phone.length >= 10 &&
+           form.street.length >= 3 &&
+           form.barangay.length >= 2 &&
+           form.city.length >= 2 &&
+           form.province.length >= 2;
 });
 
 const isStep2Valid = computed(() => {
@@ -78,6 +102,7 @@ const fetchSubdomainSuggestions = async () => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             },
             body: JSON.stringify({ clinic_name: form.clinic_name })
@@ -106,6 +131,7 @@ const checkSubdomainAvailability = async () => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             },
             body: JSON.stringify({ subdomain: form.subdomain })
@@ -133,14 +159,13 @@ const nextStep = async () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 },
                 body: JSON.stringify({
                     clinic_name: form.clinic_name,
-                    admin_name: form.admin_name,
+                    admin_name: fullAdminName.value,
                     email: form.email,
-                    password: form.password,
-                    password_confirmation: form.password_confirmation
                 })
             });
             const data = await response.json();
@@ -168,11 +193,21 @@ const prevStep = () => {
 };
 
 const proceedToPayment = () => {
+    // Generate password automatically
+    const generatedPassword = generatePassword();
+    
     emit('openPayment', {
         clinic_name: form.clinic_name,
-        admin_name: form.admin_name,
+        first_name: form.first_name,
+        last_name: form.last_name,
         email: form.email,
-        password: form.password,
+        phone: form.phone,
+        street: form.street,
+        barangay: form.barangay,
+        city: form.city,
+        province: form.province,
+        admin_name: fullAdminName.value,
+        password: generatedPassword,
         subdomain: form.subdomain,
         plan: props.selectedPlan
     });
@@ -236,8 +271,120 @@ const paymentMethods = [
 
             <!-- Step 1: Account Setup -->
             <div v-if="currentStep === 1" class="space-y-5">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Account Setup</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
                 
+                <!-- Name Fields -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <InputLabel for="first_name" value="First Name *" />
+                        <TextInput
+                            id="first_name"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.first_name"
+                            placeholder="Juan"
+                            required
+                            autofocus
+                        />
+                        <InputError class="mt-1" :message="form.errors.first_name" />
+                    </div>
+                    <div>
+                        <InputLabel for="last_name" value="Last Name *" />
+                        <TextInput
+                            id="last_name"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.last_name"
+                            placeholder="Dela Cruz"
+                            required
+                        />
+                        <InputError class="mt-1" :message="form.errors.last_name" />
+                    </div>
+                </div>
+
+                <!-- Email and Phone -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <InputLabel for="email" value="Email Address *" />
+                        <TextInput
+                            id="email"
+                            type="email"
+                            class="mt-1 block w-full"
+                            v-model="form.email"
+                            placeholder="juan@clinic.com"
+                            required
+                        />
+                        <InputError class="mt-1" :message="form.errors.email" />
+                    </div>
+                    <div>
+                        <InputLabel for="phone" value="Phone Number *" />
+                        <TextInput
+                            id="phone"
+                            type="tel"
+                            class="mt-1 block w-full"
+                            v-model="form.phone"
+                            placeholder="09xxxxxxxxx"
+                            required
+                        />
+                        <InputError class="mt-1" :message="form.errors.phone" />
+                    </div>
+                </div>
+
+                <!-- Address Fields -->
+                <div>
+                    <InputLabel for="street" value="Street Address *" />
+                    <TextInput
+                        id="street"
+                        type="text"
+                        class="mt-1 block w-full"
+                        v-model="form.street"
+                        placeholder="123 Main Street, Building etc."
+                        required
+                    />
+                    <InputError class="mt-1" :message="form.errors.street" />
+                </div>
+
+                <div>
+                    <InputLabel for="barangay" value="Barangay *" />
+                    <TextInput
+                        id="barangay"
+                        type="text"
+                        class="mt-1 block w-full"
+                        v-model="form.barangay"
+                        placeholder="Barangay"
+                        required
+                    />
+                    <InputError class="mt-1" :message="form.errors.barangay" />
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <InputLabel for="city" value="City *" />
+                        <TextInput
+                            id="city"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.city"
+                            placeholder="City"
+                            required
+                        />
+                        <InputError class="mt-1" :message="form.errors.city" />
+                    </div>
+                    <div>
+                        <InputLabel for="province" value="Province *" />
+                        <TextInput
+                            id="province"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.province"
+                            placeholder="Province"
+                            required
+                        />
+                        <InputError class="mt-1" :message="form.errors.province" />
+                    </div>
+                </div>
+
+                <!-- Clinic Name -->
                 <div>
                     <InputLabel for="clinic_name" value="Clinic Name *" />
                     <TextInput
@@ -247,62 +394,8 @@ const paymentMethods = [
                         v-model="form.clinic_name"
                         placeholder="e.g., Smile Dental Clinic"
                         required
-                        autofocus
                     />
                     <InputError class="mt-1" :message="form.errors.clinic_name" />
-                </div>
-
-                <div>
-                    <InputLabel for="admin_name" value="Admin Name *" />
-                    <TextInput
-                        id="admin_name"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.admin_name"
-                        placeholder="Your full name"
-                        required
-                    />
-                    <InputError class="mt-1" :message="form.errors.admin_name" />
-                </div>
-
-                <div>
-                    <InputLabel for="email" value="Email Address *" />
-                    <TextInput
-                        id="email"
-                        type="email"
-                        class="mt-1 block w-full"
-                        v-model="form.email"
-                        placeholder="you@clinic.com"
-                        required
-                    />
-                    <InputError class="mt-1" :message="form.errors.email" />
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <InputLabel for="password" value="Password *" />
-                        <TextInput
-                            id="password"
-                            type="password"
-                            class="mt-1 block w-full"
-                            v-model="form.password"
-                            placeholder="Min. 8 characters"
-                            required
-                        />
-                        <InputError class="mt-1" :message="form.errors.password" />
-                    </div>
-                    <div>
-                        <InputLabel for="password_confirmation" value="Confirm Password *" />
-                        <TextInput
-                            id="password_confirmation"
-                            type="password"
-                            class="mt-1 block w-full"
-                            v-model="form.password_confirmation"
-                            placeholder="Confirm password"
-                            required
-                        />
-                        <InputError class="mt-1" :message="form.errors.password_confirmation" />
-                    </div>
                 </div>
             </div>
 

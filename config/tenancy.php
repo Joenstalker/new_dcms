@@ -13,6 +13,13 @@ return [
     'domain_model' => Domain::class ,
 
     /**
+     * Use hashed database names for tenants.
+     * When enabled, database names will be in format: tenant_[16char_hash]_db
+     * When disabled, uses domain-based naming: tenant_{id}_db
+     */
+    'use_hashed_database_names' => env('TENANT_USE_HASHED_NAMES', true),
+
+    /**
      * The list of domains hosting your central app.
      *
      * Only relevant if you're using the domain or subdomain identification middleware.
@@ -182,7 +189,7 @@ return [
         // Stancl\Tenancy\Features\UserImpersonation::class,
         // Stancl\Tenancy\Features\TelescopeTags::class,
         // Stancl\Tenancy\Features\UniversalRoutes::class,
-         Stancl\Tenancy\Features\TenantConfig::class,
+        Stancl\Tenancy\Features\TenantConfig::class ,
         // Stancl\Tenancy\Features\CrossDomainRedirect::class, // https://tenancyforlaravel.com/docs/v3/features/cross-domain-redirect
         // Stancl\Tenancy\Features\ViteBundler::class,
     ],

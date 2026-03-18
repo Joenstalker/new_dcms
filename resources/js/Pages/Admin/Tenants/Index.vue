@@ -1,16 +1,71 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { Head, router } from '@inertiajs/vue3';
+import { ref, watch, computed } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import debounce from 'lodash/debounce';
+import TenantsTable from './Partials/TenantsTable.vue';
+import CreateTenantModal from './Partials/CreateTenantModal.vue';
+import ManageTenantModal from './Partials/ManageTenantModal.vue';
 
 const props = defineProps({
     tenants: Object,
     filters: Object,
+    plans: Array,
 });
 
 const search = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');
+
+// Modal state
+const showCreateModal = ref(false);
+const showManageModal = ref(false);
+const selectedTenant = ref(null);
+const newTenantName = ref('');
+const newTenantDomain = ref('');
+const databasePreview = ref(null);
+const isLoadingPreview = ref(false);
+
+// Open manage modal
+const openManageModal = (tenant) => {
+    selectedTenant.value = tenant;
+    showManageModal.value = true;
+};
+
+// Close manage modal
+const closeManageModal = () => {
+    showManageModal.value = false;
+    selectedTenant.value = null;
+};
+
+// Database preview function
+const previewDatabaseName = debounce(async () => {
+    if (!newTenantDomain.value || newTenantDomain.value.length < 2) {
+        databasePreview.value = null;
+        return;
+    }
+
+    isLoadingPreview.value = true;
+    try {
+        const response = await fetch(route('api.tenants.preview-database-name'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({
+                domain: newTenantDomain.value,
+            }),
+        });
+        const data = await response.json();
+        if (data.success) {
+            databasePreview.value = data.data;
+        }
+    } catch (error) {
+        console.error('Failed to preview database name:', error);
+    } finally {
+        isLoadingPreview.value = false;
+    }
+}, 500);
 
 const updateSearch = debounce(() => {
     router.get(
@@ -23,13 +78,90 @@ const updateSearch = debounce(() => {
 watch(statusFilter, () => {
     updateSearch();
 });
+
+watch([newTenantDomain], () => {
+    previewDatabaseName();
+});
+
+const openCreateModal = () => {
+    showCreateModal.value = true;
+    newTenantName.value = '';
+    newTenantDomain.value = '';
+    databasePreview.value = null;
+};
+
+const closeCreateModal = () => {
+    showCreateModal.value = false;
+    newTenantName.value = '';
+    newTenantDomain.value = '';
+    databasePreview.value = null;
+};
+
+const createTenant = async () => {
+    if (!databasePreview.value) return;
+
+    try {
+        const response = await fetch(route('api.tenants.store'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({
+                name: newTenantName.value,
+                domain: newTenantDomain.value,
+            }),
+        });
+        const data = await response.json();
+        if (data.success) {
+            closeCreateModal();
+            router.reload({ only: ['tenants'] });
+        } else {
+            alert(data.message || 'Failed to create tenant');
+        }
+    } catch (error) {
+        console.error('Failed to create tenant:', error);
+        alert('Failed to create tenant');
+    }
+};
+
+const updateTenant = (formData) => {
+    router.put(route('admin.tenants.update', selectedTenant.value.id), formData, {
+        onSuccess: () => {
+            closeManageModal();
+        },
+    });
+};
+
+const deleteTenant = (tenant) => {
+    router.delete(route('admin.tenants.destroy', tenant.id), {
+        onSuccess: () => {
+            closeManageModal();
+        },
+    });
+};
+
+const isFormValid = computed(() => {
+    return newTenantName.value.length >= 2 && newTenantDomain.value.length >= 2 && databasePreview.value && !databasePreview.value.already_exists;
+});
 </script>
 
 <template>
     <Head title="Tenants Management" />
     <AdminLayout>
         <template #header>
-            <h1 class="text-xl font-bold text-gray-900">Clinics Management</h1>
+            <div class="flex justify-between items-center">
+                <h1 class="text-xl font-bold text-gray-900">Clinics Management</h1>
+                <button
+                    @click="openCreateModal"
+                    class="inline-flex items-center px-4 py-2 bg-teal-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-wider hover:bg-teal-700 focus:bg-teal-700 active:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                >
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Clinic
+                </button>
+            </div>
         </template>
 
         <div class="max-w-7xl mx-auto space-y-6">
@@ -66,128 +198,34 @@ watch(statusFilter, () => {
             </div>
 
             <!-- Tenants Table -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Clinic Domain
-                                </th>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Status
-                                </th>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Plan
-                                </th>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Registered On
-                                </th>
-                                <th scope="col" class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <tr v-for="tenant in tenants.data" :key="tenant.id" class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                                            <span class="text-teal-700 font-bold tracking-tight">
-                                                {{ tenant.id.substring(0, 2).toUpperCase() }}
-                                            </span>
-                                        </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900">{{ tenant.id }}</div>
-                                            <a v-if="tenant.domains?.length" :href="'http://' + tenant.domains[0].domain" target="_blank" class="text-xs text-teal-600 hover:underline">
-                                                {{ tenant.domains[0].domain }}
-                                            </a>
-                                            <span v-else class="text-xs text-gray-500">No domain assigned</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span v-if="(tenant.subscription_status || 'active') === 'active'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        Active
-                                    </span>
-                                    <span v-else-if="tenant.subscription_status === 'suspended'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                        Suspended
-                                    </span>
-                                    <span v-else-if="tenant.subscription_status === 'pending_payment'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                        Pending Payment
-                                    </span>
-                                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                        {{ tenant.subscription_status }}
-                                    </span>
-                                </td>
-
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ tenant.plan || 'Free / Manual' }}
-                                </td>
-
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ new Date(tenant.created_at).toLocaleDateString() }}
-                                </td>
-
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <Link :href="route('admin.tenants.show', tenant.id)" class="text-teal-600 hover:text-teal-900 bg-teal-50 px-3 py-1.5 rounded-md hover:bg-teal-100 transition-colors">
-                                        Manage
-                                    </Link>
-                                </td>
-                            </tr>
-                            <tr v-if="tenants.data.length === 0">
-                                <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                    </svg>
-                                    <p class="text-base font-medium text-gray-900">No clinics found</p>
-                                    <p class="text-sm">Try adjusting your search or filters.</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination -->
-                <div v-if="tenants.links && tenants.links.length > 3" class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-                    <div class="flex items-center justify-between">
-                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                            <div>
-                                <p class="text-sm text-gray-700">
-                                    Showing <span class="font-medium">{{ tenants.from || 0 }}</span> to <span class="font-medium">{{ tenants.to || 0 }}</span> of <span class="font-medium">{{ tenants.total }}</span> results
-                                </p>
-                            </div>
-                            <div>
-                                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                                    <template v-for="(link, i) in tenants.links" :key="i">
-                                        <Link
-                                            v-if="link.url"
-                                            :href="link.url"
-                                            v-html="link.label"
-                                            class="relative inline-flex items-center px-4 py-2 border text-sm font-medium"
-                                            :class="[
-                                                link.active ? 'z-10 bg-teal-50 border-teal-500 text-teal-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50',
-                                                i === 0 ? 'rounded-l-md' : '',
-                                                i === tenants.links.length - 1 ? 'rounded-r-md' : ''
-                                            ]"
-                                        />
-                                        <span
-                                            v-else
-                                            v-html="link.label"
-                                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-300 cursor-not-allowed"
-                                            :class="[
-                                                i === 0 ? 'rounded-l-md' : '',
-                                                i === tenants.links.length - 1 ? 'rounded-r-md' : ''
-                                            ]"
-                                        ></span>
-                                    </template>
-                                </nav>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <TenantsTable 
+                :tenants="tenants" 
+                @manage="openManageModal"
+            />
         </div>
+
+        <!-- Create Tenant Modal -->
+        <CreateTenantModal
+            :show="showCreateModal"
+            :new-tenant-name="newTenantName"
+            :new-tenant-domain="newTenantDomain"
+            :database-preview="databasePreview"
+            :is-loading-preview="isLoadingPreview"
+            :is-form-valid="isFormValid"
+            @update:newTenantName="newTenantName = $event"
+            @update:newTenantDomain="newTenantDomain = $event"
+            @close="closeCreateModal"
+            @create="createTenant"
+        />
+
+        <!-- Manage Tenant Modal -->
+        <ManageTenantModal
+            :show="showManageModal"
+            :tenant="selectedTenant"
+            :plans="plans"
+            @close="closeManageModal"
+            @update="updateTenant"
+            @delete="deleteTenant"
+        />
     </AdminLayout>
 </template>

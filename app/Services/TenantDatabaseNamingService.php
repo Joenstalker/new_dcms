@@ -2,21 +2,24 @@
 
 namespace App\Services;
 
+use App\Helpers\TenantDatabaseHelper;
 use Illuminate\Support\Str;
 
 /**
  * Tenant Database Naming Service
  * 
  * Converts subdomain names into valid MySQL database names.
- * Ensures database names are safe, unique, and follow naming conventions.
+ * Supports both domain-based naming and hash-based naming.
  * 
- * Example transformations:
- *   "dental"        -> "dental" (tenant ID, prefix/suffix applied by Stancl)
+ * Domain-based format:
+ *   "dental"        -> "dental" (tenant ID)
  *   "Smile-Clinic"  -> "smile_clinic"
- *   "Dr. John's"    -> "dr_john_s"
- *   "Clinic 123"    -> "clinic_123"
+ * 
+ * Hash-based format:
+ *   "dentalclinic" -> "tenant_a1b2c3d4e5f6g7h8_db" (SHA-256 hash of domain)
  *
- * Final DB name: tenant_{id}_db (e.g., tenant_dental_db)
+ * Final DB name (domain-based): tenant_{id}_db (e.g., tenant_dental_db)
+ * Final DB name (hash-based): tenant_{hash}_db (e.g., tenant_a1b2c3d4e5f6g7h8_db)
  */
 class TenantDatabaseNamingService
 {
@@ -35,18 +38,61 @@ class TenantDatabaseNamingService
      */
     protected const INVALID_CHARS = '/[^a-z0-9_]/i';
 
+    /**
+     * Whether to use hash-based naming
+     */
+    protected bool $useHashedNaming;
+
     public function __construct()
     {
         $this->suffix = config('tenancy.database.suffix', '_db');
+        $this->useHashedNaming = config('tenancy.use_hashed_database_names', true);
     }
 
     /**
      * Generate a database name from a subdomain
      * 
      * @param string $subdomain The subdomain (e.g., "dental", "smile-clinic")
-     * @return string The sanitized tenant ID (e.g., "dental")
+     * @return string The sanitized tenant ID (e.g., "dental") or hashed name
      */
     public function generateDatabaseName(string $subdomain): string
+    {
+        if ($this->useHashedNaming) {
+            return $this->generateHashedDatabaseName($subdomain);
+        }
+
+        return $this->generateDomainBasedDatabaseName($subdomain);
+    }
+
+    /**
+     * Generate a hash-based database name from domain
+     * 
+     * @param string $domain The domain/subdomain (e.g., "dentalclinic")
+     * @return string Hashed database name (e.g., tenant_a1b2c3d4e5f6g7h8_db)
+     */
+    public function generateHashedDatabaseName(string $domain): string
+    {
+        return TenantDatabaseHelper::generateHashedDatabaseName($domain);
+    }
+
+    /**
+     * Preview hashed database name (for UI display before creation)
+     * 
+     * @param string $domain The domain/subdomain
+     * @return array Preview data
+     */
+    public function previewHashedDatabaseName(string $domain): array
+    {
+        return TenantDatabaseHelper::previewHashedDatabaseName($domain);
+    }
+
+    /**
+     * Generate a domain-based database name (original method)
+     * 
+     * @param string $subdomain The subdomain (e.g., "dental", "smile-clinic")
+     * @return string The sanitized tenant ID (e.g., "dental")
+     */
+    public function generateDomainBasedDatabaseName(string $subdomain): string
     {
         // Step 1: Convert to lowercase
         $name = strtolower($subdomain);
@@ -71,7 +117,7 @@ class TenantDatabaseNamingService
             $name = 'tenant_' . $name;
         }
 
-        // Step 8: Suffix is applied by Stancl Tenancy via config, so we don't append it to the ID itself
+        // Step 8: Suffix is applied by Stancl Tenancy via config
 
         // Step 9: Truncate to max length
         $name = substr($name, 0, self::MAX_LENGTH);

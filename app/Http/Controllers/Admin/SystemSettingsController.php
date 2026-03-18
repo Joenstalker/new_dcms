@@ -45,6 +45,14 @@ class SystemSettingsController extends Controller
         // Clear config cache after updating settings
         $this->clearConfigCache();
 
+        \App\Models\AuditLog::record(
+            'settings_updated',
+            'Updated multiple system settings.',
+            'SystemSetting',
+            null,
+            ['setting_keys' => array_keys($settings)]
+        );
+
         return redirect()->back()->with('success', 'System settings updated successfully.');
     }
 
@@ -74,6 +82,14 @@ class SystemSettingsController extends Controller
 
         // Clear config cache after updating settings
         $this->clearConfigCache();
+
+        \App\Models\AuditLog::record(
+            'settings_updated',
+            "Updated {$updated} settings in group '{$group}'.",
+            'SystemSetting',
+            null,
+            ['group' => $group, 'count' => $updated]
+        );
 
         return redirect()->back()->with('success', "{$updated} settings updated successfully.");
     }
@@ -110,6 +126,14 @@ class SystemSettingsController extends Controller
 
         $this->clearConfigCache();
 
+        \App\Models\AuditLog::record(
+            'logo_updated',
+            'Updated platform logo.',
+            'SystemSetting',
+            'platform_logo',
+            ['filename' => $filename]
+        );
+
         return redirect()->back()->with('success', 'Logo uploaded successfully.');
     }
 
@@ -131,6 +155,13 @@ class SystemSettingsController extends Controller
         }
 
         $this->clearConfigCache();
+
+        \App\Models\AuditLog::record(
+            'logo_deleted',
+            'Deleted platform logo.',
+            'SystemSetting',
+            'platform_logo'
+        );
 
         return redirect()->back()->with('success', 'Logo deleted successfully.');
     }
@@ -156,6 +187,14 @@ class SystemSettingsController extends Controller
 
         // Clear config cache after updating settings
         $this->clearConfigCache();
+
+        \App\Models\AuditLog::record(
+            'setting_toggled',
+            "Toggled setting '{$validated['key']}' to " . ($setting->value === 'true' ? 'enabled' : 'disabled') . ".",
+            'SystemSetting',
+            $setting->id,
+            ['key' => $validated['key'], 'value' => $setting->value]
+        );
 
         return redirect()->back()->with('success', 'Setting toggled successfully.');
     }

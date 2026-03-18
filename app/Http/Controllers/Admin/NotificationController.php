@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\NotificationSetting;
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -169,6 +170,14 @@ class NotificationController extends Controller
             ]
             );
         }
+
+        AuditLog::record(
+            'notification_settings_updated',
+            'Updated admin notification settings.',
+            'NotificationSetting',
+            null,
+            ['setting_count' => count($validated['settings'])]
+        );
 
         return back()->with('success', 'Notification settings updated successfully.');
     }
