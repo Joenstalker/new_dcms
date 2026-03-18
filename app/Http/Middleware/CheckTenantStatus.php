@@ -19,16 +19,22 @@ class CheckTenantStatus
         $tenant = tenant();
 
         if ($tenant) {
-            $status = $tenant->subscription_status ?? 'active';
+            // Check tenant's main status field
+            $status = $tenant->status ?? 'active';
 
             if ($status === 'suspended') {
                 return response()->make(view('errors.suspended'), 403);
             }
-            
-            // If pending payment, we could redirect to a billing page, but for now we'll allow access 
-            // with maybe a banner, or block them too. Let's block them for now.
-            if ($status === 'pending_payment') {
-                return response()->make(view('errors.pending'), 403);
+
+            // If tenant status is pending, show pending approval page
+            // Allow access to the pending page so users can see their clinic is being reviewed
+            if ($status === 'pending') {
+                return response()->make(
+                    view('errors.pending', [
+                    'created_at' => $tenant->created_at ?? now()->toIso8601String()
+                ])->render(),
+                    200
+                );
             }
         }
 

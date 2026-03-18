@@ -19,37 +19,42 @@
         </p>
         
         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <h2 class="text-sm font-semibold text-yellow-800 mb-2">Verification Countdown</h2>
+            <h2 class="text-sm font-semibold text-yellow-800 mb-2">Verification Time Remaining</h2>
             <div id="countdown" class="text-2xl font-mono font-bold text-yellow-600 mb-2">
-                60:00
+                Loading...
             </div>
             <p class="text-xs text-yellow-700">
-                Please wait while we verify your application.
+                Maximum wait time is 1 hour. You'll be notified via email once approved.
             </p>
         </div>
 
         <script>
             function startCountdown() {
-                const createdAt = new Date("{{ $created_at }}").getTime();
-                const targetTime = createdAt + (60 * 60 * 1000); // 1 hour later
+                // Use the tenant creation timestamp
+                const createdAt = new Date('{{ $created_at }}').getTime();
+                const targetTime = createdAt + (60 * 60 * 1000); // 1 hour from creation
                 
-                const timer = setInterval(function() {
+                function updateTimer() {
                     const now = new Date().getTime();
                     const distance = targetTime - now;
                     
-                    if (distance < 0) {
-                        clearInterval(timer);
-                        document.getElementById("countdown").innerHTML = "Checking status...";
-                        window.location.reload();
+                    if (distance <= 0) {
+                        document.getElementById('countdown').innerHTML = '00:00';
+                        document.getElementById('countdown').classList.add('text-red-600');
+                        document.getElementById('countdown').classList.remove('text-yellow-600');
                         return;
                     }
                     
                     const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((distance % (1000 * 60)) / 1000);
                     
-                    document.getElementById("countdown").innerHTML = 
-                        (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
-                }, 1000);
+                    document.getElementById('countdown').innerHTML = 
+                        (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                }
+                
+                // Update immediately and every second
+                updateTimer();
+                setInterval(updateTimer, 1000);
             }
             startCountdown();
         </script>
@@ -79,13 +84,14 @@
             </ul>
         </div>
         
-        <p class="text-sm text-gray-500 mb-4">
-            Need help? Contact our support team.
-        </p>
-        
-        <a href="mailto:admin@dcms.com" class="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors w-full">
-            Contact Support
-        </a>
+        <div class="flex gap-3">
+            <button onclick="window.location.reload()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+                Check Status
+            </button>
+            <a href="mailto:admin@dcms.com" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold px-6 py-3 rounded-lg transition-colors">
+                Contact Support
+            </a>
+        </div>
     </div>
 </body>
 </html>

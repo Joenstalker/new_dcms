@@ -10,6 +10,7 @@ import Checkbox from '@/Components/Checkbox.vue';
 import RegistrationModal from '@/Components/RegistrationModal.vue';
 import PaymentModal from '@/Components/PaymentModal.vue';
 import ContactModal from '@/Components/ContactModal.vue';
+import Swal from 'sweetalert2';
 
 import logoImage from '../../../public/images/dcms-logo.png';
 import heroImage from '../../../public/images/dentist-model.png';
@@ -99,6 +100,22 @@ const isScrolled = ref(false);
 const handleScroll = () => {
     isScrolled.value = window.scrollY > 20;
 };
+
+// Check for payment success on page load
+onMounted(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment-success') === 'true') {
+        Swal.fire({
+            icon: 'success',
+            title: 'Payment Received!',
+            text: 'Your payment has been successfully processed. Your clinic is pending admin approval.',
+            confirmButtonColor: '#0d9488',
+            confirmButtonText: 'OK'
+        });
+        // Remove the query parameter from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+});
 
 // Intersection Observer for scroll animations
 const observeElements = () => {

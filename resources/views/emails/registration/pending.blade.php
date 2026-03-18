@@ -50,8 +50,9 @@
                         <tr>
                             <td class="py-2 text-gray-600 font-medium w-32">URL:</td>
                             <td class="py-2">
-                                <a href="{{ config('app.url') }}/tenant/{{ $registration->subdomain }}" class="text-teal-600 hover:text-teal-800 underline">
-                                    {{ config('app.url') }}/tenant/{{ $registration->subdomain }}
+                                <?php $appUrl = config('app.url'); $parsed = parse_url($appUrl); $host = $parsed['host'] ?? str_replace(['http://', 'https://'], '', $appUrl); $port = isset($parsed['port']) ? ':' . $parsed['port'] : ''; $fullUrl = 'http://' . $registration->subdomain . '.' . $host . $port; ?>
+                                <a href="<?php echo $fullUrl; ?>" class="text-teal-600 hover:text-teal-800 underline">
+                                    <?php echo $fullUrl; ?>
                                 </a>
                             </td>
                         </tr>

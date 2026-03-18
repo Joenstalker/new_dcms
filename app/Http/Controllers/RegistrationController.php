@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\SubscriptionPlan;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Mail\RegistrationPending;
 use App\Models\PendingRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Stancl\Tenancy\Database\Models\Domain;
@@ -402,6 +404,9 @@ class RegistrationController extends Controller
                 ],
                     'both'
                 );
+
+                // Send pending registration email to client
+                Mail::to($pendingRegistration->email)->send(new RegistrationPending($pendingRegistration));
 
                 // Show success page - payment received and tenant created, awaiting review
                 return view('emails.registration.payment-received', [

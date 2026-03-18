@@ -194,7 +194,11 @@ class PendingRegistrationController extends Controller
 
             // Send approval email
             try {
-                $tenantUrl = config('app.url') . '/tenant/' . $pendingRegistration->subdomain;
+                $appUrl = config('app.url');
+                $parsed = parse_url($appUrl);
+                $host = $parsed['host'] ?? str_replace(['http://', 'https://'], '', $appUrl);
+                $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
+                $tenantUrl = 'http://' . $pendingRegistration->subdomain . '.' . $host . $port;
                 Mail::to($pendingRegistration->email)->send(new TenantApproved($pendingRegistration, $tenantUrl));
             }
             catch (\Exception $e) {
