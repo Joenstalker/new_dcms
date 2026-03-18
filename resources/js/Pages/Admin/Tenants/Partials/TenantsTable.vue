@@ -8,10 +8,14 @@ defineProps({
     },
 });
 
-const emit = defineEmits(['manage']);
+const emit = defineEmits(['manage', 'review']);
 
 const openManageModal = (tenant) => {
     emit('manage', tenant);
+};
+
+const openReviewModal = (tenant) => {
+    emit('review', tenant);
 };
 </script>
 
@@ -68,7 +72,10 @@ const openManageModal = (tenant) => {
 
                         <!-- Status Column -->
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span v-if="(tenant.subscription_status || 'active') === 'active'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span v-if="tenant.status === 'pending'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                Pending Review
+                            </span>
+                            <span v-else-if="(tenant.subscription_status || 'active') === 'active'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 Active
                             </span>
                             <span v-else-if="tenant.subscription_status === 'suspended'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -94,7 +101,10 @@ const openManageModal = (tenant) => {
 
                         <!-- Action Column -->
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button @click="openManageModal(tenant)" class="text-teal-600 hover:text-teal-900 bg-teal-50 px-3 py-1.5 rounded-md hover:bg-teal-100 transition-colors">
+                            <button v-if="tenant.status === 'pending'" @click="openReviewModal(tenant)" class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 px-3 py-1.5 rounded-md hover:bg-yellow-100 transition-colors">
+                                Review
+                            </button>
+                            <button v-else @click="openManageModal(tenant)" class="text-teal-600 hover:text-teal-900 bg-teal-50 px-3 py-1.5 rounded-md hover:bg-teal-100 transition-colors">
                                 Manage
                             </button>
                         </td>

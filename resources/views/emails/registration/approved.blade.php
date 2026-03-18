@@ -17,7 +17,7 @@
             <!-- Content -->
             <div class="p-6">
                 <p class="text-gray-700 mb-6">
-                    Dear <strong>{{ $registration->first_name }}</strong>,
+                    Dear <strong>{{ is_array($registration->first_name) ? $registration->first_name['first_name'] ?? '' : ($registration->first_name ?? '') }}</strong>,
                 </p>
                 
                 <p class="text-gray-700 mb-6">
@@ -55,7 +55,7 @@
                         </tr>
                         <tr>
                             <td class="py-2 text-gray-600 font-medium">Username:</td>
-                            <td class="py-2 text-gray-900 font-semibold">{{ $registration->first_name }} {{ $registration->last_name }}</td>
+                            <td class="py-2 text-gray-900 font-semibold">{{ is_array($registration->first_name) ? ($registration->first_name['first_name'] ?? '') . ' ' . ($registration->first_name['last_name'] ?? '') : ($registration->owner_name ?? ($registration->first_name . ' ' . $registration->last_name)) }}</td>
                         </tr>
                         <tr>
                             <td class="py-2 text-gray-600 font-medium">Email:</td>
@@ -63,7 +63,7 @@
                         </tr>
                         <tr>
                             <td class="py-2 text-gray-600 font-medium">Password:</td>
-                            <td class="py-2 text-gray-900 font-mono">{{ $registration->plain_password ?? 'As set during registration' }}</td>
+                            <td class="py-2 text-gray-900 font-mono">{{ is_array($registration->password) ? '' : ($registration->password ?? 'As set during registration') }}</td>
                         </tr>
                     </table>
                 </div>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SubscriptionPlan;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\PendingRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -131,11 +132,12 @@ class RegistrationController extends Controller
 
     /**
      * Create checkout session for Stripe payment
+     * First saves to PendingRegistration, then creates Stripe session
      */
     public function createCheckoutSession(Request $request)
     {
         $validated = $request->validate([
-            'clinic_name' => 'required|string|max:255',
+            'clinic_name' => 'required|string|max:255|min:3',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'admin_name' => 'required|string|max:255',
@@ -150,6 +152,14 @@ class RegistrationController extends Controller
             'plan_id' => 'required|exists:subscription_plans,id',
             'billing_cycle' => 'required|in:monthly,yearly',
         ]);
+
+        // Check if subdomain is already registered
+        if (Domain::where('domain', strtolower($validated['subdomain']))->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This subdomain is already taken.',
+            ], 400);
+        }
 
         // Get the selected plan
         $plan = SubscriptionPlan::findOrFail($validated['plan_id']);
@@ -172,10 +182,32 @@ class RegistrationController extends Controller
         }
 
         try {
+            // First, create a PendingRegistration record
+            $pendingRegistration = PendingRegistration::create([
+                'subdomain' => strtolower($validated['subdomain']),
+                'clinic_name' => $validated['clinic_name'],
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'street' => $validated['street'],
+                'barangay' => $validated['barangay'],
+                'city' => $validated['city'],
+                'province' => $validated['province'],
+                'password' => $validated['password'],
+                'subscription_plan_id' => $validated['plan_id'],
+                'billing_cycle' => $validated['billing_cycle'],
+                'amount_paid' => $price,
+                'status' => PendingRegistration::STATUS_PENDING,
+                'verification_token' => PendingRegistration::generateToken(),
+                'expires_at' => now()->addDays(7), // Expire after 7 days if not approved
+            ]);
+
             $stripe = new StripeClient(config('services.stripe.secret'));
 
             // Create a metadata object to store registration data
             $metadata = [
+                'pending_registration_id' => $pendingRegistration->id,
                 'clinic_name' => $validated['clinic_name'],
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
@@ -208,6 +240,11 @@ class RegistrationController extends Controller
                 'metadata' => $metadata,
             ]);
 
+            // Update PendingRegistration with Stripe session ID
+            $pendingRegistration->update([
+                'stripe_session_id' => $session->id,
+            ]);
+
             return response()->json([
                 'success' => true,
                 'url' => $session->url,
@@ -224,7 +261,8 @@ class RegistrationController extends Controller
     }
 
     /**
-     * Handle successful payment - create tenant and user
+     * Handle successful payment - create tenant with pending status
+     * Tenant will appear in Tenants table with 'pending' status for admin review
      */
     public function handleSuccess(Request $request)
     {
@@ -251,163 +289,134 @@ class RegistrationController extends Controller
             }
 
             $metadata = $session->metadata;
+            $pendingRegistrationId = $metadata->pending_registration_id ?? null;
 
-            // Check if already processed
-            if (isset($metadata->processed) && $metadata->processed) {
-                // Already processed, redirect to their tenant dashboard
-                $subdomain = $metadata->subdomain;
-                $appUrl = config('app.url');
-                $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?? 'http';
-                $host = parse_url($appUrl, PHP_URL_HOST) ?? 'localhost';
-                $port = parse_url($appUrl, PHP_URL_PORT) ? ':' . parse_url($appUrl, PHP_URL_PORT) : '';
-                return redirect()->away("{$scheme}://{$subdomain}.{$host}{$port}/dashboard");
+            if (!$pendingRegistrationId) {
+                Log::error('No pending_registration_id found in Stripe metadata');
+                return view('errors.registration-failed', [
+                    'code' => '500',
+                    'title' => 'Registration Error',
+                    'message' => 'Registration record not found. Please contact support.'
+                ]);
             }
 
-            // Create tenant and user after successful payment
+            // Find the pending registration
+            $pendingRegistration = PendingRegistration::find($pendingRegistrationId);
+
+            if (!$pendingRegistration) {
+                Log::error('Pending registration not found: ' . $pendingRegistrationId);
+                return view('errors.registration-failed', [
+                    'code' => '404',
+                    'title' => 'Registration Not Found',
+                    'message' => 'Your registration record could not be found.'
+                ]);
+            }
+
+            // Check if already processed (tenant already created)
+            if ($pendingRegistration->status !== PendingRegistration::STATUS_PENDING) {
+                // Already processed, show appropriate message
+                if ($pendingRegistration->status === PendingRegistration::STATUS_APPROVED) {
+                    return redirect()->to('/?already-approved=true');
+                }
+                return redirect()->to('/?registration-status=' . $pendingRegistration->status);
+            }
+
+            // Create tenant immediately with 'pending' status
             DB::beginTransaction();
 
             try {
-                $tenantId = strtolower(trim($metadata->subdomain));
+                $tenantId = strtolower(trim($pendingRegistration->subdomain));
 
                 // Create tenant
                 $tenant = Tenant::create([
                     'id' => $tenantId,
-                    'name' => $metadata->clinic_name,
-                    'owner_name' => $metadata->admin_name,
-                    'email' => $metadata->email,
-                    'phone' => $metadata->phone,
-                    'street' => $metadata->street,
-                    'barangay' => $metadata->barangay,
-                    'city' => $metadata->city,
-                    'province' => $metadata->province,
-                    'status' => 'pending', // Set to pending for verification
+                    'name' => $pendingRegistration->clinic_name,
+                    'owner_name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
+                    'email' => $pendingRegistration->email,
+                    'phone' => $pendingRegistration->phone,
+                    'street' => $pendingRegistration->street,
+                    'barangay' => $pendingRegistration->barangay,
+                    'city' => $pendingRegistration->city,
+                    'province' => $pendingRegistration->province,
+                    'status' => 'pending', // Set to pending for admin review
                 ]);
 
                 // Create domain
                 $domain = $tenant->domains()->create([
-                    'domain' => $metadata->subdomain,
+                    'domain' => $pendingRegistration->subdomain,
                 ]);
 
                 // Update tenant with domain_id
                 $tenant->update(['domain_id' => $domain->id]);
 
-                // Switch to tenant database
+                // Initialize tenancy to create database and user
                 tenancy()->initialize($tenant);
 
-                // Create admin user
-                $user = User::create([
-                    'name' => $metadata->admin_name,
-                    'email' => $metadata->email,
-                    'phone' => $metadata->phone,
-                    'address' => implode(', ', array_filter([
-                        $metadata->street,
-                        $metadata->barangay,
-                        $metadata->city,
-                        $metadata->province
-                    ])),
-                    'password' => Hash::make($metadata->password),
+                // Create admin user in tenant database
+                $user = \App\Models\User::create([
+                    'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
+                    'email' => $pendingRegistration->email,
+                    'password' => Hash::make($pendingRegistration->password),
                 ]);
 
-                // ✨ Assign Owner role to the new admin
+                // Assign Owner role
                 $user->assignRole('Owner');
 
-                // Create subscription record
+                // End tenancy
+                tenancy()->end();
+
+                // Create subscription record (but tenant is still pending)
                 $subscription = $tenant->subscriptions()->create([
-                    'subscription_plan_id' => $metadata->plan_id,
-                    'stripe_id' => $session->subscription,
+                    'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
+                    'stripe_id' => $session->subscription ?? null,
                     'stripe_status' => 'active',
                     'stripe_price' => $session->amount_total / 100,
-                    'billing_cycle' => $metadata->billing_cycle,
+                    'billing_cycle' => $pendingRegistration->billing_cycle,
                     'payment_method' => 'card',
                     'payment_status' => 'paid',
                 ]);
 
-                DB::commit();
-
-                // Mark as processed in Stripe metadata
-                $stripe->checkout->sessions->update($sessionId, [
-                    'metadata' => array_merge((array)$metadata, ['processed' => true]),
+                // Update pending registration status to approved
+                $pendingRegistration->update([
+                    'stripe_session_id' => $session->id,
+                    'stripe_payment_intent_id' => $session->payment_intent ?? null,
+                    'amount_paid' => $session->amount_total / 100,
+                    'status' => PendingRegistration::STATUS_APPROVED,
+                    'approved_at' => now(),
                 ]);
 
-                // Send notification to admins about new tenant
+                DB::commit();
+
+                // Notify admins about new pending tenant awaiting review
                 $notificationService = app(\App\Services\NotificationService::class);
                 $notificationService->notifyAdmins(
-                    'new_tenant',
-                    'New Tenant Registration',
-                    "A new clinic '{$metadata->clinic_name}' has registered with subdomain '{$metadata->subdomain}'",
-                    [
-                        'tenant_id' => $tenantId,
-                        'clinic_name' => $metadata->clinic_name,
-                        'subdomain' => $metadata->subdomain,
-                        'admin_email' => $metadata->email,
-                    ],
+                    'new_pending_tenant',
+                    'New Tenant Pending Review',
+                    "A new clinic '{$pendingRegistration->clinic_name}' has registered and payment received. Please review.",
+                [
+                    'tenant_id' => $tenantId,
+                    'clinic_name' => $pendingRegistration->clinic_name,
+                    'subdomain' => $pendingRegistration->subdomain,
+                    'admin_email' => $pendingRegistration->email,
+                    'amount_paid' => $pendingRegistration->amount_paid,
+                ],
                     'both'
                 );
 
-                // Create mail instance for the "pending" email
-                $registration = (object)[
-                    'first_name' => $metadata->first_name,
-                    'last_name' => $metadata->last_name,
-                    'clinic_name' => $metadata->clinic_name,
-                    'email' => $metadata->email,
-                    'subdomain' => $metadata->subdomain,
-                    'plain_password' => $metadata->password,
-                ];
-
-                // Send pending email
-                try {
-                    \Illuminate\Support\Facades\Mail::to($metadata->email)->send(
-                        new \App\Mail\RegistrationPending($registration)
-                    );
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::warning('Failed to send pending email: ' . $e->getMessage());
-                }
-
-                // Redirect to tenant via fallback route (works without wildcard DNS)
-                $subdomain = $metadata->subdomain;
-
-                // Build tenant URL dynamically based on APP_URL
-                // This works with lvh.me, localhost, or production domains
-                $appUrl = config('app.url'); // e.g. http://lvh.me:8080 or https://dcms.com
-                $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?? 'http';
-                $host = parse_url($appUrl, PHP_URL_HOST) ?? 'localhost';
-                $port = parse_url($appUrl, PHP_URL_PORT) ? ':' . parse_url($appUrl, PHP_URL_PORT) : '';
-
-                // Check if this is a local development environment (lvh.me, localhost)
-                $isLocal = in_array($host, ['lvh.me', 'localhost', '127.0.0.1']);
-
-                if ($isLocal) {
-                    // For local development, redirect to tenant subdomain
-                    // Note: This requires wildcard DNS or /etc/hosts entries
-                    $tenantUrl = "{$scheme}://{$subdomain}.{$host}{$port}/dashboard";
-
-                // If wildcard DNS is not configured, fallback to the tenant access route
-                // This works without wildcard DNS by using a path-based approach
-                // return redirect("/tenant/{$subdomain}");
-                }
-                else {
-                    // For production, redirect to tenant subdomain
-                    $tenantUrl = "{$scheme}://{$subdomain}.{$host}{$port}/dashboard";
-                }
-
-                // Store tenant info in session for cross-subdomain session sharing
-                // This helps if session cookies aren't shared across subdomains
-                session(['tenant_id' => $tenant->id, 'tenant_name' => $tenant->name]);
-
-                // Use redirect()->away() for cross-domain redirects
-                return redirect()->away($tenantUrl);
-
+                // Show success page - payment received and tenant created, awaiting review
+                return view('emails.registration.payment-received', [
+                    'registration' => $pendingRegistration,
+                ]);
             }
             catch (\Exception $e) {
                 DB::rollBack();
                 Log::error('Tenant creation failed: ' . $e->getMessage());
                 return view('errors.registration-failed', [
                     'code' => '500',
-                    'title' => 'Tenant Creation Failed',
-                    'message' => 'Failed to build your clinic database. Please contact support.'
+                    'title' => 'Registration Failed',
+                    'message' => 'Failed to create your clinic. Please contact support.'
                 ]);
             }
-
         }
         catch (\Exception $e) {
             Log::error('Payment success handling failed: ' . $e->getMessage());

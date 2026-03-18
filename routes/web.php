@@ -80,12 +80,28 @@ $registerCentralRoutes = function ($withNames = false) {
             $tenantsU = Route::put('/tenants/{tenant}/status', [\App\Http\Controllers\Admin\TenantController::class , 'updateStatus']);
             $tenantsUpd = Route::put('/tenants/{tenant}', [\App\Http\Controllers\Admin\TenantController::class , 'update']);
             $tenantsD = Route::delete('/tenants/{tenant}', [\App\Http\Controllers\Admin\TenantController::class , 'destroy']);
+            $tenantsApprove = Route::post('/tenants/{tenant}/approve', [\App\Http\Controllers\Admin\TenantController::class , 'approveTenant']);
+            $tenantsReject = Route::post('/tenants/{tenant}/reject', [\App\Http\Controllers\Admin\TenantController::class , 'rejectTenant']);
             if ($withNames) {
                 $tenantsI->name('tenants.index');
                 $tenantsS->name('tenants.show');
                 $tenantsU->name('tenants.updateStatus');
                 $tenantsUpd->name('tenants.update');
                 $tenantsD->name('tenants.destroy');
+                $tenantsApprove->name('tenants.approve');
+                $tenantsReject->name('tenants.reject');
+            }
+
+            // Pending Registrations Management
+            $pendingI = Route::get('/pending-registrations', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'index']);
+            $pendingS = Route::get('/pending-registrations/{pendingRegistration}', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'show']);
+            $pendingA = Route::post('/pending-registrations/{pendingRegistration}/approve', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'approve']);
+            $pendingR = Route::post('/pending-registrations/{pendingRegistration}/reject', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'reject']);
+            if ($withNames) {
+                $pendingI->name('pending-registrations.index');
+                $pendingS->name('pending-registrations.show');
+                $pendingA->name('pending-registrations.approve');
+                $pendingR->name('pending-registrations.reject');
             }
 
             // Tenant API Routes (for database name preview)

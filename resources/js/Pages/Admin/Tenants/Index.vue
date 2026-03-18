@@ -6,6 +6,7 @@ import debounce from 'lodash/debounce';
 import TenantsTable from './Partials/TenantsTable.vue';
 import CreateTenantModal from './Partials/CreateTenantModal.vue';
 import ManageTenantModal from './Partials/ManageTenantModal.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     tenants: Object,
@@ -19,16 +20,36 @@ const statusFilter = ref(props.filters.status || '');
 // Modal state
 const showCreateModal = ref(false);
 const showManageModal = ref(false);
+const showReviewModal = ref(false);
 const selectedTenant = ref(null);
 const newTenantName = ref('');
 const newTenantDomain = ref('');
 const databasePreview = ref(null);
 const isLoadingPreview = ref(false);
 
+// Rejection form
+const rejectForm = ref({
+    rejection_message: '',
+});
+
 // Open manage modal
 const openManageModal = (tenant) => {
     selectedTenant.value = tenant;
     showManageModal.value = true;
+};
+
+// Open review modal
+const openReviewModal = (tenant) => {
+    selectedTenant.value = tenant;
+    showReviewModal.value = true;
+    rejectForm.value.rejection_message = '';
+};
+
+// Close review modal
+const closeReviewModal = () => {
+    showReviewModal.value = false;
+    selectedTenant.value = null;
+    rejectForm.value.rejection_message = '';
 };
 
 // Close manage modal
@@ -95,6 +116,82 @@ const closeCreateModal = () => {
     newTenantName.value = '';
     newTenantDomain.value = '';
     databasePreview.value = null;
+};
+
+// Approve pending tenant
+const approveTenant = () => {
+    Swal.fire({
+        title: 'Approve Tenant',
+        text: `Are you sure you want to approve "${selectedTenant.value.name}"? The user will be notified and can access their clinic.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0d9488',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, Approve',
+        cancelButtonText: 'Cancel',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            axios.post(`/admin/tenants/${selectedTenant.value.id}/approve`)
+                .then((response) => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Tenant Approved',
+                        text: 'The user has been notified.',
+                        confirmButtonColor: '#0d9488',
+                    }).then(() => {
+                        closeReviewModal();
+                        window.location.reload();
+                    });
+                })
+                .catch((error) => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.response?.data?.message || 'Failed to approve tenant.',
+                        confirmButtonColor: '#0d9488',
+                    });
+                });
+        }
+    });
+};
+
+// Reject pending tenant
+const submitReject = () => {
+    Swal.fire({
+        title: 'Reject Tenant',
+        text: `Are you sure you want to reject "${selectedTenant.value.name}"? The user will be notified.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, Reject',
+        cancelButtonText: 'Cancel',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            axios.post(`/admin/tenants/${selectedTenant.value.id}/reject`, {
+                rejection_message: rejectForm.value.rejection_message,
+            })
+                .then((response) => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Tenant Rejected',
+                        text: 'The user has been notified.',
+                        confirmButtonColor: '#0d9488',
+                    }).then(() => {
+                        closeReviewModal();
+                        window.location.reload();
+                    });
+                })
+                .catch((error) => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.response?.data?.message || 'Failed to reject tenant.',
+                        confirmButtonColor: '#0d9488',
+                    });
+                });
+        }
+    });
 };
 
 const createTenant = async () => {
@@ -202,6 +299,7 @@ const isFormValid = computed(() => {
             <TenantsTable 
                 :tenants="tenants" 
                 @manage="openManageModal"
+                @review="openReviewModal"
             />
         </div>
 
@@ -228,5 +326,109 @@ const isFormValid = computed(() => {
             @update="updateTenant"
             @delete="deleteTenant"
         />
+
+        <!-- Review Pending Tenant Modal -->
+        <div v-if="showReviewModal" class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="closeReviewModal" />
+                
+                <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                    Review Pending Tenant
+                                </h3>
+                                
+                                <div class="mt-4 space-y-6">
+                                    <!-- Clinic Information -->
+                                    <div class="bg-gray-50 rounded-lg p-4">
+                                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Clinic Information</h4>
+                                        <div class="grid grid-cols-2 gap-4 text-sm">
+                                            <div>
+                                                <span class="text-gray-500">Clinic Name:</span>
+                                                <span class="ml-2 font-medium">{{ selectedTenant?.name }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500">Owner Name:</span>
+                                                <span class="ml-2 font-medium">{{ selectedTenant?.owner_name }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500">Status:</span>
+                                                <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                    Pending Review
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500">Database:</span>
+                                                <span class="ml-2 font-mono text-xs">{{ selectedTenant?.database_name }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Subscription Details -->
+                                    <div class="bg-gray-50 rounded-lg p-4">
+                                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Subscription Details</h4>
+                                        <div class="grid grid-cols-2 gap-4 text-sm">
+                                            <div>
+                                                <span class="text-gray-500">Plan:</span>
+                                                <span class="ml-2 font-medium">{{ selectedTenant?.plan || 'N/A' }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500">Billing Cycle:</span>
+                                                <span class="ml-2 font-medium capitalize">{{ selectedTenant?.billing_cycle || 'N/A' }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500">Amount Paid:</span>
+                                                <span class="ml-2 font-medium text-green-600">₱{{ Number(selectedTenant?.amount_paid || 0).toLocaleString() }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500">Payment Status:</span>
+                                                <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                    {{ selectedTenant?.payment_status || 'Paid' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Rejection Reason -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                                            Rejection Reason (optional)
+                                        </label>
+                                        <textarea
+                                            v-model="rejectForm.rejection_message"
+                                            rows="3"
+                                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500"
+                                            placeholder="Enter reason for rejection..."
+                                        ></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button
+                            @click="approveTenant"
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
+                        >
+                            Approve
+                        </button>
+                        <button
+                            @click="submitReject"
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                        >
+                            Reject
+                        </button>
+                        <button
+                            @click="closeReviewModal"
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-auto sm:w-auto sm:text-sm"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </AdminLayout>
 </template>
