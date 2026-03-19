@@ -118,6 +118,7 @@ const menuCategories = computed(() => {
                         { name: 'Operating Hours', route: 'settings.index', permissions: ['manage settings'] },
                         { name: 'QR Code Setup', route: 'settings.index', permissions: ['manage settings'] },
                         { name: 'Your Features', route: 'settings.features', permissions: ['manage settings'] },
+                        { name: 'Updates', route: 'settings.updates', permissions: ['manage settings'], icon: 'refresh' },
                     ]
                 },
                 { name: 'Subscription', route: dashboardRoute.value, icon: 'diamond', permissions: ['manage subscription'] },

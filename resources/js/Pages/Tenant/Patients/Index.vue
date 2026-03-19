@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 
 defineProps({
     patients: Array
@@ -49,8 +49,10 @@ defineProps({
                                 <div class="text-sm text-gray-900">{{ patient.phone || 'N/A' }}</div>
                                 <div class="text-sm text-gray-500">{{ patient.email || '' }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                                 <Link :href="`/patients/${patient.id}`" class="text-blue-600 hover:text-blue-900">View</Link>
+                                <Link :href="`/patients/${patient.id}/edit`" class="text-yellow-600 hover:text-yellow-900">Edit</Link>
+                                <Link :href="`/patients/${patient.id}/delete`" class="text-red-600 hover:text-red-900">Delete</Link>
                             </td>
                         </tr>
                         <tr v-if="patients.length === 0">

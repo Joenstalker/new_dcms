@@ -42,6 +42,16 @@
                         <option value="Other">Other</option>
                     </select>
                 </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Current Balance (₱)</label>
+                    <input type="number" step="0.01" v-model="form.balance" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Last Visit Time</label>
+                    <input type="datetime-local" v-model="form.last_visit_time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
             </div>
 
             <div>
@@ -50,8 +60,13 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700">Medical History / Notes</label>
-                <textarea v-model="form.medical_history" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                <label class="block text-sm font-medium text-gray-700">Medical History</label>
+                <textarea v-model="form.medical_history" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Existing medical conditions, allergies, etc."></textarea>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Operation History</label>
+                <textarea v-model="form.operation_history" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Past dental or medical operations..."></textarea>
             </div>
 
             <div class="flex justify-end gap-3 mt-6">
@@ -78,6 +93,9 @@ const form = useForm({
     gender: '',
     address: '',
     medical_history: '',
+    operation_history: '',
+    balance: 0,
+    last_visit_time: '',
 });
 
 const submit = () => {

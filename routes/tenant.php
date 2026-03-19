@@ -16,21 +16,20 @@ Route::middleware([
     PreventAccessFromCentralDomains::class ,
     \App\Http\Middleware\CheckTenantStatus::class ,
 ])->group(function () {
-    Route::get('/', function () {
-            return redirect('/login');
-        }
-        );
+    Route::get('/', [\App\Http\Controllers\Tenant\LandingController::class , 'index'])->name('tenant.landing');
+    Route::post('/concerns', [\App\Http\Controllers\Tenant\LandingController::class , 'submitConcern'])->name('tenant.concern.store');
+    Route::patch('/concerns/{concern}', [\App\Http\Controllers\Tenant\ConcernController::class , 'update'])->name('tenant.concern.update');
 
-        // Public QR Booking Route (no auth required — patients scan QR code)
-        Route::get('/book', [\App\Http\Controllers\BookingController::class , 'create'])->name('tenant.book.create');
-        Route::post('/book', [\App\Http\Controllers\BookingController::class , 'store'])->name('tenant.book.store');
+    // Public QR Booking Route (no auth required — patients scan QR code)
+    Route::get('/book', [\App\Http\Controllers\BookingController::class , 'create'])->name('tenant.book.create');
+    Route::post('/book', [\App\Http\Controllers\BookingController::class , 'store'])->name('tenant.book.store');
 
-        require __DIR__ . '/auth.php';
+    require __DIR__ . '/auth.php';
 
-        // Authenticated Tenant Routes
-        // check.subscription (no feature arg) ensures an active subscription exists
-        // and shares plan info with Inertia on every authenticated request.
-        Route::middleware(['auth', 'check.subscription'])->group(function () {
+    // Authenticated Tenant Routes
+    // check.subscription (no feature arg) ensures an active subscription exists
+    // and shares plan info with Inertia on every authenticated request.
+    Route::middleware(['auth', 'check.subscription'])->group(function () {
             Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class , 'index'])->name('tenant.dashboard');
 
             // Patient management — enforces max_patients limit on create
@@ -40,6 +39,8 @@ Route::middleware([
                 ->middleware('check.subscription:max_patients')
                 ->name('patients.store');
             Route::get('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'show'])->name('patients.show');
+            Route::get('patients/{patient}/edit', [\App\Http\Controllers\PatientController::class , 'edit'])->name('patients.edit');
+            Route::get('patients/{patient}/delete', [\App\Http\Controllers\PatientController::class , 'delete'])->name('patients.delete');
             Route::put('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'update'])->name('patients.update');
             Route::delete('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'destroy'])->name('patients.destroy');
 
@@ -49,6 +50,7 @@ Route::middleware([
                 ->middleware('check.subscription:max_appointments')
                 ->name('appointments.store');
             Route::put('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class , 'update'])->name('appointments.update');
+            Route::post('appointments/{appointment}/approve', [\App\Http\Controllers\AppointmentController::class , 'approve'])->name('appointments.approve');
 
             // Treatment records
             Route::get('treatments', [\App\Http\Controllers\TreatmentController::class , 'index'])->name('treatments.index');
@@ -79,6 +81,14 @@ Route::middleware([
                     // Settings
                     Route::get('settings', [\App\Http\Controllers\SettingsController::class , 'index'])->name('settings.index');
                     Route::post('settings', [\App\Http\Controllers\SettingsController::class , 'update'])->name('settings.update');
+
+                    // Settings - Features
+                    Route::get('settings/features', [\App\Http\Controllers\SettingsController::class , 'features'])->name('settings.features');
+
+                    // Settings - Updates (OTA)
+                    Route::get('settings/updates', [\App\Http\Controllers\SettingsController::class , 'updates'])->name('settings.updates');
+                    Route::post('settings/updates/apply', [\App\Http\Controllers\SettingsController::class , 'applyUpdates'])->name('settings.updates.apply');
+                    Route::get('settings/updates/check', [\App\Http\Controllers\SettingsController::class , 'checkUpdates'])->name('settings.updates.check');
 
                     // Stripe Customer Portal — self-service billing (upgrade, downgrade, cancel, update card)
                     Route::get('billing-portal', [\App\Http\Controllers\BillingPortalController::class , 'redirect'])->name('billing.portal');

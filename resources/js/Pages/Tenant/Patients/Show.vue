@@ -5,7 +5,15 @@
                 <h2 class="text-3xl font-bold text-gray-800">{{ patient.first_name }} {{ patient.last_name }}</h2>
                 <p class="text-gray-500 mt-1">Patient ID: #{{ patient.id }}</p>
             </div>
-            <Link href="/patients" class="text-blue-600 hover:underline">← Back to Directory</Link>
+            <div class="flex items-center gap-4">
+                <Link :href="`/patients/${patient.id}/edit`" class="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition text-sm font-medium">
+                    Edit Profile
+                </Link>
+                <Link :href="`/patients/${patient.id}/delete`" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition text-sm font-medium">
+                    Delete Patient
+                </Link>
+                <Link href="/patients" class="text-blue-600 hover:underline text-sm ml-4">← Back</Link>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -30,12 +38,24 @@
                         <dd class="text-gray-900">{{ patient.gender || 'N/A' }}</dd>
                     </div>
                     <div>
-                        <dt class="text-gray-500 font-medium">Address</dt>
-                        <dd class="text-gray-900">{{ patient.address || 'N/A' }}</dd>
+                        <dt class="text-gray-500 font-medium">Last Visit</dt>
+                        <dd class="text-gray-900">{{ patient.last_visit_time ? new Date(patient.last_visit_time).toLocaleString() : 'N/A' }}</dd>
                     </div>
                     <div>
+                        <dt class="text-gray-500 font-medium">Balance</dt>
+                        <dd class="text-lg font-bold text-red-600">₱{{ patient.balance || '0.00' }}</dd>
+                    </div>
+                    <div class="mt-4">
                         <dt class="text-gray-500 font-medium">Medical History</dt>
-                        <dd class="text-gray-900 mt-1 bg-gray-50 p-2 rounded text-xs">{{ patient.medical_history || 'None recorded.' }}</dd>
+                        <dd class="text-gray-900 mt-1 bg-blue-50 p-2 rounded text-xs leading-relaxed border border-blue-100">
+                            {{ patient.medical_history || 'None recorded.' }}
+                        </dd>
+                    </div>
+                    <div class="mt-4">
+                        <dt class="text-gray-500 font-medium">Operation History</dt>
+                        <dd class="text-gray-900 mt-1 bg-gray-50 p-2 rounded text-xs leading-relaxed border border-gray-200">
+                            {{ patient.operation_history || 'No past operations recorded.' }}
+                        </dd>
                     </div>
                 </dl>
             </div>

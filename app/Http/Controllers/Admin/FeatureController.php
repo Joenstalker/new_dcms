@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Feature;
 use App\Models\SubscriptionPlan;
+use App\Services\FeatureOTAUpdateService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -46,23 +47,45 @@ class FeatureController extends Controller
             'options' => 'nullable|array',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
+            'implementation_status' => 'nullable|in:coming_soon,in_development,active,deprecated',
+            'code_identifier' => 'nullable|string|max:255|regex:/^[a-z0-9-]+$/',
         ]);
+
+        // Set default implementation status
+        if (empty($validated['implementation_status'])) {
+            $validated['implementation_status'] = Feature::STATUS_COMING_SOON;
+        }
+
+        // Set announced_at when creating a new feature
+        $validated['announced_at'] = now();
 
         $feature = Feature::create($validated);
 
         // Automatically assign this feature to all subscription plans with default value
         $this->assignFeatureToAllPlans($feature);
 
+        // Optionally notify tenants about the new feature
+        $notifyTenants = $request->boolean('notify_tenants', false);
+        if ($notifyTenants) {
+            $otaService = app(FeatureOTAUpdateService::class);
+            $count = $otaService->createUpdateRecordsForEligibleTenants($feature);
+        }
+
         \App\Models\AuditLog::record(
             'feature_created',
             "Created system feature '{$feature->name}'.",
             'Feature',
             $feature->id,
-            ['key' => $feature->key, 'type' => $feature->type]
+        ['key' => $feature->key, 'type' => $feature->type, 'implementation_status' => $feature->implementation_status]
         );
 
+        $message = 'Feature created and assigned to all plans.';
+        if ($notifyTenants && isset($count)) {
+            $message .= " Notified {$count} tenants.";
+        }
+
         return redirect()->route('admin.features.index')
-            ->with('success', 'Feature created and assigned to all plans.');
+            ->with('success', $message);
     }
 
     /**
@@ -105,20 +128,56 @@ class FeatureController extends Controller
             'options' => 'nullable|array',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
+            'implementation_status' => 'nullable|in:coming_soon,in_development,active,deprecated',
+            'code_identifier' => 'nullable|string|max:255|regex:/^[a-z0-9-]+$/',
         ]);
 
+        $oldStatus = $feature->implementation_status;
         $feature->update($validated);
+
+        // If status changed to active, update released_at
+        if (isset($validated['implementation_status']) &&
+        $validated['implementation_status'] === Feature::STATUS_ACTIVE &&
+        $oldStatus !== Feature::STATUS_ACTIVE) {
+            $feature->update(['released_at' => now()]);
+        }
+
+        // Notify tenants when status changes to active
+        $notifyOnStatusChange = $request->boolean('notify_on_status_change', false);
+        if ($notifyOnStatusChange && $feature->implementation_status === Feature::STATUS_ACTIVE) {
+            $otaService = app(FeatureOTAUpdateService::class);
+            $otaService->createUpdateRecordsForEligibleTenants($feature);
+        }
 
         \App\Models\AuditLog::record(
             'feature_updated',
             "Updated system feature '{$feature->name}'.",
             'Feature',
             $feature->id,
-            ['changes' => $validated]
+        ['changes' => $validated, 'old_status' => $oldStatus, 'new_status' => $feature->implementation_status]
         );
 
         return redirect()->route('admin.features.index')
             ->with('success', 'Feature updated successfully.');
+    }
+
+    /**
+     * Notify tenants about a new feature update.
+     */
+    public function notifyTenants(Request $request, Feature $feature): RedirectResponse
+    {
+        $otaService = app(FeatureOTAUpdateService::class);
+        $count = $otaService->createUpdateRecordsForEligibleTenants($feature);
+
+        \App\Models\AuditLog::record(
+            'feature_notified',
+            "Notified tenants about feature '{$feature->name}'.",
+            'Feature',
+            $feature->id,
+        ['tenants_notified' => $count]
+        );
+
+        return back()->with('success', "Notified {$count} tenants about this feature.");
     }
 
     /**
@@ -177,7 +236,7 @@ class FeatureController extends Controller
             "Assigned feature '{$feature->name}' to plan '{$plan->name}'.",
             'SubscriptionPlan',
             $plan->id,
-            ['feature_id' => $feature->id, 'values' => $pivotData]
+        ['feature_id' => $feature->id, 'values' => $pivotData]
         );
 
         return back()->with('success', "Feature assigned to {$plan->name}.");
@@ -195,7 +254,7 @@ class FeatureController extends Controller
             "Removed feature '{$feature->name}' from plan '{$plan->name}'.",
             'SubscriptionPlan',
             $plan->id,
-            ['feature_id' => $feature->id]
+        ['feature_id' => $feature->id]
         );
 
         return back()->with('success', "Feature removed from {$plan->name}.");
@@ -266,7 +325,7 @@ class FeatureController extends Controller
             "Toggled system feature '{$feature->name}' status to {$status}.",
             'Feature',
             $feature->id,
-            ['is_active' => $feature->is_active]
+        ['is_active' => $feature->is_active]
         );
 
         return back()->with('success', "Feature {$status} successfully.");

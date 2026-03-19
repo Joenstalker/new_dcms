@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Patient;
+use App\Models\User;
 use App\Services\TenantNotificationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,10 +13,13 @@ class AppointmentController extends Controller
 {
     public function index()
     {
-        $appointments = Appointment::with('patient')->latest('appointment_date')->get();
-        return Inertia::render('Appointments/Index', [
+        $appointments = Appointment::with(['patient', 'dentist'])->latest('appointment_date')->get();
+        $dentists = User::role('Dentist')->get(['id', 'name', 'calendar_color']);
+        
+        return Inertia::render('Tenant/Appointments/Index', [
             'appointments' => $appointments,
             'patients' => Patient::select('id', 'first_name', 'last_name')->get(),
+            'dentists' => $dentists,
         ]);
     }
 
@@ -97,5 +101,44 @@ class AppointmentController extends Controller
         }
 
         return redirect()->back()->with('success', 'Appointment updated.');
+    }
+
+    public function approve(Appointment $appointment)
+    {
+        if (!$appointment->patient_id) {
+            $medicalHistoryString = is_array($appointment->guest_medical_history) 
+                ? implode(', ', $appointment->guest_medical_history) 
+                : $appointment->guest_medical_history;
+
+            // Create a new patient from guest details
+            $patient = Patient::create([
+                'first_name' => $appointment->guest_first_name,
+                'last_name' => $appointment->guest_last_name,
+                'phone' => $appointment->guest_phone,
+                'email' => $appointment->guest_email,
+                'address' => $appointment->guest_address,
+                'medical_history' => $medicalHistoryString,
+                'notes' => 'Created from booking ' . $appointment->booking_reference . ' on ' . now()->format('Y-m-d'),
+                'photo_path' => $appointment->photo_path,
+            ]);
+
+            $appointment->update([
+                'patient_id' => $patient->id,
+                'status' => 'scheduled', // Keep status as scheduled, or change to 'approved' if that's a valid status
+                'guest_first_name' => null,
+                'guest_last_name' => null,
+                'guest_phone' => null,
+                'guest_email' => null,
+                'guest_address' => null,
+                'guest_medical_history' => null,
+                'photo_path' => null, // Clear from appointment as it's now in patient
+            ]);
+        } else {
+            // If patient_id already exists, just update the status
+            $appointment->status = 'scheduled';
+            $appointment->save();
+        }
+
+        return redirect()->back()->with('success', 'Appointment approved and patient registered.');
     }
 }

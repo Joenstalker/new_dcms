@@ -28,7 +28,7 @@ class ReportController extends Controller
                                          ->take(5)
                                          ->get();
 
-        return Inertia::render('Reports/Index', [
+        return Inertia::render('Tenant/Reports/Index', [
             'stats' => [
                 'daily_appointments' => $dailyAppointments,
                 'monthly_revenue' => $monthlyRevenue,

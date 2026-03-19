@@ -11,7 +11,7 @@ class ServiceController extends Controller
     public function index()
     {
         $services = Service::with('creator', 'approver')->latest()->get();
-        return Inertia::render('Services/Index', [
+        return Inertia::render('Tenant/Services/Index', [
             'services' => $services,
         ]);
     }

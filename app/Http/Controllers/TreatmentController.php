@@ -13,7 +13,7 @@ class TreatmentController extends Controller
     public function index()
     {
         $treatments = Treatment::with('patient', 'dentist')->latest()->get();
-        return Inertia::render('Treatments/Index', [
+        return Inertia::render('Tenant/Treatments/Index', [
             'treatments' => $treatments,
         ]);
     }

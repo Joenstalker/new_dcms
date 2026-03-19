@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Invoice;
 use App\Models\Patient;
+use App\Models\Concern;
 use Carbon\Carbon;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -23,7 +24,7 @@ class DashboardController extends Controller
 
         // Check if we are in a tenant context
         if (!tenant()) {
-            return Inertia::render('Dashboard', [
+            return Inertia::render('Tenant/Dashboard', [
                 'stats' => [
                     'daily_appointments' => 0,
                     'monthly_revenue' => 0,
@@ -43,8 +44,9 @@ class DashboardController extends Controller
             'pending_appointments' => Appointment::where('status', 'pending')->count(),
         ];
 
-        return Inertia::render('Dashboard', [
-            'stats' => $stats
+        return Inertia::render('Tenant/Dashboard', [
+            'stats' => $stats,
+            'concerns' => Concern::latest()->get(),
         ]);
     }
 }

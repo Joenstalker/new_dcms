@@ -11,14 +11,14 @@ class PatientController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Patients/Index', [
+        return Inertia::render('Tenant/Patients/Index', [
             'patients' => Patient::latest()->get()
         ]);
     }
 
     public function create()
     {
-        return Inertia::render('Patients/Create');
+        return Inertia::render('Tenant/Patients/Create');
     }
 
     public function store(Request $request)
@@ -32,6 +32,9 @@ class PatientController extends Controller
             'gender' => 'nullable|string',
             'address' => 'nullable|string',
             'medical_history' => 'nullable|string',
+            'operation_history' => 'nullable|string',
+            'balance' => 'nullable|numeric',
+            'last_visit_time' => 'nullable|date',
         ]);
 
         $patient = Patient::create($validated);
@@ -52,7 +55,21 @@ class PatientController extends Controller
     public function show(Patient $patient)
     {
         $patient->load('appointments', 'treatments', 'invoices');
-        return Inertia::render('Patients/Show', [
+        return Inertia::render('Tenant/Patients/Show', [
+            'patient' => $patient
+        ]);
+    }
+
+    public function edit(Patient $patient)
+    {
+        return Inertia::render('Tenant/Patients/Edit', [
+            'patient' => $patient
+        ]);
+    }
+
+    public function delete(Patient $patient)
+    {
+        return Inertia::render('Tenant/Patients/Delete', [
             'patient' => $patient
         ]);
     }
@@ -68,10 +85,19 @@ class PatientController extends Controller
             'gender' => 'nullable|string',
             'address' => 'nullable|string',
             'medical_history' => 'nullable|string',
+            'operation_history' => 'nullable|string',
+            'balance' => 'nullable|numeric',
+            'last_visit_time' => 'nullable|date',
         ]);
 
         $patient->update($validated);
 
         return redirect()->back()->with('success', 'Patient updated successfully.');
+    }
+
+    public function destroy(Patient $patient)
+    {
+        $patient->delete();
+        return redirect()->route('tenant.patients.index')->with('success', 'Patient deleted successfully.');
     }
 }

@@ -12,7 +12,7 @@ class StaffController extends Controller
     public function index(Request $request)
     {
         $staff = User::role(['Dentist', 'Assistant'])->with(['roles', 'permissions'])->get();
-        return Inertia::render('Staff/Index', [
+        return Inertia::render('Tenant/Staff/Index', [
             'staff' => $staff,
             'allPermissions' => \Spatie\Permission\Models\Permission::all(),
             'initialTab' => $request->query('tab', 'list')
@@ -22,7 +22,7 @@ class StaffController extends Controller
     public function schedules()
     {
         $staff = User::role(['Dentist', 'Assistant'])->with('roles')->get();
-        return Inertia::render('Staff/Schedules', [
+        return Inertia::render('Tenant/Staff/Schedules', [
             'staff' => $staff,
             'api_key' => config('services.google.calendar_api_key')
         ]);
@@ -30,7 +30,7 @@ class StaffController extends Controller
 
     public function create()
     {
-        return Inertia::render('Staff/Create', [
+        return Inertia::render('Tenant/Staff/Create', [
             'roles' => Role::whereIn('name', ['Dentist', 'Assistant'])->get()
         ]);
     }
@@ -57,7 +57,7 @@ class StaffController extends Controller
 
     public function edit(User $staff)
     {
-        return Inertia::render('Staff/Edit', [
+        return Inertia::render('Tenant/Staff/Edit', [
             'staff' => $staff->load('roles'),
             'roles' => Role::whereIn('name', ['Dentist', 'Assistant'])->get()
         ]);

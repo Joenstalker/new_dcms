@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Feature;
 use App\Models\Subscription;
+use App\Models\TenantFeatureUpdate;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -88,6 +90,33 @@ class CheckSubscription
             }
 
             // -------------------------------------------------------
+            // Dynamic feature check with OTA status
+            // -------------------------------------------------------
+            $dynamicFeature = Feature::where('key', $feature)->first();
+            if ($dynamicFeature) {
+                $isEnabled = $dynamicFeature->isEnabledForPlan($plan);
+
+                if ($isEnabled) {
+                    // Check if feature requires tenant acknowledgment
+                    if ($dynamicFeature->requiresAcknowledgment()) {
+                        $tenantUpdate = TenantFeatureUpdate::where('tenant_id', $tenant->getTenantKey())
+                            ->where('feature_id', $dynamicFeature->id)
+                            ->first();
+
+                        // If feature requires acknowledgment and tenant hasn't applied it
+                        if (!$tenantUpdate || $tenantUpdate->status !== TenantFeatureUpdate::STATUS_APPLIED) {
+                            // For now, we allow access but could block if needed
+                            // The frontend will show "Coming Soon" badge
+                            Log::info("CheckSubscription: feature '{$feature}' available but not acknowledged by tenant.");
+                        }
+                    }
+                }
+                else {
+                    return $this->featureNotAvailable($request, $feature, $plan->name);
+                }
+            }
+
+            // -------------------------------------------------------
             // Numeric limit check — checks current count vs. plan max
             // -------------------------------------------------------
             $limitChecks = [
@@ -112,6 +141,33 @@ class CheckSubscription
 
         // Share plan info with Inertia so the frontend can conditionally show/hide features
         if (class_exists(\Inertia\Inertia::class)) {
+            // Get dynamic features with their status
+            $features = $plan->features()->ordered()->get();
+            $featureStatus = [];
+
+            foreach ($features as $feature) {
+                $updateStatus = null;
+                $isApplied = false;
+
+                // Check if tenant has acknowledged this feature
+                $tenantUpdate = TenantFeatureUpdate::where('tenant_id', $tenant->getTenantKey())
+                    ->where('feature_id', $feature->id)
+                    ->first();
+
+                if ($tenantUpdate) {
+                    $updateStatus = $tenantUpdate->status;
+                    $isApplied = $tenantUpdate->isApplied();
+                }
+
+                $featureStatus[$feature->key] = [
+                    'implementation_status' => $feature->implementation_status,
+                    'update_status' => $updateStatus,
+                    'is_applied' => $isApplied,
+                    'is_enabled' => $feature->isEnabledForPlan($plan),
+                    'requires_acknowledgment' => $feature->requiresAcknowledgment(),
+                ];
+            }
+
             \Inertia\Inertia::share('subscription', [
                 'plan_name' => $plan->name,
                 'has_qr_booking' => $plan->has_qr_booking,
@@ -126,6 +182,7 @@ class CheckSubscription
                 'report_level' => $plan->report_level,
                 'billing_cycle' => $subscription->billing_cycle,
                 'stripe_status' => $subscription->stripe_status,
+                'features' => $featureStatus,
             ]);
         }
 

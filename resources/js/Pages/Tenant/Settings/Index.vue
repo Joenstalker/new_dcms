@@ -5,6 +5,7 @@ import { computed } from 'vue';
 
 import GeneralSettings from './Partials/GeneralSettings.vue';
 import BrandingSettings from './Partials/BrandingSettings.vue';
+import LandingPageSettings from './Partials/LandingPageSettings.vue';
 import SubscriptionBilling from './Partials/SubscriptionBilling.vue';
 
 const props = defineProps({
@@ -21,6 +22,9 @@ const form = useForm({
     phone: props.tenant?.phone || '',
     address: props.tenant?.address || '',
     branding_color: props.tenant?.branding_color || '#2563eb', // Default blue-600
+    hero_title: props.tenant?.hero_title || '',
+    hero_subtitle: props.tenant?.hero_subtitle || '',
+    about_us_description: props.tenant?.about_us_description || '',
 });
 
 const submit = () => {
@@ -56,6 +60,9 @@ const submit = () => {
                         :qr-code="qr_code"
                         :booking-url="booking_url"
                     />
+
+                    <!-- Landing Page Settings -->
+                    <LandingPageSettings :form="form" />
                 </div>
 
                 <div class="flex justify-end pt-4 border-t">

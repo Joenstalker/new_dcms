@@ -12,7 +12,7 @@ class BillingController extends Controller
     public function index()
     {
         $invoices = Invoice::with('patient')->latest()->get();
-        return Inertia::render('Billing/Index', [
+        return Inertia::render('Tenant/Billing/Index', [
             'invoices' => $invoices,
             'patients' => Patient::select('id', 'first_name', 'last_name')->get()
         ]);
