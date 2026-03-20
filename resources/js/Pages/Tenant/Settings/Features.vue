@@ -3,9 +3,9 @@ import { computed } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
-import CurrentPlanBanner from './Partials/CurrentPlanBanner.vue';
-import FeatureCategory from './Partials/FeatureCategory.vue';
-import UpgradeCta from './Partials/UpgradeCta.vue';
+import CurrentPlanBanner from './Features/Partials/CurrentPlanBanner.vue';
+import FeatureCategory from './Features/Partials/FeatureCategory.vue';
+import UpgradeCta from './Features/Partials/UpgradeCta.vue';
 
 const props = defineProps({
     tenant: Object,

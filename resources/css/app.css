@@ -1,10 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "tailwindcss";
-@plugin "daisyui" {
-  themes: all;
-}
 
 /* Fix daisyUI theme compatibility with @tailwindcss/forms base styles */
 @layer base {
