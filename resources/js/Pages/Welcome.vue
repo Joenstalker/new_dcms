@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -16,6 +16,9 @@ import logoImage from '../../../public/images/dcms-logo.png';
 import heroImage from '../../../public/images/dentist-model.png';
 import dentalSmileImage from '../../../public/images/dental-smile-for-landingpage.png';
 import bgImage from '../../../public/images/landingpage-background.png';
+
+const page = usePage();
+const recaptchaSiteKey = computed(() => page.props.config?.recaptcha_site_key || '');
 
 const props = defineProps({
     canLogin: {
@@ -43,9 +46,26 @@ const form = useForm({
     email: '',
     password: '',
     remember: false,
+    recaptcha_token: '',
 });
 
+// reCAPTCHA state for login modal
+const loginRecaptchaToken = ref('');
+const loginRecaptchaWidgetId = ref(null);
+
 const submitLogin = () => {
+    // Check if reCAPTCHA verification is required
+    if (recaptchaSiteKey.value && !loginRecaptchaToken.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'reCAPTCHA Required',
+            text: 'Please verify that you are not a robot before logging in.',
+            confirmButtonColor: '#2B7CB3',
+        });
+        return;
+    }
+
+    form.recaptcha_token = loginRecaptchaToken.value;
     form.post(route('login'), {
         onFinish: () => form.reset('password'),
     });
@@ -59,6 +79,14 @@ const closeLoginModal = () => {
     isLoginModalOpen.value = false;
     form.reset();
     form.clearErrors();
+    loginRecaptchaToken.value = '';
+    if (window.grecaptcha && loginRecaptchaWidgetId.value !== null) {
+        try {
+            window.grecaptcha.reset(loginRecaptchaWidgetId.value);
+        } catch (e) {
+            console.warn('Could not reset reCAPTCHA', e);
+        }
+    }
 };
 
 // Registration modal handlers
@@ -95,6 +123,84 @@ const handleChoosePlan = (plan) => {
     openRegistrationModal(plan);
 };
 
+// reCAPTCHA callbacks for login modal
+const onLoginRecaptchaSuccess = (token) => {
+    loginRecaptchaToken.value = token;
+};
+
+const onLoginRecaptchaExpired = () => {
+    loginRecaptchaToken.value = '';
+    Swal.fire({
+        icon: 'warning',
+        title: 'reCAPTCHA Expired',
+        text: 'Please verify the reCAPTCHA again.',
+        confirmButtonColor: '#2B7CB3',
+    });
+};
+
+const onLoginRecaptchaError = () => {
+    loginRecaptchaToken.value = '';
+    Swal.fire({
+        icon: 'error',
+        title: 'reCAPTCHA Error',
+        text: 'Failed to load reCAPTCHA. Please refresh the page and try again.',
+        confirmButtonColor: '#2B7CB3',
+    });
+};
+
+// Make callbacks available globally for reCAPTCHA
+window.onLoginRecaptchaSuccess = onLoginRecaptchaSuccess;
+window.onLoginRecaptchaExpired = onLoginRecaptchaExpired;
+window.onLoginRecaptchaError = onLoginRecaptchaError;
+
+// Initialize reCAPTCHA for login modal
+const initLoginRecaptcha = () => {
+    if (!window.grecaptcha || !recaptchaSiteKey.value) return;
+
+    window.grecaptcha.ready(() => {
+        const container = document.getElementById('login-recaptcha-container');
+        if (!container) return;
+
+        // If it has children, it's already rendered in this DOM instance. Just reset it.
+        if (container.hasChildNodes() && loginRecaptchaWidgetId.value !== null) {
+            try {
+                window.grecaptcha.reset(loginRecaptchaWidgetId.value);
+            } catch (e) {
+                console.warn('Could not reset reCAPTCHA', e);
+            }
+            return;
+        }
+
+        try {
+            // Render freshly
+            container.innerHTML = '';
+            loginRecaptchaWidgetId.value = window.grecaptcha.render(container, {
+                sitekey: recaptchaSiteKey.value,
+                callback: onLoginRecaptchaSuccess,
+                'expired-callback': onLoginRecaptchaExpired,
+                'error-callback': onLoginRecaptchaError,
+                theme: 'light',
+                size: 'normal',
+            });
+        } catch (e) {
+            console.warn('reCAPTCHA render error:', e);
+        }
+    });
+};
+
+// Handle login modal opening
+watch(() => isLoginModalOpen.value, (newVal) => {
+    if (newVal) {
+        loginRecaptchaToken.value = '';
+        // Use nextTick to ensure the DOM has rendered the reCAPTCHA container
+        nextTick(() => {
+            setTimeout(() => {
+                initLoginRecaptcha();
+            }, 100);
+        });
+    }
+});
+
 // Sticky header scroll effect
 const isScrolled = ref(false);
 const handleScroll = () => {
@@ -103,6 +209,25 @@ const handleScroll = () => {
 
 // Check for payment success on page load
 onMounted(() => {
+    // Load reCAPTCHA v2 script for login modal
+    if (recaptchaSiteKey.value && !document.querySelector('#recaptcha-v2-script')) {
+        const script = document.createElement('script');
+        script.id = 'recaptcha-v2-script';
+        script.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoadLogin&render=explicit';
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+    }
+
+    window.onRecaptchaLoadLogin = () => {
+        initLoginRecaptcha();
+    };
+
+    // If already loaded (e.g., navigated back)
+    if (window.grecaptcha) {
+        initLoginRecaptcha();
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('payment-success') === 'true') {
         Swal.fire({
@@ -238,6 +363,41 @@ onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll);
 });
 </script>
+
+<style scoped>
+/* Ensure reCAPTCHA appears in front of modals */
+:deep(.g-recaptcha) {
+    z-index: 9999 !important;
+}
+
+:deep(.g-recaptcha iframe) {
+    z-index: 9999 !important;
+}
+
+#login-recaptcha-container :deep(.g-recaptcha) {
+    z-index: 9999 !important;
+}
+
+#login-recaptcha-container :deep(.g-recaptcha iframe) {
+    z-index: 9999 !important;
+}
+
+/* Ensure modal has high z-index */
+:deep(.fixed.inset-0.z-50) {
+    z-index: 50 !important;
+}
+
+/* Spinner animation */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+</style>
 
 <template>
     <Head title="Dental Clinic Management System" />
@@ -483,15 +643,29 @@ onUnmounted(() => {
                         </Link>
                     </div>
 
+                    <!-- reCAPTCHA v2 Container -->
+                    <div class="flex justify-center my-4">
+                        <div id="login-recaptcha-container" class="inline-block"></div>
+                    </div>
+
                     <div class="pt-2">
                         <PrimaryButton
-                            class="w-full justify-center py-3 text-sm font-bold bg-[#2B7CB3] hover:bg-[#24699A] focus:bg-[#24699A] active:bg-[#1e5a82]"
-                            :class="{ 'opacity-50 cursor-not-allowed': form.processing }"
+                            class="w-full justify-center py-3 text-sm font-bold bg-[#2B7CB3] hover:bg-[#24699A] focus:bg-[#24699A] active:bg-[#1e5a82] transition-all duration-300 flex items-center justify-center gap-2"
+                            :class="{ 'opacity-75 cursor-wait': form.processing }"
                             :disabled="form.processing"
                         >
-                            Log into Dashboard
+                            <svg v-if="form.processing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>{{ form.processing ? 'Signing in...' : 'Log into Dashboard' }}</span>
                         </PrimaryButton>
                     </div>
+
+                    <!-- reCAPTCHA Notice -->
+                    <p class="text-center text-[10px] text-gray-400 mt-3">
+                        This form is protected by Google reCAPTCHA.
+                    </p>
                 </form>
             </div>
         </Modal>
