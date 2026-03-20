@@ -2,14 +2,17 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import BookingModal from '@/Pages/Tenant/Booking/Partials/BookingModal.vue';
+import LoginModal from '@/Pages/Tenant/Auth/Partials/LoginModal.vue';
 
 const props = defineProps({
     tenant: Object,
     services: Array,
     dentists: Array,
+    recaptchaSiteKey: String,
 });
 
 const showBookingModal = ref(false);
+const showLoginModal = ref(false);
 
 const form = useForm({
     name: '',
@@ -55,7 +58,7 @@ const formattedAddress = computed(() => {
                         <a href="#services" class="text-sm font-medium hover:text-gray-600 transition-colors">Services</a>
                         <a href="#team" class="text-sm font-medium hover:text-gray-600 transition-colors">Our team</a>
                         <a href="#contact" class="text-sm font-medium hover:text-gray-600 transition-colors">Contact</a>
-                        <Link :href="route('login')" class="text-sm font-medium text-gray-500 hover:text-gray-900">Staff Login</Link>
+                        <button @click="showLoginModal = true" class="text-sm font-medium text-gray-500 hover:text-gray-900">Login</button>
                         <button @click="showBookingModal = true" 
                            class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-full shadow-sm text-white transition-all transform hover:scale-105 active:scale-95"
                            :style="{ backgroundColor: brandingColor }">
@@ -303,7 +306,7 @@ const formattedAddress = computed(() => {
                         <h4 class="text-lg font-bold mb-6">Quick Links</h4>
                         <ul class="space-y-4 text-gray-400">
                             <li><button @click="showBookingModal = true" class="hover:text-white transition-colors">Book Now</button></li>
-                           <li><Link :href="route('login')" class="hover:text-white transition-colors">Staff Login</Link></li>
+                           <li><button @click="showLoginModal = true" class="hover:text-white transition-colors">Login</button></li>
                         </ul>
                     </div>
                 </div>
@@ -320,6 +323,14 @@ const formattedAddress = computed(() => {
             :services="services" 
             :dentists="dentists"
             @close="showBookingModal = false" 
+        />
+
+        <!-- Login Modal -->
+        <LoginModal
+            :show="showLoginModal"
+            :tenant="tenant"
+            :recaptchaSiteKey="recaptchaSiteKey"
+            @close="showLoginModal = false"
         />
     </div>
 </template>

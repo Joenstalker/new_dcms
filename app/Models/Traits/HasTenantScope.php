@@ -3,7 +3,6 @@
 namespace App\Models\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
-use Stancl\Tenancy\Facades\TenancyFacade;
 
 /**
  * Tenant Scope Trait
@@ -14,6 +13,19 @@ use Stancl\Tenancy\Facades\TenancyFacade;
 trait HasTenantScope
 {
     /**
+     * Get the current tenant ID.
+     */
+    protected static function getCurrentTenantId()
+    {
+        try {
+            $tenant = tenancy()->tenant();
+            return $tenant ? $tenant->id : null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
      * Boot the trait.
      */
     protected static function bootHasTenantScope(): void
@@ -21,7 +33,7 @@ trait HasTenantScope
         static::creating(function ($model) {
             // Automatically set tenant_id when creating
             if (empty($model->tenant_id)) {
-                $tenantId = TenancyFacade::getTenantId();
+                $tenantId = static::getCurrentTenantId();
 
                 if ($tenantId) {
                     $model->tenant_id = $tenantId;
@@ -31,7 +43,7 @@ trait HasTenantScope
 
         // Add global scope to automatically filter by tenant
         static::addGlobalScope('tenant', function (Builder $builder) {
-            $tenantId = TenancyFacade::getTenantId();
+            $tenantId = static::getCurrentTenantId();
 
             if ($tenantId) {
                 $builder->where('tenant_id', $tenantId);
@@ -60,7 +72,7 @@ trait HasTenantScope
      */
     public function belongsToCurrentTenant(): bool
     {
-        $currentTenantId = TenancyFacade::getTenantId();
+        $currentTenantId = static::getCurrentTenantId();
 
         return $this->tenant_id === $currentTenantId;
     }
@@ -70,7 +82,7 @@ trait HasTenantScope
      */
     public function scopeTenant(Builder $query, ?string $tenantId = null): Builder
     {
-        $tenantId = $tenantId ?? TenancyFacade::getTenantId();
+        $tenantId = $tenantId ?? static::getCurrentTenantId();
 
         if ($tenantId) {
             return $query->where('tenant_id', $tenantId);

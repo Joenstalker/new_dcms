@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TenantFeatureUpdate extends Model
 {
+    protected $connection = 'central';
+
     protected $table = 'tenant_feature_updates';
 
     protected $fillable = [

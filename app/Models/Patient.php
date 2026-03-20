@@ -7,7 +7,6 @@ use App\Models\Traits\HasTenantScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Stancl\Tenancy\Facades\TenancyFacade;
 
 class Patient extends Model
 {
@@ -65,8 +64,15 @@ class Patient extends Model
 
         // Automatically set tenant_id
         static::creating(function ($patient) {
-            if (empty($patient->tenant_id) && TenancyFacade::getTenant()) {
-                $patient->tenant_id = TenancyFacade::getTenant()->getTenantKey();
+            if (empty($patient->tenant_id)) {
+                try {
+                    $tenant = tenancy()->tenant();
+                    if ($tenant) {
+                        $patient->tenant_id = $tenant->getTenantKey();
+                    }
+                } catch (\Exception $e) {
+                    // Tenancy not initialized, skip
+                }
             }
         });
 
@@ -165,10 +171,13 @@ class Patient extends Model
      */
     public function scopeTenant($query)
     {
-        $tenantId = TenancyFacade::getTenantId();
-
-        if ($tenantId) {
-            return $query->where('tenant_id', $tenantId);
+        try {
+            $tenant = tenancy()->tenant();
+            if ($tenant) {
+                return $query->where('tenant_id', $tenant->id);
+            }
+        } catch (\Exception $e) {
+            // Tenancy not initialized, skip
         }
 
         return $query;

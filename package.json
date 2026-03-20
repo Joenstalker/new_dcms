@@ -36,6 +36,7 @@
         "sweetalert2": "^11.26.22",
         "terser": "^5.46.0",
         "vee-validate": "^4.15.1",
-        "vue-router": "^5.0.3"
+        "vue-router": "^5.0.3",
+        "vue3-recaptcha-v2": "^2.1.0"
     }
 }

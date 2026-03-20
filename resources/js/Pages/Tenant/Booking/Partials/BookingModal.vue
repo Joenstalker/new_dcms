@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -41,6 +41,20 @@ const handlePhotoUpload = (e) => {
 };
 
 const brandingColor = computed(() => props.tenant?.branding_color || '#3b82f6');
+
+// Prevent background scrolling when modal is open
+watch(() => props.show, (newVal) => {
+    if (newVal) {
+        document.body.style.overflow = 'hidden';
+    } else {
+        document.body.style.overflow = '';
+    }
+}, { immediate: true });
+
+// Cleanup on component unmount
+onUnmounted(() => {
+    document.body.style.overflow = '';
+});
 
 const steps = [
     { id: 1, name: 'Patient Info' },

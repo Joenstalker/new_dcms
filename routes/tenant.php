@@ -24,6 +24,14 @@ Route::middleware([
     Route::get('/book', [\App\Http\Controllers\BookingController::class , 'create'])->name('tenant.book.create');
     Route::post('/book', [\App\Http\Controllers\BookingController::class , 'store'])->name('tenant.book.store');
 
+    // Tenant Auth API Routes (Modal-based login)
+    Route::middleware('guest')->group(function () {
+        Route::post('/api/login', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'store'])->name('tenant.login.store');
+        Route::post('/api/password/email', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'sendResetLink'])->name('tenant.password.email');
+        Route::post('/api/password/reset', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'resetPassword'])->name('tenant.password.store');
+        Route::get('/reset-password/{token}', [\App\Http\Controllers\Tenant\Auth\ResetPasswordPageController::class , 'show'])->name('tenant.password.reset');
+    });
+
     require __DIR__ . '/auth.php';
 
     // Authenticated Tenant Routes

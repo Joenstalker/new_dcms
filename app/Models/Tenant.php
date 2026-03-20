@@ -30,6 +30,12 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'domain_id',
         'database_name',
         'database_connection',
+        'branding_color',
+        'hero_title',
+        'hero_subtitle',
+        'about_us_description',
+        'logo_path',
+        'qr_code_path',
     ];
 
     /**

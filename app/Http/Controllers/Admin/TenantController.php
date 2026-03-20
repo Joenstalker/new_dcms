@@ -461,4 +461,117 @@ class TenantController extends Controller
             return false;
         }
     }
+
+    /**
+     * Approve a pending tenant clinic setup.
+     */
+    public function approveTenant(Request $request, Tenant $tenant): RedirectResponse
+    {
+        if ($tenant->status !== 'pending') {
+            return back()->with('error', 'This clinic is not pending approval.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $tenant->update([
+                'status' => 'active',
+                'subscription_status' => 'active',
+            ]);
+
+            AuditLog::record(
+                'tenant_approved',
+                "Approved clinic '{$tenant->name}'.",
+                'Tenant',
+                $tenant->id,
+                ['status' => 'active']
+            );
+
+            DB::commit();
+
+            // Find matching pending registration to process email
+            $registration = PendingRegistration::where('subdomain', $tenant->id)->first();
+            
+            if ($registration) {
+                // Ensure registration status is synced
+                if ($registration->status !== PendingRegistration::STATUS_APPROVED) {
+                    $registration->update([
+                        'status' => PendingRegistration::STATUS_APPROVED,
+                        'approved_at' => now(),
+                    ]);
+                }
+
+                $appUrl = config('app.url');
+                $parsed = parse_url($appUrl);
+                $host = $parsed['host'] ?? str_replace(['http://', 'https://'], '', $appUrl);
+                $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
+                $tenantUrl = 'http://' . $tenant->id . '.' . $host . $port;
+                
+                Mail::to($tenant->email)->send(new TenantApproved($registration, $tenantUrl));
+            }
+
+            return back()->with('success', 'Clinic approved successfully. The owner has been notified.');
+        }
+        catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to approve clinic: ' . $e->getMessage());
+            return back()->with('error', 'Failed to approve clinic. Please try again.');
+        }
+    }
+
+    /**
+     * Reject a pending tenant clinic setup.
+     */
+    public function rejectTenant(Request $request, Tenant $tenant): RedirectResponse
+    {
+        $validated = $request->validate([
+            'rejection_message' => 'nullable|string|max:1000',
+        ]);
+
+        if ($tenant->status !== 'pending') {
+            return back()->with('error', 'This clinic is not pending approval.');
+        }
+
+        try {
+            $registration = PendingRegistration::where('subdomain', $tenant->id)->first();
+
+            // Refund if there is a payment
+            if ($registration && $registration->stripe_payment_intent_id && $registration->status !== PendingRegistration::STATUS_REFUNDED) {
+                $this->processRefund($registration);
+            }
+
+            if ($registration) {
+                $registration->update([
+                    'status' => PendingRegistration::STATUS_REJECTED,
+                    'rejected_at' => now(),
+                    'admin_rejection_message' => $validated['rejection_message'],
+                ]);
+
+                Mail::to($tenant->email)->send(
+                    new TenantRejected($registration, $validated['rejection_message'])
+                );
+            }
+
+            $clinicName = $tenant->name;
+            
+            // Log before deletion
+            AuditLog::record(
+                'tenant_rejected',
+                "Rejected and deleted clinic '{$clinicName}'.",
+                'Tenant',
+                $tenant->id,
+                ['reason' => $validated['rejection_message']]
+            );
+
+            // Stancl Tenancy automatically handles dropping the database
+            // Note: DROP DATABASE causes an implicit commit in MySQL, so we don't use transactions here.
+            $tenant->delete();
+
+            return back()->with('success', 'Clinic rejected successfully. The applicant has been notified and any payment refunded.');
+        }
+        catch (\Exception $e) {
+            Log::error('Failed to reject clinic: ' . $e->getMessage());
+            return back()->with('error', 'Failed to reject clinic. Please try again.');
+        }
+    }
 }

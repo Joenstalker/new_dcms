@@ -25,6 +25,7 @@ class LandingController extends Controller
             'tenant' => $tenant,
             'services' => $services,
             'dentists' => $dentists,
+            'recaptchaSiteKey' => env('RECAPTCHA_SITE_KEY'),
         ]);
     }
 

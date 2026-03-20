@@ -132,6 +132,39 @@ const isCurrentRoute = (routeName) => {
 import Swal from 'sweetalert2';
 import { watch } from 'vue';
 
+const handleLogout = () => {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: 'You will be logged out of the admin dashboard.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0d9488',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, Log out',
+        cancelButtonText: 'Cancel',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Perform logout via POST request
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = route('logout');
+            
+            const token = document.querySelector('meta[name="csrf-token"]');
+            if (token) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = '_token';
+                input.value = token.content;
+                form.appendChild(input);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+        }
+    });
+};
+
 watch(() => page.props.flash, (flash) => {
     // Detect open native dialogs for proper layering
     const target = document.querySelector('dialog[open]') || 'body';
@@ -265,16 +298,15 @@ watch(() => page.props.flash, (flash) => {
                                 <p class="text-[10px] uppercase tracking-tighter font-semibold" :style="{ color: primaryColor }">SaaS Admin</p>
                             </div>
                         </div>
-                        <Link 
-                            :href="route('logout')" 
-                            method="post" 
-                            as="button"
+                        <button 
+                            @click="handleLogout"
                             class="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                            title="Logout"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
                             </svg>
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </div>
