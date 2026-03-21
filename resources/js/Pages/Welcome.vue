@@ -196,7 +196,7 @@ watch(() => isLoginModalOpen.value, (newVal) => {
         nextTick(() => {
             setTimeout(() => {
                 initLoginRecaptcha();
-            }, 100);
+            }, 200);
         });
     }
 });
@@ -209,21 +209,14 @@ const handleScroll = () => {
 
 // Check for payment success on page load
 onMounted(() => {
-    // Load reCAPTCHA v2 script for login modal
-    if (recaptchaSiteKey.value && !document.querySelector('#recaptcha-v2-script')) {
-        const script = document.createElement('script');
-        script.id = 'recaptcha-v2-script';
-        script.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoadLogin&render=explicit';
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
-    }
+    // Listen for reCAPTCHA loaded event from app.blade.php
+    window.addEventListener('recaptcha-loaded', () => {
+        if (isLoginModalOpen.value) {
+            initLoginRecaptcha();
+        }
+    });
 
-    window.onRecaptchaLoadLogin = () => {
-        initLoginRecaptcha();
-    };
-
-    // If already loaded (e.g., navigated back)
+    // If already loaded
     if (window.grecaptcha) {
         initLoginRecaptcha();
     }
@@ -237,7 +230,6 @@ onMounted(() => {
             confirmButtonColor: '#0d9488',
             confirmButtonText: 'OK'
         });
-        // Remove the query parameter from URL
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 });

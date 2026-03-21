@@ -32,17 +32,6 @@ const isFormValid = computed(() => {
            acceptTerms.value;
 });
 
-// Load reCAPTCHA v2 script
-onMounted(() => {
-    if (recaptchaSiteKey.value && !document.querySelector('#recaptcha-v2-script')) {
-        const script = document.createElement('script');
-        script.id = 'recaptcha-v2-script';
-        script.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit';
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
-    }
-
 // Render reCAPTCHA 
 const initRecaptcha = () => {
     if (!window.grecaptcha || !recaptchaSiteKey.value) return;
@@ -87,16 +76,21 @@ watch(() => props.show, (newVal) => {
         nextTick(() => {
             setTimeout(() => {
                 initRecaptcha();
-            }, 100);
+            }, 200);
         });
     }
 });
 
-    window.onRecaptchaLoad = () => {
-        initRecaptcha();
-    };
+// Load reCAPTCHA v2 script
+onMounted(() => {
+    // Listen for reCAPTCHA loaded event from app.blade.php
+    window.addEventListener('recaptcha-loaded', () => {
+        if (props.show) {
+            initRecaptcha();
+        }
+    });
 
-    // If already loaded (e.g., navigated back)
+    // If already loaded
     if (window.grecaptcha) {
         initRecaptcha();
     }

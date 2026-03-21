@@ -168,7 +168,7 @@ class PendingRegistrationController extends Controller
                 $user = \App\Models\User::create([
                     'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
                     'email' => $pendingRegistration->email,
-                    'password' => Hash::make($pendingRegistration->password),
+                    'password' => $pendingRegistration->password,
                 ]);
 
                 // Assign Owner role
@@ -196,7 +196,7 @@ class PendingRegistrationController extends Controller
                 $user = \App\Models\User::create([
                     'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
                     'email' => $pendingRegistration->email,
-                    'password' => Hash::make($pendingRegistration->password),
+                    'password' => $pendingRegistration->password,
                 ]);
 
                 // Assign Owner role

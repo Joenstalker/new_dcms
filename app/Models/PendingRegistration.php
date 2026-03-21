@@ -78,7 +78,7 @@ class PendingRegistration extends Model
      */
     public function isExpired(): bool
     {
-        return now()->greaterThan($this->expires_at);
+        return now('UTC')->greaterThan($this->expires_at);
     }
 
     /**
@@ -119,7 +119,7 @@ class PendingRegistration extends Model
     public function scopeExpired($query)
     {
         return $query->where('status', self::STATUS_PENDING)
-            ->where('expires_at', '<', now());
+            ->where('expires_at', '<', now('UTC'));
     }
 
     /**
@@ -183,7 +183,7 @@ class PendingRegistration extends Model
             return 'Expired';
         }
 
-        $diff = now()->diff($this->expires_at);
+        $diff = now('UTC')->diff($this->expires_at);
 
         if ($diff->d > 0) {
             return $diff->d . ' day' . ($diff->d > 1 ? 's' : '') . ' ' . $diff->h . ' hour' . ($diff->h > 1 ? 's' : '');
@@ -205,7 +205,7 @@ class PendingRegistration extends Model
             return 0;
         }
 
-        return now()->diffInSeconds($this->expires_at);
+        return now('UTC')->diffInSeconds($this->expires_at);
     }
 
     /**
@@ -228,7 +228,7 @@ class PendingRegistration extends Model
             'previous_expires_at' => $oldExpiresAt->toIso8601String(),
             'new_expires_at' => $newExpiresAt->toIso8601String(),
             'hours_added' => $hours,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => now('UTC')->toIso8601String(),
         ];
 
         return $this->update([
@@ -255,7 +255,7 @@ class PendingRegistration extends Model
             'action' => 'set_time',
             'previous_expires_at' => $oldExpiresAt->toIso8601String(),
             'new_expires_at' => $newExpiresAt->toIso8601String(),
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => now('UTC')->toIso8601String(),
         ];
 
         return $this->update([
@@ -276,8 +276,8 @@ class PendingRegistration extends Model
             $q->whereNull('reminder_sent_at')
                 ->orWhereRaw('expires_at > DATE_ADD(reminder_sent_at, INTERVAL ? HOUR)', [$reminderHours]);
         })
-            ->where('expires_at', '>', now())
-            ->where('expires_at', '<=', now()->addHours($reminderHours));
+            ->where('expires_at', '>', now('UTC'))
+            ->where('expires_at', '<=', now('UTC')->addHours($reminderHours));
     }
 
     /**
@@ -294,6 +294,6 @@ class PendingRegistration extends Model
             }
             );
         })
-            ->where('expires_at', '<', now());
+            ->where('expires_at', '<', now('UTC'));
     }
 }

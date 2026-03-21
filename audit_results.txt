@@ -8,17 +8,14 @@
 
 [TENANT DATABASES]
 --------------------
-TENANT: acero (no domain)
+TENANT: cudal (cudal)
+   - joenilpanal@gmail.com          | Roles: Owner
+
+TENANT: devsmile (devsmile)
    No users found.
 
-TENANT: goc-ong (no domain)
+TENANT: levy (levy)
    No users found.
-
-TENANT: joemar (no domain)
-   No users found.
-
-TENANT: joenil (joenil)
-   - 2301107552@student.buksu.edu.ph | Roles: Owner
 
 ==================================================
 Audit Complete.

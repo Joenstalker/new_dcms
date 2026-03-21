@@ -6,6 +6,7 @@ use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDomains;
+use Stancl\Tenancy\DatabaseConfig;
 use App\Services\TenantDatabaseNamingService;
 use App\Helpers\TenantDatabaseHelper;
 
@@ -85,6 +86,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
                 }
 
                 $tenant->database_name = $namingService->generateHashedDatabaseName($domain);
+                $tenant->database = $tenant->database_name; // Set standard Stancl key
             }
 
             // Generate database connection name
@@ -141,7 +143,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     }
 
     /**
-     * Get the database name for this tenant
+     * Get the fallback database name for this tenant.
      */
     public function getDatabaseName(): string
     {
@@ -163,6 +165,4 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     {
         return !empty($this->database_name) && TenantDatabaseHelper::isHashedFormat($this->database_name);
     }
-
-// Remove getCustomColumns so all extra fields map to the 'data' JSON column.
 }

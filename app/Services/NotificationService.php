@@ -36,10 +36,12 @@ class NotificationService
      */
     public function notifyAdmins(string $type, string $title, string $message, array $data = [], string $channel = 'database'): void
     {
+        /** @var \Illuminate\Database\Eloquent\Collection<int, User> $admins */
         $admins = User::on('central')->where('is_admin', true)->get();
 
         foreach ($admins as $admin) {
             // Check if user has this notification type enabled
+            /** @var NotificationSetting|null $setting */
             $setting = NotificationSetting::on('central')
                 ->where('user_id', $admin->id)
                 ->where('type', $type)
@@ -50,6 +52,7 @@ class NotificationService
 
             if ($shouldNotify) {
                 $effectiveChannel = $setting ? $setting->channel : $channel;
+                /** @var User $admin */
                 $this->create($admin, $type, $title, $message, $data, $effectiveChannel);
             }
         }

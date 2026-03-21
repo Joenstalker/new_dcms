@@ -71,6 +71,12 @@ return [
         'suffix' => env('TENANT_DB_SUFFIX', '_db'),
 
         /**
+         * The column in the tenants table that stores the database name.
+         * If null, the package will use the tenant ID.
+         */
+        'column' => 'database_name',
+
+        /**
          * Database username prefix for tenant-specific users
          * Used with PermissionControlledMySQLDatabaseManager
          */

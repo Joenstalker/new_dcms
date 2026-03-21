@@ -209,7 +209,7 @@ class RegistrationController extends Controller
                     'amount_paid' => $price,
                     'status' => PendingRegistration::STATUS_PENDING,
                     'verification_token' => PendingRegistration::generateToken(),
-                    'expires_at' => now()->addHours($defaultTimeoutHours),
+                    'expires_at' => now('UTC')->addHours($defaultTimeoutHours),
                     'pending_timeout_hours' => $defaultTimeoutHours,
                 ]
             );

@@ -23,7 +23,12 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         <!-- Google reCAPTCHA -->
-        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+        <script>
+            window.onRecaptchaLoadGlobal = function() {
+                window.dispatchEvent(new CustomEvent('recaptcha-loaded'));
+            };
+        </script>
+        <script src="https://www.google.com/recaptcha/api.js?render=explicit&onload=onRecaptchaLoadGlobal" async defer></script>
 
         <!-- Scripts -->
         @routes

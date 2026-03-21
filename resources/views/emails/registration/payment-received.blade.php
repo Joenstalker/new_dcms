@@ -49,7 +49,7 @@
 
                     <script>
                         function startCountdown() {
-                            const expiresAt = new Date('{{ $registration->expires_at ?? now()->addHours(168) }}').getTime();
+                            const expiresAt = new Date('{{ $registration->expires_at ? $registration->expires_at->toIso8601String() : now()->addHours(168)->toIso8601String() }}').getTime();
                             
                             function updateTimer() {
                                 const now = new Date().getTime();
