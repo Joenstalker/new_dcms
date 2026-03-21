@@ -10,6 +10,8 @@ class Notification extends Model
 {
     use HasFactory, HasUuids;
 
+    protected $connection = 'central';
+
     protected $fillable = [
         'user_id',
         'type',

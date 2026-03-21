@@ -18,6 +18,7 @@ class PendingRegistration extends Model
         'email',
         'phone',
         'street',
+        'region',
         'barangay',
         'city',
         'province',

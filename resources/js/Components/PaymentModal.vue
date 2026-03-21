@@ -136,6 +136,7 @@ const proceedToPayment = async () => {
                 email: props.registrationData.email,
                 phone: props.registrationData.phone,
                 street: props.registrationData.street,
+                region: props.registrationData.region,
                 barangay: props.registrationData.barangay,
                 city: props.registrationData.city,
                 province: props.registrationData.province,

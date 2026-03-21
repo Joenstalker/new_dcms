@@ -35,6 +35,7 @@ class RegistrationController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email',
             'phone' => 'required|string|max:20',
             'street' => 'required|string|max:255',
+            'region' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
             'city' => 'required|string|max:100',
             'province' => 'required|string|max:100',
@@ -146,6 +147,7 @@ class RegistrationController extends Controller
             'email' => 'required|string|email|max:255',
             'phone' => 'required|string|max:20',
             'street' => 'required|string|max:255',
+            'region' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
             'city' => 'required|string|max:100',
             'province' => 'required|string|max:100',
@@ -187,27 +189,30 @@ class RegistrationController extends Controller
             // Get configurable timeout from system settings
             $defaultTimeoutHours = \App\Models\SystemSetting::get('pending_timeout_default_hours', 168);
 
-            // First, create a PendingRegistration record
-            $pendingRegistration = PendingRegistration::create([
-                'subdomain' => strtolower($validated['subdomain']),
-                'clinic_name' => $validated['clinic_name'],
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'email' => $validated['email'],
-                'phone' => $validated['phone'],
-                'street' => $validated['street'],
-                'barangay' => $validated['barangay'],
-                'city' => $validated['city'],
-                'province' => $validated['province'],
-                'password' => $validated['password'],
-                'subscription_plan_id' => $validated['plan_id'],
-                'billing_cycle' => $validated['billing_cycle'],
-                'amount_paid' => $price,
-                'status' => PendingRegistration::STATUS_PENDING,
-                'verification_token' => PendingRegistration::generateToken(),
-                'expires_at' => now()->addHours($defaultTimeoutHours),
-                'pending_timeout_hours' => $defaultTimeoutHours,
-            ]);
+            // First, create or update a PendingRegistration record
+            $pendingRegistration = PendingRegistration::updateOrCreate(
+                ['subdomain' => strtolower($validated['subdomain'])],
+                [
+                    'clinic_name' => $validated['clinic_name'],
+                    'first_name' => $validated['first_name'],
+                    'last_name' => $validated['last_name'],
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'],
+                    'street' => $validated['street'],
+                    'region' => $validated['region'],
+                    'barangay' => $validated['barangay'],
+                    'city' => $validated['city'],
+                    'province' => $validated['province'],
+                    'password' => $validated['password'],
+                    'subscription_plan_id' => $validated['plan_id'],
+                    'billing_cycle' => $validated['billing_cycle'],
+                    'amount_paid' => $price,
+                    'status' => PendingRegistration::STATUS_PENDING,
+                    'verification_token' => PendingRegistration::generateToken(),
+                    'expires_at' => now()->addHours($defaultTimeoutHours),
+                    'pending_timeout_hours' => $defaultTimeoutHours,
+                ]
+            );
 
             $stripe = new StripeClient(config('services.stripe.secret'));
 
@@ -221,6 +226,7 @@ class RegistrationController extends Controller
                 'email' => $validated['email'],
                 'phone' => $validated['phone'],
                 'street' => $validated['street'],
+                'region' => $validated['region'],
                 'barangay' => $validated['barangay'],
                 'city' => $validated['city'],
                 'province' => $validated['province'],
@@ -341,6 +347,7 @@ class RegistrationController extends Controller
                     'email' => $pendingRegistration->email,
                     'phone' => $pendingRegistration->phone,
                     'street' => $pendingRegistration->street,
+                    'region' => $pendingRegistration->region,
                     'barangay' => $pendingRegistration->barangay,
                     'city' => $pendingRegistration->city,
                     'province' => $pendingRegistration->province,

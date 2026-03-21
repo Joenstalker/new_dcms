@@ -147,6 +147,7 @@ class PendingRegistrationController extends Controller
                     'email' => $pendingRegistration->email,
                     'phone' => $pendingRegistration->phone,
                     'street' => $pendingRegistration->street,
+                    'region' => $pendingRegistration->region,
                     'barangay' => $pendingRegistration->barangay,
                     'city' => $pendingRegistration->city,
                     'province' => $pendingRegistration->province,

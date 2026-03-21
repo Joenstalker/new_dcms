@@ -36,11 +36,12 @@ class NotificationService
      */
     public function notifyAdmins(string $type, string $title, string $message, array $data = [], string $channel = 'database'): void
     {
-        $admins = User::where('is_admin', true)->get();
+        $admins = User::on('central')->where('is_admin', true)->get();
 
         foreach ($admins as $admin) {
             // Check if user has this notification type enabled
-            $setting = NotificationSetting::where('user_id', $admin->id)
+            $setting = NotificationSetting::on('central')
+                ->where('user_id', $admin->id)
                 ->where('type', $type)
                 ->first();
 
@@ -109,7 +110,8 @@ class NotificationService
      */
     public function deleteOldNotifications(int $days = 30): int
     {
-        return Notification::where('created_at', '<', now()->subDays($days))
+        return Notification::on('central')
+            ->where('created_at', '<', now()->subDays($days))
             ->delete();
     }
 

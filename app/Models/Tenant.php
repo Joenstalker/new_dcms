@@ -23,6 +23,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'email',
         'phone',
         'street',
+        'region',
         'barangay',
         'city',
         'province',

@@ -190,7 +190,7 @@ const submitReject = () => {
                             <dt class="text-sm font-medium text-gray-500">Address</dt>
                             <dd class="col-span-2 text-sm text-gray-900">
                                 {{ registration.street }}, {{ registration.barangay }}<br>
-                                {{ registration.city }}, {{ registration.province }}
+                                {{ registration.city }}, {{ registration.province }}, {{ registration.region }}
                             </dd>
                         </div>
                     </dl>

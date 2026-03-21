@@ -7,6 +7,8 @@ import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { regions, provinces, cities, barangays } from 'phil-address';
+import { onMounted } from 'vue';
 
 const props = defineProps({
     show: Boolean,
@@ -47,11 +49,121 @@ const form = useForm({
     barangay: '',
     city: '',
     province: '',
+    region: '', // Added region
     clinic_name: '',
     admin_name: '',
     password: '',
     subdomain: '',
 });
+
+// Address Data State
+const regionList = ref([]);
+const provinceList = ref([]);
+const cityList = ref([]);
+const barangayList = ref([]);
+
+const selectedRegionCode = ref('');
+const selectedProvinceCode = ref('');
+const selectedCityCode = ref('');
+const selectedBarangayCode = ref('');
+
+const isAddressLoading = ref({
+    regions: false,
+    provinces: false,
+    cities: false,
+    barangays: false
+});
+
+// Load regions on mount
+onMounted(async () => {
+    isAddressLoading.value.regions = true;
+    try {
+        regionList.value = await regions();
+    } catch (error) {
+        console.error('Failed to load regions:', error);
+    } finally {
+        isAddressLoading.value.regions = false;
+    }
+});
+
+// Cascaded selection handlers
+const handleRegionChange = async () => {
+    // Reset dependant fields
+    selectedProvinceCode.value = '';
+    selectedCityCode.value = '';
+    selectedBarangayCode.value = '';
+    provinceList.value = [];
+    cityList.value = [];
+    barangayList.value = [];
+    
+    form.province = '';
+    form.city = '';
+    form.barangay = '';
+
+    const region = regionList.value.find(r => r.psgcCode === selectedRegionCode.value);
+    form.region = region ? region.name : '';
+
+    if (selectedRegionCode.value) {
+        isAddressLoading.value.provinces = true;
+        try {
+            provinceList.value = await provinces(selectedRegionCode.value);
+        } catch (error) {
+            console.error('Failed to load provinces:', error);
+        } finally {
+            isAddressLoading.value.provinces = false;
+        }
+    }
+};
+
+const handleProvinceChange = async () => {
+    selectedCityCode.value = '';
+    selectedBarangayCode.value = '';
+    cityList.value = [];
+    barangayList.value = [];
+    
+    form.city = '';
+    form.barangay = '';
+
+    const province = provinceList.value.find(p => p.id === selectedProvinceCode.value);
+    form.province = province ? province.name : '';
+
+    if (selectedProvinceCode.value) {
+        isAddressLoading.value.cities = true;
+        try {
+            cityList.value = await cities(selectedProvinceCode.value);
+        } catch (error) {
+            console.error('Failed to load cities:', error);
+        } finally {
+            isAddressLoading.value.cities = false;
+        }
+    }
+};
+
+const handleCityChange = async () => {
+    selectedBarangayCode.value = '';
+    barangayList.value = [];
+    
+    form.barangay = '';
+
+    const city = cityList.value.find(c => c.id === selectedCityCode.value);
+    form.city = city ? city.name : '';
+
+    if (selectedCityCode.value) {
+        isAddressLoading.value.barangays = true;
+        try {
+            barangayList.value = await barangays(selectedCityCode.value);
+        } catch (error) {
+            console.error('Failed to load barangays:', error);
+        } finally {
+            isAddressLoading.value.barangays = false;
+        }
+    }
+};
+
+const handleBarangayChange = () => {
+    const brgy = barangayList.value.find(b => b.id === selectedBarangayCode.value);
+    form.barangay = brgy ? brgy.name : '';
+};
 
 // Computed - Combine first and last name for backend
 const fullAdminName = computed(() => {
@@ -77,7 +189,8 @@ const isStep1Valid = computed(() => {
            form.street.length >= 3 &&
            form.barangay.length >= 2 &&
            form.city.length >= 2 &&
-           form.province.length >= 2;
+           form.province.length >= 2 &&
+           form.region.length >= 2;
 });
 
 const isStep2Valid = computed(() => {
@@ -170,6 +283,7 @@ const nextStep = async () => {
                     email: form.email,
                     phone: form.phone,
                     street: form.street,
+                    region: form.region,
                     barangay: form.barangay,
                     city: form.city,
                     province: form.province,
@@ -210,6 +324,7 @@ const proceedToPayment = () => {
         email: form.email,
         phone: form.phone,
         street: form.street,
+        region: form.region,
         barangay: form.barangay,
         city: form.city,
         province: form.province,
@@ -338,56 +453,91 @@ const paymentMethods = [
                 </div>
 
                 <!-- Address Fields -->
-                <div>
-                    <InputLabel for="street" value="Street Address *" />
-                    <TextInput
-                        id="street"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.street"
-                        placeholder="123 Main Street, Building etc."
-                        required
-                    />
-                    <InputError class="mt-1" :message="form.errors.street" />
-                </div>
-
-                <div>
-                    <InputLabel for="barangay" value="Barangay *" />
-                    <TextInput
-                        id="barangay"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.barangay"
-                        placeholder="Barangay"
-                        required
-                    />
-                    <InputError class="mt-1" :message="form.errors.barangay" />
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-4">
                     <div>
-                        <InputLabel for="city" value="City *" />
+                        <InputLabel for="street" value="Street Address *" />
                         <TextInput
-                            id="city"
+                            id="street"
                             type="text"
                             class="mt-1 block w-full"
-                            v-model="form.city"
-                            placeholder="City"
+                            v-model="form.street"
+                            placeholder="123 Main Street, Unit/Floor"
                             required
                         />
-                        <InputError class="mt-1" :message="form.errors.city" />
+                        <InputError class="mt-1" :message="form.errors.street" />
                     </div>
-                    <div>
-                        <InputLabel for="province" value="Province *" />
-                        <TextInput
-                            id="province"
-                            type="text"
-                            class="mt-1 block w-full"
-                            v-model="form.province"
-                            placeholder="Province"
-                            required
-                        />
-                        <InputError class="mt-1" :message="form.errors.province" />
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <InputLabel for="region" value="Region *" />
+                            <select
+                                id="region"
+                                v-model="selectedRegionCode"
+                                @change="handleRegionChange"
+                                class="mt-1 block w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500 rounded-md shadow-sm text-sm"
+                                required
+                            >
+                                <option value="" disabled>Select Region</option>
+                                <option v-for="reg in regionList" :key="reg.psgcCode" :value="reg.psgcCode">
+                                    {{ reg.name }}
+                                </option>
+                            </select>
+                            <InputError class="mt-1" :message="form.errors.region" />
+                        </div>
+                        <div>
+                            <InputLabel for="province" value="Province *" />
+                            <select
+                                id="province"
+                                v-model="selectedProvinceCode"
+                                @change="handleProvinceChange"
+                                :disabled="!selectedRegionCode || isAddressLoading.provinces"
+                                class="mt-1 block w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500 rounded-md shadow-sm text-sm disabled:bg-gray-50 opacity-100"
+                                required
+                            >
+                                <option value="" disabled>{{ isAddressLoading.provinces ? 'Loading...' : 'Select Province' }}</option>
+                                <option v-for="prov in provinceList" :key="prov.id" :value="prov.id">
+                                    {{ prov.name }}
+                                </option>
+                            </select>
+                            <InputError class="mt-1" :message="form.errors.province" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <InputLabel for="city" value="City / Municipality *" />
+                            <select
+                                id="city"
+                                v-model="selectedCityCode"
+                                @change="handleCityChange"
+                                :disabled="!selectedProvinceCode || isAddressLoading.cities"
+                                class="mt-1 block w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500 rounded-md shadow-sm text-sm disabled:bg-gray-50"
+                                required
+                            >
+                                <option value="" disabled>{{ isAddressLoading.cities ? 'Loading...' : 'Select City' }}</option>
+                                <option v-for="city in cityList" :key="city.id" :value="city.id">
+                                    {{ city.name }}
+                                </option>
+                            </select>
+                            <InputError class="mt-1" :message="form.errors.city" />
+                        </div>
+                        <div>
+                            <InputLabel for="barangay" value="Barangay *" />
+                            <select
+                                id="barangay"
+                                v-model="selectedBarangayCode"
+                                @change="handleBarangayChange"
+                                :disabled="!selectedCityCode || isAddressLoading.barangays"
+                                class="mt-1 block w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500 rounded-md shadow-sm text-sm disabled:bg-gray-50"
+                                required
+                            >
+                                <option value="" disabled>{{ isAddressLoading.barangays ? 'Loading...' : 'Select Barangay' }}</option>
+                                <option v-for="brgy in barangayList" :key="brgy.id" :value="brgy.id">
+                                    {{ brgy.name }}
+                                </option>
+                            </select>
+                            <InputError class="mt-1" :message="form.errors.barangay" />
+                        </div>
                     </div>
                 </div>
 

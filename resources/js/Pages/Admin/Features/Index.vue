@@ -5,8 +5,6 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FeatureFormModal from './Partials/FeatureFormModal.vue';
 import FeatureViewModal from './Partials/FeatureViewModal.vue';
 import FeatureList from './Partials/FeatureList.vue';
-import PlanOverview from './Partials/PlanOverview.vue';
-
 const props = defineProps({
     features: Object,
     plans: Array,
@@ -145,27 +143,26 @@ const featuresByCategory = computed(() => {
 
     <AdminLayout>
         <template #header>
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="font-bold text-xl text-base-content leading-tight">Feature Management</h2>
-                    <p class="mt-1 text-sm text-base-content/50">
-                        Manage subscription plan features dynamically. Add, edit, or remove features.
-                    </p>
-                </div>
-                <button
-                    @click="openCreateModal"
-                    class="btn btn-primary btn-sm"
-                >
-                    <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Feature
-                </button>
-            </div>
+            <h2 class="font-bold text-xl text-base-content leading-tight">Feature Management</h2>
         </template>
 
         <div class="py-6">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <p class="text-sm text-base-content/70">
+                        Manage subscription plan features dynamically. Add, edit, or remove features.
+                    </p>
+                    <button
+                        @click="openCreateModal"
+                        class="btn btn-primary btn-sm shrink-0"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Feature
+                    </button>
+                </div>
+
                 <!-- Features by Category -->
                 <FeatureList 
                     :features-by-category="featuresByCategory"
@@ -176,9 +173,6 @@ const featuresByCategory = computed(() => {
                     @edit="openEditModal"
                     @delete="deleteFeature"
                 />
-
-                <!-- Plans Section -->
-                <PlanOverview :plans="plans" />
             </div>
         </div>
 
