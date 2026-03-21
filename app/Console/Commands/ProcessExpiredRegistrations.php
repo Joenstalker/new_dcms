@@ -86,65 +86,95 @@ class ProcessExpiredRegistrations extends Command
     {
         $this->info("Auto-approving registration for: {$registration->clinic_name}");
 
-        // Check if subdomain already exists
-        if (Domain::where('domain', $registration->subdomain)->exists()) {
-            $this->warn("Subdomain already exists. Marking as refunded: {$registration->subdomain}");
-            $this->processRegistration($registration);
-            return;
-        }
-
         try {
             DB::beginTransaction();
 
-            // Create tenant
-            $tenantId = $registration->subdomain;
+            // Check if tenant already exists (created during payment)
+            $tenant = Tenant::where('id', $registration->subdomain)->first();
 
-            $tenant = Tenant::create([
-                'id' => $tenantId,
-                'name' => $registration->clinic_name,
-                'owner_name' => $registration->first_name . ' ' . $registration->last_name,
-                'status' => 'active',
-                'email' => $registration->email,
-                'phone' => $registration->phone,
-                'street' => $registration->street,
-                'barangay' => $registration->barangay,
-                'city' => $registration->city,
-                'province' => $registration->province,
-            ]);
+            if ($tenant) {
+                // Tenant exists - initialize tenancy and create user
+                tenancy()->initialize($tenant);
 
-            // Create domain
-            $domain = $tenant->domains()->create([
-                'domain' => $registration->subdomain,
-            ]);
+                // Create admin user in tenant database
+                $user = \App\Models\User::create([
+                    'name' => $registration->first_name . ' ' . $registration->last_name,
+                    'email' => $registration->email,
+                    'password' => Hash::make($registration->password),
+                ]);
 
-            // Update tenant with domain_id
-            $tenant->update(['domain_id' => $domain->id]);
+                // Assign Owner role
+                $user->assignRole('Owner');
 
-            // Initialize tenancy to create database and user
-            tenancy()->initialize($tenant);
+                // End tenancy
+                tenancy()->end();
 
-            // Create admin user in tenant database
-            $user = \App\Models\User::create([
-                'name' => $registration->first_name . ' ' . $registration->last_name,
-                'email' => $registration->email,
-                'password' => Hash::make($registration->password),
-            ]);
+                // Update tenant status to active
+                $tenant->update(['status' => 'active']);
 
-            // Assign Owner role
-            $user->assignRole('Owner');
+                // Create subscription if not exists
+                if (!$tenant->subscriptions()->exists()) {
+                    $subscription = $tenant->subscriptions()->create([
+                        'subscription_plan_id' => $registration->subscription_plan_id,
+                        'stripe_status' => 'active',
+                        'stripe_price' => $registration->amount_paid,
+                        'billing_cycle' => $registration->billing_cycle,
+                        'payment_method' => 'card',
+                        'payment_status' => 'paid',
+                    ]);
+                }
+            }
+            else {
+                // Tenant doesn't exist - create from scratch (legacy/edge case)
+                $tenantId = $registration->subdomain;
 
-            // Create subscription
-            $subscription = $tenant->subscriptions()->create([
-                'subscription_plan_id' => $registration->subscription_plan_id,
-                'stripe_status' => 'active',
-                'stripe_price' => $registration->amount_paid,
-                'billing_cycle' => $registration->billing_cycle,
-                'payment_method' => 'card',
-                'payment_status' => 'paid',
-            ]);
+                $tenant = Tenant::create([
+                    'id' => $tenantId,
+                    'name' => $registration->clinic_name,
+                    'owner_name' => $registration->first_name . ' ' . $registration->last_name,
+                    'status' => 'active',
+                    'email' => $registration->email,
+                    'phone' => $registration->phone,
+                    'street' => $registration->street,
+                    'barangay' => $registration->barangay,
+                    'city' => $registration->city,
+                    'province' => $registration->province,
+                ]);
 
-            // End tenancy
-            tenancy()->end();
+                // Create domain
+                $domain = $tenant->domains()->create([
+                    'domain' => $registration->subdomain,
+                ]);
+
+                // Update tenant with domain_id
+                $tenant->update(['domain_id' => $domain->id]);
+
+                // Initialize tenancy to create database and user
+                tenancy()->initialize($tenant);
+
+                // Create admin user in tenant database
+                $user = \App\Models\User::create([
+                    'name' => $registration->first_name . ' ' . $registration->last_name,
+                    'email' => $registration->email,
+                    'password' => Hash::make($registration->password),
+                ]);
+
+                // Assign Owner role
+                $user->assignRole('Owner');
+
+                // End tenancy
+                tenancy()->end();
+
+                // Create subscription
+                $subscription = $tenant->subscriptions()->create([
+                    'subscription_plan_id' => $registration->subscription_plan_id,
+                    'stripe_status' => 'active',
+                    'stripe_price' => $registration->amount_paid,
+                    'billing_cycle' => $registration->billing_cycle,
+                    'payment_method' => 'card',
+                    'payment_status' => 'paid',
+                ]);
+            }
 
             // Update pending registration status
             $registration->update([

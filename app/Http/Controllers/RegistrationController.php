@@ -327,13 +327,13 @@ class RegistrationController extends Controller
                 return redirect()->to('/?registration-status=' . $pendingRegistration->status);
             }
 
-            // Create tenant immediately with 'pending' status
+            // Create tenant record (but NOT the tenant database - waits for admin approval)
             DB::beginTransaction();
 
             try {
                 $tenantId = strtolower(trim($pendingRegistration->subdomain));
 
-                // Create tenant
+                // Create tenant in central database only (no tenant DB yet)
                 $tenant = Tenant::create([
                     'id' => $tenantId,
                     'name' => $pendingRegistration->clinic_name,
@@ -355,23 +355,11 @@ class RegistrationController extends Controller
                 // Update tenant with domain_id
                 $tenant->update(['domain_id' => $domain->id]);
 
-                // Initialize tenancy to create database and user
-                tenancy()->initialize($tenant);
-
-                // Create admin user in tenant database
-                $user = \App\Models\User::create([
-                    'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
-                    'email' => $pendingRegistration->email,
-                    'password' => Hash::make($pendingRegistration->password),
-                ]);
-
-                // Assign Owner role
-                $user->assignRole('Owner');
-
-                // End tenancy
-                tenancy()->end();
+                // NOTE: Tenant database and user will be created AFTER admin approval
+                // This happens in PendingRegistrationController::approve()
 
                 // Create subscription record (but tenant is still pending)
+                // Note: subscription will be more complete after approval
                 $subscription = $tenant->subscriptions()->create([
                     'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
                     'stripe_id' => $session->subscription ?? null,
@@ -382,13 +370,14 @@ class RegistrationController extends Controller
                     'payment_status' => 'paid',
                 ]);
 
-                // Update pending registration status to approved
+                // Update pending registration status - keep as pending for admin review
+                // The expires_at field controls when the pending status expires
                 $pendingRegistration->update([
                     'stripe_session_id' => $session->id,
                     'stripe_payment_intent_id' => $session->payment_intent ?? null,
                     'amount_paid' => $session->amount_total / 100,
-                    'status' => PendingRegistration::STATUS_APPROVED,
-                    'approved_at' => now(),
+                    // Keep status as pending - admin needs to approve
+                    'status' => PendingRegistration::STATUS_PENDING,
                 ]);
 
                 DB::commit();

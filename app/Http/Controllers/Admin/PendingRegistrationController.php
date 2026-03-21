@@ -115,7 +115,7 @@ class PendingRegistrationController extends Controller
     }
 
     /**
-     * Approve a pending registration and create the tenant.
+     * Approve a pending registration - tenant already exists from payment success.
      */
     public function approve(Request $request, PendingRegistration $pendingRegistration): RedirectResponse
     {
@@ -129,64 +129,84 @@ class PendingRegistrationController extends Controller
             return back()->with('error', 'This registration has expired.');
         }
 
-        // Check if subdomain already exists
-        if (Domain::where('domain', $pendingRegistration->subdomain)->exists()) {
-            return back()->with('error', 'This subdomain is already taken.');
-        }
-
         try {
             DB::beginTransaction();
 
-            // Create tenant using subdomain as ID
-            $tenantId = $pendingRegistration->subdomain;
+            // Find existing tenant (created during payment success)
+            $tenant = Tenant::where('id', $pendingRegistration->subdomain)->first();
 
-            // Create tenant
-            $tenant = Tenant::create([
-                'id' => $tenantId,
-                'name' => $pendingRegistration->clinic_name,
-                'owner_name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
-                'status' => 'active',
-                'email' => $pendingRegistration->email,
-                'phone' => $pendingRegistration->phone,
-                'street' => $pendingRegistration->street,
-                'barangay' => $pendingRegistration->barangay,
-                'city' => $pendingRegistration->city,
-                'province' => $pendingRegistration->province,
-            ]);
+            if (!$tenant) {
+                // Tenant doesn't exist, create it (fallback for old registrations)
+                $tenantId = $pendingRegistration->subdomain;
 
-            // Create domain
-            $domain = $tenant->domains()->create([
-                'domain' => $pendingRegistration->subdomain,
-            ]);
+                $tenant = Tenant::create([
+                    'id' => $tenantId,
+                    'name' => $pendingRegistration->clinic_name,
+                    'owner_name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
+                    'status' => 'active',
+                    'email' => $pendingRegistration->email,
+                    'phone' => $pendingRegistration->phone,
+                    'street' => $pendingRegistration->street,
+                    'barangay' => $pendingRegistration->barangay,
+                    'city' => $pendingRegistration->city,
+                    'province' => $pendingRegistration->province,
+                ]);
 
-            // Update tenant with domain_id
-            $tenant->update(['domain_id' => $domain->id]);
+                // Create domain
+                $domain = $tenant->domains()->create([
+                    'domain' => $pendingRegistration->subdomain,
+                ]);
 
-            // Initialize tenancy to create database and user
-            tenancy()->initialize($tenant);
+                // Update tenant with domain_id
+                $tenant->update(['domain_id' => $domain->id]);
 
-            // Create admin user in tenant database
-            $user = \App\Models\User::create([
-                'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
-                'email' => $pendingRegistration->email,
-                'password' => Hash::make($pendingRegistration->password),
-            ]);
+                // Initialize tenancy to create database and user
+                tenancy()->initialize($tenant);
 
-            // Assign Owner role
-            $user->assignRole('Owner');
+                // Create admin user in tenant database
+                $user = \App\Models\User::create([
+                    'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
+                    'email' => $pendingRegistration->email,
+                    'password' => Hash::make($pendingRegistration->password),
+                ]);
 
-            // Create subscription
-            $subscription = $tenant->subscriptions()->create([
-                'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
-                'stripe_status' => 'active',
-                'stripe_price' => $pendingRegistration->amount_paid,
-                'billing_cycle' => $pendingRegistration->billing_cycle,
-                'payment_method' => 'card',
-                'payment_status' => 'paid',
-            ]);
+                // Assign Owner role
+                $user->assignRole('Owner');
 
-            // End tenancy
-            tenancy()->end();
+                // Create subscription
+                $subscription = $tenant->subscriptions()->create([
+                    'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
+                    'stripe_status' => 'active',
+                    'stripe_price' => $pendingRegistration->amount_paid,
+                    'billing_cycle' => $pendingRegistration->billing_cycle,
+                    'payment_method' => 'card',
+                    'payment_status' => 'paid',
+                ]);
+
+                // End tenancy
+                tenancy()->end();
+            }
+            else {
+                // Tenant exists (created during payment) - now create tenant database and user
+                // Initialize tenancy to create database and user
+                tenancy()->initialize($tenant);
+
+                // Create admin user in tenant database
+                $user = \App\Models\User::create([
+                    'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
+                    'email' => $pendingRegistration->email,
+                    'password' => Hash::make($pendingRegistration->password),
+                ]);
+
+                // Assign Owner role
+                $user->assignRole('Owner');
+
+                // End tenancy
+                tenancy()->end();
+
+                // Now update status to active
+                $tenant->update(['status' => 'active']);
+            }
 
             // Update pending registration status
             $pendingRegistration->update([

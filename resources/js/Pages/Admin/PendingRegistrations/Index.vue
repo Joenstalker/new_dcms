@@ -103,16 +103,6 @@ const extendTime = (registration) => {
     });
 };
 
-// Toggle reminder function
-const toggleReminder = (registration) => {
-    router.post(`/admin/pending-registrations/${registration.id}/toggle-reminder`, {}, { preserveScroll: true });
-};
-
-// Toggle auto-approve function
-const toggleAutoApprove = (registration) => {
-    router.post(`/admin/pending-registrations/${registration.id}/toggle-auto-approve`, {}, { preserveScroll: true });
-};
-
 const approveRegistration = (registration) => {
     Swal.fire({
         title: 'Approve Registration',
