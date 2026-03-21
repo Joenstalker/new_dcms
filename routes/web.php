@@ -97,11 +97,20 @@ $registerCentralRoutes = function ($withNames = false) {
             $pendingS = Route::get('/pending-registrations/{pendingRegistration}', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'show']);
             $pendingA = Route::post('/pending-registrations/{pendingRegistration}/approve', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'approve']);
             $pendingR = Route::post('/pending-registrations/{pendingRegistration}/reject', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'reject']);
+            $pendingExtend = Route::post('/pending-registrations/{pendingRegistration}/extend', [\App\Http\Controllers\Admin\PendingRegistrationController::class, 'extendTime']);
+            $pendingSetTime = Route::post('/pending-registrations/{pendingRegistration}/set-time', [\App\Http\Controllers\Admin\PendingRegistrationController::class, 'setTime']);
+            $pendingToggleReminder = Route::post('/pending-registrations/{pendingRegistration}/toggle-reminder', [\App\Http\Controllers\Admin\PendingRegistrationController::class, 'toggleReminder']);
+            $pendingToggleAutoApprove = Route::post('/pending-registrations/{pendingRegistration}/toggle-auto-approve', [\App\Http\Controllers\Admin\PendingRegistrationController::class, 'toggleAutoApprove']);
+            
             if ($withNames) {
                 $pendingI->name('pending-registrations.index');
                 $pendingS->name('pending-registrations.show');
                 $pendingA->name('pending-registrations.approve');
                 $pendingR->name('pending-registrations.reject');
+                $pendingExtend->name('pending-registrations.extend');
+                $pendingSetTime->name('pending-registrations.set-time');
+                $pendingToggleReminder->name('pending-registrations.toggle-reminder');
+                $pendingToggleAutoApprove->name('pending-registrations.toggle-auto-approve');
             }
 
             // Tenant API Routes (for database name preview)

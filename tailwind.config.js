@@ -22,26 +22,6 @@ export default {
     plugins: [forms, daisyui],
 
     daisyui: {
-        themes: [
-            "light",
-            "dark",
-            "cupcake",
-            "bumblebee",
-            "emerald",
-            "corporate",
-            "synthwave",
-            "retro",
-            "cyberpunk",
-            "valentine",
-            "halloween",
-            "garden",
-            "forest",
-            "aqua",
-            "dracula",
-            "night",
-            "winter",
-            "nord",
-            "sunset",
-        ],
+        themes: true,
     },
 };

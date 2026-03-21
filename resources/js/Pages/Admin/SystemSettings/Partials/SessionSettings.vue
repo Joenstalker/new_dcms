@@ -26,18 +26,18 @@ const saveGroup = () => {
 </script>
 
 <template>
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Session Configuration</h2>
-            <p class="mt-1 text-sm text-gray-500">Manage session behavior and security settings for the admin portal.</p>
+    <div class="bg-base-100 shadow-sm rounded-lg border border-base-300 overflow-hidden">
+        <div class="p-6 border-b border-base-300">
+            <h2 class="text-lg font-bold text-base-content">Session Configuration</h2>
+            <p class="mt-1 text-sm text-base-content/50">Manage session behavior and security settings for the admin portal.</p>
         </div>
         
         <div class="p-6 space-y-6">
             <!-- Session Lifetime -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Session Lifetime</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ sessionDescriptions.session_lifetime }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Session Lifetime</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ sessionDescriptions.session_lifetime }}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <input
@@ -45,65 +45,47 @@ const saveGroup = () => {
                         type="number"
                         min="5"
                         max="1440"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm px-3 py-2 border"
+                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
                     />
-                    <span class="text-sm text-gray-500 whitespace-nowrap">minutes</span>
+                    <span class="text-sm text-base-content/50 whitespace-nowrap">minutes</span>
                 </div>
             </div>
 
             <!-- Session Expire on Close -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Expire on Close</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ sessionDescriptions.session_expire_on_close }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Expire on Close</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ sessionDescriptions.session_expire_on_close }}</p>
                 </div>
                 <div class="flex items-center">
-                    <button
-                        @click="form.session_expire_on_close = !form.session_expire_on_close"
-                        :class="[
-                            form.session_expire_on_close ? 'bg-teal-600' : 'bg-gray-200',
-                            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2'
-                        ]"
-                    >
-                        <span
-                            :class="[
-                                form.session_expire_on_close ? 'translate-x-5' : 'translate-x-0',
-                                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out'
-                            ]"
-                        />
-                    </button>
+                    <input 
+                        type="checkbox" 
+                        class="toggle toggle-primary" 
+                        v-model="form.session_expire_on_close"
+                    />
                 </div>
             </div>
 
             <!-- Session Encryption -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Session Encryption</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ sessionDescriptions.session_encrypt }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Session Encryption</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ sessionDescriptions.session_encrypt }}</p>
                 </div>
                 <div class="flex items-center">
-                    <button
-                        @click="form.session_encrypt = !form.session_encrypt"
-                        :class="[
-                            form.session_encrypt ? 'bg-teal-600' : 'bg-gray-200',
-                            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2'
-                        ]"
-                    >
-                        <span
-                            :class="[
-                                form.session_encrypt ? 'translate-x-5' : 'translate-x-0',
-                                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out'
-                            ]"
-                        />
-                    </button>
+                    <input 
+                        type="checkbox" 
+                        class="toggle toggle-primary" 
+                        v-model="form.session_encrypt"
+                    />
                 </div>
             </div>
 
             <!-- Remember Me Duration -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Remember Me Duration</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ sessionDescriptions.remember_me_duration }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Remember Me Duration</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ sessionDescriptions.remember_me_duration }}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <input
@@ -111,17 +93,17 @@ const saveGroup = () => {
                         type="number"
                         min="60"
                         max="525600"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm px-3 py-2 border"
+                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
                     />
-                    <span class="text-sm text-gray-500 whitespace-nowrap">minutes</span>
+                    <span class="text-sm text-base-content/50 whitespace-nowrap">minutes</span>
                 </div>
             </div>
 
             <!-- Max Login Attempts -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Max Login Attempts</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ sessionDescriptions.max_login_attempts }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Max Login Attempts</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ sessionDescriptions.max_login_attempts }}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <input
@@ -129,17 +111,17 @@ const saveGroup = () => {
                         type="number"
                         min="3"
                         max="10"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm px-3 py-2 border"
+                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
                     />
-                    <span class="text-sm text-gray-500 whitespace-nowrap">attempts</span>
+                    <span class="text-sm text-base-content/50 whitespace-nowrap">attempts</span>
                 </div>
             </div>
 
             <!-- Lockout Duration -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Lockout Duration</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ sessionDescriptions.lockout_duration }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Lockout Duration</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ sessionDescriptions.lockout_duration }}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <input
@@ -147,17 +129,17 @@ const saveGroup = () => {
                         type="number"
                         min="1"
                         max="1440"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm px-3 py-2 border"
+                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
                     />
-                    <span class="text-sm text-gray-500 whitespace-nowrap">minutes</span>
+                    <span class="text-sm text-base-content/50 whitespace-nowrap">minutes</span>
                 </div>
             </div>
 
             <!-- Password Reset Expiry -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Password Reset Expiry</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ sessionDescriptions.password_reset_expiry }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Password Reset Expiry</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ sessionDescriptions.password_reset_expiry }}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <input
@@ -165,17 +147,17 @@ const saveGroup = () => {
                         type="number"
                         min="5"
                         max="1440"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm px-3 py-2 border"
+                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
                     />
-                    <span class="text-sm text-gray-500 whitespace-nowrap">minutes</span>
+                    <span class="text-sm text-base-content/50 whitespace-nowrap">minutes</span>
                 </div>
             </div>
         </div>
 
-        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+        <div class="px-6 py-4 bg-base-200/50 border-t border-base-300 flex justify-end">
             <button
                 @click="saveGroup"
-                class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors"
+                class="btn btn-primary btn-sm"
             >
                 Save Session Settings
             </button>

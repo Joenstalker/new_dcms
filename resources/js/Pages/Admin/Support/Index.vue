@@ -113,7 +113,7 @@ const handleAttachmentError = (error) => {
 <template>
     <AdminLayout>
         <template #header>
-            <h1 class="text-xl font-bold text-gray-900 line-clamp-1">Support & Tickets</h1>
+            <h1 class="text-xl font-bold text-base-content leading-tight line-clamp-1">Support & Tickets</h1>
         </template>
 
         <div class="max-w-7xl mx-auto space-y-6">

@@ -22,129 +22,108 @@ const saveGroup = () => {
 </script>
 
 <template>
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Security Configuration</h2>
-            <p class="mt-1 text-sm text-gray-500">Manage security settings for the admin portal.</p>
+    <div class="bg-base-100 shadow-sm rounded-lg border border-base-300 overflow-hidden">
+        <div class="p-6 border-b border-base-300">
+            <h2 class="text-lg font-bold text-base-content">Security Configuration</h2>
+            <p class="mt-1 text-sm text-base-content/50">Manage security settings for the admin portal.</p>
         </div>
         
         <div class="p-6 space-y-6">
             <!-- Two Factor Auth - Coming Soon -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center opacity-60">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <label class="text-sm font-bold text-base-content/70 flex items-center gap-2">
                         Two-Factor Authentication
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                        <span class="badge badge-warning badge-sm">
                             Coming Soon
                         </span>
                     </label>
-                    <p class="text-xs text-gray-500 mt-1">{{ securityDescriptions.two_factor_auth_enabled }}</p>
+                    <p class="text-xs text-base-content/50 mt-1">{{ securityDescriptions.two_factor_auth_enabled }}</p>
                 </div>
                 <div class="flex items-center">
-                    <button
+                    <input 
+                        type="checkbox" 
+                        class="toggle toggle-primary opacity-50" 
                         disabled
-                        class="opacity-50 cursor-not-allowed relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-gray-200"
-                    >
-                        <span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" />
-                    </button>
+                    />
                 </div>
             </div>
 
             <!-- IP Whitelist - Coming Soon -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center opacity-60">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <label class="text-sm font-bold text-base-content/70 flex items-center gap-2">
                         IP Whitelist
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                        <span class="badge badge-warning badge-sm">
                             Coming Soon
                         </span>
                     </label>
-                    <p class="text-xs text-gray-500 mt-1">{{ securityDescriptions.ip_whitelist_enabled }}</p>
+                    <p class="text-xs text-base-content/50 mt-1">{{ securityDescriptions.ip_whitelist_enabled }}</p>
                 </div>
                 <div class="flex items-center">
-                    <button
+                    <input 
+                        type="checkbox" 
+                        class="toggle toggle-primary opacity-50" 
                         disabled
-                        class="opacity-50 cursor-not-allowed relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-gray-200"
-                    >
-                        <span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" />
-                    </button>
+                    />
                 </div>
             </div>
 
             <!-- Audit Logging -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Audit Logging</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ securityDescriptions.audit_logging_enabled }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Audit Logging</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ securityDescriptions.audit_logging_enabled }}</p>
                 </div>
                 <div class="flex items-center">
-                    <button
-                        @click="form.audit_logging_enabled = !form.audit_logging_enabled"
-                        :class="[
-                            form.audit_logging_enabled ? 'bg-teal-600' : 'bg-gray-200',
-                            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2'
-                        ]"
-                    >
-                        <span
-                            :class="[
-                                form.audit_logging_enabled ? 'translate-x-5' : 'translate-x-0',
-                                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out'
-                            ]"
-                        />
-                    </button>
+                    <input 
+                        type="checkbox" 
+                        class="toggle toggle-primary" 
+                        v-model="form.audit_logging_enabled"
+                    />
                 </div>
             </div>
 
             <!-- Data Encryption -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Data Encryption</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ securityDescriptions.data_encryption_enabled }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Data Encryption</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ securityDescriptions.data_encryption_enabled }}</p>
                 </div>
                 <div class="flex items-center">
-                    <button
-                        @click="form.data_encryption_enabled = !form.data_encryption_enabled"
-                        :class="[
-                            form.data_encryption_enabled ? 'bg-teal-600' : 'bg-gray-200',
-                            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2'
-                        ]"
-                    >
-                        <span
-                            :class="[
-                                form.data_encryption_enabled ? 'translate-x-5' : 'translate-x-0',
-                                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out'
-                            ]"
-                        />
-                    </button>
+                    <input 
+                        type="checkbox" 
+                        class="toggle toggle-primary" 
+                        v-model="form.data_encryption_enabled"
+                    />
                 </div>
             </div>
 
             <!-- Concurrent Sessions - Coming Soon -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center opacity-60">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <label class="text-sm font-bold text-base-content/70 flex items-center gap-2">
                         Concurrent Sessions
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                        <span class="badge badge-warning badge-sm">
                             Coming Soon
                         </span>
                     </label>
-                    <p class="text-xs text-gray-500 mt-1">{{ securityDescriptions.concurrent_sessions_enabled }}</p>
+                    <p class="text-xs text-base-content/50 mt-1">{{ securityDescriptions.concurrent_sessions_enabled }}</p>
                 </div>
                 <div class="flex items-center">
-                    <button
+                    <input 
+                        type="checkbox" 
+                        class="toggle toggle-primary opacity-50" 
                         disabled
-                        class="opacity-50 cursor-not-allowed relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-gray-200"
-                    >
-                        <span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" />
-                    </button>
+                    />
                 </div>
             </div>
         </div>
 
-        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+        <div class="px-6 py-4 bg-base-200/50 border-t border-base-300 flex justify-end">
             <button
                 @click="saveGroup"
-                class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors"
+                class="btn btn-primary btn-sm"
             >
                 Save Security Settings
             </button>

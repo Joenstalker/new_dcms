@@ -51,122 +51,132 @@ const handleSelect = (message) => {
 
 <template>
     <!-- Messages List -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="bg-base-100 rounded-3xl shadow-sm border border-base-300 overflow-hidden">
         <!-- Loading State -->
-        <div v-if="loading" class="p-6">
-            <div class="animate-pulse space-y-4">
-                <div v-for="i in 5" :key="i" class="flex gap-4">
-                    <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
-                    <div class="flex-1 space-y-2">
-                        <div class="h-4 bg-gray-200 rounded w-1/4"></div>
-                        <div class="h-3 bg-gray-200 rounded w-3/4"></div>
+        <div v-if="loading" class="p-8">
+            <div class="animate-pulse space-y-6">
+                <div v-for="i in 5" :key="i" class="flex gap-5">
+                    <div class="w-12 h-12 bg-base-300 rounded-2xl"></div>
+                    <div class="flex-1 space-y-3">
+                        <div class="h-4 bg-base-300 rounded-lg w-1/4"></div>
+                        <div class="h-3 bg-base-300 rounded-lg w-3/4"></div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Empty State -->
-        <div v-else-if="messages.data.length === 0" class="flex flex-col items-center justify-center py-16">
-            <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-            </svg>
-            <h3 class="text-lg font-medium text-gray-900 mb-1">No messages found</h3>
-            <p class="text-gray-500">There are no support messages in this category.</p>
+        <div v-else-if="messages.data.length === 0" class="flex flex-col items-center justify-center py-20 px-6">
+            <div class="w-20 h-20 rounded-full bg-base-200 flex items-center justify-center mb-6">
+                <svg class="w-10 h-10 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-black text-base-content mb-2 tracking-tight">No messages found</h3>
+            <p class="text-base-content/40 font-medium">There are no support messages in this category.</p>
         </div>
 
         <!-- Messages Table -->
-        <table v-else class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Status
-                    </th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Name
-                    </th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Subject
-                    </th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Date
-                    </th>
-                    <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Actions
-                    </th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                <tr 
-                    v-for="message in messages.data" 
-                    :key="message.id"
-                    @click="handleSelect(message)"
-                    class="hover:bg-gray-50 cursor-pointer transition-colors"
-                    :class="{ 'bg-teal-50/30': message.status === 'unread' }"
-                >
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span 
-                            :class="[
-                                'px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border',
-                                getStatusColor(message.status)
-                            ]"
-                        >
-                            {{ message.status }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                <span class="text-xs font-medium text-gray-600">
-                                    {{ message.name.charAt(0).toUpperCase() }}
-                                </span>
+        <div v-else class="overflow-x-auto">
+            <table class="table w-full border-collapse">
+                <thead>
+                    <tr class="bg-base-200/50 border-b border-base-300">
+                        <th class="px-8 py-5 text-left text-[10px] font-black text-base-content/40 uppercase tracking-widest border-none">
+                            Status
+                        </th>
+                        <th class="px-8 py-5 text-left text-[10px] font-black text-base-content/40 uppercase tracking-widest border-none">
+                            Sender Information
+                        </th>
+                        <th class="px-8 py-5 text-left text-[10px] font-black text-base-content/40 uppercase tracking-widest border-none">
+                            Subject & Content
+                        </th>
+                        <th class="px-8 py-5 text-left text-[10px] font-black text-base-content/40 uppercase tracking-widest border-none">
+                            Received Date
+                        </th>
+                        <th class="px-8 py-5 text-right text-[10px] font-black text-base-content/40 uppercase tracking-widest border-none">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-base-300/30">
+                    <tr 
+                        v-for="message in messages.data" 
+                        :key="message.id"
+                        @click="handleSelect(message)"
+                        class="hover:bg-base-200/30 cursor-pointer transition-all duration-300 group relative border-none"
+                        :class="{ 'bg-primary/5': message.status === 'unread' }"
+                    >
+                        <td class="px-8 py-6 whitespace-nowrap border-none">
+                            <span 
+                                :class="[
+                                    'badge badge-sm font-black uppercase tracking-widest px-3 py-2.5 h-auto',
+                                    message.status === 'unread' ? 'badge-warning shadow-sm shadow-warning/20' : 
+                                    message.status === 'read' ? 'badge-info shadow-sm shadow-info/20' :
+                                    message.status === 'replied' ? 'badge-success shadow-sm shadow-success/20' :
+                                    'badge-ghost bg-base-300 border-none'
+                                ]"
+                            >
+                                {{ message.status }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-6 whitespace-nowrap border-none">
+                            <div class="flex items-center gap-4">
+                                <div class="avatar placeholder">
+                                    <div class="bg-base-300 text-base-content/50 rounded-2xl w-11 h-11 border border-base-300 shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
+                                        <span class="text-xs font-black">{{ message.name.charAt(0).toUpperCase() }}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-black text-base-content tracking-tight">{{ message.name }}</div>
+                                    <div class="text-[11px] text-base-content/40 font-bold lowercase">{{ message.email }}</div>
+                                </div>
                             </div>
-                            <div class="ml-3">
-                                <div class="text-sm font-medium text-gray-900">{{ message.name }}</div>
-                                <div class="text-xs text-gray-500">{{ message.email }}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm text-gray-900 truncate max-w-xs">{{ message.subject }}</div>
-                        <div class="text-xs text-gray-500 truncate max-w-xs">{{ message.message.substring(0, 60) }}...</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-500">{{ formatDate(message.created_at) }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button 
-                            class="text-teal-600 hover:text-teal-900 font-medium text-sm"
-                            @click.stop="handleSelect(message)"
-                        >
-                            View
-                        </button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+                        </td>
+                        <td class="px-8 py-6 border-none">
+                            <div class="text-sm font-bold text-base-content/80 truncate max-w-xs tracking-tight">{{ message.subject }}</div>
+                            <div class="text-xs text-base-content/40 truncate max-w-xs mt-1 font-medium">{{ message.message.substring(0, 60) }}...</div>
+                        </td>
+                        <td class="px-8 py-6 whitespace-nowrap border-none">
+                            <div class="text-[11px] font-black uppercase tracking-widest text-base-content/30">{{ formatDate(message.created_at) }}</div>
+                        </td>
+                        <td class="px-8 py-6 whitespace-nowrap text-right border-none">
+                            <button 
+                                class="btn btn-ghost btn-sm font-black text-[11px] uppercase tracking-widest hover:text-primary hover:bg-primary/10 transition-all duration-300"
+                                @click.stop="handleSelect(message)"
+                            >
+                                View Ticket
+                            </button>
+                        </td>
+                        
+                        <!-- Side Indicator for unread -->
+                        <div v-if="message.status === 'unread'" class="absolute left-0 top-3 bottom-3 w-1 bg-warning rounded-r-full"></div>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
         <!-- Pagination -->
-        <div v-if="messages.links && messages.links.length > 1" class="px-6 py-4 border-t border-gray-200">
-            <div class="flex items-center justify-between">
-                <div class="text-sm text-gray-500">
-                    Showing {{ messages.from }} to {{ messages.to }} of {{ messages.total }} results
+        <div v-if="messages.links && messages.links.length > 1" class="px-8 py-6 border-t border-base-300 bg-base-200/30">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div class="text-[10px] font-black text-base-content/40 uppercase tracking-widest">
+                    Showing <span class="text-base-content">{{ messages.from }}</span> to <span class="text-base-content">{{ messages.to }}</span> of <span class="text-primary">{{ messages.total }}</span> results
                 </div>
-                <div class="flex gap-1">
+                <div class="flex gap-2">
                     <template v-for="(link, index) in messages.links" :key="index">
                         <Link
                             v-if="link.url"
                             :href="link.url"
                             :class="[
-                                'px-3 py-1 rounded-lg text-sm font-medium transition-colors',
+                                'btn btn-xs font-black transition-all duration-300 px-4 h-8 rounded-xl',
                                 link.active
-                                    ? 'bg-teal-600 text-white'
-                                    : 'text-gray-500 hover:bg-gray-100'
+                                    ? 'btn-primary shadow-lg shadow-primary/20'
+                                    : 'btn-ghost text-base-content/50 hover:text-base-content hover:bg-base-300 border-none'
                             ]"
                             v-html="link.label"
                         />
                         <span 
                             v-else
-                            class="px-3 py-1 rounded-lg text-sm font-medium text-gray-500 opacity-50 cursor-not-allowed"
+                            class="btn btn-xs btn-ghost btn-disabled opacity-30 font-black h-8 px-4 rounded-xl border-none"
                             v-html="link.label"
                         />
                     </template>

@@ -147,17 +147,17 @@ const featuresByCategory = computed(() => {
         <template #header>
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">Feature Management</h2>
-                    <p class="mt-1 text-sm text-gray-500">
+                    <h2 class="font-bold text-xl text-base-content leading-tight">Feature Management</h2>
+                    <p class="mt-1 text-sm text-base-content/50">
                         Manage subscription plan features dynamically. Add, edit, or remove features.
                     </p>
                 </div>
                 <button
                     @click="openCreateModal"
-                    class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-medium text-sm text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+                    class="btn btn-primary btn-sm"
                 >
-                    <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
                     Add Feature
                 </button>

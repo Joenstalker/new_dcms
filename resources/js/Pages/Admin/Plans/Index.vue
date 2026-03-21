@@ -151,121 +151,121 @@ const forceSync = (plan) => {
     <AdminLayout>
         <template #header>
             <div class="flex justify-between items-center w-full">
-                <h1 class="text-xl font-bold text-gray-900">Subscription Plans</h1>
-                <button @click="openCreateModal" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm shadow-teal-900/10 transition-all flex items-center">
+                <h1 class="text-xl font-bold text-base-content">Subscription Plans</h1>
+                <button @click="openCreateModal" class="btn btn-primary btn-sm rounded-lg shadow-sm shadow-primary/10 transition-all flex items-center">
                     <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
                     Create Plan
                 </button>
             </div>
         </template>
 
-        <div class="max-w-7xl mx-auto space-y-6">
+        <div class="max-w-7xl mx-auto space-y-6 pb-12">
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-                <div v-for="plan in plans" :key="plan.id" class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow group">
-                    <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 group-hover:bg-teal-50/30 transition-colors">
-                        <h3 class="text-lg font-bold text-teal-700 uppercase tracking-wide">{{ plan.name }}</h3>
+                <div v-for="plan in plans" :key="plan.id" class="bg-base-100 rounded-xl overflow-hidden shadow-sm border border-base-300 hover:shadow-md transition-shadow group flex flex-col h-full">
+                    <div class="p-6 border-b border-base-300 flex justify-between items-center bg-base-200/50 group-hover:bg-primary/5 transition-colors">
+                        <h3 class="text-lg font-bold text-primary uppercase tracking-wide">{{ plan.name }}</h3>
                         <div class="flex items-center space-x-2">
-                            <button @click="openEditModal(plan)" class="text-gray-400 hover:text-teal-600 transition-colors" title="Edit Plan">
+                            <button @click="openEditModal(plan)" class="text-base-content/40 hover:text-primary transition-colors" title="Edit Plan">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
-                            <button @click="confirmDelete(plan)" class="text-gray-400 hover:text-red-600 transition-colors" title="Delete Plan">
+                            <button @click="confirmDelete(plan)" class="text-base-content/40 hover:text-error transition-colors" title="Delete Plan">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                         </div>
                     </div>
                     
-                    <div class="p-6">
+                    <div class="p-6 flex-1 flex flex-col">
                         <div class="flex items-baseline mb-6">
-                            <span class="text-3xl font-extrabold text-gray-900">₱{{ Number(plan.price_monthly).toLocaleString() }}</span>
-                            <span class="text-sm text-gray-500 ml-1">/ mo</span>
+                            <span class="text-3xl font-extrabold text-base-content">₱{{ Number(plan.price_monthly).toLocaleString() }}</span>
+                            <span class="text-sm text-base-content/50 ml-1">/ mo</span>
                         </div>
                         
                         <div class="space-y-1 mb-6">
                             <div v-if="plan.stripe_product_id" class="flex items-center space-x-1.5">
-                                <span class="flex-shrink-0 w-2 h-2 rounded-full bg-green-500"></span>
-                                <span class="text-[10px] text-gray-500 font-medium">Stripe ID: {{ plan.stripe_product_id }}</span>
+                                <span class="flex-shrink-0 w-2 h-2 rounded-full bg-success shadow-sm shadow-success/20"></span>
+                                <span class="text-[10px] text-base-content/60 font-medium">Stripe ID: {{ plan.stripe_product_id }}</span>
                             </div>
-                            <div v-if="plan.stripe_monthly_price_id" class="text-[9px] text-gray-400 pl-3">
+                            <div v-if="plan.stripe_monthly_price_id" class="text-[9px] text-base-content/40 pl-3">
                                 Monthly Price ID: {{ plan.stripe_monthly_price_id }}
                             </div>
-                            <div v-if="plan.stripe_yearly_price_id" class="text-[9px] text-gray-400 pl-3">
+                            <div v-if="plan.stripe_yearly_price_id" class="text-[9px] text-base-content/40 pl-3">
                                 Yearly Price ID: {{ plan.stripe_yearly_price_id }}
                             </div>
                             <div v-if="!plan.stripe_product_id" class="flex items-center justify-between">
                                 <div class="flex items-center space-x-1.5">
-                                    <span class="flex-shrink-0 w-2 h-2 rounded-full bg-amber-400"></span>
-                                    <span class="text-[10px] text-amber-600 font-medium italic">Pending Stripe Sync</span>
+                                    <span class="flex-shrink-0 w-2 h-2 rounded-full bg-warning animate-pulse"></span>
+                                    <span class="text-[10px] text-warning font-medium italic">Pending Stripe Sync</span>
                                 </div>
-                                <button @click="forceSync(plan)" class="text-[9px] bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-0.5 rounded transition-colors" title="Trigger Manual Sync">
+                                <button @click="forceSync(plan)" class="text-[9px] bg-warning/10 hover:bg-warning/20 text-warning px-2 py-0.5 rounded transition-colors" title="Trigger Manual Sync">
                                     Sync Now
                                 </button>
                             </div>
                             <div v-else class="flex justify-end">
-                                <button @click="forceSync(plan)" class="text-[9px] text-gray-400 hover:text-teal-600 transition-colors flex items-center space-x-1" title="Force Refresh Stripe Data">
+                                <button @click="forceSync(plan)" class="text-[9px] text-base-content/40 hover:text-primary transition-colors flex items-center space-x-1" title="Force Refresh Stripe Data">
                                     <svg class="w-2 h-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                     <span>Sync</span>
                                 </button>
                             </div>
                         </div>
 
-                        <ul class="space-y-4 text-sm text-gray-600">
+                        <ul class="space-y-4 text-sm text-base-content/70 flex-1">
                             <!-- Main Features -->
                             <li class="flex items-center">
-                                <svg class="h-5 w-5 text-teal-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 <strong>{{ plan.max_users }}</strong> &nbsp;Users
                             </li>
                             <li class="flex items-center">
-                                <svg class="h-5 w-5 text-teal-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 <strong v-if="plan.max_patients === null">Unlimited</strong>
                                 <strong v-else>{{ plan.max_patients }}</strong> &nbsp;Patients
                             </li>
                             <li class="flex items-center">
-                                <svg class="h-5 w-5 text-teal-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 <strong v-if="plan.max_appointments === null">Unlimited</strong>
                                 <strong v-else>{{ plan.max_appointments }}</strong> &nbsp;Appointments
                             </li>
 
                             <!-- Tier Features -->
                             <li class="flex items-center">
-                                <svg v-if="plan.has_qr_booking" class="h-5 w-5 text-teal-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <svg v-else class="h-5 w-5 text-gray-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                <span :class="{'text-gray-400 line-through': !plan.has_qr_booking}">QR Online Booking</span>
+                                <svg v-if="plan.has_qr_booking" class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg v-else class="h-5 w-5 text-base-content/20 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                <span :class="{'text-base-content/30 line-through': !plan.has_qr_booking}">QR Online Booking</span>
                             </li>
                             
                             <li class="flex items-center">
-                                <svg v-if="plan.has_sms" class="h-5 w-5 text-teal-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <svg v-else class="h-5 w-5 text-gray-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                <span :class="{'text-gray-400 line-through': !plan.has_sms}">SMS Notifications</span>
+                                <svg v-if="plan.has_sms" class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg v-else class="h-5 w-5 text-base-content/20 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                <span :class="{'text-base-content/30 line-through': !plan.has_sms}">SMS Notifications</span>
                             </li>
                             <li class="flex items-center">
-                                <svg v-if="plan.has_branding" class="h-5 w-5 text-teal-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <svg v-else class="h-5 w-5 text-gray-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                <span :class="{'text-gray-400 line-through': !plan.has_branding}">Custom Branding</span>
+                                <svg v-if="plan.has_branding" class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg v-else class="h-5 w-5 text-base-content/20 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                <span :class="{'text-base-content/30 line-through': !plan.has_branding}">Custom Branding</span>
                             </li>
                             <li class="flex items-center">
-                                <svg v-if="plan.has_analytics" class="h-5 w-5 text-teal-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <svg v-else class="h-5 w-5 text-gray-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                <span :class="{'text-gray-400 line-through': !plan.has_analytics}">Advanced Analytics</span>
+                                <svg v-if="plan.has_analytics" class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg v-else class="h-5 w-5 text-base-content/20 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                <span :class="{'text-base-content/30 line-through': !plan.has_analytics}">Advanced Analytics</span>
                             </li>
                             <li class="flex items-center">
-                                <svg v-if="plan.has_priority_support" class="h-5 w-5 text-teal-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <svg v-else class="h-5 w-5 text-gray-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                <span :class="{'text-gray-400 line-through': !plan.has_priority_support}">Priority Support</span>
+                                <svg v-if="plan.has_priority_support" class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg v-else class="h-5 w-5 text-base-content/20 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                <span :class="{'text-base-content/30 line-through': !plan.has_priority_support}">Priority Support</span>
                             </li>
                             <li class="flex items-center">
-                                <svg v-if="plan.has_multi_branch" class="h-5 w-5 text-teal-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <svg v-else class="h-5 w-5 text-gray-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                <span :class="{'text-gray-400 line-through': !plan.has_multi_branch}">Multi-branch Readiness</span>
+                                <svg v-if="plan.has_multi_branch" class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg v-else class="h-5 w-5 text-base-content/20 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                <span :class="{'text-base-content/30 line-through': !plan.has_multi_branch}">Multi-branch Readiness</span>
                             </li>
 
                             <!-- Report Level Badge -->
                             <li class="pt-2">
                                 <span :class="[
                                     'text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border',
-                                    plan.report_level === 'basic' ? 'bg-gray-50 text-gray-500 border-gray-200' : 
-                                    plan.report_level === 'enhanced' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
-                                    'bg-teal-50 text-teal-600 border-teal-100'
+                                    plan.report_level === 'basic' ? 'bg-base-200 text-base-content/50 border-base-300' : 
+                                    plan.report_level === 'enhanced' ? 'bg-info/10 text-info border-info/20' : 
+                                    'bg-success/10 text-success border-success/20'
                                 ]">
                                     {{ plan.report_level }} Reports
                                 </span>

@@ -64,84 +64,90 @@ const handleDelete = (id) => {
 
 <template>
     <!-- Notifications List -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div v-if="notifications.data.length === 0" class="flex flex-col items-center justify-center py-16">
-            <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-            </svg>
-            <h3 class="text-lg font-medium text-gray-900 mb-1">No notifications</h3>
-            <p class="text-gray-500">You're all caught up!</p>
+    <div class="bg-base-100 rounded-2xl shadow-sm border border-base-300 overflow-hidden">
+        <div v-if="notifications.data.length === 0" class="flex flex-col items-center justify-center py-20">
+            <div class="w-20 h-20 rounded-full bg-base-200 flex items-center justify-center mb-6">
+                <svg class="w-10 h-10 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-black text-base-content mb-1">No notifications</h3>
+            <p class="text-base-content/40 font-medium">You're all caught up!</p>
         </div>
 
-        <ul v-else class="divide-y divide-gray-200">
+        <ul v-else class="divide-y divide-base-300">
             <li 
                 v-for="notification in notifications.data" 
                 :key="notification.id"
                 :class="[
-                    'group hover:bg-gray-50 transition-colors',
-                    !notification.is_read ? 'bg-teal-50/50' : ''
+                    'group hover:bg-base-200/50 transition-all duration-300 relative',
+                    !notification.is_read ? 'bg-primary/5' : ''
                 ]"
             >
-                <div class="flex items-start gap-4 p-4 sm:px-6">
+                <div class="flex items-start gap-5 p-5 sm:px-8">
                     <!-- Icon -->
                     <div 
                         :class="[
-                            'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center',
-                            !notification.is_read ? 'bg-teal-100 text-teal-600' : 'bg-gray-100 text-gray-500'
+                            'flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm transition-colors duration-300',
+                            !notification.is_read ? 'bg-primary text-primary-content border-primary shadow-primary/20' : 'bg-base-200 text-base-content/40 border-base-300'
                         ]"
                     >
                         <svg 
-                            class="w-5 h-5" 
+                            class="w-6 h-6" 
                             fill="none" 
                             viewBox="0 0 24 24" 
                             stroke="currentColor"
+                            stroke-width="2"
                             v-html="getIcon(notification.type)"
                         ></svg>
                     </div>
 
                     <!-- Content -->
-                    <div class="flex-1 min-w-0 relative">
-                        <div class="flex items-start justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-6">
                             <div>
-                                <p :class="['text-sm', !notification.is_read ? 'font-semibold text-gray-900' : 'text-gray-700']">
+                                <p :class="['text-sm tracking-tight', !notification.is_read ? 'font-black text-base-content' : 'font-bold text-base-content/70']">
                                     {{ notification.title }}
                                 </p>
-                                <p class="text-sm text-gray-500 mt-1">
+                                <p class="text-sm text-base-content/60 mt-1 leading-relaxed font-medium">
                                     {{ notification.message }}
                                 </p>
-                                <p class="text-xs text-gray-400 mt-2">
-                                    {{ formatDate(notification.created_at) }}
-                                </p>
+                                <div class="flex items-center gap-3 mt-3">
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-base-content/30">
+                                        {{ formatDate(notification.created_at) }}
+                                    </p>
+                                    <span v-if="!notification.is_read" class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                </div>
                             </div>
 
                             <!-- Actions -->
-                            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
                                 <button
                                     v-if="!notification.is_read"
                                     @click="handleMarkAsRead(notification.id)"
-                                    class="p-1.5 text-gray-400 hover:text-teal-600 rounded-lg hover:bg-gray-100"
+                                    class="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-primary hover:bg-primary/10"
                                     title="Mark as read"
                                 >
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                     </svg>
                                 </button>
                                 <button
                                     @click="handleDelete(notification.id)"
-                                    class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-gray-100"
+                                    class="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-error hover:bg-error/10"
                                     title="Delete"
                                 >
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Unread Indicator -->
+                        <!-- Unread Indicator (Left border style) -->
                         <div 
                             v-if="!notification.is_read"
-                            class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-teal-500 rounded-r-full"
+                            class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"
                         ></div>
                     </div>
                 </div>
@@ -149,27 +155,27 @@ const handleDelete = (id) => {
         </ul>
 
         <!-- Pagination -->
-        <div v-if="notifications.links && notifications.links.length > 1" class="px-6 py-4 border-t border-gray-200">
-            <div class="flex items-center justify-between">
-                <div class="text-sm text-gray-500">
-                    Showing {{ notifications.from }} to {{ notifications.to }} of {{ notifications.total }} results
+        <div v-if="notifications.links && notifications.links.length > 1" class="px-8 py-6 border-t border-base-300 bg-base-200/30">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="text-xs font-bold text-base-content/40 uppercase tracking-widest">
+                    Showing <span class="text-base-content">{{ notifications.from }}</span> to <span class="text-base-content">{{ notifications.to }}</span> of <span class="text-base-content">{{ notifications.total }}</span> results
                 </div>
-                <div class="flex gap-1">
+                <div class="flex gap-2">
                     <template v-for="(link, index) in notifications.links" :key="index">
                         <Link
                             v-if="link.url"
                             :href="link.url"
                             :class="[
-                                'px-3 py-1 rounded-lg text-sm font-medium transition-colors',
+                                'btn btn-xs font-black transition-all duration-300',
                                 link.active
-                                    ? 'bg-teal-600 text-white'
-                                    : 'text-gray-500 hover:bg-gray-100'
+                                    ? 'btn-primary shadow-lg shadow-primary/20'
+                                    : 'btn-ghost text-base-content/50 hover:text-base-content hover:bg-base-300'
                             ]"
                             v-html="link.label"
                         />
                         <span 
                             v-else
-                            class="px-3 py-1 rounded-lg text-sm font-medium text-gray-500 opacity-50 cursor-not-allowed"
+                            class="btn btn-xs btn-ghost btn-disabled opacity-30 font-black cursor-not-allowed"
                             v-html="link.label"
                         />
                     </template>

@@ -25,53 +25,61 @@ const submitForm = () => {
 
 <template>
     <Modal :show="show" @close="emit('close')">
-        <div class="p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">
+        <div class="p-6 bg-base-100 border border-base-300 rounded-lg">
+            <h3 class="text-xl font-bold text-base-content mb-6">
                 {{ editingFeature ? 'Edit Feature' : 'Create New Feature' }}
             </h3>
             
-            <form @submit.prevent="submitForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Feature Key</label>
+            <form @submit.prevent="submitForm" class="space-y-6">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-bold text-base-content/70">Feature Key</span>
+                    </label>
                     <input
                         v-model="form.key"
                         type="text"
                         :disabled="!!editingFeature"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        :class="{ 'bg-gray-100': editingFeature }"
+                        class="input input-bordered w-full"
+                        :class="{ 'bg-base-200 cursor-not-allowed': editingFeature }"
                         placeholder="e.g., sms_notifications"
                     />
-                    <p class="mt-1 text-xs text-gray-500">Unique identifier (lowercase, underscores only)</p>
-                    <p v-if="form.errors.key" class="mt-1 text-sm text-red-600">{{ form.errors.key }}</p>
+                    <p class="mt-1 text-xs text-base-content/50">Unique identifier (lowercase, underscores only)</p>
+                    <p v-if="form.errors.key" class="mt-1 text-sm text-error font-medium">{{ form.errors.key }}</p>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Display Name</label>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-bold text-base-content/70">Display Name</span>
+                    </label>
                     <input
                         v-model="form.name"
                         type="text"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="input input-bordered w-full"
                         placeholder="e.g., SMS Notifications"
                     />
-                    <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
+                    <p v-if="form.errors.name" class="mt-1 text-sm text-error font-medium">{{ form.errors.name }}</p>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Description</label>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-bold text-base-content/70">Description</span>
+                    </label>
                     <textarea
                         v-model="form.description"
                         rows="2"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="textarea textarea-bordered w-full"
                         placeholder="Optional description"
                     />
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Type</label>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-bold text-base-content/70">Type</span>
+                        </label>
                         <select
                             v-model="form.type"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            class="select select-bordered w-full"
                         >
                             <option value="boolean">Yes/No (Boolean)</option>
                             <option value="numeric">Number (Numeric)</option>
@@ -79,11 +87,13 @@ const submitForm = () => {
                         </select>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Category</label>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-bold text-base-content/70">Category</span>
+                        </label>
                         <select
                             v-model="form.category"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            class="select select-bordered w-full"
                         >
                             <option value="core">Core Features</option>
                             <option value="limits">Limits</option>
@@ -94,51 +104,56 @@ const submitForm = () => {
                     </div>
                 </div>
 
-                <div v-if="form.type === 'tiered'">
-                    <label class="block text-sm font-medium text-gray-700">Tier Options</label>
+                <div v-if="form.type === 'tiered'" class="form-control">
+                    <label class="label">
+                        <span class="label-text font-bold text-base-content/70">Tier Options</span>
+                    </label>
                     <input
                         v-model="form.options"
                         type="text"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="input input-bordered w-full"
                         placeholder="Comma-separated: basic, enhanced, advanced"
                     />
-                    <p class="mt-1 text-xs text-gray-500">Enter options separated by commas</p>
+                    <p class="mt-1 text-xs text-base-content/50">Enter options separated by commas</p>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Sort Order</label>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-bold text-base-content/70">Sort Order</span>
+                    </label>
                     <input
                         v-model.number="form.sort_order"
                         type="number"
                         min="0"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        class="input input-bordered w-full"
                     />
                 </div>
 
-                <div class="flex items-center">
-                    <input
-                        v-model="form.is_active"
-                        type="checkbox"
-                        id="is_active"
-                        class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <label for="is_active" class="ml-2 block text-sm text-gray-900">Active</label>
+                <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                        <input
+                            v-model="form.is_active"
+                            type="checkbox"
+                            class="checkbox checkbox-primary"
+                        />
+                        <span class="label-text font-bold text-base-content/70">Active</span>
+                    </label>
                 </div>
 
-                <div class="flex justify-end gap-3 mt-6">
+                <div class="flex justify-end gap-3 mt-8">
                     <button
                         type="button"
                         @click="emit('close')"
-                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        class="btn btn-ghost btn-sm font-bold"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         :disabled="form.processing"
-                        class="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                        class="btn btn-primary btn-sm font-bold"
                     >
-                        {{ editingFeature ? 'Update' : 'Create' }}
+                        {{ editingFeature ? 'Update Feature' : 'Create Feature' }}
                     </button>
                 </div>
             </form>

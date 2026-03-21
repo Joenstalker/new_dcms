@@ -95,35 +95,38 @@ const formatFileSize = (bytes) => {
 
             <!-- Modal -->
             <div class="flex min-h-full items-center justify-center p-4">
-                <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+                <div class="relative bg-base-100 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-base-300">
                     <!-- Header -->
-                    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
-                        <h2 class="text-lg font-semibold text-gray-900">Message Details</h2>
-                        <button @click="handleClose" class="text-gray-400 hover:text-gray-600 transition-colors">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    <div class="flex items-center justify-between px-8 py-5 border-b border-base-300 bg-base-200/50">
+                        <h2 class="text-xl font-black text-base-content tracking-tight">Message Details</h2>
+                        <button @click="handleClose" class="btn btn-ghost btn-circle btn-sm text-base-content/40 hover:text-base-content hover:bg-base-300 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                     </div>
 
                     <!-- Content -->
-                    <div v-if="message" class="overflow-y-auto max-h-[calc(90vh-200px)]">
+                    <div v-if="message" class="overflow-y-auto flex-1 custom-scrollbar">
                         <!-- Sender Info -->
-                        <div class="px-6 py-4 border-b border-gray-100">
-                            <div class="flex items-start gap-4">
-                                <div class="flex-shrink-0 h-12 w-12 rounded-full bg-teal-100 flex items-center justify-center">
-                                    <span class="text-lg font-semibold text-teal-700">
-                                        {{ message.name.charAt(0).toUpperCase() }}
-                                    </span>
+                        <div class="px-8 py-6 border-b border-base-300/50 bg-base-100">
+                            <div class="flex items-start gap-5">
+                                <div class="avatar placeholder">
+                                    <div class="bg-primary/10 text-primary border border-primary/20 rounded-2xl w-14 h-14 shadow-sm">
+                                        <span class="text-xl font-black">{{ message.name.charAt(0).toUpperCase() }}</span>
+                                    </div>
                                 </div>
-                                <div class="flex-1 min-w-0">
+                                <div class="flex-1 min-w-0 flex flex-col justify-center">
                                     <div class="flex items-center justify-between">
                                         <div>
-                                            <p class="text-sm font-semibold text-gray-900">{{ message.name }}</p>
-                                            <p class="text-xs text-gray-500">{{ message.email }}</p>
-                                            <p v-if="message.phone" class="text-xs text-gray-500">{{ message.phone }}</p>
+                                            <p class="text-base font-black text-base-content tracking-tight">{{ message.name }}</p>
+                                            <div class="flex items-center gap-3 mt-1">
+                                                <p class="text-xs text-base-content/60 font-bold lowercase">{{ message.email }}</p>
+                                                <span v-if="message.phone" class="w-1 h-1 rounded-full bg-base-content/20"></span>
+                                                <p v-if="message.phone" class="text-xs text-base-content/60 font-medium">{{ message.phone }}</p>
+                                            </div>
                                         </div>
-                                        <div class="text-xs text-gray-400">
+                                        <div class="text-[10px] font-black uppercase tracking-widest text-base-content/30 bg-base-200 px-3 py-1.5 rounded-lg">
                                             {{ formatDate(message.created_at) }}
                                         </div>
                                     </div>
@@ -132,50 +135,69 @@ const formatFileSize = (bytes) => {
                         </div>
 
                         <!-- Subject & Message -->
-                        <div class="px-6 py-4 border-b border-gray-100">
-                            <h3 class="text-sm font-semibold text-gray-700 mb-2">Subject: {{ message.subject }}</h3>
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ message.message }}</p>
+                        <div class="px-8 py-6 border-b border-base-300/50">
+                            <h3 class="text-sm font-black text-base-content tracking-tight mb-3 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                {{ message.subject }}
+                            </h3>
+                            <div class="bg-base-200/50 rounded-2xl p-5 border border-base-300/50 shadow-inner">
+                                <p class="text-sm text-base-content/80 whitespace-pre-wrap leading-relaxed font-medium">{{ message.message }}</p>
                             </div>
                         </div>
 
                         <!-- Attachments -->
-                        <div v-if="message.attachments && message.attachments.length > 0" class="px-6 py-4 border-b border-gray-100">
-                            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Attachments</h4>
-                            <div class="flex flex-wrap gap-2">
+                        <div v-if="message.attachments && message.attachments.length > 0" class="px-8 py-6 border-b border-base-300/50">
+                            <h4 class="text-[10px] font-black text-base-content/40 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                </svg>
+                                Attachments ({{ message.attachments.length }})
+                            </h4>
+                            <div class="flex flex-wrap gap-3">
                                 <a 
                                     v-for="(attachment, index) in message.attachments" 
                                     :key="index"
                                     :href="attachment.url"
                                     target="_blank"
-                                    class="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                    class="inline-flex items-center gap-3 px-4 py-2 bg-base-100 border border-base-300 rounded-xl text-sm font-bold text-base-content/70 hover:bg-base-200 hover:text-base-content hover:border-primary/30 transition-all duration-300 group shadow-sm"
                                 >
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                    </svg>
-                                    <span class="truncate max-w-[150px]">{{ attachment.name }}</span>
-                                    <span class="text-xs text-gray-400">({{ formatFileSize(attachment.size) }}MB)</span>
+                                    <div class="w-8 h-8 rounded-lg bg-base-200 flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="truncate max-w-[150px]">{{ attachment.name }}</span>
+                                        <span class="text-[10px] text-base-content/40 font-black uppercase tracking-wider">{{ formatFileSize(attachment.size) }} MB</span>
+                                    </div>
                                 </a>
                             </div>
                         </div>
 
                         <!-- Reply Form -->
-                        <div class="px-6 py-4">
-                            <h4 class="text-sm font-semibold text-gray-700 mb-3">Send Reply</h4>
-                            <textarea
-                                v-model="replyText"
-                                rows="4"
-                                class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
-                                placeholder="Type your reply here..."
-                            ></textarea>
+                        <div class="px-8 py-6 bg-base-200/20">
+                            <h4 class="text-sm font-black text-base-content mb-4 tracking-tight flex items-center gap-2">
+                                <svg class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                                Compose Reply
+                            </h4>
+                            <div class="relative">
+                                <textarea
+                                    v-model="replyText"
+                                    rows="5"
+                                    class="textarea textarea-bordered w-full bg-base-100 text-base-content focus:outline-none focus:border-primary resize-none placeholder:text-base-content/30 font-medium leading-relaxed rounded-2xl p-4 shadow-sm"
+                                    placeholder="Type your response here... Pressing 'Send Reply' will email the user directly."
+                                ></textarea>
+                            </div>
 
                             <!-- File Attachments -->
-                            <div class="mt-3">
-                                <label class="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            <div class="mt-4">
+                                <label class="btn btn-ghost border border-base-300 bg-base-100 hover:bg-base-200 hover:border-base-300 rounded-xl text-xs font-black uppercase tracking-widest px-4 h-10 inline-flex items-center gap-2 cursor-pointer shadow-sm transition-all duration-300">
+                                    <svg class="w-4 h-4 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                                     </svg>
-                                    Attach Files
+                                    Add Attachments
                                     <input 
                                         type="file" 
                                         multiple 
@@ -186,40 +208,47 @@ const formatFileSize = (bytes) => {
                                 </label>
 
                                 <!-- Selected Files -->
-                                <div v-if="selectedFiles.length > 0" class="mt-3 space-y-2">
+                                <div v-if="selectedFiles.length > 0" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div 
                                         v-for="(file, index) in selectedFiles" 
                                         :key="index"
-                                        class="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg"
+                                        class="flex items-center justify-between px-3 py-2 bg-base-100 border border-base-300 rounded-xl shadow-sm"
                                     >
-                                        <div class="flex items-center gap-2 truncate">
-                                            <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            <span class="truncate text-sm">{{ file.name }}</span>
-                                            <span class="text-xs text-gray-400">({{ formatFileSize(file.size) }}MB)</span>
+                                        <div class="flex items-center gap-3 truncate">
+                                            <div class="w-8 h-8 rounded-lg bg-base-200 flex items-center justify-center flex-shrink-0">
+                                                <svg class="w-4 h-4 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                            </div>
+                                            <div class="flex flex-col min-w-0">
+                                                <span class="truncate text-xs font-bold text-base-content">{{ file.name }}</span>
+                                                <span class="text-[9px] font-black uppercase tracking-wider text-base-content/40">{{ formatFileSize(file.size) }} MB</span>
+                                            </div>
                                         </div>
-                                        <button @click="removeAttachment(index)" class="text-red-400 hover:text-red-600 ml-2" title="Remove attachment">
-                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <button @click="removeAttachment(index)" class="btn btn-ghost btn-circle btn-xs text-error/70 hover:text-error hover:bg-error/10 ml-2" title="Remove attachment">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                         </button>
                                     </div>
                                 </div>
-                                <p v-if="attachmentError" class="text-xs text-red-500 mt-1">{{ attachmentError }}</p>
+                                <p v-if="attachmentError" class="text-xs font-bold text-error mt-2 flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    {{ attachmentError }}
+                                </p>
                             </div>
 
-                            <div class="flex justify-end mt-3 border-t border-gray-200/50 pt-3">
+                            <!-- Primary Action -->
+                            <div class="flex justify-end mt-6">
                                 <button
                                     @click="handleSendReply"
                                     :disabled="!replyText.trim() || isSendingReply"
-                                    class="px-4 py-2 text-sm font-bold bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
+                                    class="btn btn-primary font-black shadow-lg shadow-primary/20 min-w-[140px] rounded-xl"
                                 >
-                                    <svg v-if="isSendingReply" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <span v-if="isSendingReply" class="loading loading-spinner loading-xs mr-2"></span>
+                                    <svg v-else class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.125A59.769 59.769 0 0121.485 12 59.768 59.768 0 013.27 20.875L5.999 12Zm0 0h7.5" />
                                     </svg>
                                     {{ isSendingReply ? 'Sending...' : 'Send Reply' }}
@@ -227,29 +256,31 @@ const formatFileSize = (bytes) => {
                             </div>
                         </div>
 
-                        <!-- Secondary Actions -->
-                        <div class="flex gap-2 justify-end px-6 pb-4 pt-2" :class="{'border-t border-gray-200': message.status !== 'replied'}">
-                            <button
-                                v-if="message.status !== 'replied'"
-                                @click="handleStatusUpdate('replied')"
-                                class="px-3 py-1.5 text-xs font-semibold bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition"
-                                title="Mark as replied without sending an email"
-                            >
-                                Mark as Replied (Manual)
-                            </button>
-                            <button
-                                v-if="message.status !== 'archived'"
-                                @click="handleStatusUpdate('archived')"
-                                class="px-3 py-1.5 text-xs font-semibold bg-white border border-yellow-400 text-yellow-600 rounded hover:bg-yellow-50 transition"
-                            >
-                                Archive
-                            </button>
+                        <!-- Secondary Actions Footer -->
+                        <div class="flex items-center justify-between px-8 py-4 border-t border-base-300 bg-base-200/50">
                             <button
                                 @click="handleDelete"
-                                class="px-3 py-1.5 text-xs font-semibold bg-white border border-red-400 text-red-600 rounded hover:bg-red-50 transition"
+                                class="btn btn-ghost btn-sm text-error hover:bg-error hover:text-error-content rounded-lg font-black text-xs uppercase tracking-widest transition-colors duration-300"
                             >
-                                Delete
+                                Delete Ticket
                             </button>
+                            <div class="flex gap-2">
+                                <button
+                                    v-if="message.status !== 'replied'"
+                                    @click="handleStatusUpdate('replied')"
+                                    class="btn btn-ghost btn-sm bg-base-100 border border-base-300 hover:bg-base-200 text-base-content/70 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-sm"
+                                    title="Mark as replied without sending an email"
+                                >
+                                    Mark Replied (Manual)
+                                </button>
+                                <button
+                                    v-if="message.status !== 'archived'"
+                                    @click="handleStatusUpdate('archived')"
+                                    class="btn btn-ghost btn-sm bg-base-100 border border-warning/30 text-warning hover:bg-warning hover:text-warning-content rounded-lg font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-sm"
+                                >
+                                    Archive Ticket
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -247,12 +247,12 @@ const isFormValid = computed(() => {
     <Head title="Tenants Management" />
     <AdminLayout>
         <template #header>
-            <h1 class="text-xl font-bold text-gray-900">Clinics Management</h1>
+            <h1 class="text-xl font-bold text-base-content">Clinics Management</h1>
         </template>
 
         <div class="max-w-7xl mx-auto space-y-6">
             <!-- Header and Filters -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-100 p-5 rounded-xl shadow-sm border border-base-300">
                 <div class="flex-1 w-full sm:w-auto flex flex-col sm:flex-row gap-4">
                     <!-- Search -->
                     <div class="relative w-full sm:w-72">
@@ -266,14 +266,14 @@ const isFormValid = computed(() => {
                             @input="updateSearch"
                             type="text"
                             placeholder="Search by domain..."
-                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm transition duration-150 ease-in-out"
+                            class="block w-full pl-10 pr-3 py-2 border border-base-300 rounded-lg leading-5 bg-base-100 text-base-content placeholder-base-content/50 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm transition duration-150 ease-in-out"
                         />
                     </div>
 
                     <!-- Status Filter -->
                     <select
                         v-model="statusFilter"
-                        class="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-lg"
+                        class="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-base-300 bg-base-100 text-base-content focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-lg"
                     >
                         <option value="">All Statuses</option>
                         <option value="active">Active</option>
@@ -286,7 +286,7 @@ const isFormValid = computed(() => {
                 <!-- Add Clinic Button -->
                 <button
                     @click="openCreateModal"
-                    class="inline-flex items-center justify-center px-4 py-2 bg-teal-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-wider hover:bg-teal-700 focus:bg-teal-700 active:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition ease-in-out duration-150 whitespace-nowrap"
+                    class="inline-flex items-center justify-center px-4 py-2 bg-primary border border-transparent rounded-lg font-semibold text-xs text-primary-content uppercase tracking-wider hover:bg-primary-focus focus:bg-primary-focus active:bg-primary-focus focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition ease-in-out duration-150 whitespace-nowrap"
                 >
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -330,63 +330,64 @@ const isFormValid = computed(() => {
         <!-- Review Pending Tenant Modal -->
         <div v-if="showReviewModal" class="fixed inset-0 z-50 overflow-y-auto">
             <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="closeReviewModal" />
+                <div class="fixed inset-0 transition-opacity bg-neutral/80 backdrop-blur-sm" @click="closeReviewModal" />
                 
-                <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="inline-block align-bottom bg-base-100 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full border border-base-300">
+                    <div class="bg-base-100 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
                             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                <h3 class="text-lg leading-6 font-medium text-base-content" id="modal-title">
                                     Review Pending Tenant
                                 </h3>
                                 
                                 <div class="mt-4 space-y-6">
                                     <!-- Clinic Information -->
-                                    <div class="bg-gray-50 rounded-lg p-4">
-                                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Clinic Information</h4>
+                                    <div class="bg-base-200 rounded-lg p-4">
+                                        <h4 class="text-sm font-semibold text-base-content mb-3">Clinic Information</h4>
                                         <div class="grid grid-cols-2 gap-4 text-sm">
                                             <div>
-                                                <span class="text-gray-500">Clinic Name:</span>
-                                                <span class="ml-2 font-medium">{{ selectedTenant?.name }}</span>
+                                                <span class="text-base-content/60">Clinic Name:</span>
+                                                <span class="ml-2 font-medium text-base-content">{{ selectedTenant?.name }}</span>
                                             </div>
                                             <div>
-                                                <span class="text-gray-500">Owner Name:</span>
-                                                <span class="ml-2 font-medium">{{ selectedTenant?.owner_name }}</span>
+                                                <span class="text-base-content/60">Owner Name:</span>
+                                                <span class="ml-2 font-medium text-base-content">{{ selectedTenant?.owner_name }}</span>
                                             </div>
                                             <div>
-                                                <span class="text-gray-500">Status:</span>
-                                                <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                <span class="text-base-content/60">Status:</span>
+                                                <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-warning/20 text-warning">
                                                     Pending Review
                                                 </span>
                                             </div>
                                             <div>
-                                                <span class="text-gray-500">Database:</span>
-                                                <span class="ml-2 font-mono text-xs">{{ selectedTenant?.database_name }}</span>
+                                                <span class="text-base-content/60">Database:</span>
+                                                <span class="ml-2 font-mono text-xs text-base-content/70">{{ selectedTenant?.database_name }}</span>
                                             </div>
                                         </div>
                                     </div>
                                     
                                     <!-- Subscription Details -->
-                                    <div class="bg-gray-50 rounded-lg p-4">
-                                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Subscription Details</h4>
+                                    <div class="bg-base-200 rounded-lg p-4">
+                                        <h4 class="text-sm font-semibold text-base-content mb-3">Subscription Details</h4>
                                         <div class="grid grid-cols-2 gap-4 text-sm">
                                             <div>
-                                                <span class="text-gray-500">Plan:</span>
-                                                <span class="ml-2 font-medium">{{ selectedTenant?.plan || 'N/A' }}</span>
+                                                <span class="text-base-content/60">Plan:</span>
+                                                <span class="ml-2 font-medium text-base-content">{{ selectedTenant?.plan || 'N/A' }}</span>
                                             </div>
                                             <div>
-                                                <span class="text-gray-500">Billing Cycle:</span>
-                                                <span class="ml-2 font-medium capitalize">{{ selectedTenant?.billing_cycle || 'N/A' }}</span>
+                                                <span class="text-base-content/60">Billing Cycle:</span>
+                                                <span class="ml-2 font-medium capitalize text-base-content">{{ selectedTenant?.billing_cycle || 'N/A' }}</span>
                                             </div>
                                             <div>
-                                                <span class="text-gray-500">Amount Paid:</span>
-                                                <span class="ml-2 font-medium text-green-600">₱{{ Number(selectedTenant?.amount_paid || 0).toLocaleString() }}</span>
+                                                <span class="text-base-content/60">Amount Paid:</span>
+                                                <span class="ml-2 font-medium text-success">₱{{ Number(selectedTenant?.amount_paid || 0).toLocaleString() }}</span>
                                             </div>
                                             <div>
-                                                <span class="text-gray-500">Payment Status:</span>
-                                                <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                <span class="text-base-content/60">Payment Status:</span>
+                                                <span class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-success/20 text-success">
                                                     {{ selectedTenant?.payment_status || 'Paid' }}
                                                 </span>
+ admissions
                                             </div>
                                         </div>
                                     </div>
@@ -399,7 +400,7 @@ const isFormValid = computed(() => {
                                         <textarea
                                             v-model="rejectForm.rejection_message"
                                             rows="3"
-                                            class="w-full border-gray-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500"
+                                            class="w-full border-base-300 bg-base-100 text-base-content rounded-md shadow-sm focus:ring-primary focus:border-primary"
                                             placeholder="Enter reason for rejection..."
                                         ></textarea>
                                     </div>
@@ -407,22 +408,22 @@ const isFormValid = computed(() => {
                             </div>
                         </div>
                     </div>
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <div class="bg-base-200 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-base-300">
                         <button
                             @click="approveTenant"
-                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-success text-base font-medium text-success-content hover:bg-success/80 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
                         >
                             Approve
                         </button>
                         <button
                             @click="submitReject"
-                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-error text-base font-medium text-error-content hover:bg-error/80 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
                         >
                             Reject
                         </button>
                         <button
                             @click="closeReviewModal"
-                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-auto sm:w-auto sm:text-sm"
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-base-300 shadow-sm px-4 py-2 bg-base-100 text-base font-medium text-base-content hover:bg-base-200 focus:outline-none sm:mt-0 sm:ml-auto sm:w-auto sm:text-sm"
                         >
                             Cancel
                         </button>

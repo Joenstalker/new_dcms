@@ -7,6 +7,7 @@ import SessionSettings from './Partials/SessionSettings.vue';
 import BrandingSettings from './Partials/BrandingSettings.vue';
 import SecuritySettings from './Partials/SecuritySettings.vue';
 import MaintenanceSettings from './Partials/MaintenanceSettings.vue';
+import RegistrationSettings from './Partials/RegistrationSettings.vue';
 
 const props = defineProps({
     settings: Object,
@@ -20,6 +21,7 @@ const tabs = [
     { id: 'branding', name: 'Branding', icon: 'paintbrush' },
     { id: 'security', name: 'Security', icon: 'shield-check' },
     { id: 'maintenance', name: 'Maintenance', icon: 'wrench' },
+    { id: 'registrations', name: 'Registrations', icon: 'user-plus' },
 ];
 
 // Build form data from settings
@@ -91,7 +93,7 @@ const handleLogoDelete = () => {
     <AdminLayout>
         <template #header>
             <div class="flex justify-between items-center w-full">
-                <h1 class="text-xl font-bold text-gray-900">System Settings</h1>
+                <h1 class="text-xl font-bold text-base-content">System Settings</h1>
             </div>
         </template>
 
@@ -129,6 +131,13 @@ const handleLogoDelete = () => {
             <!-- Maintenance Settings -->
             <MaintenanceSettings 
                 v-if="activeTab === 'maintenance'" 
+                :form="form" 
+                @save="saveGroup"
+            />
+
+            <!-- Registration Settings -->
+            <RegistrationSettings 
+                v-if="activeTab === 'registrations'" 
                 :form="form" 
                 @save="saveGroup"
             />

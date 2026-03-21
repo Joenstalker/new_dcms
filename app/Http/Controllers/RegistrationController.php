@@ -184,6 +184,9 @@ class RegistrationController extends Controller
         }
 
         try {
+            // Get configurable timeout from system settings
+            $defaultTimeoutHours = \App\Models\SystemSetting::get('pending_timeout_default_hours', 168);
+
             // First, create a PendingRegistration record
             $pendingRegistration = PendingRegistration::create([
                 'subdomain' => strtolower($validated['subdomain']),
@@ -202,7 +205,8 @@ class RegistrationController extends Controller
                 'amount_paid' => $price,
                 'status' => PendingRegistration::STATUS_PENDING,
                 'verification_token' => PendingRegistration::generateToken(),
-                'expires_at' => now()->addDays(7), // Expire after 7 days if not approved
+                'expires_at' => now()->addHours($defaultTimeoutHours),
+                'pending_timeout_hours' => $defaultTimeoutHours,
             ]);
 
             $stripe = new StripeClient(config('services.stripe.secret'));

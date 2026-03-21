@@ -27,26 +27,26 @@ const handleFilterChange = (filter) => {
 
 <template>
     <!-- Filters -->
-    <div class="flex flex-wrap gap-2 mb-6">
+    <div class="flex flex-wrap gap-3 mb-8">
         <button
             v-for="filter in filters"
             :key="filter.value"
             @click="handleFilterChange(filter.value)"
             :class="[
-                'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                'btn btn-sm font-black transition-all duration-300 rounded-xl px-5 uppercase tracking-widest text-[10px]',
                 activeFilter === filter.value
-                    ? 'bg-teal-600 text-white shadow-md'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                    ? 'btn-primary shadow-lg shadow-primary/20'
+                    : 'bg-base-100 text-base-content/50 border-base-300 hover:bg-base-200 hover:border-base-300 hover:text-base-content'
             ]"
         >
             {{ filter.label }}
             <span 
                 v-if="counts[filter.value] !== undefined"
                 :class="[
-                    'ml-2 px-2 py-0.5 rounded-full text-xs',
+                    'ml-2 badge badge-xs font-bold py-2 px-2',
                     activeFilter === filter.value
-                        ? 'bg-teal-700 text-teal-100'
-                        : 'bg-gray-100 text-gray-600'
+                        ? 'bg-primary-focus/30 text-primary-content border-none'
+                        : 'bg-base-300 text-base-content/60 border-none'
                 ]"
             >
                 {{ counts[filter.value] }}

@@ -23,33 +23,53 @@
             <div id="countdown" class="text-2xl font-mono font-bold text-yellow-600 mb-2">
                 Loading...
             </div>
-            <p class="text-xs text-yellow-700">
-                Maximum wait time is 1 hour. You'll be notified via email once approved.
+            <p class="text-xs text-yellow-700" id="expiry-message">
+                You'll be notified via email once approved.
             </p>
         </div>
 
         <script>
             function startCountdown() {
-                // Use the tenant creation timestamp
-                const createdAt = new Date('{{ $created_at }}').getTime();
-                const targetTime = createdAt + (60 * 60 * 1000); // 1 hour from creation
+                // Use the actual expires_at timestamp from the database
+                const expiresAt = new Date('{{ $expires_at ?? $created_at }}').getTime();
                 
                 function updateTimer() {
                     const now = new Date().getTime();
-                    const distance = targetTime - now;
+                    const distance = expiresAt - now;
                     
                     if (distance <= 0) {
-                        document.getElementById('countdown').innerHTML = '00:00';
+                        document.getElementById('countdown').innerHTML = '00:00:00';
                         document.getElementById('countdown').classList.add('text-red-600');
                         document.getElementById('countdown').classList.remove('text-yellow-600');
+                        
+                        // Update message
+                        const messageEl = document.getElementById('expiry-message');
+                        if (messageEl) {
+                            messageEl.innerHTML = 'Your registration has expired. Please contact support.';
+                            messageEl.classList.add('text-red-600');
+                        }
                         return;
                     }
                     
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                     const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((distance % (1000 * 60)) / 1000);
                     
-                    document.getElementById('countdown').innerHTML = 
-                        (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                    let timeString = '';
+                    if (days > 0) {
+                        timeString = days + 'd ' + (hours < 10 ? '0' : '') + hours + ':' + (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                    } else {
+                        timeString = (hours < 10 ? '0' : '') + hours + ':' + (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                    }
+                    
+                    document.getElementById('countdown').innerHTML = timeString;
+                    
+                    // Change color when less than 24 hours remain
+                    if (distance < 24 * 60 * 60 * 1000) {
+                        document.getElementById('countdown').classList.add('text-orange-600');
+                        document.getElementById('countdown').classList.remove('text-yellow-600');
+                    }
                 }
                 
                 // Update immediately and every second
@@ -66,7 +86,7 @@
                     <svg class="w-4 h-4 mr-1 mt-0.5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
                     </svg>
-                    Please allow up to 1 hour for verification
+                    Please wait while we verify your clinic
                 </li>
                 <li class="flex items-start">
                     <svg class="w-4 h-4 mr-1 mt-0.5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">

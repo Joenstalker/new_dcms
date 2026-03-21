@@ -64,6 +64,10 @@ class PendingRegistrationController extends Controller
                     default => 'secondary',
                 };
 
+            // Enhancement fields for UI toggles
+            $reg->reminder_enabled = $reg->isReminderEnabled();
+            $reg->auto_approve_enabled = $reg->isAutoApproveEnabled();
+
             return $reg;
         });
 
@@ -257,6 +261,99 @@ class PendingRegistrationController extends Controller
         catch (\Exception $e) {
             Log::error('Failed to reject registration: ' . $e->getMessage());
             return back()->with('error', 'Failed to reject registration. Please try again.');
+        }
+    }
+
+    /**
+     * Extend the pending time for a registration.
+     */
+    public function extendTime(Request $request, PendingRegistration $pendingRegistration)
+    {
+        $validated = $request->validate([
+            'hours' => 'required|integer|min:1|max:720', // Max 30 days
+        ]);
+
+        if ($pendingRegistration->status !== PendingRegistration::STATUS_PENDING) {
+            return response()->json(['message' => 'This registration has already been processed.'], 422);
+        }
+
+        try {
+            $pendingRegistration->extendTime($validated['hours']);
+
+            return response()->json(['message' => 'Pending time extended by ' . $validated['hours'] . ' hour(s).']);
+        }
+        catch (\Exception $e) {
+            Log::error('Failed to extend pending time: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to extend pending time. Please try again.'], 500);
+        }
+    }
+
+    /**
+     * Set a specific expiry time for a registration.
+     */
+    public function setTime(Request $request, PendingRegistration $pendingRegistration): RedirectResponse
+    {
+        $validated = $request->validate([
+            'expires_at' => 'required|date|after:now',
+        ]);
+
+        if ($pendingRegistration->status !== PendingRegistration::STATUS_PENDING) {
+            return back()->with('error', 'This registration has already been processed.');
+        }
+
+        try {
+            $newExpiry = Carbon::parse($validated['expires_at']);
+            $pendingRegistration->setExpiryTime($newExpiry);
+
+            return back()->with('success', 'Expiry time set to ' . $newExpiry->format('F j, Y g:i A'));
+        }
+        catch (\Exception $e) {
+            Log::error('Failed to set expiry time: ' . $e->getMessage());
+            return back()->with('error', 'Failed to set expiry time. Please try again.');
+        }
+    }
+
+    /**
+     * Toggle reminder enabled for a registration.
+     */
+    public function toggleReminder(Request $request, PendingRegistration $pendingRegistration)
+    {
+        if ($pendingRegistration->status !== PendingRegistration::STATUS_PENDING) {
+            return response()->json(['message' => 'This registration has already been processed.'], 422);
+        }
+
+        try {
+            $newValue = !$pendingRegistration->reminder_enabled;
+            $pendingRegistration->update(['reminder_enabled' => $newValue]);
+
+            $status = $newValue ? 'enabled' : 'disabled';
+            return response()->json(['message' => 'Reminder ' . $status . ' for this registration.']);
+        }
+        catch (\Exception $e) {
+            Log::error('Failed to toggle reminder: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to toggle reminder. Please try again.'], 500);
+        }
+    }
+
+    /**
+     * Toggle auto-approve enabled for a registration.
+     */
+    public function toggleAutoApprove(Request $request, PendingRegistration $pendingRegistration)
+    {
+        if ($pendingRegistration->status !== PendingRegistration::STATUS_PENDING) {
+            return response()->json(['message' => 'This registration has already been processed.'], 422);
+        }
+
+        try {
+            $newValue = !$pendingRegistration->auto_approve_enabled;
+            $pendingRegistration->update(['auto_approve_enabled' => $newValue]);
+
+            $status = $newValue ? 'enabled' : 'disabled';
+            return response()->json(['message' => 'Auto-approve ' . $status . ' for this registration.']);
+        }
+        catch (\Exception $e) {
+            Log::error('Failed to toggle auto-approve: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to toggle auto-approve. Please try again.'], 500);
         }
     }
 

@@ -52,24 +52,24 @@ const saveGroup = () => {
 </script>
 
 <template>
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">Platform Branding</h2>
-            <p class="mt-1 text-sm text-gray-500">Customize the appearance of the admin portal.</p>
+    <div class="bg-base-100 shadow-sm rounded-lg border border-base-300 overflow-hidden">
+        <div class="p-6 border-b border-base-300">
+            <h2 class="text-lg font-bold text-base-content">Platform Branding</h2>
+            <p class="mt-1 text-sm text-base-content/50">Customize the appearance of the admin portal.</p>
         </div>
         
         <div class="p-6 space-y-6">
             <!-- Platform Name -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Platform Name</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ brandingDescriptions.platform_name }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Platform Name</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ brandingDescriptions.platform_name }}</p>
                 </div>
                 <div>
                     <input
                         v-model="form.platform_name"
                         type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm px-3 py-2 border"
+                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
                     />
                 </div>
             </div>
@@ -77,19 +77,19 @@ const saveGroup = () => {
             <!-- Primary Color -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Primary Color</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ brandingDescriptions.primary_color }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Primary Color</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ brandingDescriptions.primary_color }}</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <input
                         v-model="form.primary_color"
                         type="color"
-                        class="h-10 w-14 rounded-md border border-gray-300 cursor-pointer"
+                        class="h-10 w-14 rounded-md border border-base-300 bg-base-100 cursor-pointer"
                     />
                     <input
                         v-model="form.primary_color"
                         type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm px-3 py-2 border"
+                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
                         placeholder="#0ea5e9"
                     />
                 </div>
@@ -98,13 +98,13 @@ const saveGroup = () => {
             <!-- Sidebar Position -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Sidebar Position</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ brandingDescriptions.sidebar_position }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Sidebar Position</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ brandingDescriptions.sidebar_position }}</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <select
                         v-model="form.sidebar_position"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm px-3 py-2 border"
+                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
                     >
                         <option value="left">Left</option>
                         <option value="right">Right</option>
@@ -115,14 +115,14 @@ const saveGroup = () => {
             <!-- Footer Text -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Footer Text</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ brandingDescriptions.footer_text }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Footer Text</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ brandingDescriptions.footer_text }}</p>
                 </div>
                 <div>
                     <input
                         v-model="form.footer_text"
                         type="text"
-                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm px-3 py-2 border"
+                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
                     />
                 </div>
             </div>
@@ -130,8 +130,8 @@ const saveGroup = () => {
             <!-- Platform Logo -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Platform Logo</label>
-                    <p class="text-xs text-gray-500 mt-1">{{ brandingDescriptions.platform_logo }}</p>
+                    <label class="block text-sm font-bold text-base-content/70">Platform Logo</label>
+                    <p class="text-xs text-base-content/50 mt-1">{{ brandingDescriptions.platform_logo }}</p>
                 </div>
                 <div>
                     <!-- Current Logo Preview -->
@@ -140,12 +140,12 @@ const saveGroup = () => {
                             <img 
                                 :src="'/storage/logos/' + form.platform_logo" 
                                 alt="Current Logo" 
-                                class="h-16 w-auto rounded-lg border border-gray-300"
+                                class="h-16 w-auto rounded-lg border border-base-300"
                             />
                             <button
                                 @click="deleteLogo"
                                 type="button"
-                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                class="absolute -top-2 -right-2 btn btn-circle btn-xs btn-error text-white shadow-sm"
                             >
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -158,14 +158,14 @@ const saveGroup = () => {
                     <div class="flex items-center gap-3">
                         <div class="flex-1">
                             <div 
-                                @click="$refs.logoInput.click()"
-                                class="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+                                @click="$refs.logoInputRef.click()"
+                                class="flex flex-col items-center justify-center w-full h-24 border-2 border-base-300 border-dashed rounded-lg cursor-pointer bg-base-200/50 hover:bg-base-200 transition-colors"
                             >
                                 <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                                    <svg class="w-6 h-6 mb-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-6 h-6 mb-1 text-base-content/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
-                                    <p class="text-xs text-gray-500">Click to upload</p>
+                                    <p class="text-xs text-base-content/40">Click to upload</p>
                                 </div>
                                 <input 
                                     ref="logoInputRef"
@@ -182,7 +182,7 @@ const saveGroup = () => {
                             v-if="logoPreview || logoForm.logo"
                             @click="uploadLogo"
                             :disabled="logoForm.processing"
-                            class="px-3 py-2 bg-teal-600 text-white text-sm rounded-md hover:bg-teal-700 disabled:opacity-50"
+                            class="btn btn-primary btn-sm"
                         >
                             {{ logoForm.processing ? 'Uploading...' : 'Upload' }}
                         </button>
@@ -190,19 +190,19 @@ const saveGroup = () => {
                     
                     <!-- Preview -->
                     <div v-if="logoPreview" class="mt-3">
-                        <p class="text-xs text-gray-500 mb-1">Preview:</p>
-                        <img :src="logoPreview" alt="Preview" class="h-16 w-auto rounded-lg border border-gray-300" />
+                        <p class="text-xs text-base-content/50 mb-1">Preview:</p>
+                        <img :src="logoPreview" alt="Preview" class="h-16 w-auto rounded-lg border border-base-300" />
                     </div>
                     
-                    <p v-if="form.platform_logo && !logoPreview" class="mt-2 text-xs text-teal-600">Current: {{ form.platform_logo }}</p>
+                    <p v-if="form.platform_logo && !logoPreview" class="mt-2 text-xs text-primary font-bold">Current: {{ form.platform_logo }}</p>
                 </div>
             </div>
         </div>
 
-        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+        <div class="px-6 py-4 bg-base-200/50 border-t border-base-300 flex justify-end">
             <button
                 @click="saveGroup"
-                class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors"
+                class="btn btn-primary btn-sm"
             >
                 Save Branding Settings
             </button>

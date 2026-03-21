@@ -222,15 +222,15 @@ watch(() => page.props.flash, (flash) => {
                 isSidebarOpen ? 'translate-x-0' : (isRightSidebar ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0'),
                 isRightSidebar ? 'right-0 left-auto' : 'left-0'
             ]"
-            class="fixed inset-y-0 z-50 w-64 bg-slate-900 text-white transition-transform duration-300 ease-in-out lg:static lg:inset-0"
+            class="fixed inset-y-0 z-50 w-64 bg-neutral text-neutral-content transition-transform duration-300 ease-in-out lg:static lg:inset-0"
         >
             <div class="flex flex-col h-full">
                 <!-- Sidebar Header -->
-                <div class="flex items-center justify-center h-20 bg-slate-950 border-b border-slate-800">
+                <div class="flex items-center justify-center h-20 bg-neutral/80 backdrop-blur-sm border-b border-neutral-content/10">
                     <div class="flex items-center space-x-3">
                         <img :src="platformLogo" :alt="platformName" class="h-9 w-9 rounded-lg object-cover" />
                         <div>
-                            <span class="text-lg font-bold tracking-wider text-white">{{ platformName }}</span>
+                            <span class="text-lg font-bold tracking-wider text-neutral-content">{{ platformName }}</span>
                             <p class="text-[10px] uppercase tracking-widest font-semibold" :style="{ color: primaryColor }">Admin Portal</p>
                         </div>
                     </div>
@@ -246,14 +246,14 @@ watch(() => page.props.flash, (flash) => {
                             :class="[
                                 isCurrentRoute(item.route) 
                                     ? 'text-white shadow-lg' 
-                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                    : 'text-neutral-content/60 hover:bg-neutral-content/10 hover:text-neutral-content'
                             ]"
                             class="flex items-center px-4 py-2.5 rounded-xl group transition-all duration-200"
                             :style="isCurrentRoute(item.route) ? { backgroundColor: primaryColor } : {}"
                         >
                             <svg 
                                 class="h-5 w-5 mr-3 transition-colors duration-200" 
-                                :class="[isCurrentRoute(item.route) ? 'text-white' : 'text-slate-500 group-hover:text-white']"
+                                :class="[isCurrentRoute(item.route) ? 'text-white' : 'text-neutral-content/40 group-hover:text-neutral-content']"
                                 fill="none" 
                                 viewBox="0 0 24 24" 
                                 stroke-width="1.5" 
@@ -270,21 +270,21 @@ watch(() => page.props.flash, (flash) => {
                             :title="`${item.name} — Coming Soon`"
                         >
                             <svg 
-                                class="h-5 w-5 mr-3 text-slate-600" 
+                                class="h-5 w-5 mr-3 text-neutral-content/20" 
                                 fill="none" 
                                 viewBox="0 0 24 24" 
                                 stroke-width="1.5" 
                                 stroke="currentColor"
                                 v-html="getIcon(item.icon)"
                             ></svg>
-                            <span class="font-medium text-sm text-slate-600">{{ item.name }}</span>
-                            <span class="ml-auto text-[9px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-semibold">Soon</span>
+                            <span class="font-medium text-sm text-neutral-content/20">{{ item.name }}</span>
+                            <span class="ml-auto text-[9px] bg-neutral-content/10 text-neutral-content/40 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-semibold">Soon</span>
                         </div>
                     </template>
                 </nav>
 
                 <!-- User Footer -->
-                <div class="p-4 bg-slate-950 border-t border-slate-800">
+                <div class="p-4 bg-neutral/80 backdrop-blur-sm border-t border-neutral-content/10">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3 truncate">
                             <div 
@@ -294,13 +294,13 @@ watch(() => page.props.flash, (flash) => {
                                 {{ user?.name?.charAt(0) || 'A' }}
                             </div>
                             <div class="truncate">
-                                <p class="text-sm font-semibold truncate text-white">{{ user?.name || 'Admin' }}</p>
+                                <p class="text-sm font-semibold truncate text-neutral-content">{{ user?.name || 'Admin' }}</p>
                                 <p class="text-[10px] uppercase tracking-tighter font-semibold" :style="{ color: primaryColor }">SaaS Admin</p>
                             </div>
                         </div>
                         <button 
                             @click="handleLogout"
-                            class="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                            class="p-2 text-neutral-content/40 hover:text-error transition-colors"
                             title="Logout"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -359,7 +359,7 @@ watch(() => page.props.flash, (flash) => {
         <div 
             v-if="isSidebarOpen" 
             @click="isSidebarOpen = false"
-            class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden"
+            class="fixed inset-0 bg-neutral/50 backdrop-blur-sm z-40 lg:hidden"
         ></div>
     </div>
 </template>

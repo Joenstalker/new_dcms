@@ -95,119 +95,110 @@ const saveSettings = async () => {
     <Head title="Notification Settings" />
     <AdminLayout>
         <template #header>
-            <h1 class="text-xl font-semibold text-gray-900">Notification Settings</h1>
+            <h1 class="text-xl font-bold text-base-content leading-tight">Notification Settings</h1>
         </template>
 
-        <div class="max-w-4xl mx-auto py-6">
+        <div class="max-w-4xl mx-auto py-8 px-4">
         <!-- Page Header -->
-        <div class="mb-6">
-            <div class="flex items-center justify-between">
+        <div class="mb-10">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                 <div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-4">
                         <Link
                             :href="route('admin.notifications.index')"
-                            class="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                            class="btn btn-ghost btn-sm btn-circle text-base-content/40 hover:text-base-content hover:bg-base-200"
                         >
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                             </svg>
                         </Link>
-                        <h1 class="text-2xl font-bold text-gray-900">Notification Settings</h1>
+                        <div>
+                            <h1 class="text-3xl font-black text-base-content tracking-tight">Notification Preferences</h1>
+                            <p class="mt-1 text-sm text-base-content/50 font-medium">
+                                Configure which activities you want to stay updated on
+                            </p>
+                        </div>
                     </div>
-                    <p class="mt-1 text-sm text-gray-500 ml-10">
-                        Configure which notifications you want to receive
-                    </p>
                 </div>
                 <button
                     @click="saveSettings"
                     :disabled="saving"
-                    class="inline-flex items-center px-4 py-2 bg-teal-600 rounded-lg text-sm font-medium text-white hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="btn btn-primary btn-md font-black shadow-lg shadow-primary/20 min-w-[160px]"
                 >
-                    <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <svg v-else class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    <span v-if="saving" class="loading loading-spinner loading-xs mr-2"></span>
+                    <svg v-else class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     {{ saving ? 'Saving...' : 'Save Changes' }}
                 </button>
             </div>
 
             <!-- Success Message -->
-            <div v-if="saved" class="mt-4 ml-10 flex items-center gap-2 text-sm text-green-600 bg-green-50 px-4 py-2 rounded-lg">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            <div v-if="saved" class="mt-6 ml-14 flex items-center gap-3 text-sm font-bold text-success bg-success/10 px-6 py-3 rounded-2xl border border-success/20 animate-in fade-in slide-in-from-top-4 duration-500">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
                 Settings saved successfully!
             </div>
         </div>
 
         <!-- Settings Categories -->
-        <div class="space-y-6">
+        <div class="space-y-8">
             <div 
                 v-for="category in notificationCategories" 
                 :key="category.key"
-                class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+                class="bg-base-100 rounded-3xl shadow-sm border border-base-300 overflow-hidden transition-all duration-300 hover:shadow-md"
             >
                 <!-- Category Header -->
-                <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <div class="px-8 py-5 bg-base-200/50 border-b border-base-300">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-900">{{ category.title }}</h3>
-                            <p class="text-sm text-gray-500 mt-0.5">{{ category.description }}</p>
+                            <h3 class="text-lg font-black text-base-content tracking-tight">{{ category.title }}</h3>
+                            <p class="text-xs text-base-content/40 font-bold uppercase tracking-widest mt-1">{{ category.description }}</p>
                         </div>
-                        <label class="flex items-center cursor-pointer">
-                            <span class="mr-3 text-sm font-medium text-gray-700">Enable All</span>
-                            <div class="relative">
-                                <input 
-                                    type="checkbox" 
-                                    :checked="isCategoryEnabled(category)"
-                                    @change="toggleCategory(category, $event.target.checked)"
-                                    class="sr-only peer"
-                                />
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
-                            </div>
+                        <label class="flex items-center gap-4 cursor-pointer group">
+                            <span class="text-xs font-black text-base-content/40 uppercase tracking-widest group-hover:text-primary transition-colors">Enable All</span>
+                            <input 
+                                type="checkbox" 
+                                :checked="isCategoryEnabled(category)"
+                                @change="toggleCategory(category, $event.target.checked)"
+                                class="toggle toggle-primary toggle-sm"
+                            />
                         </label>
                     </div>
                 </div>
 
                 <!-- Settings List -->
-                <ul class="divide-y divide-gray-100">
+                <ul class="divide-y divide-base-300/30">
                     <li 
                         v-for="setting in category.settings" 
                         :key="setting.type"
-                        class="px-6 py-4 flex items-center justify-between"
+                        class="px-8 py-5 flex items-center justify-between hover:bg-base-200/20 transition-colors"
                     >
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-gray-900">{{ setting.label }}</p>
-                            <p class="text-sm text-gray-500 mt-0.5">{{ setting.description }}</p>
+                        <div class="flex-1 pr-6">
+                            <p class="text-sm font-bold text-base-content">{{ setting.label }}</p>
+                            <p class="text-xs text-base-content/50 mt-1 font-medium leading-relaxed">{{ setting.description }}</p>
                         </div>
-                        <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-6">
                             <!-- Channel Selection -->
                             <select
                                 v-if="setting.channels && setting.channels.length > 1"
                                 :value="setting.channel"
                                 @change="updateSetting(setting.type, 'channel', $event.target.value)"
-                                class="text-sm border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 py-1.5 px-3"
+                                class="select select-bordered select-sm font-bold text-xs min-w-[120px]"
                             >
-                                <option value="database">In-App</option>
-                                <option value="email">Email</option>
-                                <option value="both">Both</option>
+                                <option value="database">In-App Only</option>
+                                <option value="email">Email Only</option>
+                                <option value="both">Both Channels</option>
                             </select>
                             
                             <!-- Enable/Disable Toggle -->
-                            <label class="flex items-center cursor-pointer">
-                                <div class="relative">
-                                    <input 
-                                        type="checkbox" 
-                                        :checked="setting.enabled"
-                                        @change="updateSetting(setting.type, 'enabled', $event.target.checked)"
-                                        class="sr-only peer"
-                                    />
-                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
-                                </div>
-                            </label>
+                            <input 
+                                type="checkbox" 
+                                :checked="setting.enabled"
+                                @change="updateSetting(setting.type, 'enabled', $event.target.checked)"
+                                class="toggle toggle-primary"
+                            />
                         </div>
                     </li>
                 </ul>
@@ -215,12 +206,14 @@ const saveSettings = async () => {
         </div>
 
         <!-- Empty State -->
-        <div v-if="notificationCategories.length === 0" class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-            </svg>
-            <h3 class="text-lg font-medium text-gray-900 mb-1">No settings available</h3>
-            <p class="text-gray-500">No notification settings found.</p>
+        <div v-if="notificationCategories.length === 0" class="bg-base-100 rounded-3xl shadow-sm border border-base-300 p-16 text-center">
+            <div class="w-20 h-20 rounded-full bg-base-200 flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-black text-base-content mb-2">No settings available</h3>
+            <p class="text-base-content/40 font-medium">No notification categories found in the system.</p>
         </div>
         </div>
     </AdminLayout>

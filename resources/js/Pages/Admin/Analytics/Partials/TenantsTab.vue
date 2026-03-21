@@ -83,42 +83,42 @@ watch(() => props.tenants, () => {
     <div>
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-6">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                    <div class="p-3 rounded-full bg-primary/10 text-primary">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
                     </div>
                     <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">Total Tenants</p>
-                        <p class="text-2xl font-semibold text-gray-900">{{ tenants.total }}</p>
+                        <p class="text-sm font-medium text-base-content/60">Total Tenants</p>
+                        <p class="text-2xl font-semibold text-base-content">{{ tenants.total }}</p>
                     </div>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-6">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                    <div class="p-3 rounded-full bg-success/10 text-success">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                     <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">Active Tenants</p>
-                        <p class="text-2xl font-semibold text-gray-900">{{ tenants.active }}</p>
+                        <p class="text-sm font-medium text-base-content/60">Active Tenants</p>
+                        <p class="text-2xl font-semibold text-base-content">{{ tenants.active }}</p>
                     </div>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-6">
                 <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-gray-100 text-gray-600">
+                    <div class="p-3 rounded-full bg-base-200 text-base-content/70">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 <SAMELINE" />
                         </svg>
                     </div>
                     <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">Inactive Tenants</p>
-                        <p class="text-2xl font-semibold text-gray-900">{{ tenants.inactive }}</p>
+                        <p class="text-sm font-medium text-base-content/60">Inactive Tenants</p>
+                        <p class="text-2xl font-semibold text-base-content">{{ tenants.inactive }}</p>
                     </div>
                 </div>
             </div>
@@ -127,16 +127,16 @@ watch(() => props.tenants, () => {
         <!-- Charts Row -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <!-- Tenant Growth Chart -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Tenant Growth (Last 12 Months)</h3>
+            <div class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-6">
+                <h3 class="text-lg font-semibold text-base-content mb-4">Tenant Growth (Last 12 Months)</h3>
                 <div class="h-64">
                     <canvas ref="tenantGrowthChart"></canvas>
                 </div>
             </div>
 
             <!-- Tenants by Plan -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Tenants by Plan</h3>
+            <div class="bg-base-100 rounded-lg shadow-sm border border-base-300 p-6">
+                <h3 class="text-lg font-semibold text-base-content mb-4">Tenants by Plan</h3>
                 <div class="h-64">
                     <canvas ref="tenantPlanChart"></canvas>
                 </div>
@@ -144,42 +144,44 @@ watch(() => props.tenants, () => {
         </div>
 
         <!-- Recent Tenants Table -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Recent Tenants</h3>
+        <div class="bg-base-100 rounded-lg shadow-sm border border-base-300 overflow-hidden">
+            <div class="px-6 py-4 border-b border-base-300">
+                <h3 class="text-lg font-semibold text-base-content">Recent Tenants</h3>
             </div>
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Domain</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="tenant in tenants.recent" :key="tenant.id">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ tenant.name }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ tenant.domain }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ tenant.plan }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span :class="[
-                                'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
-                                tenant.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            ]">
-                                {{ tenant.status }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ tenant.created_at }}</td>
-                    </tr>
-                    <tr v-if="!tenants.recent?.length">
-                        <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                            No tenants yet. New tenants will appear here.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-base-300">
+                    <thead class="bg-base-200">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">Domain</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">Plan</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">Created</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-base-100 divide-y divide-base-300">
+                        <tr v-for="tenant in tenants.recent" :key="tenant.id" class="hover:bg-base-200 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-base-content">{{ tenant.name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-base-content/60">{{ tenant.domain }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-base-content/60">{{ tenant.plan }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span :class="[
+                                    'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
+                                    tenant.status === 'active' ? 'bg-success/20 text-success' : 'bg-base-200 text-base-content/70'
+                                ]">
+                                    {{ tenant.status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-base-content/60">{{ tenant.created_at }}</td>
+                        </tr>
+                        <tr v-if="!tenants.recent?.length">
+                            <td colspan="5" class="px-6 py-12 text-center text-base-content/30">
+                                No tenants yet. New tenants will appear here.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </template>

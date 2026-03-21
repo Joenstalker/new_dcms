@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -26,3 +27,7 @@ Artisan::command('fix:tenant-domains', function () {
 
     $this->info("Complete! Fixed {$count} tenants.");
 })->purpose('Add missing domain records for tenants that were created but failed halfway');
+
+// Pending Registration Automated Tasks
+Schedule::command('registrations:process-expired')->everyMinute();
+Schedule::command('registrations:send-reminders')->hourly();
