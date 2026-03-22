@@ -21,7 +21,7 @@
             <!-- Modal Panel -->
             <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
                 <!-- Header -->
-                <div class="bg-teal-600 px-6 py-4">
+                <div class="bg-[#2B7CB3] px-6 py-4">
                     <h1 class="text-2xl font-bold text-white">Payment Received!</h1>
                 </div>
                 
@@ -100,9 +100,9 @@
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600">URL:</span>
-                                <span class="text-teal-600 font-medium">
+                                <span class="text-[#2B7CB3] font-medium">
                                     <?php $appUrl = config('app.url'); $parsed = parse_url($appUrl); $host = $parsed['host'] ?? str_replace(['http://', 'https://'], '', $appUrl); $port = isset($parsed['port']) ? ':' . $parsed['port'] : ''; $fullUrl = 'http://' . $registration->subdomain . '.' . $host . $port; ?>
-                                    <a href="<?php echo $fullUrl; ?>" target="_blank" class="text-teal-600 hover:text-teal-800 underline"><?php echo $fullUrl; ?></a>
+                                    <a href="<?php echo $fullUrl; ?>" target="_blank" class="text-[#2B7CB3] hover:text-[#1F547A] underline"><?php echo $fullUrl; ?></a>
                                 </span>
                             </div>
                             <div class="flex justify-between">
@@ -128,7 +128,7 @@
                 <div class="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse">
                     <a
                         href="{{ config('app.url') }}/?payment-success=true"
-                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-teal-600 text-base font-medium text-white hover:bg-teal-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
+                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#2B7CB3] text-base font-medium text-white hover:bg-[#236491] focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
                     >
                         Back to Home
                     </a>

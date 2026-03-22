@@ -255,6 +255,7 @@ class SystemSettingsController extends Controller
     private function clearConfigCache(): void
     {
         try {
+            \Illuminate\Support\Facades\Cache::forget('system_settings_all');
             \Artisan::call('config:clear');
         }
         catch (\Exception $e) {

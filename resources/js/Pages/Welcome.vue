@@ -227,7 +227,7 @@ onMounted(() => {
             icon: 'success',
             title: 'Payment Received!',
             text: 'Your payment has been successfully processed. Your clinic is pending admin approval.',
-            confirmButtonColor: '#0d9488',
+            confirmButtonColor: '#2B7CB3',
             confirmButtonText: 'OK'
         });
         window.history.replaceState({}, document.title, window.location.pathname);

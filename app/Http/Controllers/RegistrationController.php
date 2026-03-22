@@ -522,9 +522,15 @@ class RegistrationController extends Controller
 
         // Check if tenant is pending verification
         if ($tenant->status === 'pending') {
+            // Find associated pending registration to get correct expiry time
+            $pendingRegistration = \App\Models\PendingRegistration::where('subdomain', $subdomain)
+                ->where('status', \App\Models\PendingRegistration::STATUS_PENDING)
+                ->first();
+
             return response()->view('errors.pending', [
                 'tenant' => $tenant,
-                'created_at' => $tenant->created_at
+                'created_at' => $tenant->created_at,
+                'expires_at' => $pendingRegistration ? $pendingRegistration->expires_at : $tenant->created_at->addHours(168),
             ], 403);
         }
 

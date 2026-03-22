@@ -101,7 +101,8 @@ class LoginRequest extends FormRequest
         $this->verifyRecaptcha();
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+            $lockoutDuration = (int) \App\Models\SystemSetting::get('lockout_duration', 1) * 60;
+            RateLimiter::hit($this->throttleKey(), $lockoutDuration);
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
@@ -139,7 +140,9 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        $maxAttempts = (int) \App\Models\SystemSetting::get('max_login_attempts', 5);
+
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), $maxAttempts)) {
             return;
         }
 

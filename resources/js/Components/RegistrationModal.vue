@@ -374,13 +374,13 @@ const paymentMethods = [
                     <div v-for="step in 3" :key="step" class="flex items-center">
                         <div :class="[
                             'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors',
-                            currentStep >= step ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-500'
+                            currentStep >= step ? 'bg-[#2B7CB3] text-white' : 'bg-gray-200 text-gray-500'
                         ]">
                             {{ step }}
                         </div>
                         <div v-if="step < 3" :class="[
                             'w-16 sm:w-24 h-1 mx-2 transition-colors',
-                            currentStep > step ? 'bg-teal-500' : 'bg-gray-200'
+                            currentStep > step ? 'bg-[#2B7CB3]' : 'bg-gray-200'
                         ]"></div>
                     </div>
                 </div>
@@ -474,7 +474,7 @@ const paymentMethods = [
                                 id="region"
                                 v-model="selectedRegionCode"
                                 @change="handleRegionChange"
-                                class="mt-1 block w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500 rounded-md shadow-sm text-sm"
+                                class="mt-1 block w-full border-gray-300 focus:border-[#2B7CB3] focus:ring-[#2B7CB3] rounded-md shadow-sm text-sm"
                                 required
                             >
                                 <option value="" disabled>Select Region</option>
@@ -491,7 +491,7 @@ const paymentMethods = [
                                 v-model="selectedProvinceCode"
                                 @change="handleProvinceChange"
                                 :disabled="!selectedRegionCode || isAddressLoading.provinces"
-                                class="mt-1 block w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500 rounded-md shadow-sm text-sm disabled:bg-gray-50 opacity-100"
+                                class="mt-1 block w-full border-gray-300 focus:border-[#2B7CB3] focus:ring-[#2B7CB3] rounded-md shadow-sm text-sm disabled:bg-gray-50 opacity-100"
                                 required
                             >
                                 <option value="" disabled>{{ isAddressLoading.provinces ? 'Loading...' : 'Select Province' }}</option>
@@ -511,7 +511,7 @@ const paymentMethods = [
                                 v-model="selectedCityCode"
                                 @change="handleCityChange"
                                 :disabled="!selectedProvinceCode || isAddressLoading.cities"
-                                class="mt-1 block w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500 rounded-md shadow-sm text-sm disabled:bg-gray-50"
+                                class="mt-1 block w-full border-gray-300 focus:border-[#2B7CB3] focus:ring-[#2B7CB3] rounded-md shadow-sm text-sm disabled:bg-gray-50"
                                 required
                             >
                                 <option value="" disabled>{{ isAddressLoading.cities ? 'Loading...' : 'Select City' }}</option>
@@ -528,7 +528,7 @@ const paymentMethods = [
                                 v-model="selectedBarangayCode"
                                 @change="handleBarangayChange"
                                 :disabled="!selectedCityCode || isAddressLoading.barangays"
-                                class="mt-1 block w-full border-gray-300 focus:border-teal-500 focus:ring-teal-500 rounded-md shadow-sm text-sm disabled:bg-gray-50"
+                                class="mt-1 block w-full border-gray-300 focus:border-[#2B7CB3] focus:ring-[#2B7CB3] rounded-md shadow-sm text-sm disabled:bg-gray-50"
                                 required
                             >
                                 <option value="" disabled>{{ isAddressLoading.barangays ? 'Loading...' : 'Select Barangay' }}</option>
@@ -576,7 +576,7 @@ const paymentMethods = [
                         <input
                             id="subdomain"
                             type="text"
-                            class="flex-1 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                            class="flex-1 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:ring-[#2B7CB3] focus:border-[#2B7CB3] sm:text-sm"
                             v-model="form.subdomain"
                             @blur="checkSubdomainAvailability"
                             @input="subdomainAvailable = null"
@@ -611,7 +611,7 @@ const paymentMethods = [
                                 v-for="suggestion in subdomainSuggestions"
                                 :key="suggestion"
                                 @click="selectSuggestion(suggestion)"
-                                class="px-3 py-1 text-sm bg-gray-100 hover:bg-teal-50 hover:text-teal-700 rounded-full border border-gray-200 transition-colors"
+                                class="px-3 py-1 text-sm bg-gray-100 hover:bg-blue-50 hover:text-[#2B7CB3] rounded-full border border-gray-200 transition-colors"
                             >
                                 {{ suggestion }}
                             </button>
@@ -645,7 +645,7 @@ const paymentMethods = [
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-500">Your URL:</span>
-                        <span class="font-medium text-teal-600">{{ form.subdomain }}.{{ clinicDomain }}</span>
+                        <span class="font-medium text-[#2B7CB3]">{{ form.subdomain }}.{{ clinicDomain }}</span>
                     </div>
                     <div v-if="selectedPlan" class="flex justify-between pt-3 border-t border-gray-200">
                         <span class="text-gray-500">Selected Plan:</span>
@@ -653,7 +653,7 @@ const paymentMethods = [
                     </div>
                     <div v-if="selectedPlan" class="flex justify-between">
                         <span class="text-gray-500">Monthly Price:</span>
-                        <span class="font-bold text-teal-600">₱{{ Number(selectedPlan.price_monthly).toLocaleString() }}</span>
+                        <span class="font-bold text-[#2B7CB3]">₱{{ Number(selectedPlan.price_monthly).toLocaleString() }}</span>
                     </div>
                 </div>
 
@@ -667,7 +667,7 @@ const paymentMethods = [
                             :class="[
                                 'relative rounded-lg border p-4 cursor-pointer transition-all',
                                 method.available 
-                                    ? 'border-teal-500 bg-teal-50 hover:border-teal-600' 
+                                    ? 'border-[#2B7CB3] bg-blue-50 hover:border-[#246999]' 
                                     : 'border-gray-200 bg-gray-50 opacity-60'
                             ]"
                         >
@@ -681,7 +681,7 @@ const paymentMethods = [
                                 </span>
                             </div>
                             <div v-if="method.stripe" class="absolute -top-2 -right-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-800">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-[#2B7CB3]">
                                     Active
                                 </span>
                             </div>

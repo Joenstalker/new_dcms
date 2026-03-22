@@ -105,7 +105,7 @@
         </div>
         
         <div class="flex gap-3">
-            <button onclick="window.location.reload()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+            <button onclick="window.location.reload()" class="flex-1 bg-[#2B7CB3] hover:bg-[#236491] text-white font-semibold px-6 py-3 rounded-lg transition-colors">
                 Check Status
             </button>
             <a href="mailto:admin@dcms.com" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold px-6 py-3 rounded-lg transition-colors">
