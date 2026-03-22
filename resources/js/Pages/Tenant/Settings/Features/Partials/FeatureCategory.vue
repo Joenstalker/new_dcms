@@ -1,4 +1,7 @@
 <script setup>
+import { ref } from 'vue';
+import { useForm } from '@inertiajs/vue3';
+
 const props = defineProps({
     category: {
         type: String,
@@ -21,6 +24,8 @@ const props = defineProps({
         required: true
     }
 });
+
+const isProcessing = ref(null);
 
 const formatValue = (feature) => {
     if (feature.type === 'boolean') {
@@ -53,6 +58,7 @@ const getFeatureIcon = (key) => {
         report_level: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
         advanced_analytics: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
         multi_branch: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+        max_storage_mb: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4',
     };
     return icons[key] || icons.clinic_setup;
 };
@@ -64,6 +70,24 @@ const getCategoryStatusColor = (status) => {
         case 'locked': return 'bg-gray-50 border-gray-200';
         default: return 'bg-white border-gray-200';
     }
+};
+
+const updateForm = useForm({
+    feature_ids: [],
+});
+
+const applyUpdate = (featureId) => {
+    isProcessing.value = featureId;
+    updateForm.feature_ids = [featureId];
+    updateForm.post(route('settings.updates.apply'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            isProcessing.value = null;
+        },
+        onError: () => {
+            isProcessing.value = null;
+        }
+    });
 };
 </script>
 
@@ -83,24 +107,26 @@ const getCategoryStatusColor = (status) => {
                         {{ categoryDescriptions[category] }}
                     </p>
                 </div>
-                <span 
-                    v-if="status === 'full'"
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                >
-                    All Available
-                </span>
-                <span 
-                    v-else-if="status === 'partial'"
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"
-                >
-                    Some Available
-                </span>
-                <span 
-                    v-else-if="status === 'locked'"
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                >
-                    Upgrade to Unlock
-                </span>
+                <div class="flex items-center gap-2">
+                    <span 
+                        v-if="status === 'full'"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                    >
+                        All Available
+                    </span>
+                    <span 
+                        v-else-if="status === 'partial'"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"
+                    >
+                        Some Available
+                    </span>
+                    <span 
+                        v-else-if="status === 'locked'"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                    >
+                        Upgrade to Unlock
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -110,13 +136,13 @@ const getCategoryStatusColor = (status) => {
                 v-for="feature in categoryFeatures" 
                 :key="feature.key"
                 class="px-6 py-4 flex items-center justify-between"
-                :class="!feature.is_enabled ? 'opacity-60' : ''"
+                :class="!feature.is_enabled && !feature.has_pending_update ? 'opacity-60' : ''"
             >
                 <div class="flex items-center gap-4">
                     <!-- Icon -->
                     <div 
                         class="flex-shrink-0 h-10 w-10 rounded-lg flex items-center justify-center"
-                        :class="feature.is_enabled ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'"
+                        :class="feature.is_enabled ? 'bg-indigo-100 text-indigo-600' : (feature.has_pending_update ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400')"
                     >
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" :d="getFeatureIcon(feature.key)" />
@@ -125,41 +151,64 @@ const getCategoryStatusColor = (status) => {
                     
                     <!-- Name & Description -->
                     <div>
-                        <h4 class="text-sm font-medium text-gray-900">
-                            {{ feature.name }}
-                        </h4>
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-sm font-medium text-gray-900">
+                                {{ feature.name }}
+                            </h4>
+                            <span 
+                                v-if="feature.has_pending_update" 
+                                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-orange-100 text-orange-800 animate-pulse"
+                            >
+                                Update Available
+                            </span>
+                        </div>
                         <p v-if="feature.description" class="text-xs text-gray-500">
                             {{ feature.description }}
                         </p>
                     </div>
                 </div>
 
-                <!-- Value / Status -->
+                <!-- Value / Status / Action -->
                 <div class="flex items-center gap-3">
-                    <span 
-                        class="text-sm font-medium"
-                        :class="feature.is_enabled ? 'text-gray-900' : 'text-gray-500'"
-                    >
-                        {{ formatValue(feature) }}
-                    </span>
-                    <svg 
-                        v-if="feature.is_enabled" 
-                        class="h-5 w-5 text-green-500" 
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <svg 
-                        v-else 
-                        class="h-5 w-5 text-gray-400" 
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <template v-if="feature.has_pending_update">
+                        <button 
+                            @click="applyUpdate(feature.id)"
+                            :disabled="isProcessing === feature.id"
+                            class="btn btn-sm btn-warning gap-2"
+                            :class="{ 'loading': isProcessing === feature.id }"
+                        >
+                            <svg v-if="isProcessing !== feature.id" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Apply Now
+                        </button>
+                    </template>
+                    <template v-else>
+                        <span 
+                            class="text-sm font-medium"
+                            :class="feature.is_enabled ? 'text-gray-900' : 'text-gray-500'"
+                        >
+                            {{ formatValue(feature) }}
+                        </span>
+                        <svg 
+                            v-if="feature.is_enabled" 
+                            class="h-5 w-5 text-green-500" 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <svg 
+                            v-else 
+                            class="h-5 w-5 text-gray-400" 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </template>
                 </div>
             </div>
         </div>

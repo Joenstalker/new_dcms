@@ -11,6 +11,15 @@ class TenantFeatureUpdate extends Model
 
     protected $table = 'tenant_feature_updates';
 
+    public function getConnectionName()
+    {
+        if (app()->runningUnitTests()) {
+            return config('database.default');
+        }
+        
+        return parent::getConnectionName();
+    }
+
     protected $fillable = [
         'tenant_id',
         'feature_id',

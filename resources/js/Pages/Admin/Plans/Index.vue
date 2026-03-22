@@ -144,6 +144,53 @@ const forceSync = (plan) => {
         allowOutsideClick: () => !Swal.isLoading()
     });
 };
+
+const legacyKeys = [
+    'qr_booking', 'sms_notifications', 'custom_branding', 'advanced_analytics', 
+    'priority_support', 'multi_branch', 'max_users', 'max_patients', 
+    'max_appointments', 'report_level', 'max_storage_mb'
+];
+
+const getDynamicFeatures = (plan) => {
+    if (!plan.features) return [];
+    return plan.features.filter(f => !legacyKeys.includes(f.key));
+};
+
+const getStagedFeaturesCount = (plan) => {
+    if (!plan.features) return 0;
+    return plan.features.filter(f => !f.pivot.pushed_at).length;
+};
+
+const pushUpdates = (plan) => {
+    const stagedCount = getStagedFeaturesCount(plan);
+    Swal.fire({
+        title: 'Push Updates?',
+        text: `This will instantly push ${stagedCount} staged features to the entire platform. Subscribers will receive an update alert, and non-subscribers will receive an upgrade advertisement.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0d9488',
+        confirmButtonText: 'Yes, push locally',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return new Promise((resolve) => {
+                router.post(route('admin.plans.push-updates', plan.id), {}, {
+                    onSuccess: () => {
+                        resolve();
+                    },
+                    onError: (errors) => {
+                        Swal.showValidationMessage(errors.message || 'Transmission failed.');
+                        resolve();
+                    }
+                });
+            });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire('Transmitted!', 'Tenants have been notified of the new updates.', 'success');
+        }
+    });
+};
 </script>
 
 <template>
@@ -164,7 +211,13 @@ const forceSync = (plan) => {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
                 <div v-for="plan in plans" :key="plan.id" class="bg-base-100 rounded-xl overflow-hidden shadow-sm border border-base-300 hover:shadow-md transition-shadow group flex flex-col h-full">
                     <div class="p-6 border-b border-base-300 flex justify-between items-center bg-base-200/50 group-hover:bg-primary/5 transition-colors">
-                        <h3 class="text-lg font-bold text-primary uppercase tracking-wide">{{ plan.name }}</h3>
+                        <div class="flex items-center space-x-3">
+                            <h3 class="text-lg font-bold text-primary uppercase tracking-wide">{{ plan.name }}</h3>
+                            <button v-if="getStagedFeaturesCount(plan) > 0" @click="pushUpdates(plan)" title="Broadcast Updates" class="flex items-center space-x-1 text-[10px] bg-warning hover:bg-warning/80 text-warning-content px-2 py-0.5 rounded shadow-sm font-bold animate-pulse transition">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                <span>Push {{ getStagedFeaturesCount(plan) }} Features</span>
+                            </button>
+                        </div>
                         <div class="flex items-center space-x-2">
                             <button @click="openEditModal(plan)" class="text-base-content/40 hover:text-primary transition-colors" title="Edit Plan">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -269,6 +322,29 @@ const forceSync = (plan) => {
                                 ]">
                                     {{ plan.report_level }} Reports
                                 </span>
+                            </li>
+                            
+                            <!-- Dynamic Pluggable Features -->
+                            <li v-for="dynamicFeature in getDynamicFeatures(plan)" :key="dynamicFeature.id" class="flex flex-col border-t border-base-200/60 mt-3 pt-3">
+                                <div class="flex items-center justify-between w-full">
+                                    <div class="flex items-center">
+                                        <svg class="h-4 w-4 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        <span class="font-medium text-base-content/90">{{ dynamicFeature.name }}</span>
+                                    </div>
+                                    <span v-if="!dynamicFeature.pivot.pushed_at" class="text-[9px] bg-warning/10 text-warning px-1.5 py-0.5 rounded shadow-sm font-semibold uppercase tracking-wider relative flex items-center">
+                                        <span class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-75"></span>
+                                          <span class="relative inline-flex rounded-full h-2 w-2 bg-warning"></span>
+                                        </span>
+                                        Staged
+                                    </span>
+                                    <span v-else class="text-[9px] bg-success/10 text-success px-1.5 py-0.5 rounded shadow-sm font-semibold uppercase tracking-wider">
+                                        Live
+                                    </span>
+                                </div>
+                                <p v-if="dynamicFeature.description" class="text-xs text-base-content/40 pl-6 mt-0.5 leading-tight line-clamp-2" :title="dynamicFeature.description">
+                                    {{ dynamicFeature.description }}
+                                </p>
                             </li>
                         </ul>
                     </div>

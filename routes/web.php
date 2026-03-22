@@ -144,12 +144,14 @@ $registerCentralRoutes = function ($withNames = false) {
                 $plansU = Route::put('/plans/{plan}', [\App\Http\Controllers\Admin\PlanController::class , 'update']);
                 $plansD = Route::delete('/plans/{plan}', [\App\Http\Controllers\Admin\PlanController::class , 'destroy']);
                 $plansF = Route::post('/plans/{plan}/force-sync', [\App\Http\Controllers\Admin\PlanController::class , 'forceSync']);
+                $plansP = Route::post('/plans/{plan}/push-updates', [\App\Http\Controllers\Admin\PlanController::class , 'pushUpdates']);
                 if ($withNames) {
                     $plansI->name('plans.index');
                     $plansS->name('plans.store');
                     $plansU->name('plans.update');
                     $plansD->name('plans.destroy');
                     $plansF->name('plans.force-sync');
+                    $plansP->name('plans.push-updates');
                 }
 
                 // Subscriptions
@@ -188,6 +190,7 @@ $registerCentralRoutes = function ($withNames = false) {
                     $featuresT->name('features.toggle');
                     $featuresA->name('features.assign');
                     $featuresR->name('features.remove');
+                    Route::post('/features/sync-all', [FeatureController::class, 'syncAllUpdates'])->name('features.sync-all');
                 }
 
                 // Support & Tickets (Contact Messages)

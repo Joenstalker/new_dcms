@@ -19,10 +19,11 @@ class PlanController extends Controller
      */
     public function index(): Response
     {
-        $plans = SubscriptionPlan::orderBy('price_monthly')->get();
+        $plans = SubscriptionPlan::with('features')->orderBy('price_monthly')->get();
 
         return Inertia::render('Admin/Plans/Index', [
             'plans' => $plans
+
         ]);
     }
 
@@ -42,6 +43,9 @@ class PlanController extends Controller
             targetId: (string) $plan->id,
             metadata: ['name' => $plan->name, 'price_monthly' => $plan->price_monthly]
         );
+
+        // Sync to dynamic features
+        $plan->syncFeaturesFromLegacy();
 
         try {
             $this->syncWithStripe($plan);
@@ -68,6 +72,9 @@ class PlanController extends Controller
             targetId: (string) $plan->id,
             metadata: ['name' => $plan->name, 'price_monthly' => $plan->price_monthly]
         );
+
+        // Sync to dynamic features
+        $plan->syncFeaturesFromLegacy();
 
         try {
             $this->syncWithStripe($plan);
@@ -182,6 +189,28 @@ class PlanController extends Controller
         catch (\Exception $e) {
             Log::error('Stripe Force Sync Error: ' . $e->getMessage());
             return back()->with('error', 'Sync failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Push staged OTA features to all tenants (Updates & Advertisements).
+     */
+    public function pushUpdates(SubscriptionPlan $plan, \App\Services\FeatureOTAUpdateService $otaService): RedirectResponse
+    {
+        try {
+            $notifiedCount = $otaService->pushPlanUpdates($plan);
+
+            AuditLog::record(
+                action: 'plan.features_pushed',
+                description: "Pushed updates for plan '{$plan->name}' to $notifiedCount tenants.",
+                targetType: 'SubscriptionPlan',
+                targetId: (string) $plan->id
+            );
+
+            return back()->with('success', "Updates pushed successfully! {$notifiedCount} tenants notified.");
+        } catch (\Exception $e) {
+            Log::error('OTA Push Error: ' . $e->getMessage());
+            return back()->with('error', 'Push failed: ' . $e->getMessage());
         }
     }
 

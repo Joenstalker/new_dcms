@@ -66,59 +66,12 @@ class CheckSubscription
             return redirect()->route('settings.index')
                 ->with('error', 'Your subscription is inactive. Please renew to continue.');
         }
-
         $plan = $subscription->plan;
+        $tenantId = $tenant->getTenantKey();
 
         // If a specific feature or limit was requested, check it
         if ($feature) {
-            // -------------------------------------------------------
-            // Boolean feature flag check
-            // -------------------------------------------------------
-            $booleanFeatures = [
-                'has_qr_booking',
-                'has_sms',
-                'has_branding',
-                'has_analytics',
-                'has_priority_support',
-                'has_multi_branch',
-            ];
-
-            if (in_array($feature, $booleanFeatures)) {
-                if (!$plan->{ $feature}) {
-                    return $this->featureNotAvailable($request, $feature, $plan->name);
-                }
-            }
-
-            // -------------------------------------------------------
-            // Dynamic feature check with OTA status
-            // -------------------------------------------------------
-            $dynamicFeature = Feature::where('key', $feature)->first();
-            if ($dynamicFeature) {
-                $isEnabled = $dynamicFeature->isEnabledForPlan($plan);
-
-                if ($isEnabled) {
-                    // Check if feature requires tenant acknowledgment
-                    if ($dynamicFeature->requiresAcknowledgment()) {
-                        $tenantUpdate = TenantFeatureUpdate::where('tenant_id', $tenant->getTenantKey())
-                            ->where('feature_id', $dynamicFeature->id)
-                            ->first();
-
-                        // If feature requires acknowledgment and tenant hasn't applied it
-                        if (!$tenantUpdate || $tenantUpdate->status !== TenantFeatureUpdate::STATUS_APPLIED) {
-                            // For now, we allow access but could block if needed
-                            // The frontend will show "Coming Soon" badge
-                            Log::info("CheckSubscription: feature '{$feature}' available but not acknowledged by tenant.");
-                        }
-                    }
-                }
-                else {
-                    return $this->featureNotAvailable($request, $feature, $plan->name);
-                }
-            }
-
-            // -------------------------------------------------------
-            // Numeric limit check — checks current count vs. plan max
-            // -------------------------------------------------------
+            // 1. Check for numeric limit first (e.g. max_users)
             $limitChecks = [
                 'max_patients' => fn() => \App\Models\Patient::count(),
                 'max_users' => fn() => \App\Models\User::count(),
@@ -126,14 +79,31 @@ class CheckSubscription
             ];
 
             if (isset($limitChecks[$feature])) {
-                $max = $plan->{ $feature};
+                $max = $plan->getFeatureValue($feature);
 
-                // null means unlimited
-                if ($max !== null) {
+                // null/empty means unlimited
+                if ($max !== null && $max !== '') {
                     $current = $limitChecks[$feature]();
+                    if ($current >= (int)$max) {
+                        return $this->limitReached($request, $feature, (int)$max, $plan->name);
+                    }
+                }
+            }
+            // 2. Check for boolean feature (qr_booking, has_sms, etc.)
+            else {
+                if (!$plan->hasFeature($feature)) {
+                    return $this->featureNotAvailable($request, $feature, $plan->name);
+                }
 
-                    if ($current >= $max) {
-                        return $this->limitReached($request, $feature, $max, $plan->name);
+                // Acknowledgment logic for OTA updates (only for dynamic features)
+                $dynamicFeature = $plan->getFeature($feature);
+                if ($dynamicFeature && $dynamicFeature->requiresAcknowledgment()) {
+                    $tenantUpdate = TenantFeatureUpdate::where('tenant_id', $tenantId)
+                        ->where('feature_id', $dynamicFeature->id)
+                        ->first();
+
+                    if (!$tenantUpdate || !$tenantUpdate->isApplied()) {
+                        Log::info("CheckSubscription: feature '{$feature}' available but not acknowledged by tenant.");
                     }
                 }
             }
@@ -170,16 +140,17 @@ class CheckSubscription
 
             \Inertia\Inertia::share('subscription', [
                 'plan_name' => $plan->name,
-                'has_qr_booking' => $plan->has_qr_booking,
-                'has_sms' => $plan->has_sms,
-                'has_branding' => $plan->has_branding,
-                'has_analytics' => $plan->has_analytics,
-                'has_priority_support' => $plan->has_priority_support,
-                'has_multi_branch' => $plan->has_multi_branch,
-                'max_users' => $plan->max_users,
-                'max_patients' => $plan->max_patients,
-                'max_appointments' => $plan->max_appointments,
-                'report_level' => $plan->report_level,
+                'has_qr_booking' => $plan->hasFeature('qr_booking'),
+                'has_sms' => $plan->hasFeature('sms_notifications'),
+                'has_branding' => $plan->hasFeature('custom_branding'),
+                'has_analytics' => $plan->hasFeature('advanced_analytics'),
+                'has_priority_support' => $plan->hasFeature('priority_support'),
+                'has_multi_branch' => $plan->hasFeature('multi_branch'),
+                'max_users' => $plan->getFeatureValue('max_users'),
+                'max_patients' => $plan->getFeatureValue('max_patients'),
+                'max_appointments' => $plan->getFeatureValue('max_appointments'),
+                'report_level' => $plan->getFeatureValue('report_level'),
+                'max_storage_mb' => $plan->getFeatureValue('max_storage_mb'),
                 'billing_cycle' => $subscription->billing_cycle,
                 'stripe_status' => $subscription->stripe_status,
                 'features' => $featureStatus,

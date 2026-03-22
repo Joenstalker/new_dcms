@@ -160,6 +160,15 @@ class FeatureSeeder extends Seeder
                 'sort_order' => 40,
                 'is_active' => true,
             ],
+            [
+                'key' => 'max_storage_mb',
+                'name' => 'Maximum Storage (MB)',
+                'description' => 'Maximum total storage for uploaded files (documents, images, etc.)',
+                'type' => 'numeric',
+                'category' => 'limits',
+                'sort_order' => 13,
+                'is_active' => true,
+            ],
         ];
 
         // Create all features
@@ -203,7 +212,8 @@ class FeatureSeeder extends Seeder
             'priority_support' => ['value_boolean' => false],
             'report_level' => ['value_tier' => 'basic'],
             'advanced_analytics' => ['value_boolean' => false],
-            'multi_branch' => ['value_boolean' => false],
+            'multi_branch' => ['value_boolean' => false],    'max_storage_mb' => ['value_numeric' => 500],
+        
         ];
 
         // Pro Plan Features
@@ -222,7 +232,8 @@ class FeatureSeeder extends Seeder
             'priority_support' => ['value_boolean' => false],
             'report_level' => ['value_tier' => 'enhanced'],
             'advanced_analytics' => ['value_boolean' => false],
-            'multi_branch' => ['value_boolean' => false],
+            'multi_branch' => ['value_boolean' => false],    'max_storage_mb' => ['value_numeric' => 5000],
+        
         ];
 
         // Ultimate Plan Features
@@ -242,6 +253,7 @@ class FeatureSeeder extends Seeder
             'report_level' => ['value_tier' => 'advanced'],
             'advanced_analytics' => ['value_boolean' => true],
             'multi_branch' => ['value_boolean' => true],
+            'max_storage_mb' => ['value_numeric' => 50000],
         ];
 
         // Sync features to plans

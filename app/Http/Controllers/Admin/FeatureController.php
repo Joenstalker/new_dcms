@@ -181,6 +181,29 @@ class FeatureController extends Controller
     }
 
     /**
+     * Sync all active features to all eligible tenants (Bulk OTA Sync).
+     */
+    public function syncAllUpdates(FeatureOTAUpdateService $otaService): RedirectResponse
+    {
+        $features = Feature::where('is_active', true)->get();
+        $totalNotified = 0;
+
+        foreach ($features as $feature) {
+            $totalNotified += $otaService->createUpdateRecordsForEligibleTenants($feature);
+        }
+
+        \App\Models\AuditLog::record(
+            'features_bulk_synced',
+            "Triggered bulk OTA synchronization for {$features->count()} active features.",
+            'Feature',
+            null,
+            ['total_records_created' => $totalNotified]
+        );
+
+        return back()->with('success', "Bulk sync complete. Created {$totalNotified} new update records across all tenants.");
+    }
+
+    /**
      * Remove the specified feature from storage.
      */
     public function destroy(Feature $feature): RedirectResponse

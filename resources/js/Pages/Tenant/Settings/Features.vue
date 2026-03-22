@@ -10,6 +10,7 @@ import UpgradeCta from './Features/Partials/UpgradeCta.vue';
 const props = defineProps({
     tenant: Object,
     features: Object,
+    has_pending_updates: Boolean,
 });
 
 const page = usePage();
@@ -59,7 +60,10 @@ const getCategoryStatus = (category) => {
                 </div>
 
                 <!-- Current Plan Banner -->
-                <CurrentPlanBanner :subscription="subscription" />
+                <CurrentPlanBanner 
+                    :subscription="subscription" 
+                    :has-updates="has_pending_updates"
+                />
 
                 <!-- Features by Category -->
                 <div class="space-y-8">

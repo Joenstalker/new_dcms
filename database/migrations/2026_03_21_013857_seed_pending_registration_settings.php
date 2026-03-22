@@ -60,7 +60,15 @@ return new class extends Migration
             ],
         ];
 
-        DB::table('system_settings')->insert($settings);
+        foreach ($settings as $setting) {
+            $exists = DB::table('system_settings')
+                ->where('key', $setting['key'])
+                ->exists();
+
+            if (!$exists) {
+                DB::table('system_settings')->insert($setting);
+            }
+        }
     }
 
     /**

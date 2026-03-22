@@ -27,50 +27,59 @@ class SettingsController extends Controller
     }
 
     /**
-     * Display features page for the current tenant.
+     * Display a listing of features for the tenant.
      */
-    public function features()
+    public function features(Request $request)
     {
         $tenant = tenant();
-
-        // Get the active subscription for this tenant
-        $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
+        $subscription = \App\Models\Subscription::where('tenant_id', $tenant->getTenantKey())
             ->where('stripe_status', 'active')
-            ->with('plan')
+            ->with(['plan.features'])
             ->latest()
             ->first();
 
         if (!$subscription || !$subscription->plan) {
             return Inertia::render('Tenant/Settings/Features', [
-                'tenant' => $tenant,
                 'features' => [],
-                'subscription' => null,
             ]);
         }
 
-        // Get features grouped by category
-        $featuresByCategory = $subscription->plan->getFeaturesByCategory();
+        // Get pending OTA updates for this tenant
+        $otaService = app(\App\Services\FeatureOTAUpdateService::class);
+        $pendingUpdates = $otaService->getPendingUpdates($tenant->getTenantKey())
+            ->pluck('feature_id')
+            ->toArray();
 
-        // Get current subscription data for the frontend
-        $subscriptionData = [
-            'plan_name' => $subscription->plan->name,
-            'billing_cycle' => $subscription->billing_cycle,
-            'stripe_status' => $subscription->stripe_status,
-            'max_users' => $subscription->plan->getFeatureValue('max_users'),
-            'max_patients' => $subscription->plan->getFeatureValue('max_patients'),
-            'has_qr_booking' => $subscription->plan->hasFeature('qr_booking'),
-            'has_sms' => $subscription->plan->hasFeature('sms_notifications'),
-            'has_branding' => $subscription->plan->hasFeature('custom_branding'),
-            'has_analytics' => $subscription->plan->hasFeature('advanced_analytics'),
-            'has_priority_support' => $subscription->plan->hasFeature('priority_support'),
-            'has_multi_branch' => $subscription->plan->hasFeature('multi_branch'),
-            'report_level' => $subscription->plan->getFeatureValue('report_level'),
-        ];
+        // Get all active features grouped by category
+        $featuresByCategory = \App\Models\Feature::ordered()
+            ->active()
+            ->get()
+            ->groupBy('category')
+            ->map(function ($features) use ($subscription, $pendingUpdates) {
+                return $features->map(function ($feature) use ($subscription, $pendingUpdates) {
+                    $planFeature = $subscription->plan->features->where('id', $feature->id)->first();
+                    
+                    return [
+                        'id' => $feature->id,
+                        'name' => $feature->name,
+                        'description' => $feature->description,
+                        'type' => $feature->type,
+                        'category' => $feature->category,
+                        'is_enabled' => (bool)$planFeature,
+                        'has_pending_update' => in_array($feature->id, $pendingUpdates),
+                        'value' => $planFeature ? match($feature->type) {
+                            'boolean' => (bool)$planFeature->pivot->value_boolean,
+                            'numeric' => (int)$planFeature->pivot->value_numeric,
+                            'tiered' => $planFeature->pivot->value_tier,
+                            default => null
+                        } : null,
+                    ];
+                });
+            });
 
         return Inertia::render('Tenant/Settings/Features', [
-            'tenant' => $tenant,
             'features' => $featuresByCategory,
-            'subscription' => $subscriptionData,
+            'has_pending_updates' => count($pendingUpdates) > 0,
         ]);
     }
 

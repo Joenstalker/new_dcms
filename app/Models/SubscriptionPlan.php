@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class SubscriptionPlan extends Model
 {
     protected $connection = 'central';
+    protected $loadedFeatures = null;
+
     protected $fillable = [
         'name',
         'stripe_product_id',
@@ -28,6 +30,27 @@ class SubscriptionPlan extends Model
         'report_level',
         'max_storage_mb',
     ];
+
+    /** @deprecated Use dynamic features pivot instead */
+    public $legacy_max_users;
+    /** @deprecated Use dynamic features pivot instead */
+    public $legacy_max_patients;
+    /** @deprecated Use dynamic features pivot instead */
+    public $legacy_max_appointments;
+    /** @deprecated Use dynamic features pivot instead */
+    public $legacy_has_qr_booking;
+    /** @deprecated Use dynamic features pivot instead */
+    public $legacy_has_sms;
+    /** @deprecated Use dynamic features pivot instead */
+    public $legacy_has_branding;
+    /** @deprecated Use dynamic features pivot instead */
+    public $legacy_has_analytics;
+    /** @deprecated Use dynamic features pivot instead */
+    public $legacy_has_priority_support;
+    /** @deprecated Use dynamic features pivot instead */
+    public $legacy_has_multi_branch;
+    /** @deprecated Use dynamic features pivot instead */
+    public $legacy_report_level;
 
     protected $casts = [
         'price_monthly' => 'decimal:2',
@@ -55,8 +78,19 @@ class SubscriptionPlan extends Model
     public function features(): BelongsToMany
     {
         return $this->belongsToMany(Feature::class , 'plan_features')
-            ->withPivot('value_boolean', 'value_numeric', 'value_tier')
+            ->withPivot('value_boolean', 'value_numeric', 'value_tier', 'pushed_at')
             ->withTimestamps();
+    }
+
+    /**
+     * Get all features for this plan, cached on the instance to avoid redundant queries.
+     */
+    public function getLoadedFeatures()
+    {
+        if ($this->loadedFeatures === null) {
+            $this->loadedFeatures = $this->features()->get();
+        }
+        return $this->loadedFeatures;
     }
 
     /**
@@ -64,62 +98,62 @@ class SubscriptionPlan extends Model
      */
     public function getFeature(string $key): ?Feature
     {
-        return $this->features()->where('key', $key)->first();
+        return $this->getLoadedFeatures()->firstWhere('key', $key);
     }
 
     /**
      * Check if the plan has a specific feature enabled.
-     * Uses new dynamic features table first, falls back to old columns for backward compatibility.
+     * Maps legacy 'has_*' keys to dynamic feature keys.
      */
     public function hasFeature(string $key): bool
     {
-        // Try dynamic features first
-        $feature = $this->getFeature($key);
+        // Internal mapping for transition
+        $mapping = [
+            'has_qr_booking' => 'qr_booking',
+            'has_sms' => 'sms_notifications',
+            'has_branding' => 'custom_branding',
+            'has_analytics' => 'advanced_analytics',
+            'has_priority_support' => 'priority_support',
+            'has_multi_branch' => 'multi_branch',
+        ];
+
+        $lookupKey = $mapping[$key] ?? $key;
+        
+        $feature = $this->getFeature($lookupKey);
         if ($feature) {
             return $feature->isEnabledForPlan($this);
         }
 
-        // Fallback to old hardcoded columns for backward compatibility
-        return match ($key) {
-                'has_qr_booking' => $this->has_qr_booking,
-                'has_sms' => $this->has_sms,
-                'has_branding' => $this->has_branding,
-                'has_analytics' => $this->has_analytics,
-                'has_priority_support' => $this->has_priority_support,
-                'has_multi_branch' => $this->has_multi_branch,
-                'max_users' => $this->max_users !== null,
-                'max_patients' => $this->max_patients !== null,
-                'max_appointments' => $this->max_appointments !== null,
-                default => false,
-            };
+        // Final fallback for purely hardcoded columns (like Stripe IDs) that aren't features
+        return isset($this->{$key}) ? (bool)$this->{$key} : false;
     }
 
     /**
      * Get the value of a specific feature.
-     * Uses new dynamic features table first, falls back to old columns.
+     * Maps legacy keys to dynamic feature keys.
      */
     public function getFeatureValue(string $key): mixed
     {
-        // Try dynamic features first
-        $feature = $this->getFeature($key);
+        $mapping = [
+            'has_qr_booking' => 'qr_booking',
+            'has_sms' => 'sms_notifications',
+            'has_branding' => 'custom_branding',
+            'has_analytics' => 'advanced_analytics',
+            'has_priority_support' => 'priority_support',
+            'has_multi_branch' => 'multi_branch',
+            'max_users' => 'max_users',
+            'max_patients' => 'max_patients',
+            'max_appointments' => 'max_appointments',
+        ];
+
+        $lookupKey = $mapping[$key] ?? $key;
+
+        $feature = $this->getFeature($lookupKey);
         if ($feature) {
             return $feature->getValueForPlan($this);
         }
 
-        // Fallback to old hardcoded columns
-        return match ($key) {
-                'has_qr_booking' => $this->has_qr_booking,
-                'has_sms' => $this->has_sms,
-                'has_branding' => $this->has_branding,
-                'has_analytics' => $this->has_analytics,
-                'has_priority_support' => $this->has_priority_support,
-                'has_multi_branch' => $this->has_multi_branch,
-                'max_users' => $this->max_users,
-                'max_patients' => $this->max_patients,
-                'max_appointments' => $this->max_appointments,
-                'report_level' => $this->report_level,
-                default => null,
-            };
+        return $this->{$key} ?? null;
     }
 
     /**

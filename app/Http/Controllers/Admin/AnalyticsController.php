@@ -126,28 +126,38 @@ class AnalyticsController extends Controller
 
     private function getFeatureAnalytics()
     {
+        // Helper to query active subscriptions with a specific dynamic feature enabled
+        $getUsage = function(string $featureKey) {
+            return Subscription::where('stripe_status', 'active')
+                ->whereHas('plan.features', function($query) use ($featureKey) {
+                    $query->where('key', $featureKey)
+                        ->where(function($q) {
+                            $q->where('plan_features.value_boolean', true)
+                              ->orWhereNotNull('plan_features.value_numeric')
+                              ->orWhereNotNull('plan_features.value_tier');
+                        });
+                })->count();
+        };
+
         $featureUsage = [
-            'sms' => Subscription::whereHas('plan', fn($q) => $q->where('has_sms', true))
-                ->where('stripe_status', 'active')
-                ->count(),
-            'branding' => Subscription::whereHas('plan', fn($q) => $q->where('has_branding', true))
-                ->where('stripe_status', 'active')
-                ->count(),
-            'analytics' => Subscription::whereHas('plan', fn($q) => $q->where('has_analytics', true))
-                ->where('stripe_status', 'active')
-                ->count(),
-            'qr_booking' => Subscription::whereHas('plan', fn($q) => $q->where('has_qr_booking', true))
-                ->where('stripe_status', 'active')
-                ->count(),
+            'sms' => $getUsage('sms_notifications'),
+            'branding' => $getUsage('custom_branding'),
+            'analytics' => $getUsage('advanced_analytics'),
+            'qr_booking' => $getUsage('qr_booking'),
         ];
 
-        $featureByPlan = SubscriptionPlan::select(
-            'name',
-            'has_sms',
-            'has_branding',
-            'has_analytics',
-            'has_qr_booking'
-        )->get();
+        // Get features per plan using the dynamic relationship
+        $featureByPlan = SubscriptionPlan::with(['features' => function($q) {
+            $q->whereIn('key', ['sms_notifications', 'custom_branding', 'advanced_analytics', 'qr_booking']);
+        }])->get()->map(function($plan) {
+            return [
+                'name' => $plan->name,
+                'has_sms' => $plan->hasFeature('sms_notifications'),
+                'has_branding' => $plan->hasFeature('custom_branding'),
+                'has_analytics' => $plan->hasFeature('advanced_analytics'),
+                'has_qr_booking' => $plan->hasFeature('qr_booking'),
+            ];
+        });
 
         return [
             'usage' => $featureUsage,
