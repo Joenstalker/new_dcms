@@ -31,6 +31,7 @@ const platformLogo = computed(() => branding.value.platform_logo ? '/storage/log
 const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');
 
 const isSidebarOpen = ref(false);
+const isDesktopSidebarOpen = ref(true);
 
 const menuItems = [
     { 
@@ -215,22 +216,35 @@ watch(() => page.props.flash, (flash) => {
 </script>
 
 <template>
-    <div class="drawer lg:drawer-open font-sans h-screen overflow-hidden" :class="{ 'drawer-end': isRightSidebar }">
+    <div class="drawer font-sans h-screen overflow-hidden" :class="{ 'drawer-end': isRightSidebar, 'lg:drawer-open': isDesktopSidebarOpen }">
         <input id="admin-sidebar" type="checkbox" v-model="isSidebarOpen" class="drawer-toggle" />
         
         <!-- Main Content Area -->
         <div class="drawer-content flex flex-col h-screen bg-base-200 overflow-hidden">
             <!-- Top Bar -->
-            <header class="bg-base-100 border-b border-base-300 sticky top-0 z-40 h-16 flex items-center px-4 sm:px-6 lg:px-8 shrink-0 shadow-sm">
-                <div class="flex items-center lg:hidden mr-4">
+            <header class="bg-base-100 border-b border-base-300 sticky top-0 z-30 h-16 flex items-center px-4 sm:px-6 lg:px-8 shrink-0 shadow-sm transition-all duration-300">
+                <div class="flex items-center mr-4">
+                    <!-- Mobile Hamburger -->
                     <label 
                         for="admin-sidebar"
-                        class="btn btn-ghost btn-sm btn-square text-base-content/50"
+                        class="btn btn-ghost btn-sm btn-square text-base-content/50 lg:hidden"
                     >
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </label>
+
+                    <!-- Desktop Sidebar Toggle -->
+                    <button 
+                        @click="isDesktopSidebarOpen = !isDesktopSidebarOpen"
+                        class="btn btn-ghost btn-sm btn-square text-base-content/50 hidden lg:flex"
+                        v-if="!isDesktopSidebarOpen"
+                        title="Open Sidebar"
+                    >
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
                 </div>
 
                 <div v-if="$slots.header" class="flex-1 min-w-0">
@@ -264,13 +278,14 @@ watch(() => page.props.flash, (flash) => {
         </div>
 
         <!-- Sidebar -->
-        <div class="drawer-side z-[100] overflow-hidden custom-scrollbar">
+        <!-- Reduced z-index from z-[100] to z-40 so standard z-50 modals overlay it -->
+        <div class="drawer-side z-40 overflow-hidden custom-scrollbar">
             <label for="admin-sidebar" aria-label="close sidebar" class="drawer-overlay"></label>
             <aside class="w-72 h-full bg-base-100 border-r border-base-300 flex flex-col shadow-xl lg:shadow-none overflow-hidden custom-scrollbar">
                 <!-- Sidebar Header -->
-                <div class="flex items-center px-6 h-16 bg-base-100/50 backdrop-blur-md border-b border-base-300">
-                    <div class="flex items-center space-x-4">
-                        <div class="h-10 w-10 rounded-xl overflow-hidden shadow-inner border border-base-300 bg-base-200 flex items-center justify-center p-1.5">
+                <div class="flex items-center px-4 h-16 bg-base-100/50 backdrop-blur-md border-b border-base-300 shrink-0">
+                    <div class="flex items-center space-x-4 flex-1">
+                        <div class="h-10 w-10 rounded-xl overflow-hidden shadow-inner border border-base-300 bg-base-200 flex items-center justify-center p-1.5 flex-shrink-0">
                             <img :src="platformLogo" :alt="platformName" class="h-full w-full object-contain" />
                         </div>
                         <div class="truncate">
@@ -278,6 +293,26 @@ watch(() => page.props.flash, (flash) => {
                             <span class="text-[9px] uppercase tracking-[0.2em] font-black opacity-40 block" :style="{ color: primaryColor }">Core Infrastructure</span>
                         </div>
                     </div>
+                    
+                    <!-- Close button for desktop -->
+                    <button 
+                        @click="isDesktopSidebarOpen = false"
+                        class="btn btn-ghost btn-sm btn-circle text-base-content/30 hover:text-base-content hidden lg:flex shrink-0"
+                        title="Close Sidebar"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <!-- Close button for mobile -->
+                    <label 
+                        for="admin-sidebar" 
+                        class="btn btn-ghost btn-sm btn-circle text-base-content/30 hover:text-base-content lg:hidden shrink-0"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </label>
                 </div>
 
                 <!-- Navigation -->

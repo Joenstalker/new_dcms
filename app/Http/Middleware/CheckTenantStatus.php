@@ -29,11 +29,18 @@ class CheckTenantStatus
             // If tenant status is pending, show pending approval page
             // Allow access to the pending page so users can see their clinic is being reviewed
             if ($status === 'pending') {
+                $pendingReg = \App\Models\PendingRegistration::where('subdomain', $tenant->id)->first();
+                $expiresAt = $pendingReg ? $pendingReg->expires_at : ($tenant->created_at ? $tenant->created_at->addMinutes(10080) : now()->addMinutes(10080));
+                $timeoutMinutes = $pendingReg ? $pendingReg->getEffectiveTimeoutMinutes() : \App\Models\SystemSetting::get('pending_timeout_default_minutes', 10080);
+
                 return response()->make(
                     view('errors.pending', [
-                    'created_at' => $tenant->created_at ?? now()->toIso8601String()
-                ])->render(),
-                    200
+                        'tenant' => $tenant,
+                        'created_at' => $tenant->created_at ?? now(),
+                        'expires_at' => $expiresAt,
+                        'timeout_minutes' => $timeoutMinutes
+                    ])->render(),
+                    403
                 );
             }
         }

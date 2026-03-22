@@ -187,7 +187,7 @@ class RegistrationController extends Controller
 
         try {
             // Get configurable timeout from system settings
-            $defaultTimeoutHours = \App\Models\SystemSetting::get('pending_timeout_default_hours', 168);
+            $defaultTimeoutMinutes = \App\Models\SystemSetting::get('pending_timeout_default_minutes', 10080);
 
             // First, create or update a PendingRegistration record
             $pendingRegistration = PendingRegistration::updateOrCreate(
@@ -209,12 +209,12 @@ class RegistrationController extends Controller
                     'amount_paid' => $price,
                     'status' => PendingRegistration::STATUS_PENDING,
                     'verification_token' => PendingRegistration::generateToken(),
-                    'expires_at' => now('UTC')->addHours($defaultTimeoutHours),
-                    'pending_timeout_hours' => $defaultTimeoutHours,
+                    'expires_at' => now('UTC')->addMinutes($defaultTimeoutMinutes),
+                    'pending_timeout_minutes' => $defaultTimeoutMinutes,
                 ]
             );
 
-            $stripe = new StripeClient(config('services.stripe.secret'));
+            $stripe = $this->getStripeClient();
 
             // Create a metadata object to store registration data
             $metadata = [
@@ -236,7 +236,7 @@ class RegistrationController extends Controller
                 'billing_cycle' => $validated['billing_cycle'],
             ];
 
-            // Create Stripe checkout session (Hosted - redirects to Stripe page)
+            // Create Stripe Embedded Checkout session (stays on page, no redirect)
             $session = $stripe->checkout->sessions->create([
                 'payment_method_types' => ['card'],
                 'line_items' => [
@@ -246,8 +246,8 @@ class RegistrationController extends Controller
                     ],
                 ],
                 'mode' => 'subscription',
-                'success_url' => config('app.url') . '/registration/success?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => config('app.url') . '/?cancelled=true',
+                'ui_mode' => 'embedded',
+                'return_url' => config('app.url') . '/?payment=success&session_id={CHECKOUT_SESSION_ID}',
                 'customer_email' => $validated['email'],
                 'metadata' => $metadata,
             ]);
@@ -259,7 +259,7 @@ class RegistrationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'url' => $session->url,
+                'clientSecret' => $session->client_secret,
                 'sessionId' => $session->id,
             ]);
         }
@@ -473,6 +473,143 @@ class RegistrationController extends Controller
     }
 
     /**
+     * Complete registration after Stripe Embedded Checkout onComplete fires.
+     * Called via AJAX from PaymentModal.vue — returns JSON instead of a Blade view.
+     */
+    public function completeRegistration(Request $request)
+    {
+        $validated = $request->validate([
+            'session_id' => 'required|string',
+        ]);
+
+        try {
+            $stripe = $this->getStripeClient();
+            $session = $stripe->checkout->sessions->retrieve($validated['session_id']);
+
+            Log::info('completeRegistration: session retrieved', [
+                'session_id'     => $session->id,
+                'status'         => $session->status,
+                'payment_status' => $session->payment_status,
+            ]);
+
+            // For subscription checkout, session status 'complete' means payment was accepted.
+            // payment_status can be 'paid' for one-time or 'no_payment_required' for some subscriptions.
+            if ($session->status !== 'complete') {
+                return response()->json(['success' => false, 'message' => 'Payment not yet completed. Status: ' . $session->status], 402);
+            }
+
+            $metadata = $session->metadata;
+            $pendingRegistrationId = $metadata->pending_registration_id ?? null;
+
+            if (!$pendingRegistrationId) {
+                return response()->json(['success' => false, 'message' => 'Registration record not found.'], 404);
+            }
+
+            $pendingRegistration = PendingRegistration::find($pendingRegistrationId);
+
+            if (!$pendingRegistration) {
+                return response()->json(['success' => false, 'message' => 'Registration not found.'], 404);
+            }
+
+            // Already processed — return existing data
+            if ($pendingRegistration->status !== PendingRegistration::STATUS_PENDING) {
+                return response()->json([
+                    'success' => true,
+                    'already_processed' => true,
+                    'registration' => [
+                        'clinic_name'  => $pendingRegistration->clinic_name,
+                        'first_name'   => $pendingRegistration->first_name,
+                        'last_name'    => $pendingRegistration->last_name,
+                        'amount_paid'  => $pendingRegistration->amount_paid,
+                        'expires_at'   => $pendingRegistration->expires_at,
+                        'subdomain'    => $pendingRegistration->subdomain,
+                    ],
+                ]);
+            }
+
+            DB::beginTransaction();
+
+            try {
+                $tenantId = strtolower(trim($pendingRegistration->subdomain));
+
+                $tenant = Tenant::create([
+                    'id'         => $tenantId,
+                    'name'       => $pendingRegistration->clinic_name,
+                    'owner_name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
+                    'email'      => $pendingRegistration->email,
+                    'phone'      => $pendingRegistration->phone,
+                    'street'     => $pendingRegistration->street,
+                    'region'     => $pendingRegistration->region,
+                    'barangay'   => $pendingRegistration->barangay,
+                    'city'       => $pendingRegistration->city,
+                    'province'   => $pendingRegistration->province,
+                    'status'     => 'pending',
+                ]);
+
+                $domain = $tenant->domains()->create(['domain' => $pendingRegistration->subdomain]);
+                $tenant->update(['domain_id' => $domain->id]);
+
+                $tenant->subscriptions()->create([
+                    'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
+                    'stripe_id'            => $session->subscription ?? null,
+                    'stripe_status'        => 'active',
+                    'stripe_price'         => $session->amount_total / 100,
+                    'billing_cycle'        => $pendingRegistration->billing_cycle,
+                    'payment_method'       => 'card',
+                    'payment_status'       => 'paid',
+                ]);
+
+                $pendingRegistration->update([
+                    'stripe_session_id'        => $session->id,
+                    'stripe_payment_intent_id' => $session->payment_intent ?? null,
+                    'amount_paid'              => $session->amount_total / 100,
+                    'status'                   => PendingRegistration::STATUS_PENDING,
+                ]);
+
+                DB::commit();
+
+                // Notify admins
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notifyAdmins(
+                    'new_pending_tenant',
+                    'New Tenant Pending Review',
+                    "A new clinic '{$pendingRegistration->clinic_name}' has registered and payment received. Please review.",
+                    [
+                        'tenant_id'   => $tenantId,
+                        'clinic_name' => $pendingRegistration->clinic_name,
+                        'subdomain'   => $pendingRegistration->subdomain,
+                        'admin_email' => $pendingRegistration->email,
+                        'amount_paid' => $pendingRegistration->amount_paid,
+                    ],
+                    'both'
+                );
+
+                // Send pending registration email
+                Mail::to($pendingRegistration->email)->send(new \App\Mail\RegistrationPending($pendingRegistration));
+
+                return response()->json([
+                    'success'      => true,
+                    'registration' => [
+                        'clinic_name'  => $pendingRegistration->clinic_name,
+                        'first_name'   => $pendingRegistration->first_name,
+                        'last_name'    => $pendingRegistration->last_name,
+                        'amount_paid'  => $session->amount_total / 100,
+                        'expires_at'   => $pendingRegistration->expires_at,
+                        'subdomain'    => $pendingRegistration->subdomain,
+                    ],
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('completeRegistration tenant creation failed: ' . $e->getMessage());
+                return response()->json(['success' => false, 'message' => 'Failed to create clinic. Please contact support.'], 500);
+            }
+        } catch (\Exception $e) {
+            Log::error('completeRegistration failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Payment verification failed.'], 500);
+        }
+    }
+
+    /**
      * Get plans for payment modal
      */
     public function getPlans()
@@ -526,11 +663,13 @@ class RegistrationController extends Controller
             $pendingRegistration = \App\Models\PendingRegistration::where('subdomain', $subdomain)
                 ->where('status', \App\Models\PendingRegistration::STATUS_PENDING)
                 ->first();
+            $timeoutMinutes = $pendingRegistration ? $pendingRegistration->getEffectiveTimeoutMinutes() : \App\Models\SystemSetting::get('pending_timeout_default_minutes', 10080);
 
             return response()->view('errors.pending', [
                 'tenant' => $tenant,
                 'created_at' => $tenant->created_at,
-                'expires_at' => $pendingRegistration ? $pendingRegistration->expires_at : $tenant->created_at->addHours(168),
+                'expires_at' => $pendingRegistration ? $pendingRegistration->expires_at : $tenant->created_at->addMinutes(10080),
+                'timeout_minutes' => $timeoutMinutes
             ], 403);
         }
 
@@ -552,5 +691,13 @@ class RegistrationController extends Controller
         }
 
         return $this->accessTenant($request, $subdomain);
+    }
+    /**
+     * Get the StripeClient instance.
+     * Overridden in tests to mock Stripe.
+     */
+    protected function getStripeClient(): StripeClient
+    {
+        return app(StripeClient::class);
     }
 }

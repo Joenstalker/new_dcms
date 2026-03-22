@@ -62,11 +62,11 @@ class ProcessExpiredRegistrations extends Command
         }
 
         // Get registrations that are expired and eligible for auto-approve
-        $autoApproveHours = SystemSetting::get('pending_auto_approve_hours', 168);
+        $autoApproveMinutes = SystemSetting::get('pending_auto_approve_minutes', 10080);
 
         $eligibleRegistrations = PendingRegistration::where('status', PendingRegistration::STATUS_PENDING)
             ->where('expires_at', '<', now())
-            ->where(function ($query) use ($autoApproveHours) {
+            ->where(function ($query) use ($autoApproveMinutes) {
             $query->where('auto_approve_enabled', true)
                 ->orWhereNull('auto_approve_enabled');
         })

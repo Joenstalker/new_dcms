@@ -35,7 +35,7 @@ class PendingRegistration extends Model
         'rejected_at',
         'admin_rejection_message',
         // Enhancement fields
-        'pending_timeout_hours',
+        'pending_timeout_minutes',
         'reminder_enabled',
         'reminder_sent_at',
         'auto_approve_enabled',
@@ -131,15 +131,15 @@ class PendingRegistration extends Model
     }
 
     /**
-     * Get the effective pending timeout hours (per-registration or global default)
+     * Get the effective pending timeout minutes (per-registration or global default)
      */
-    public function getEffectiveTimeoutHours(): int
+    public function getEffectiveTimeoutMinutes(): int
     {
-        if ($this->pending_timeout_hours) {
-            return $this->pending_timeout_hours;
+        if ($this->pending_timeout_minutes) {
+            return $this->pending_timeout_minutes;
         }
 
-        return SystemSetting::get('pending_timeout_default_hours', 168); // Default 7 days
+        return SystemSetting::get('pending_timeout_default_minutes', 10080); // Default 7 days
     }
 
     /**
@@ -167,11 +167,11 @@ class PendingRegistration extends Model
     }
 
     /**
-     * Get the effective auto-approve hours
+     * Get the effective auto-approve minutes
      */
-    public function getEffectiveAutoApproveHours(): int
+    public function getEffectiveAutoApproveMinutes(): int
     {
-        return SystemSetting::get('pending_auto_approve_hours', 168);
+        return SystemSetting::get('pending_auto_approve_minutes', 10080);
     }
 
     /**
@@ -211,10 +211,10 @@ class PendingRegistration extends Model
     /**
      * Extend the pending time
      */
-    public function extendTime(int $hours): bool
+    public function extendTime(int $minutes): bool
     {
         $oldExpiresAt = $this->expires_at;
-        $newExpiresAt = $this->expires_at->addHours($hours);
+        $newExpiresAt = $this->expires_at->addMinutes($minutes);
 
         // Store original expiry if not already stored
         if (!$this->original_expires_at) {
@@ -227,7 +227,7 @@ class PendingRegistration extends Model
             'action' => 'extended',
             'previous_expires_at' => $oldExpiresAt->toIso8601String(),
             'new_expires_at' => $newExpiresAt->toIso8601String(),
-            'hours_added' => $hours,
+            'minutes_added' => $minutes,
             'timestamp' => now('UTC')->toIso8601String(),
         ];
 
@@ -269,15 +269,15 @@ class PendingRegistration extends Model
      */
     public function scopeNeedingReminders($query)
     {
-        $reminderHours = SystemSetting::get('pending_reminder_hours_before', 24);
+        $reminderMinutes = SystemSetting::get('pending_reminder_minutes_before', 1440);
 
         return $query->where('status', self::STATUS_PENDING)
-            ->where(function ($q) use ($reminderHours) {
+            ->where(function ($q) use ($reminderMinutes) {
             $q->whereNull('reminder_sent_at')
-                ->orWhereRaw('expires_at > DATE_ADD(reminder_sent_at, INTERVAL ? HOUR)', [$reminderHours]);
+                ->orWhereRaw('expires_at > DATE_ADD(reminder_sent_at, INTERVAL ? MINUTE)', [$reminderMinutes]);
         })
             ->where('expires_at', '>', now('UTC'))
-            ->where('expires_at', '<=', now('UTC')->addHours($reminderHours));
+            ->where('expires_at', '<=', now('UTC')->addMinutes($reminderMinutes));
     }
 
     /**

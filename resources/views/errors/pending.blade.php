@@ -30,8 +30,9 @@
 
         <script>
             function startCountdown() {
-                // Use the actual expires_at timestamp from the database
-                const expiresAt = new Date('{{ $expires_at ?? $created_at }}').getTime();
+                // Use the exact unix timestamp from the server (in milliseconds)
+                // This prevents browser timezone parsing bugs when using unformatted date strings
+                const expiresAt = {{ isset($expires_at) ? (is_string($expires_at) ? \Carbon\Carbon::parse($expires_at)->timestamp : $expires_at->timestamp) * 1000 : (isset($created_at) ? (is_string($created_at) ? \Carbon\Carbon::parse($created_at)->timestamp : $created_at->timestamp) * 1000 : time() * 1000) }};
                 
                 function updateTimer() {
                     const now = new Date().getTime();
@@ -99,7 +100,21 @@
                     <svg class="w-4 h-4 mr-1 mt-0.5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
                     </svg>
-                    If not verified within 1 hour, you'll receive an automatic refund
+                    @php
+                        $timeoutText = 'the verification period';
+                        if (isset($timeout_minutes)) {
+                            if ($timeout_minutes >= 1440 && $timeout_minutes % 1440 == 0) {
+                                $days = $timeout_minutes / 1440;
+                                $timeoutText = $days . ' day' . ($days != 1 ? 's' : '');
+                            } elseif ($timeout_minutes >= 60 && $timeout_minutes % 60 == 0) {
+                                $hours = $timeout_minutes / 60;
+                                $timeoutText = $hours . ' hour' . ($hours != 1 ? 's' : '');
+                            } else {
+                                $timeoutText = $timeout_minutes . ' minute' . ($timeout_minutes != 1 ? 's' : '');
+                            }
+                        }
+                    @endphp
+                    If not verified within {{ $timeoutText }}, you'll receive an automatic refund
                 </li>
             </ul>
         </div>

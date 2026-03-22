@@ -44,6 +44,7 @@ $registerCentralRoutes = function ($withNames = false) {
             $chk = Route::post('/checkout', [RegistrationController::class , 'createCheckoutSession']);
             $succ = Route::get('/success', [RegistrationController::class , 'handleSuccess']);
             $webh = Route::post('/webhook', [RegistrationController::class , 'handleWebhook']);
+            $complete = Route::post('/complete', [RegistrationController::class , 'completeRegistration']);
 
             if ($withNames) {
                 $v->name('validate');
@@ -53,6 +54,7 @@ $registerCentralRoutes = function ($withNames = false) {
                 $chk->name('checkout');
                 $succ->name('success');
                 $webh->name('webhook');
+                $complete->name('complete');
             }
         }
         );

@@ -40,6 +40,7 @@ const isPaymentModalOpen = ref(false);
 const isContactModalOpen = ref(false);
 const selectedPlan = ref(null);
 const registrationData = ref(null);
+const sessionId = ref(null);
 
 // Login form
 const form = useForm({
@@ -222,15 +223,14 @@ onMounted(() => {
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('payment-success') === 'true') {
-        Swal.fire({
-            icon: 'success',
-            title: 'Payment Received!',
-            text: 'Your payment has been successfully processed. Your clinic is pending admin approval.',
-            confirmButtonColor: '#2B7CB3',
-            confirmButtonText: 'OK'
-        });
-        window.history.replaceState({}, document.title, window.location.pathname);
+    if (urlParams.get('payment') === 'success' && urlParams.get('session_id')) {
+        console.log('[Welcome] Detected payment success redirect. sessionId:', urlParams.get('session_id'));
+        sessionId.value = urlParams.get('session_id');
+        isPaymentModalOpen.value = true;
+        
+        // Clean up URL without reload
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: newUrl }, '', newUrl);
     }
 });
 
@@ -676,6 +676,7 @@ onUnmounted(() => {
             :show="isPaymentModalOpen"
             :registration-data="registrationData"
             :plans="plans"
+            :session-id="sessionId"
             @close="closePaymentModal"
         />
 
