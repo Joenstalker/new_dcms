@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,24 +23,56 @@ class DashboardController extends Controller
         // New clinics this month
         $newThisMonth = Tenant::where('created_at', '>=', now()->startOfMonth())->count();
 
-        // Calculated Subscription Data (Phase 3)
-        $activeSubsCount = \App\Models\Subscription::where('stripe_status', 'active')->count();
-        $monthlyRevenue = \App\Models\Subscription::where('stripe_status', 'active')
+        // Calculated Subscription Data
+        $activeSubsCount = Subscription::where('stripe_status', 'active')->count();
+        $monthlyRevenue = Subscription::where('stripe_status', 'active')
             ->with('plan')
             ->get()
             ->sum(function ($sub) {
                 return $sub->plan ? $sub->plan->price_monthly : 0;
             });
 
+        // 1. Recent Activity (Audit logs)
+        $recentActivity = AuditLog::with('admin')
+            ->latest('created_at')
+            ->limit(10)
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'description' => $log->description,
+                    'admin_name' => $log->admin ? $log->admin->name : 'System',
+                    'date' => $log->created_at->diffForHumans(),
+                    'type' => $log->target_type,
+                ];
+            });
+
+        // 2. Subscription Distribution (for Chart.js)
+        $distribution = SubscriptionPlan::withCount(['subscriptions' => function ($query) {
+                $query->where('stripe_status', 'active');
+            }])
+            ->get()
+            ->map(function ($plan) {
+                return [
+                    'name' => $plan->name,
+                    'count' => $plan->subscriptions_count,
+                ];
+            })
+            ->filter(fn($p) => $p['count'] > 0)
+            ->values();
+
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'total_clinics' => $totalTenants,
-                'active_subscriptions' => $activeSubsCount ?: $activeTenants, // Fallback to active tenants if no sub records yet
+                'active_subscriptions' => $activeSubsCount ?: $activeTenants,
                 'suspended_clinics' => $suspendedTenants,
                 'pending_clinics' => $pendingTenants,
                 'new_this_month' => $newThisMonth,
                 'monthly_revenue' => $monthlyRevenue,
             ],
+            'recentActivity' => $recentActivity,
+            'subscriptionDistribution' => $distribution,
         ]);
     }
 }
