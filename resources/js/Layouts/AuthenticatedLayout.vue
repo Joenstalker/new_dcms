@@ -184,11 +184,11 @@ const activeCategoryWithSubItems = computed(() => {
 const handleLogout = () => {
     Swal.fire({
         title: 'Are you sure?',
-        text: 'You will be logged out of the system.',
+        text: 'You will be logged out of your account.',
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#0d9488',
-        cancelButtonColor: '#6b7280',
+        confirmButtonColor: primaryColor.value,
+        cancelButtonColor: '#94a3b8',
         confirmButtonText: 'Yes, Log out',
         cancelButtonText: 'Cancel',
     }).then((result) => {
@@ -216,149 +216,22 @@ const handleLogout = () => {
 </script>
 
 <template>
-    <div class="flex h-screen bg-base-200 overflow-hidden font-sans">
-        <!-- Sidebar for Desktop -->
-        <aside 
-            :class="[
-                isSidebarOpen ? 'translate-x-0' : (isRightSidebar ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0'),
-                isRightSidebar ? 'right-0 left-auto' : 'left-0'
-            ]"
-            class="fixed inset-y-0 z-50 w-64 bg-slate-900 text-white transition-transform duration-300 ease-in-out lg:static lg:inset-0"
-        >
-            <div class="flex flex-col h-full">
-                <!-- Sidebar Header -->
-                <div class="flex items-center justify-center h-20 bg-slate-950 border-b border-slate-800">
-                    <Link :href="usePage().props.tenant ? route('tenant.dashboard') : route('dashboard')" class="flex items-center space-x-3">
-                        <img v-if="platformLogo" :src="platformLogo" :alt="platformName" class="h-8 w-auto rounded-lg object-cover" />
-                        <ApplicationLogo v-else class="h-8 w-auto fill-current" :style="{ color: primaryColor }" />
-                        <span class="text-xl font-bold tracking-wider text-white">{{ platformName }}</span>
-                    </Link>
-                </div>
-
-                <!-- Navigation Categories -->
-                <nav class="flex-1 px-4 py-6 space-y-6 overflow-y-auto custom-scrollbar">
-                    <div v-for="category in menuCategories" :key="category.title">
-                        <h3 class="px-4 mb-3 text-xs font-semibold text-slate-500 uppercase tracking-widest">{{ category.title }}</h3>
-                        <div class="space-y-1">
-                            <div v-for="item in category.items" :key="item.name">
-                                <!-- Regular Link -->
-                                <Link 
-                                    v-if="!item.subItems"
-                                    :href="route(item.route)"
-                                    :class="[
-                                        route().current(item.route) 
-                                            ? 'text-white shadow-lg' 
-                                            : 'text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200'
-                                    ]"
-                                    class="flex items-center px-4 py-2.5 rounded-xl group"
-                                    :style="route().current(item.route) ? { backgroundColor: primaryColor } : {}"
-                                >
-                                    <svg 
-                                        class="h-5 w-5 mr-3 transition-colors duration-200" 
-                                        :class="[route().current(item.route) ? 'text-white' : 'text-slate-500 group-hover:text-white']"
-                                        fill="none" 
-                                        viewBox="0 0 24 24" 
-                                        stroke-width="1.5" 
-                                        stroke="currentColor"
-                                        v-html="getIcon(item.icon)"
-                                    ></svg>
-                                    <span class="font-medium text-sm">{{ item.name }}</span>
-                                </Link>
-
-                                <!-- Collapsible Link -->
-                                <div v-else>
-                                    <button 
-                                        @click="toggleSubMenu(item.name)"
-                                        :class="[
-                                            openSubMenus[item.name] ? 'text-white bg-slate-800/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                        ]"
-                                        class="w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group"
-                                    >
-                                        <div class="flex items-center">
-                                            <svg 
-                                                class="h-5 w-5 mr-3 transition-colors duration-200 text-slate-500 group-hover:text-white" 
-                                                fill="none" 
-                                                viewBox="0 0 24 24" 
-                                                stroke-width="1.5" 
-                                                stroke="currentColor"
-                                                v-html="getIcon(item.icon)"
-                                            ></svg>
-                                            <span class="font-medium text-sm">{{ item.name }}</span>
-                                        </div>
-                                        <svg 
-                                            :class="[openSubMenus[item.name] ? 'rotate-180' : '']"
-                                            class="w-4 h-4 transition-transform duration-200 text-slate-600" 
-                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-                                        >
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                        </svg>
-                                    </button>
-                                    
-                                    <!-- Sub-items -->
-                                    <div 
-                                        v-show="openSubMenus[item.name]"
-                                        class="mt-1 ml-9 space-y-1 overflow-hidden transition-all duration-300"
-                                    >
-                                        <Link 
-                                            v-for="sub in item.subItems" 
-                                            :key="sub.name"
-                                            :href="route(sub.route, sub.routeParams || {})"
-                                            :class="[
-                                                route().current(sub.route, sub.routeParams || {}) ? 'font-semibold' : 'text-slate-500 hover:text-white'
-                                            ]"
-                                            :style="route().current(sub.route, sub.routeParams || {}) ? { color: primaryColor } : {}"
-                                            class="block py-2 text-xs transition-colors duration-200 relative pl-4 border-l border-slate-700 hover:border-white"
-                                        >
-                                            {{ sub.name }}
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </nav>
-
-                <!-- User Footer -->
-                <div class="p-4 bg-slate-950 border-t border-slate-800">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3 truncate">
-                            <div 
-                                class="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-inner"
-                                :style="{ backgroundColor: primaryColor }"
-                            >
-                                {{ user.name.charAt(0) }}
-                            </div>
-                            <div class="truncate">
-                                <p class="text-sm font-semibold truncate text-white">{{ user.name }}</p>
-                                <p class="text-[10px] text-slate-500 uppercase tracking-tighter">{{ roles[0] || 'Staff' }}</p>
-                            </div>
-                        </div>
-                        <button 
-                            @click="handleLogout"
-                            class="p-2 text-slate-500 hover:text-red-400 transition-colors"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
+    <div class="drawer lg:drawer-open font-sans h-screen overflow-hidden" :class="{ 'drawer-end': isRightSidebar }">
+        <input id="tenant-sidebar" type="checkbox" v-model="isSidebarOpen" class="drawer-toggle" />
+        
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div class="drawer-content flex flex-col h-screen bg-base-200 overflow-hidden">
             <!-- Top Navigation for Mobile & Title -->
-            <header class="bg-base-100 border-b border-base-300 sticky top-0 z-40 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0">
+            <header class="bg-base-100 border-b border-base-300 sticky top-0 z-40 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0 shadow-sm">
                 <div class="flex items-center space-x-4">
-                    <button 
-                        @click="isSidebarOpen = !isSidebarOpen"
-                        class="lg:hidden p-2 text-base-content/50 hover:text-base-content/70 hover:bg-base-200 rounded-lg transition"
+                    <label 
+                        for="tenant-sidebar"
+                        class="btn btn-ghost btn-sm btn-square lg:hidden text-base-content/50"
                     >
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
-                    </button>
+                    </label>
                     <div v-if="$slots.header" class="flex-1 min-w-0">
                         <slot name="header" />
                     </div>
@@ -367,20 +240,17 @@ const handleLogout = () => {
                 <div class="flex items-center space-x-4">
                     <ThemeSwitcher />
                     <NotificationBell type="tenant" />
-                    <!-- Right Actions (e.g., Profile link) -->
                     <Link 
                         :href="route('profile.edit')"
-                        class="flex items-center space-x-2 text-sm text-base-content/70 hover:text-base-content transition"
+                        class="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-base-200 transition-all duration-200 border border-transparent hover:border-base-300"
                     >
-                        <span class="hidden sm:inline">Profile</span>
                         <div 
-                            class="h-8 w-8 rounded-full border border-base-300 bg-base-200 flex items-center justify-center"
-                            :style="{ borderColor: primaryColor }"
+                            class="h-8 w-8 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm"
+                            :style="{ backgroundColor: primaryColor }"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
+                            {{ user.name.charAt(0) }}
                         </div>
+                        <span class="hidden sm:inline text-sm font-bold text-base-content/70">Account</span>
                     </Link>
                 </div>
             </header>
@@ -397,11 +267,11 @@ const handleLogout = () => {
                         :href="route(sub.route)"
                         :class="[
                             route().current(sub.route)
-                                ? 'font-medium' 
-                                : 'border-transparent text-base-content/50 hover:text-base-content/70 hover:border-base-300'
+                                ? 'font-black border-primary' 
+                                : 'border-transparent text-base-content/40 hover:text-base-content/70 hover:border-base-300'
                         ]"
                         :style="route().current(sub.route) ? { borderColor: primaryColor, color: primaryColor } : {}"
-                        class="whitespace-nowrap py-4 px-1 border-b-2 text-sm transition-all duration-200"
+                        class="whitespace-nowrap py-4 px-1 border-b-2 text-[10px] uppercase tracking-widest transition-all duration-300"
                     >
                         {{ sub.name }}
                     </Link>
@@ -409,37 +279,158 @@ const handleLogout = () => {
             </nav>
 
             <!-- Content Area -->
-            <main class="flex-1 overflow-y-auto bg-base-200 custom-scrollbar p-6">
-                <slot />
+            <main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8">
+                <div class="max-w-[1600px] mx-auto">
+                    <slot />
+                </div>
             </main>
 
             <!-- Footer -->
-            <footer class="bg-base-100 border-t border-base-300 py-3 px-6">
-                <p class="text-xs text-center text-base-content/50">{{ footerText }}</p>
+            <footer class="bg-base-100 border-t border-base-300 py-4 px-8 mt-auto">
+                <p class="text-[10px] text-center font-bold uppercase tracking-widest text-base-content/20">{{ footerText }}</p>
             </footer>
         </div>
 
-        <!-- Overlay for Mobile Sidebar -->
-        <div 
-            v-if="isSidebarOpen" 
-            @click="isSidebarOpen = false"
-            class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden"
-        ></div>
+        <!-- Sidebar -->
+        <div class="drawer-side z-[100] overflow-hidden custom-scrollbar">
+            <label for="tenant-sidebar" aria-label="close sidebar" class="drawer-overlay"></label>
+            <aside class="w-72 h-full bg-base-100 border-r border-base-300 flex flex-col shadow-2xl lg:shadow-none transition-colors duration-300 overflow-hidden custom-scrollbar">
+                <!-- Sidebar Header -->
+                <div class="flex items-center px-6 h-16 bg-base-100 border-b border-base-300">
+                    <Link :href="usePage().props.tenant ? route('tenant.dashboard') : route('dashboard')" class="flex items-center space-x-4">
+                        <div class="h-10 w-10 rounded-xl overflow-hidden shadow-inner border border-base-300 bg-base-200 flex items-center justify-center p-1.5">
+                            <img v-if="platformLogo" :src="platformLogo" :alt="platformName" class="h-full w-full object-contain" />
+                            <ApplicationLogo v-else class="h-7 w-7 fill-current" :style="{ color: primaryColor }" />
+                        </div>
+                        <div class="truncate">
+                            <span class="text-sm font-black tracking-tight text-base-content block truncate">{{ platformName }}</span>
+                            <span class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30 block" :style="{ color: primaryColor }">Professional Portal</span>
+                        </div>
+                    </Link>
+                </div>
+
+                <!-- Navigation Categories -->
+                <nav class="flex-1 px-4 py-4 space-y-4 overflow-hidden">
+                    <div v-for="category in menuCategories" :key="category.title">
+                        <h3 class="px-5 mb-2 text-[10px] font-black text-base-content/20 uppercase tracking-[0.25em]">{{ category.title }}</h3>
+                        <div class="space-y-1.5">
+                            <div v-for="item in category.items" :key="item.name">
+                                <!-- Regular Link -->
+                                <Link 
+                                    v-if="!item.subItems"
+                                    :href="route(item.route)"
+                                    @click="isSidebarOpen = false"
+                                    :class="[
+                                        route().current(item.route) 
+                                            ? 'shadow-lg shadow-primary/20 scale-[1.02]' 
+                                            : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
+                                    ]"
+                                    class="flex items-center px-5 py-2.5 rounded-2xl group transition-all duration-300 transform"
+                                    :style="route().current(item.route) ? { backgroundColor: primaryColor, color: '#ffffff' } : {}"
+                                >
+                                    <svg 
+                                        class="h-5 w-5 mr-4 transition-transform duration-300 group-hover:scale-110" 
+                                        :class="[route().current(item.route) ? 'text-white' : 'opacity-40 group-hover:opacity-100']"
+                                        fill="none" 
+                                        viewBox="0 0 24 24" 
+                                        stroke-width="2" 
+                                        stroke="currentColor"
+                                        v-html="getIcon(item.icon)"
+                                    ></svg>
+                                    <span class="font-bold text-xs uppercase tracking-wider">{{ item.name }}</span>
+                                </Link>
+
+                                <!-- Collapsible Link -->
+                                <div v-else>
+                                    <button 
+                                        @click="toggleSubMenu(item.name)"
+                                        :class="[
+                                            openSubMenus[item.name] ? 'bg-base-200/50 text-base-content' : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
+                                        ]"
+                                        class="w-full flex items-center justify-between px-5 py-2.5 rounded-2xl transition-all duration-300 group"
+                                    >
+                                        <div class="flex items-center">
+                                            <svg 
+                                                class="h-5 w-5 mr-4 opacity-40 group-hover:opacity-100 transition-all duration-300" 
+                                                fill="none" 
+                                                viewBox="0 0 24 24" 
+                                                stroke-width="2" 
+                                                stroke="currentColor"
+                                                v-html="getIcon(item.icon)"
+                                            ></svg>
+                                            <span class="font-bold text-xs uppercase tracking-wider">{{ item.name }}</span>
+                                        </div>
+                                        <svg 
+                                            :class="[openSubMenus[item.name] ? 'rotate-180' : '']"
+                                            class="w-4 h-4 transition-transform duration-300 opacity-20" 
+                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                        >
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- Sub-items -->
+                                    <div 
+                                        v-show="openSubMenus[item.name]"
+                                        class="mt-1.5 ml-8 pl-4 space-y-1 border-l-2 border-base-200"
+                                    >
+                                        <Link 
+                                            v-for="sub in item.subItems" 
+                                            :key="sub.name"
+                                            @click="isSidebarOpen = false"
+                                            :href="route(sub.route, sub.routeParams || {})"
+                                            :class="[
+                                                route().current(sub.route, sub.routeParams || {}) ? 'font-black opacity-100' : 'text-base-content/50 hover:text-base-content hover:bg-base-200'
+                                            ]"
+                                            :style="route().current(sub.route, sub.routeParams || {}) ? { color: primaryColor } : {}"
+                                            class="block py-2 px-4 rounded-xl text-[11px] uppercase tracking-widest transition-all duration-300"
+                                        >
+                                            {{ sub.name }}
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- User Footer -->
+                <div class="p-4 bg-base-200/50 border-t border-base-300">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-4 min-w-0">
+                            <div 
+                                class="h-11 w-11 rounded-2xl flex items-center justify-center text-white font-black flex-shrink-0 shadow-lg shadow-primary/10"
+                                :style="{ backgroundColor: primaryColor }"
+                            >
+                                {{ user.name.charAt(0) }}
+                            </div>
+                            <div class="truncate">
+                                <p class="text-xs font-black truncate text-base-content">{{ user.name }}</p>
+                                <p class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30">{{ roles[0] || 'Staff' }}</p>
+                            </div>
+                        </div>
+                        <button 
+                            @click="handleLogout"
+                            class="btn btn-ghost btn-sm btn-circle text-base-content/20 hover:text-error hover:bg-error/10"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
     </div>
 </template>
 
 <style>
 .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+    width: 0px;
+    background: transparent; /* Chrome/Safari/Webkit */
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.2);
-    border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.4);
+.custom-scrollbar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
 }
 </style>

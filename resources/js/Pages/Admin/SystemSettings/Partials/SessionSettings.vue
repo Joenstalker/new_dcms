@@ -1,5 +1,6 @@
 <script setup>
-import { useForm } from '@inertiajs/vue3';
+import { useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const props = defineProps({
     form: {
@@ -23,6 +24,9 @@ const sessionDescriptions = {
 const saveGroup = () => {
     emit('save', 'session');
 };
+
+const branding = computed(() => usePage().props.branding || {});
+const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
 </script>
 
 <template>
@@ -60,7 +64,8 @@ const saveGroup = () => {
                 <div class="flex items-center">
                     <input 
                         type="checkbox" 
-                        class="toggle toggle-primary" 
+                        class="toggle border-2 border-base-300 shadow-sm" 
+                        :style="form.session_expire_on_close ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}"
                         v-model="form.session_expire_on_close"
                     />
                 </div>
@@ -75,7 +80,8 @@ const saveGroup = () => {
                 <div class="flex items-center">
                     <input 
                         type="checkbox" 
-                        class="toggle toggle-primary" 
+                        class="toggle border-2 border-base-300 shadow-sm" 
+                        :style="form.session_encrypt ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}"
                         v-model="form.session_encrypt"
                     />
                 </div>

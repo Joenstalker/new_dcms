@@ -109,70 +109,71 @@ class FeatureOTAUpdateService
 
     /**
      * Push all staged features for a specific Subscription Plan.
-     * This notifies ALL tenants in the system.
-     * Subscribers get the updates, non-subscribers get a marketing advertisement.
+     * This notifies ALL tenants in the system asynchronously.
      */
-    public function pushPlanUpdates(\App\Models\SubscriptionPlan $plan): int
+    public function pushPlanUpdates(\App\Models\SubscriptionPlan $plan): \Illuminate\Bus\PendingBatch
     {
         // 1. Get all features attached to the plan that haven't been pushed yet
         $features = $plan->features()->wherePivotNull('pushed_at')->get();
         if ($features->isEmpty()) {
-            return 0; // Nothing to push
+            throw new \Exception("No staged features found for plan [{$plan->name}].");
         }
 
         $allTenants = \App\Models\Tenant::all();
-        $notifiedCount = 0;
+        $jobs = [];
 
         foreach ($allTenants as $tenant) {
-            // Determine if the tenant is subscribed to THIS specific plan
             $isSubscribedToPlan = Subscription::where('tenant_id', $tenant->id)
                 ->where('subscription_plan_id', $plan->id)
                 ->where('stripe_status', 'active')
                 ->exists();
 
-            $isAdvertisement = !$isSubscribedToPlan;
+            $jobs[] = new \App\Jobs\ProcessTenantFeatureUpdateJob(
+                $tenant instanceof \App\Models\Tenant ? $tenant : \App\Models\Tenant::find($tenant->id),
+                $plan,
+                $features->all(),
+                !$isSubscribedToPlan
+            );
+        }
 
-            // If they ARE subscribed, they actually get the updates in their portal
-            if (!$isAdvertisement) {
+        return \Illuminate\Support\Facades\Bus::batch($jobs)
+            ->name("Plan Push: {$plan->name}")
+            ->then(function ($batch) use ($plan, $features) {
                 foreach ($features as $feature) {
-                    $exists = TenantFeatureUpdate::where('tenant_id', $tenant->id)
-                        ->where('feature_id', $feature->id)
-                        ->exists();
-
-                    if (!$exists) {
-                        TenantFeatureUpdate::create([
-                            'tenant_id' => $tenant->id,
-                            'feature_id' => $feature->id,
-                            'status' => TenantFeatureUpdate::STATUS_PENDING,
-                        ]);
-                    }
+                    $plan->features()->updateExistingPivot($feature->id, ['pushed_at' => now()]);
                 }
-            }
+            });
+    }
 
-            // Find the administrator User for emailing
-            $adminEmail = $tenant->email ?? null;
-            if ($adminEmail) {
-                $admin = \App\Models\User::where('email', $adminEmail)->first();
-                if ($admin) {
-                    // Send the consolidated Digest/Advertisement Mail
-                    Mail::to($admin->email)->queue(new \App\Mail\PlanFeatureUpdateMail(
-                        $plan, 
-                        $features->all(), 
-                        $tenant, 
-                        $admin, 
-                        $isAdvertisement
-                    ));
-                    $notifiedCount++;
-                }
-            }
+    /**
+     * Push a specific feature to all eligible tenants asynchronously.
+     */
+    public function pushFeatureUpdates(Feature $feature): \Illuminate\Bus\PendingBatch
+    {
+        // 1. Get all active subscriptions for plans that have this feature
+        $subscriptions = Subscription::whereHas('plan.features', function ($query) use ($feature) {
+            $query->where('features.id', $feature->id);
+        })->where('stripe_status', 'active')
+          ->with(['tenant', 'plan'])
+          ->get();
+
+        $jobs = [];
+
+        foreach ($subscriptions as $subscription) {
+            $tenant = $subscription->tenant;
+            $jobs[] = new \App\Jobs\ProcessTenantFeatureUpdateJob(
+                $tenant instanceof \App\Models\Tenant ? $tenant : \App\Models\Tenant::find($tenant->id),
+                $subscription->plan,
+                [$feature],
+                false // Not an advertisement
+            );
         }
 
-        // 2. Mark these features as pushed on the pivot table
-        foreach ($features as $feature) {
-            $plan->features()->updateExistingPivot($feature->id, ['pushed_at' => now()]);
+        if (empty($jobs)) {
+            throw new \Exception("No eligible tenants found for feature [{$feature->name}].");
         }
 
-        Log::info("Pushed updates for plan [{$plan->name}]. Notified {$notifiedCount} tenants about {$features->count()} new features.");
-        return $notifiedCount;
+        return \Illuminate\Support\Facades\Bus::batch($jobs)
+            ->name("Feature Push: {$feature->name}");
     }
 }

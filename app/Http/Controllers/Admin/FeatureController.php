@@ -162,45 +162,119 @@ class FeatureController extends Controller
     }
 
     /**
-     * Notify tenants about a new feature update.
+     * Notify tenants about a new feature update asynchronously.
      */
-    public function notifyTenants(Request $request, Feature $feature): RedirectResponse
+    public function notifyTenants(Request $request, Feature $feature): array|RedirectResponse
     {
         $otaService = app(FeatureOTAUpdateService::class);
-        $count = $otaService->createUpdateRecordsForEligibleTenants($feature);
+        
+        try {
+            $batch = $otaService->pushFeatureUpdates($feature)->dispatch();
+            
+            \App\Models\AuditLog::record(
+                'feature_notified_async',
+                "Triggered async notification for feature '{$feature->name}'.",
+                'Feature',
+                $feature->id,
+                ['batch_id' => $batch->id]
+            );
 
-        \App\Models\AuditLog::record(
-            'feature_notified',
-            "Notified tenants about feature '{$feature->name}'.",
-            'Feature',
-            $feature->id,
-        ['tenants_notified' => $count]
-        );
+            if ($request->wantsJson()) {
+                return [
+                    'success' => true,
+                    'message' => 'Notification started.',
+                    'batch_id' => $batch->id
+                ];
+            }
 
-        return back()->with('success', "Notified {$count} tenants about this feature.");
+            return back()->with('success', "Notification batch started (ID: {$batch->id}).");
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     /**
-     * Sync all active features to all eligible tenants (Bulk OTA Sync).
+     * Sync all active features to all eligible tenants (Bulk OTA Sync) asynchronously.
      */
-    public function syncAllUpdates(FeatureOTAUpdateService $otaService): RedirectResponse
+    public function syncAllUpdates(FeatureOTAUpdateService $otaService, Request $request): array|RedirectResponse
     {
         $features = Feature::where('is_active', true)->get();
-        $totalNotified = 0;
-
-        foreach ($features as $feature) {
-            $totalNotified += $otaService->createUpdateRecordsForEligibleTenants($feature);
+        
+        if ($features->isEmpty()) {
+            return back()->with('error', 'No active features to sync.');
         }
 
+        $jobs = [];
+        $allTenants = \App\Models\Tenant::all();
+
+        foreach ($features as $feature) {
+            // Get eligible regions/tenants logic here if needed, 
+            // but for simplicity we'll follow pushFeatureUpdates style
+            $subscriptions = \App\Models\Subscription::whereHas('plan.features', function ($query) use ($feature) {
+                $query->where('features.id', $feature->id);
+            })->where('stripe_status', 'active')
+              ->with(['tenant', 'plan'])
+              ->get();
+
+            foreach ($subscriptions as $subscription) {
+                $tenant = $subscription->tenant;
+                $jobs[] = new \App\Jobs\ProcessTenantFeatureUpdateJob(
+                    $tenant instanceof \App\Models\Tenant ? $tenant : \App\Models\Tenant::find($tenant->id),
+                    $subscription->plan,
+                    [$feature],
+                    false
+                );
+            }
+        }
+
+        if (empty($jobs)) {
+            return back()->with('error', 'No eligible subscriptions found for any active features.');
+        }
+
+        $batch = \Illuminate\Support\Facades\Bus::batch($jobs)
+            ->name("Bulk Feature Sync (" . count($jobs) . " updates)")
+            ->dispatch();
+
         \App\Models\AuditLog::record(
-            'features_bulk_synced',
-            "Triggered bulk OTA synchronization for {$features->count()} active features.",
+            'features_bulk_synced_async',
+            "Triggered bulk OTA sync for {$features->count()} active features.",
             'Feature',
             null,
-            ['total_records_created' => $totalNotified]
+            ['batch_id' => $batch->id, 'total_jobs' => count($jobs)]
         );
 
-        return back()->with('success', "Bulk sync complete. Created {$totalNotified} new update records across all tenants.");
+        if ($request->wantsJson()) {
+            return [
+                'success' => true,
+                'message' => 'Bulk sync started.',
+                'batch_id' => $batch->id
+            ];
+        }
+
+        return back()->with('success', "Bulk sync batch started (ID: {$batch->id}).");
+    }
+
+    /**
+     * Get the status of a specific job batch.
+     */
+    public function getBatchStatus(string $batchId): array
+    {
+        $batch = \Illuminate\Support\Facades\Bus::findBatch($batchId);
+        
+        if (!$batch) {
+            return ['id' => $batchId, 'status' => 'not_found'];
+        }
+
+        return [
+            'id' => $batch->id,
+            'progress' => $batch->progress(),
+            'total_jobs' => $batch->totalJobs,
+            'pending_jobs' => $batch->pendingJobs,
+            'failed_jobs' => $batch->failedJobs,
+            'processed_jobs' => $batch->processedJobs(),
+            'finished' => $batch->finished(),
+            'cancelled' => $batch->cancelled(),
+        ];
     }
 
     /**

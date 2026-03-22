@@ -5,6 +5,9 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FeatureFormModal from './Partials/FeatureFormModal.vue';
 import FeatureViewModal from './Partials/FeatureViewModal.vue';
 import FeatureList from './Partials/FeatureList.vue';
+import BatchProgressBar from '@/Components/BatchProgressBar.vue';
+import axios from 'axios';
+import Swal from 'sweetalert2';
 const props = defineProps({
     features: Object,
     plans: Array,
@@ -14,6 +17,8 @@ const showModal = ref(false);
 const showViewModal = ref(false);
 const editingFeature = ref(null);
 const viewingFeature = ref(null);
+const currentBatchId = ref(null);
+const isSyncing = ref(false);
 
 const categoryLabels = {
     core: 'Core Features',
@@ -102,21 +107,92 @@ const formatFeatureValue = (feature, value) => {
 };
 
 const submitForm = () => {
+    Swal.fire({
+        target: document.querySelector('dialog[open]') || 'body',
+        title: editingFeature.value ? 'Updating Feature' : 'Creating Feature',
+        text: 'Please wait...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
     if (editingFeature.value) {
         form.put(`/admin/features/${editingFeature.value.id}`, {
-            onSuccess: () => closeModal(),
+            onSuccess: () => {
+                closeModal();
+                Swal.close();
+            },
+            onError: () => Swal.close(),
         });
     } else {
         form.post('/admin/features', {
-            onSuccess: () => closeModal(),
+            onSuccess: () => {
+                closeModal();
+                Swal.close();
+            },
+            onError: () => Swal.close(),
         });
     }
 };
 
 const deleteFeature = (feature) => {
-    if (confirm('Are you sure you want to delete this feature?')) {
-        form.delete(`/admin/features/${feature.id}`, { preserveScroll: true });
-    }
+    Swal.fire({
+        title: 'Delete Feature?',
+        text: `Are you sure you want to delete "${feature.name}"? This will remove it from all subscription plans.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444', // error
+        cancelButtonColor: '#94a3b8', // slate-400
+        confirmButtonText: 'Yes, delete it',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            form.delete(`/admin/features/${feature.id}`, { 
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        title: 'Deleted!',
+                        text: 'Feature has been removed.',
+                        icon: 'success',
+                        timer: 2000,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                    });
+                }
+            });
+        }
+    });
+};
+
+const toggleFeature = (feature) => {
+    const action = feature.is_active ? 'Deactivate' : 'Activate';
+    Swal.fire({
+        title: `${action} Feature?`,
+        text: `Are you sure you want to ${action.toLowerCase()} "${feature.name}"?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: feature.is_active ? '#ef4444' : '#0ea5e9',
+        confirmButtonText: `Yes, ${action.toLowerCase()} it`,
+    }).then((result) => {
+        if (result.isConfirmed) {
+            form.put(`/admin/features/${feature.id}`, {
+                is_active: !feature.is_active,
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        title: 'Updated!',
+                        text: `Feature has been ${action.toLowerCase()}d.`,
+                        icon: 'success',
+                        timer: 2000,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                    });
+                }
+            });
+        }
+    });
 };
 
 const getTypeLabel = (type) => {
@@ -136,6 +212,52 @@ const featuresByCategory = computed(() => {
     });
     return grouped;
 });
+
+const syncAllUpdates = () => {
+    Swal.fire({
+        title: 'Push OTA Synchronization?',
+        text: 'This will trigger a bulk push for all active features to all eligible tenants. This process runs in the background.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0ea5e9', // primary
+        confirmButtonText: 'Yes, start sync',
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            isSyncing.value = true;
+            try {
+                const response = await axios.post(route('admin.features.sync-all'));
+                if (response.data.batch_id) {
+                    currentBatchId.value = response.data.batch_id;
+                    Swal.fire({
+                        title: 'Sync Started',
+                        text: 'The background process is now running.',
+                        icon: 'info',
+                        timer: 2000,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                    });
+                } else {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Sync failed:', error);
+                Swal.fire('Error!', 'Failed to start bulk synchronization.', 'error');
+                isSyncing.value = false;
+            }
+        }
+    });
+};
+
+const handleBatchFinished = () => {
+    isSyncing.value = false;
+    Swal.fire({
+        title: 'Synchronization Complete',
+        text: 'All tenants have been updated with the latest features.',
+        icon: 'success',
+        confirmButtonColor: '#0ea5e9',
+    });
+};
 </script>
 
 <template>
@@ -161,7 +283,25 @@ const featuresByCategory = computed(() => {
                         </svg>
                         Add Feature
                     </button>
+                    <button
+                        @click="syncAllUpdates"
+                        :disabled="isSyncing"
+                        class="btn btn-secondary btn-sm shrink-0"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {{ isSyncing ? 'Syncing...' : 'Sync All Updates' }}
+                    </button>
                 </div>
+
+                <!-- Batch Progress Bar -->
+                <BatchProgressBar 
+                    v-if="currentBatchId" 
+                    :batch-id="currentBatchId" 
+                    title="Bulk OTA Feature Synchronization"
+                    @finished="handleBatchFinished"
+                />
 
                 <!-- Features by Category -->
                 <FeatureList 
@@ -172,6 +312,7 @@ const featuresByCategory = computed(() => {
                     @view="openViewModal"
                     @edit="openEditModal"
                     @delete="deleteFeature"
+                    @toggle="toggleFeature"
                 />
             </div>
         </div>

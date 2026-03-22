@@ -187,7 +187,7 @@ watch(() => page.props.flash, (flash) => {
             title: 'Error!',
             text: flash.error,
             icon: 'error',
-            confirmButtonColor: '#0d9488',
+            confirmButtonColor: primaryColor.value,
         });
     }
     if (flash?.warning) {
@@ -196,7 +196,7 @@ watch(() => page.props.flash, (flash) => {
             title: 'Warning!',
             text: flash.warning,
             icon: 'warning',
-            confirmButtonColor: '#0d9488',
+            confirmButtonColor: primaryColor.value,
         });
     }
     if (flash?.info) {
@@ -215,116 +215,22 @@ watch(() => page.props.flash, (flash) => {
 </script>
 
 <template>
-    <div class="flex h-screen bg-base-200 overflow-hidden font-sans">
-        <!-- Sidebar -->
-        <aside 
-            :class="[
-                isSidebarOpen ? 'translate-x-0' : (isRightSidebar ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0'),
-                isRightSidebar ? 'right-0 left-auto' : 'left-0'
-            ]"
-            class="fixed inset-y-0 z-50 w-64 bg-neutral text-neutral-content transition-transform duration-300 ease-in-out lg:static lg:inset-0"
-        >
-            <div class="flex flex-col h-full">
-                <!-- Sidebar Header -->
-                <div class="flex items-center justify-center h-20 bg-neutral/80 backdrop-blur-sm border-b border-neutral-content/10">
-                    <div class="flex items-center space-x-3">
-                        <img :src="platformLogo" :alt="platformName" class="h-9 w-9 rounded-lg object-cover" />
-                        <div>
-                            <span class="text-lg font-bold tracking-wider text-neutral-content">{{ platformName }}</span>
-                            <p class="text-[10px] uppercase tracking-widest font-semibold" :style="{ color: primaryColor }">Admin Portal</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Navigation -->
-                <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
-                    <template v-for="item in menuItems" :key="item.name">
-                        <!-- Active link (has route) -->
-                        <Link
-                            v-if="item.route"
-                            :href="route(item.route)"
-                            :class="[
-                                isCurrentRoute(item.route) 
-                                    ? 'text-white shadow-lg' 
-                                    : 'text-neutral-content/60 hover:bg-neutral-content/10 hover:text-neutral-content'
-                            ]"
-                            class="flex items-center px-4 py-2.5 rounded-xl group transition-all duration-200"
-                            :style="isCurrentRoute(item.route) ? { backgroundColor: primaryColor } : {}"
-                        >
-                            <svg 
-                                class="h-5 w-5 mr-3 transition-colors duration-200" 
-                                :class="[isCurrentRoute(item.route) ? 'text-white' : 'text-neutral-content/40 group-hover:text-neutral-content']"
-                                fill="none" 
-                                viewBox="0 0 24 24" 
-                                stroke-width="1.5" 
-                                stroke="currentColor"
-                                v-html="getIcon(item.icon)"
-                            ></svg>
-                            <span class="font-medium text-sm">{{ item.name }}</span>
-                        </Link>
-
-                        <!-- Disabled link (coming soon) -->
-                        <div
-                            v-else
-                            class="flex items-center px-4 py-2.5 rounded-xl group cursor-not-allowed relative"
-                            :title="`${item.name} — Coming Soon`"
-                        >
-                            <svg 
-                                class="h-5 w-5 mr-3 text-neutral-content/20" 
-                                fill="none" 
-                                viewBox="0 0 24 24" 
-                                stroke-width="1.5" 
-                                stroke="currentColor"
-                                v-html="getIcon(item.icon)"
-                            ></svg>
-                            <span class="font-medium text-sm text-neutral-content/20">{{ item.name }}</span>
-                            <span class="ml-auto text-[9px] bg-neutral-content/10 text-neutral-content/40 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-semibold">Soon</span>
-                        </div>
-                    </template>
-                </nav>
-
-                <!-- User Footer -->
-                <div class="p-4 bg-neutral/80 backdrop-blur-sm border-t border-neutral-content/10">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3 truncate">
-                            <div 
-                                class="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-inner"
-                                :style="{ backgroundColor: primaryColor }"
-                            >
-                                {{ user?.name?.charAt(0) || 'A' }}
-                            </div>
-                            <div class="truncate">
-                                <p class="text-sm font-semibold truncate text-neutral-content">{{ user?.name || 'Admin' }}</p>
-                                <p class="text-[10px] uppercase tracking-tighter font-semibold" :style="{ color: primaryColor }">SaaS Admin</p>
-                            </div>
-                        </div>
-                        <button 
-                            @click="handleLogout"
-                            class="p-2 text-neutral-content/40 hover:text-error transition-colors"
-                            title="Logout"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
+    <div class="drawer lg:drawer-open font-sans h-screen overflow-hidden" :class="{ 'drawer-end': isRightSidebar }">
+        <input id="admin-sidebar" type="checkbox" v-model="isSidebarOpen" class="drawer-toggle" />
+        
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div class="drawer-content flex flex-col h-screen bg-base-200 overflow-hidden">
             <!-- Top Bar -->
-            <header class="bg-base-100 border-b border-base-300 sticky top-0 z-40 h-16 flex items-center px-4 sm:px-6 lg:px-8 shrink-0">
+            <header class="bg-base-100 border-b border-base-300 sticky top-0 z-40 h-16 flex items-center px-4 sm:px-6 lg:px-8 shrink-0 shadow-sm">
                 <div class="flex items-center lg:hidden mr-4">
-                    <button 
-                        @click="isSidebarOpen = !isSidebarOpen"
-                        class="p-2 text-base-content/50 hover:text-base-content/70 hover:bg-base-200 rounded-lg transition"
+                    <label 
+                        for="admin-sidebar"
+                        class="btn btn-ghost btn-sm btn-square text-base-content/50"
                     >
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
-                    </button>
+                    </label>
                 </div>
 
                 <div v-if="$slots.header" class="flex-1 min-w-0">
@@ -332,11 +238,11 @@ watch(() => page.props.flash, (flash) => {
                 </div>
 
                 <div class="flex items-center space-x-3 ml-4">
-                    <span class="text-xs text-base-content/50 hidden sm:inline">SaaS Provider Panel</span>
+                    <span class="text-[10px] uppercase font-bold tracking-widest text-base-content/30 hidden sm:inline">Admin System</span>
                     <ThemeSwitcher />
                     <NotificationBell type="admin" />
                     <div 
-                        class="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                        class="h-8 w-8 rounded-lg flex items-center justify-center text-white text-xs font-black shadow-sm"
                         :style="{ backgroundColor: primaryColor }"
                     >
                         {{ user?.name?.charAt(0) || 'A' }}
@@ -345,37 +251,121 @@ watch(() => page.props.flash, (flash) => {
             </header>
 
             <!-- Content Area -->
-            <main class="flex-1 overflow-y-auto bg-base-200 custom-scrollbar p-6">
-                <slot />
+            <main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8">
+                <div class="max-w-[1600px] mx-auto">
+                    <slot />
+                </div>
             </main>
 
             <!-- Footer -->
-            <footer class="bg-base-100 border-t border-base-300 py-3 px-6">
-                <p class="text-xs text-center text-base-content/50">{{ footerText }}</p>
+            <footer class="bg-base-100 border-t border-base-300 py-4 px-8">
+                <p class="text-[10px] text-center font-bold uppercase tracking-widest text-base-content/30">{{ footerText }}</p>
             </footer>
         </div>
 
-        <!-- Overlay for Mobile Sidebar -->
-        <div 
-            v-if="isSidebarOpen" 
-            @click="isSidebarOpen = false"
-            class="fixed inset-0 bg-neutral/50 backdrop-blur-sm z-40 lg:hidden"
-        ></div>
+        <!-- Sidebar -->
+        <div class="drawer-side z-[100] overflow-hidden custom-scrollbar">
+            <label for="admin-sidebar" aria-label="close sidebar" class="drawer-overlay"></label>
+            <aside class="w-72 h-full bg-base-100 border-r border-base-300 flex flex-col shadow-xl lg:shadow-none overflow-hidden custom-scrollbar">
+                <!-- Sidebar Header -->
+                <div class="flex items-center px-6 h-16 bg-base-100/50 backdrop-blur-md border-b border-base-300">
+                    <div class="flex items-center space-x-4">
+                        <div class="h-10 w-10 rounded-xl overflow-hidden shadow-inner border border-base-300 bg-base-200 flex items-center justify-center p-1.5">
+                            <img :src="platformLogo" :alt="platformName" class="h-full w-full object-contain" />
+                        </div>
+                        <div class="truncate">
+                            <span class="text-sm font-black tracking-tight text-base-content block truncate">{{ platformName }}</span>
+                            <span class="text-[9px] uppercase tracking-[0.2em] font-black opacity-40 block" :style="{ color: primaryColor }">Core Infrastructure</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <nav class="flex-1 px-4 py-4 space-y-1 overflow-hidden">
+                    <template v-for="item in menuItems" :key="item.name">
+                        <!-- Active link (has route) -->
+                        <Link
+                            v-if="item.route"
+                            :href="route(item.route)"
+                            @click="isSidebarOpen = false"
+                            :class="[
+                                isCurrentRoute(item.route) 
+                                    ? 'shadow-lg shadow-primary/20 scale-[1.02]' 
+                                    : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
+                            ]"
+                            class="flex items-center px-5 py-2.5 rounded-2xl group transition-all duration-300 transform"
+                            :style="isCurrentRoute(item.route) ? { backgroundColor: primaryColor, color: primaryTextColor } : {}"
+                        >
+                            <svg 
+                                class="h-5 w-5 mr-4 transition-transform duration-300 group-hover:scale-110" 
+                                :class="[isCurrentRoute(item.route) ? '' : 'opacity-40 group-hover:opacity-100']"
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke-width="2" 
+                                stroke="currentColor"
+                                v-html="getIcon(item.icon)"
+                            ></svg>
+                            <span class="font-bold text-xs uppercase tracking-wider">{{ item.name }}</span>
+                            <div v-if="isCurrentRoute(item.route)" class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm"></div>
+                        </Link>
+
+                        <!-- Disabled link (coming soon) -->
+                        <div
+                            v-else
+                            class="flex items-center px-5 py-2.5 rounded-2xl opacity-20 cursor-not-allowed grayscale"
+                            :title="`${item.name} — Coming Soon`"
+                        >
+                            <svg 
+                                class="h-5 w-5 mr-4" 
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke-width="2.5" 
+                                stroke="currentColor"
+                                v-html="getIcon(item.icon)"
+                            ></svg>
+                            <span class="font-bold text-xs uppercase tracking-widest">{{ item.name }}</span>
+                        </div>
+                    </template>
+                </nav>
+
+                <!-- User Footer -->
+                <div class="p-4 bg-base-200/50 border-t border-base-300">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-4 min-w-0">
+                            <div 
+                                class="h-11 w-11 rounded-2xl flex items-center justify-center text-white font-black flex-shrink-0 shadow-lg"
+                                :style="{ backgroundColor: primaryColor }"
+                            >
+                                {{ user?.name?.charAt(0) || 'A' }}
+                            </div>
+                            <div class="truncate">
+                                <p class="text-xs font-black truncate text-base-content">{{ user?.name || 'Administrator' }}</p>
+                                <p class="text-[9px] uppercase tracking-widest font-bold opacity-40">System Root</p>
+                            </div>
+                        </div>
+                        <button 
+                            @click="handleLogout"
+                            class="btn btn-ghost btn-sm btn-circle text-base-content/30 hover:text-error hover:bg-error/10"
+                            title="Logout"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
     </div>
 </template>
 
 <style>
 .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+    width: 0px;
+    background: transparent; /* Chrome/Safari/Webkit */
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.2);
-    border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.4);
+.custom-scrollbar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
 }
 </style>

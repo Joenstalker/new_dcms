@@ -1,5 +1,6 @@
 <script setup>
-import { useForm } from '@inertiajs/vue3';
+import { useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const props = defineProps({
     form: {
@@ -21,6 +22,9 @@ const descriptions = {
 const saveGroup = () => {
     emit('save', 'registrations');
 };
+
+const branding = computed(() => usePage().props.branding || {});
+const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
 </script>
 
 <template>
@@ -57,9 +61,9 @@ const saveGroup = () => {
                 <div class="flex items-center">
                     <input 
                         type="checkbox" 
-                        class="toggle toggle-primary"
-                        :checked="form.pending_reminder_global_enabled === 'true' || form.pending_reminder_global_enabled === true"
-                        @change="form.pending_reminder_global_enabled = $event.target.checked ? 'true' : 'false'"
+                        class="toggle border-2 border-base-300 shadow-sm"
+                        :style="form.pending_reminder_global_enabled ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}"
+                        v-model="form.pending_reminder_global_enabled"
                     />
                 </div>
             </div>
@@ -90,9 +94,9 @@ const saveGroup = () => {
                 <div class="flex items-center">
                     <input 
                         type="checkbox" 
-                        class="toggle toggle-primary" 
-                        :checked="form.pending_auto_approve_enabled === 'true' || form.pending_auto_approve_enabled === true"
-                        @change="form.pending_auto_approve_enabled = $event.target.checked ? 'true' : 'false'"
+                        class="toggle border-2 border-base-300 shadow-sm"
+                        :style="form.pending_auto_approve_enabled ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}"
+                        v-model="form.pending_auto_approve_enabled"
                     />
                 </div>
             </div>

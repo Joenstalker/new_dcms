@@ -20,7 +20,7 @@ defineProps({
     },
 });
 
-const emit = defineEmits(['view', 'edit', 'delete']);
+const emit = defineEmits(['view', 'edit', 'delete', 'toggle']);
 </script>
 
 <template>
@@ -69,6 +69,14 @@ const emit = defineEmits(['view', 'edit', 'delete']);
                                 </div>
                             </div>
                             <div class="flex flex-none items-center gap-x-2">
+                                <button
+                                    @click="emit('toggle', feature)"
+                                    class="btn btn-xs font-bold"
+                                    :class="feature.is_active ? 'btn-ghost text-error' : 'btn-ghost text-success'"
+                                    :title="feature.is_active ? 'Deactivate' : 'Activate'"
+                                >
+                                    {{ feature.is_active ? 'Deactivate' : 'Activate' }}
+                                </button>
                                 <button
                                     @click="emit('view', feature)"
                                     class="btn btn-ghost btn-xs font-bold"

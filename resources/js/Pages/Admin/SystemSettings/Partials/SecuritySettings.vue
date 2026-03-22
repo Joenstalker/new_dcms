@@ -1,4 +1,6 @@
 <script setup>
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 const props = defineProps({
     form: {
         type: Object,
@@ -19,6 +21,9 @@ const securityDescriptions = {
 const saveGroup = () => {
     emit('save', 'security');
 };
+
+const branding = computed(() => usePage().props.branding || {});
+const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
 </script>
 
 <template>
@@ -43,7 +48,7 @@ const saveGroup = () => {
                 <div class="flex items-center">
                     <input 
                         type="checkbox" 
-                        class="toggle toggle-primary opacity-50" 
+                        class="toggle border-2 border-base-300 shadow-sm opacity-30" 
                         disabled
                     />
                 </div>
@@ -63,7 +68,7 @@ const saveGroup = () => {
                 <div class="flex items-center">
                     <input 
                         type="checkbox" 
-                        class="toggle toggle-primary opacity-50" 
+                        class="toggle border-2 border-base-300 shadow-sm opacity-30" 
                         disabled
                     />
                 </div>
@@ -78,7 +83,8 @@ const saveGroup = () => {
                 <div class="flex items-center">
                     <input 
                         type="checkbox" 
-                        class="toggle toggle-primary" 
+                        class="toggle border-2 border-base-300 shadow-sm"
+                        :style="form.audit_logging_enabled ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}"
                         v-model="form.audit_logging_enabled"
                     />
                 </div>
@@ -93,7 +99,8 @@ const saveGroup = () => {
                 <div class="flex items-center">
                     <input 
                         type="checkbox" 
-                        class="toggle toggle-primary" 
+                        class="toggle border-2 border-base-300 shadow-sm"
+                        :style="form.data_encryption_enabled ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}"
                         v-model="form.data_encryption_enabled"
                     />
                 </div>
@@ -113,7 +120,7 @@ const saveGroup = () => {
                 <div class="flex items-center">
                     <input 
                         type="checkbox" 
-                        class="toggle toggle-primary opacity-50" 
+                        class="toggle border-2 border-base-300 shadow-sm opacity-30" 
                         disabled
                     />
                 </div>

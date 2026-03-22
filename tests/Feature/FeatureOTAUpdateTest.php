@@ -81,17 +81,17 @@ class FeatureOTAUpdateTest extends TestCase
 
         // 3. Act: Run the OTA service
         $otaService = new FeatureOTAUpdateService();
-        $count = $otaService->createUpdateRecordsForEligibleTenants($feature);
+        $batch = $otaService->pushFeatureUpdates($feature)->dispatch();
 
         // 4. Assert: Record created and email queued
-        $this->assertEquals(1, $count);
+        $this->assertNotNull($batch);
         $this->assertDatabaseHas('tenant_feature_updates', [
             'tenant_id' => $tenant->id,
             'feature_id' => $feature->id,
             'status' => TenantFeatureUpdate::STATUS_PENDING,
         ]);
 
-        Mail::assertQueued(NewFeatureUpdateMail::class, function ($mail) use ($admin) {
+        Mail::assertSent(PlanFeatureUpdateMail::class, function ($mail) use ($admin) {
             return $mail->hasTo($admin->email);
         });
     }
@@ -191,10 +191,11 @@ class FeatureOTAUpdateTest extends TestCase
 
         // 2. Act: Push updates manually
         $otaService = new FeatureOTAUpdateService();
-        $notifiedCount = $otaService->pushPlanUpdates($plan);
+        $batch = $otaService->pushPlanUpdates($plan)->dispatch();
 
         // 3. Assert: Both tenants should be analyzed/notified
-        $this->assertEquals(2, $notifiedCount);
+        $this->assertNotNull($batch);
+        $this->assertEquals(2, $batch->totalJobs);
 
         // Tenant A gets the actual update payload natively
         $this->assertDatabaseHas('tenant_feature_updates', [
@@ -214,6 +215,6 @@ class FeatureOTAUpdateTest extends TestCase
         $this->assertNotNull($pushedFeature->pivot->pushed_at);
 
         // Validate Mail Dispatch
-        Mail::assertQueued(\App\Mail\PlanFeatureUpdateMail::class, 2);
+        Mail::assertSent(\App\Mail\PlanFeatureUpdateMail::class, 2);
     }
 }

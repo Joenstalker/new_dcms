@@ -149,7 +149,7 @@ onMounted(() => {
         <!-- Bell Button -->
         <button
             @click="isOpen = !isOpen; isOpen && fetchNotifications()"
-            class="relative p-2 text-gray-500 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+            class="relative p-2 text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all duration-200 rounded-xl"
         >
             <svg 
                 class="w-6 h-6" 
@@ -161,7 +161,7 @@ onMounted(() => {
             <!-- Unread Badge -->
             <span 
                 v-if="unreadCount > 0"
-                class="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-5 px-1 text-xs font-bold text-white bg-red-500 rounded-full"
+                class="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-black text-white bg-error rounded-lg shadow-sm border-2 border-base-100"
             >
                 {{ unreadCount > 99 ? '99+' : unreadCount }}
             </span>
@@ -170,12 +170,12 @@ onMounted(() => {
         <!-- Dropdown -->
         <div
             v-if="isOpen"
-            class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+            class="absolute right-0 mt-3 w-80 bg-base-100 rounded-2xl shadow-2xl ring-1 ring-base-content/10 focus:outline-none z-50 overflow-hidden border border-base-300 transform origin-top-right transition-all duration-200"
             :class="placement === 'bottom-start' ? 'origin-bottom-left' : 'origin-top-right'"
         >
             <!-- Header -->
-            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                <h3 class="text-sm font-semibold text-gray-900">Notifications</h3>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-base-300 bg-base-200/30">
+                <h3 class="text-xs font-black uppercase tracking-widest text-base-content/70">Notifications</h3>
                 <button
                     v-if="unreadCount > 0"
                     @click="markAllAsRead"
@@ -191,14 +191,7 @@ onMounted(() => {
                     <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-600"></div>
                 </div>
                 
-                <div v-else-if="notifications.length === 0" class="flex flex-col items-center justify-center py-8 text-gray-500">
-                    <svg class="w-12 h-12 mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                    </svg>
-                    <p class="text-sm">No notifications yet</p>
-                </div>
-
-                <ul v-else class="divide-y divide-gray-100">
+                <ul v-else class="divide-y divide-base-300">
                     <li 
                         v-for="notification in notifications" 
                         :key="notification.id"
@@ -206,44 +199,44 @@ onMounted(() => {
                     >
                         <div 
                             :class="[
-                                'flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer',
-                                !notification.is_read ? 'bg-teal-50/50' : ''
+                                'flex items-start gap-4 px-5 py-4 hover:bg-base-200 transition-colors cursor-pointer',
+                                !notification.is_read ? 'bg-primary/5' : ''
                             ]"
                             @click="!notification.is_read && markAsRead(notification.id)"
                         >
                             <!-- Icon -->
                             <div 
                                 :class="[
-                                    'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-                                    !notification.is_read ? 'bg-teal-100 text-teal-600' : 'bg-gray-100 text-gray-500'
+                                    'flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center shadow-sm',
+                                    !notification.is_read ? 'bg-primary/10 text-primary' : 'bg-base-200 text-base-content/40'
                                 ]"
                             >
                                 <svg 
-                                    class="w-4 h-4" 
+                                    class="w-4.5 h-4.5" 
                                     fill="none" 
                                     viewBox="0 0 24 24" 
                                     stroke="currentColor"
                                     v-html="getNotificationTypeIcon(notification.type)"
                                 ></svg>
                             </div>
-
+ 
                             <!-- Content -->
                             <div class="flex-1 min-w-0">
-                                <p :class="['text-sm', !notification.is_read ? 'font-semibold text-gray-900' : 'text-gray-700']">
+                                <p :class="['text-xs', !notification.is_read ? 'font-black text-base-content' : 'font-medium text-base-content/70']">
                                     {{ notification.title }}
                                 </p>
-                                <p class="text-xs text-gray-500 truncate mt-0.5">
+                                <p class="text-[11px] text-base-content/50 truncate mt-1">
                                     {{ notification.message }}
                                 </p>
-                                <p class="text-xs text-gray-400 mt-1">
+                                <p class="text-[9px] uppercase tracking-wider font-bold text-base-content/30 mt-2">
                                     {{ formatDate(notification.created_at) }}
                                 </p>
                             </div>
-
+ 
                             <!-- Unread Indicator -->
                             <div 
                                 v-if="!notification.is_read"
-                                class="flex-shrink-0 w-2 h-2 bg-teal-500 rounded-full mt-2"
+                                class="flex-shrink-0 w-2 h-2 bg-primary rounded-full mt-2 animate-pulse"
                             ></div>
                         </div>
                     </li>

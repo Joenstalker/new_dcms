@@ -191,6 +191,7 @@ $registerCentralRoutes = function ($withNames = false) {
                     $featuresA->name('features.assign');
                     $featuresR->name('features.remove');
                     Route::post('/features/sync-all', [FeatureController::class, 'syncAllUpdates'])->name('features.sync-all');
+                    Route::get('/features/batch/{batchId}', [FeatureController::class, 'getBatchStatus'])->name('features.batch-status');
                 }
 
                 // Support & Tickets (Contact Messages)
