@@ -26,6 +26,8 @@ const newTenantName = ref('');
 const newTenantDomain = ref('');
 const databasePreview = ref(null);
 const isLoadingPreview = ref(false);
+const isApproving = ref(false);
+const isRejecting = ref(false);
 
 // Rejection form
 const rejectForm = ref({
@@ -131,6 +133,7 @@ const approveTenant = () => {
         cancelButtonText: 'Cancel',
     }).then((result) => {
         if (result.isConfirmed) {
+            isApproving.value = true;
             axios.post(`/admin/tenants/${selectedTenant.value.id}/approve`)
                 .then((response) => {
                     Swal.fire({
@@ -150,6 +153,9 @@ const approveTenant = () => {
                         text: error.response?.data?.message || 'Failed to approve tenant.',
                         confirmButtonColor: '#0d9488',
                     });
+                })
+                .finally(() => {
+                    isApproving.value = false;
                 });
         }
     });
@@ -168,6 +174,7 @@ const submitReject = () => {
         cancelButtonText: 'Cancel',
     }).then((result) => {
         if (result.isConfirmed) {
+            isRejecting.value = true;
             axios.post(`/admin/tenants/${selectedTenant.value.id}/reject`, {
                 rejection_message: rejectForm.value.rejection_message,
             })
@@ -189,6 +196,9 @@ const submitReject = () => {
                         text: error.response?.data?.message || 'Failed to reject tenant.',
                         confirmButtonColor: '#0d9488',
                     });
+                })
+                .finally(() => {
+                    isRejecting.value = false;
                 });
         }
     });
@@ -408,25 +418,49 @@ const isFormValid = computed(() => {
                             </div>
                         </div>
                     </div>
-                    <div class="bg-base-200 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-base-300">
-                        <button
-                            @click="approveTenant"
-                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-success text-base font-medium text-success-content hover:bg-success/80 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
-                        >
-                            Approve
-                        </button>
-                        <button
-                            @click="submitReject"
-                            class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-error text-base font-medium text-error-content hover:bg-error/80 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
-                        >
-                            Reject
-                        </button>
+                    <div class="bg-base-200 px-4 py-4 sm:px-6 flex flex-col sm:flex-row gap-3 border-t border-base-300">
                         <button
                             @click="closeReviewModal"
-                            class="mt-3 w-full inline-flex justify-center rounded-md border border-base-300 shadow-sm px-4 py-2 bg-base-100 text-base font-medium text-base-content hover:bg-base-200 focus:outline-none sm:mt-0 sm:ml-auto sm:w-auto sm:text-sm"
+                            :disabled="isApproving || isRejecting"
+                            class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-base-300 bg-base-100 px-4 py-2.5 text-sm font-semibold text-base-content hover:bg-base-200 transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                         >
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                             Cancel
                         </button>
+                        
+                        <div class="flex-1 flex flex-col sm:flex-row sm:justify-end gap-3">
+                            <button
+                                @click="submitReject"
+                                :disabled="isApproving || isRejecting"
+                                class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-transparent bg-error px-5 py-2.5 text-sm font-bold text-error-content hover:bg-error/80 shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <svg v-if="isRejecting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                {{ isRejecting ? 'Rejecting...' : 'Reject' }}
+                            </button>
+                            
+                            <button
+                                @click="approveTenant"
+                                :disabled="isApproving || isRejecting"
+                                class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-transparent bg-success px-6 py-2.5 text-sm font-bold text-success-content hover:bg-success/80 shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <svg v-if="isApproving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                {{ isApproving ? 'Approving...' : 'Approve' }}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

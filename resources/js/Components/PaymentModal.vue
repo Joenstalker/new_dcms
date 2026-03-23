@@ -31,12 +31,13 @@ const billingCycle = ref('monthly');
 
 // Success data
 const paymentResult = ref(null);
-const countdown = ref(null);
+const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 let countdownTimer = null;
 
 // Stripe
 let stripeCheckout = null;
 const currentSessionId = ref(null); // stored as ref so it survives async closures
+let completionInProgress = false; // guard against duplicate handlePaymentComplete calls
 
 // Dynamic domain
 const page = usePage();
@@ -172,6 +173,12 @@ const handlePaymentComplete = async () => {
         return;
     }
 
+    if (completionInProgress) {
+        console.warn('[PaymentModal] handlePaymentComplete already in progress, skipping duplicate call.');
+        return;
+    }
+    completionInProgress = true;
+
     isLoading.value = true;
 
     try {
@@ -203,7 +210,7 @@ const handlePaymentComplete = async () => {
 
         // Start countdown if expires_at provided
         if (data.registration?.expires_at) {
-            startCountdown(new Date(data.registration.expires_at));
+            startCountdown(new Date(data.registration.expires_at), data.server_time);
         }
 
     } catch (error) {
@@ -216,19 +223,29 @@ const handlePaymentComplete = async () => {
         });
     } finally {
         isLoading.value = false;
+        completionInProgress = false;
     }
 };
 
 // ─── Countdown timer ─────────────────────────────────────────────────────────
-const startCountdown = (expiresAt) => {
+const startCountdown = (expiresAt, serverTimeStr) => {
     clearInterval(countdownTimer);
 
+    // Calculate the offset between server time and the browser's local time
+    // If serverTimeStr is missing, default to 0 offset
+    const serverTimeMs = serverTimeStr 
+        ? (typeof serverTimeStr === 'number' ? serverTimeStr : new Date(serverTimeStr).getTime())
+        : new Date().getTime();
+    const expiresAtMs = typeof expiresAt === 'number' ? expiresAt : new Date(expiresAt).getTime();
+    const timeOffset = serverTimeMs - new Date().getTime();
+
     const update = () => {
-        const now = new Date();
-        const diff = expiresAt - now;
+        // Evaluate the "current" time adjusted by our measured offset
+        const nowMs = new Date().getTime() + timeOffset;
+        const diff = expiresAtMs - nowMs;
 
         if (diff <= 0) {
-            countdown.value = { days: 0, hours: 0, minutes: 0 };
+            countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0 };
             clearInterval(countdownTimer);
             return;
         }
@@ -236,11 +253,13 @@ const startCountdown = (expiresAt) => {
         const days    = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours   = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        countdown.value = { days, hours, minutes };
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        countdown.value = { days, hours, minutes, seconds };
     };
 
     update();
-    countdownTimer = setInterval(update, 60000);
+    countdownTimer = setInterval(update, 1000);
 };
 
 // ─── Cleanup ─────────────────────────────────────────────────────────────────
@@ -259,6 +278,13 @@ onUnmounted(() => {
 const closeModal = () => {
     cleanupStripe();
     clearInterval(countdownTimer);
+    
+    // If we were on the success screen, redirect to homepage to clean URL
+    if (screen.value === 'success') {
+        window.location.href = '/';
+        return;
+    }
+
     screen.value = 'review';
     selectedPlanId.value = null;
     billingCycle.value = 'monthly';
@@ -459,6 +485,11 @@ const tenantUrl = computed(() => {
                             <span class="block text-3xl font-black text-amber-600">{{ countdown.minutes }}</span>
                             <span class="text-xs text-amber-500">Minutes</span>
                         </div>
+                        <div class="text-amber-400 self-center text-2xl font-bold">:</div>
+                        <div class="text-center">
+                            <span class="block text-3xl font-black text-amber-600">{{ countdown.seconds }}</span>
+                            <span class="text-xs text-amber-500">Seconds</span>
+                        </div>
                     </div>
                     <p class="text-xs text-amber-600 mt-2">Time remaining for admin review</p>
                 </div>
@@ -501,7 +532,7 @@ const tenantUrl = computed(() => {
                     @click="closeModal"
                     class="w-full py-3 rounded-md font-bold text-white bg-[#2B7CB3] hover:bg-[#24699A] transition-all shadow-md"
                 >
-                    Close & Return to Homepage
+                    Done
                 </button>
             </div>
 

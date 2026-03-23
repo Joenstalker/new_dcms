@@ -186,8 +186,10 @@ class RegistrationController extends Controller
         }
 
         try {
-            // Get configurable timeout from system settings
+            // Get configurable settings from system settings
             $defaultTimeoutMinutes = \App\Models\SystemSetting::get('pending_timeout_default_minutes', 10080);
+            $autoApproveEnabled = \App\Models\SystemSetting::get('pending_auto_approve_enabled', false);
+            $reminderEnabled = \App\Models\SystemSetting::get('pending_reminder_global_enabled', true);
 
             // First, create or update a PendingRegistration record
             $pendingRegistration = PendingRegistration::updateOrCreate(
@@ -211,6 +213,8 @@ class RegistrationController extends Controller
                     'verification_token' => PendingRegistration::generateToken(),
                     'expires_at' => now('UTC')->addMinutes($defaultTimeoutMinutes),
                     'pending_timeout_minutes' => $defaultTimeoutMinutes,
+                    'auto_approve_enabled' => $autoApproveEnabled,
+                    'reminder_enabled' => $reminderEnabled,
                 ]
             );
 
@@ -289,8 +293,10 @@ class RegistrationController extends Controller
         }
 
         try {
-            $stripe = new StripeClient(config('services.stripe.secret'));
-            $session = $stripe->checkout->sessions->retrieve($sessionId);
+            $stripe = $this->getStripeClient();
+            $session = $stripe->checkout->sessions->retrieve($sessionId, [
+                'expand' => ['subscription.latest_invoice']
+            ]);
 
             if ($session->payment_status !== 'paid') {
                 return view('errors.registration-failed', [
@@ -300,130 +306,29 @@ class RegistrationController extends Controller
                 ]);
             }
 
-            $metadata = $session->metadata;
-            $pendingRegistrationId = $metadata->pending_registration_id ?? null;
+            $result = $this->processSuccessfulRegistration($session);
 
-            if (!$pendingRegistrationId) {
-                Log::error('No pending_registration_id found in Stripe metadata');
+            if (!$result['success']) {
+                $code = $result['error'] === 'not_found' ? '404' : '500';
                 return view('errors.registration-failed', [
-                    'code' => '500',
+                    'code' => $code,
                     'title' => 'Registration Error',
-                    'message' => 'Registration record not found. Please contact support.'
+                    'message' => $result['message']
                 ]);
             }
 
-            // Find the pending registration
-            $pendingRegistration = PendingRegistration::find($pendingRegistrationId);
-
-            if (!$pendingRegistration) {
-                Log::error('Pending registration not found: ' . $pendingRegistrationId);
-                return view('errors.registration-failed', [
-                    'code' => '404',
-                    'title' => 'Registration Not Found',
-                    'message' => 'Your registration record could not be found.'
-                ]);
-            }
-
-            // Check if already processed (tenant already created)
-            if ($pendingRegistration->status !== PendingRegistration::STATUS_PENDING) {
-                // Already processed, show appropriate message
+            if ($result['already_processed'] ?? false) {
+                $pendingRegistration = $result['registration'];
                 if ($pendingRegistration->status === PendingRegistration::STATUS_APPROVED) {
                     return redirect()->to('/?already-approved=true');
                 }
                 return redirect()->to('/?registration-status=' . $pendingRegistration->status);
             }
 
-            // Create tenant record (but NOT the tenant database - waits for admin approval)
-            DB::beginTransaction();
-
-            try {
-                $tenantId = strtolower(trim($pendingRegistration->subdomain));
-
-                // Create tenant in central database only (no tenant DB yet)
-                $tenant = Tenant::create([
-                    'id' => $tenantId,
-                    'name' => $pendingRegistration->clinic_name,
-                    'owner_name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
-                    'email' => $pendingRegistration->email,
-                    'phone' => $pendingRegistration->phone,
-                    'street' => $pendingRegistration->street,
-                    'region' => $pendingRegistration->region,
-                    'barangay' => $pendingRegistration->barangay,
-                    'city' => $pendingRegistration->city,
-                    'province' => $pendingRegistration->province,
-                    'status' => 'pending', // Set to pending for admin review
-                ]);
-
-                // Create domain
-                $domain = $tenant->domains()->create([
-                    'domain' => $pendingRegistration->subdomain,
-                ]);
-
-                // Update tenant with domain_id
-                $tenant->update(['domain_id' => $domain->id]);
-
-                // NOTE: Tenant database and user will be created AFTER admin approval
-                // This happens in PendingRegistrationController::approve()
-
-                // Create subscription record (but tenant is still pending)
-                // Note: subscription will be more complete after approval
-                $subscription = $tenant->subscriptions()->create([
-                    'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
-                    'stripe_id' => $session->subscription ?? null,
-                    'stripe_status' => 'active',
-                    'stripe_price' => $session->amount_total / 100,
-                    'billing_cycle' => $pendingRegistration->billing_cycle,
-                    'payment_method' => 'card',
-                    'payment_status' => 'paid',
-                ]);
-
-                // Update pending registration status - keep as pending for admin review
-                // The expires_at field controls when the pending status expires
-                $pendingRegistration->update([
-                    'stripe_session_id' => $session->id,
-                    'stripe_payment_intent_id' => $session->payment_intent ?? null,
-                    'amount_paid' => $session->amount_total / 100,
-                    // Keep status as pending - admin needs to approve
-                    'status' => PendingRegistration::STATUS_PENDING,
-                ]);
-
-                DB::commit();
-
-                // Notify admins about new pending tenant awaiting review
-                $notificationService = app(\App\Services\NotificationService::class);
-                $notificationService->notifyAdmins(
-                    'new_pending_tenant',
-                    'New Tenant Pending Review',
-                    "A new clinic '{$pendingRegistration->clinic_name}' has registered and payment received. Please review.",
-                [
-                    'tenant_id' => $tenantId,
-                    'clinic_name' => $pendingRegistration->clinic_name,
-                    'subdomain' => $pendingRegistration->subdomain,
-                    'admin_email' => $pendingRegistration->email,
-                    'amount_paid' => $pendingRegistration->amount_paid,
-                ],
-                    'both'
-                );
-
-                // Send pending registration email to client
-                Mail::to($pendingRegistration->email)->send(new RegistrationPending($pendingRegistration));
-
-                // Show success page - payment received and tenant created, awaiting review
-                return view('emails.registration.payment-received', [
-                    'registration' => $pendingRegistration,
-                ]);
-            }
-            catch (\Exception $e) {
-                DB::rollBack();
-                Log::error('Tenant creation failed: ' . $e->getMessage());
-                return view('errors.registration-failed', [
-                    'code' => '500',
-                    'title' => 'Registration Failed',
-                    'message' => 'Failed to create your clinic. Please contact support.'
-                ]);
-            }
-        }
-        catch (\Exception $e) {
+            return view('emails.registration.payment-received', [
+                'registration' => $result['registration'],
+            ]);
+        } catch (\Exception $e) {
             Log::error('Payment success handling failed: ' . $e->getMessage());
             return view('errors.registration-failed', [
                 'code' => '500',
@@ -442,7 +347,7 @@ class RegistrationController extends Controller
         $sigHeader = $request->header('stripe-signature');
 
         try {
-            $stripe = new StripeClient(config('services.stripe.secret'));
+            $stripe = $this->getStripeClient();
             $event = \Stripe\Webhook::constructEvent(
                 $payload,
                 $sigHeader,
@@ -452,8 +357,13 @@ class RegistrationController extends Controller
             // Handle the event
             switch ($event->type) {
                 case 'checkout.session.completed':
-                    $session = $event->data->object;
-                    // Process completed payment if not already done
+                    $sessionData = $event->data->object;
+                    if ($sessionData->payment_status === 'paid') {
+                        $session = $stripe->checkout->sessions->retrieve($sessionData->id, [
+                            'expand' => ['subscription.latest_invoice']
+                        ]);
+                        $this->processSuccessfulRegistration($session);
+                    }
                     break;
 
                 case 'customer.subscription.deleted':
@@ -484,7 +394,9 @@ class RegistrationController extends Controller
 
         try {
             $stripe = $this->getStripeClient();
-            $session = $stripe->checkout->sessions->retrieve($validated['session_id']);
+            $session = $stripe->checkout->sessions->retrieve($validated['session_id'], [
+                'expand' => ['subscription.latest_invoice']
+            ]);
 
             Log::info('completeRegistration: session retrieved', [
                 'session_id'     => $session->id,
@@ -492,27 +404,20 @@ class RegistrationController extends Controller
                 'payment_status' => $session->payment_status,
             ]);
 
-            // For subscription checkout, session status 'complete' means payment was accepted.
-            // payment_status can be 'paid' for one-time or 'no_payment_required' for some subscriptions.
             if ($session->status !== 'complete') {
                 return response()->json(['success' => false, 'message' => 'Payment not yet completed. Status: ' . $session->status], 402);
             }
 
-            $metadata = $session->metadata;
-            $pendingRegistrationId = $metadata->pending_registration_id ?? null;
+            $result = $this->processSuccessfulRegistration($session);
 
-            if (!$pendingRegistrationId) {
-                return response()->json(['success' => false, 'message' => 'Registration record not found.'], 404);
+            if (!$result['success']) {
+                $status = $result['error'] === 'not_found' ? 404 : 500;
+                return response()->json(['success' => false, 'message' => $result['message']], $status);
             }
 
-            $pendingRegistration = PendingRegistration::find($pendingRegistrationId);
-
-            if (!$pendingRegistration) {
-                return response()->json(['success' => false, 'message' => 'Registration not found.'], 404);
-            }
-
-            // Already processed — return existing data
-            if ($pendingRegistration->status !== PendingRegistration::STATUS_PENDING) {
+            $pendingRegistration = $result['registration'];
+            
+             if ($result['already_processed'] ?? false) {
                 return response()->json([
                     'success' => true,
                     'already_processed' => true,
@@ -521,17 +426,67 @@ class RegistrationController extends Controller
                         'first_name'   => $pendingRegistration->first_name,
                         'last_name'    => $pendingRegistration->last_name,
                         'amount_paid'  => $pendingRegistration->amount_paid,
-                        'expires_at'   => $pendingRegistration->expires_at,
+                        'expires_at'   => $pendingRegistration->expires_at->timestamp * 1000,
                         'subdomain'    => $pendingRegistration->subdomain,
                     ],
+                    'server_time' => now('UTC')->timestamp * 1000,
                 ]);
             }
 
-            DB::beginTransaction();
+            return response()->json([
+                'success'      => true,
+                'registration' => [
+                    'clinic_name'  => $pendingRegistration->clinic_name,
+                    'first_name'   => $pendingRegistration->first_name,
+                    'last_name'    => $pendingRegistration->last_name,
+                    'amount_paid'  => $pendingRegistration->amount_paid,
+                    'expires_at'   => $pendingRegistration->expires_at->timestamp * 1000,
+                    'subdomain'    => $pendingRegistration->subdomain,
+                ],
+                'server_time' => now('UTC')->timestamp * 1000,
+            ]);
 
-            try {
-                $tenantId = strtolower(trim($pendingRegistration->subdomain));
+        } catch (\Exception $e) {
+            Log::error('completeRegistration failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Payment verification failed.'], 500);
+        }
+    }
 
+    /**
+     * Shared logic to process successful Stripe Session
+     * Returns an array with outcome details
+     */
+    protected function processSuccessfulRegistration($session)
+    {
+        $metadata = $session->metadata;
+        $pendingRegistrationId = $metadata->pending_registration_id ?? null;
+
+        if (!$pendingRegistrationId) {
+            Log::error('No pending_registration_id found in Stripe metadata');
+            return ['success' => false, 'error' => 'not_found', 'message' => 'Registration record not found. Please contact support.'];
+        }
+
+        $pendingRegistration = PendingRegistration::find($pendingRegistrationId);
+
+        if (!$pendingRegistration) {
+            Log::error('Pending registration not found: ' . $pendingRegistrationId);
+            return ['success' => false, 'error' => 'not_found', 'message' => 'Your registration record could not be found.'];
+        }
+
+        if ($pendingRegistration->status !== PendingRegistration::STATUS_PENDING) {
+            return ['success' => true, 'already_processed' => true, 'registration' => $pendingRegistration];
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $tenantId = strtolower(trim($pendingRegistration->subdomain));
+
+            // Use firstOrCreate to handle retry scenarios where a previous attempt
+            // partially created the tenant (stancl/tenancy creates the DB outside
+            // the Laravel transaction, so rollback doesn't undo it)
+            $tenant = Tenant::find($tenantId);
+            if (!$tenant) {
                 $tenant = Tenant::create([
                     'id'         => $tenantId,
                     'name'       => $pendingRegistration->clinic_name,
@@ -545,67 +500,69 @@ class RegistrationController extends Controller
                     'province'   => $pendingRegistration->province,
                     'status'     => 'pending',
                 ]);
+            }
 
+            if (!$tenant->domains()->where('domain', $pendingRegistration->subdomain)->exists()) {
                 $domain = $tenant->domains()->create(['domain' => $pendingRegistration->subdomain]);
                 $tenant->update(['domain_id' => $domain->id]);
-
-                $tenant->subscriptions()->create([
-                    'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
-                    'stripe_id'            => $session->subscription ?? null,
-                    'stripe_status'        => 'active',
-                    'stripe_price'         => $session->amount_total / 100,
-                    'billing_cycle'        => $pendingRegistration->billing_cycle,
-                    'payment_method'       => 'card',
-                    'payment_status'       => 'paid',
-                ]);
-
-                $pendingRegistration->update([
-                    'stripe_session_id'        => $session->id,
-                    'stripe_payment_intent_id' => $session->payment_intent ?? null,
-                    'amount_paid'              => $session->amount_total / 100,
-                    'status'                   => PendingRegistration::STATUS_PENDING,
-                ]);
-
-                DB::commit();
-
-                // Notify admins
-                $notificationService = app(\App\Services\NotificationService::class);
-                $notificationService->notifyAdmins(
-                    'new_pending_tenant',
-                    'New Tenant Pending Review',
-                    "A new clinic '{$pendingRegistration->clinic_name}' has registered and payment received. Please review.",
-                    [
-                        'tenant_id'   => $tenantId,
-                        'clinic_name' => $pendingRegistration->clinic_name,
-                        'subdomain'   => $pendingRegistration->subdomain,
-                        'admin_email' => $pendingRegistration->email,
-                        'amount_paid' => $pendingRegistration->amount_paid,
-                    ],
-                    'both'
-                );
-
-                // Send pending registration email
-                Mail::to($pendingRegistration->email)->send(new \App\Mail\RegistrationPending($pendingRegistration));
-
-                return response()->json([
-                    'success'      => true,
-                    'registration' => [
-                        'clinic_name'  => $pendingRegistration->clinic_name,
-                        'first_name'   => $pendingRegistration->first_name,
-                        'last_name'    => $pendingRegistration->last_name,
-                        'amount_paid'  => $session->amount_total / 100,
-                        'expires_at'   => $pendingRegistration->expires_at,
-                        'subdomain'    => $pendingRegistration->subdomain,
-                    ],
-                ]);
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error('completeRegistration tenant creation failed: ' . $e->getMessage());
-                return response()->json(['success' => false, 'message' => 'Failed to create clinic. Please contact support.'], 500);
             }
+
+            // Extract the subscription ID string — Stripe may return a string or an expanded object
+            $stripeSubscription = $session->subscription ?? null;
+            $stripeSubscriptionId = is_string($stripeSubscription) ? $stripeSubscription : ($stripeSubscription->id ?? null);
+
+            $tenant->subscriptions()->create([
+                'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
+                'stripe_id'            => $stripeSubscriptionId,
+                'stripe_status'        => 'active',
+                'stripe_price'         => $session->amount_total / 100,
+                'billing_cycle'        => $pendingRegistration->billing_cycle,
+                'payment_method'       => 'card',
+                'payment_status'       => 'paid',
+            ]);
+
+            $paymentIntentId = is_string($session->payment_intent) ? $session->payment_intent : ($session->payment_intent->id ?? null);
+            if (!$paymentIntentId && $stripeSubscription && !is_string($stripeSubscription)) {
+                $invoice = $stripeSubscription->latest_invoice ?? null;
+                $paymentIntentId = is_string($invoice->payment_intent ?? null) ? $invoice->payment_intent : ($invoice->payment_intent->id ?? null);
+            }
+
+            $timeoutMinutes = $pendingRegistration->getEffectiveTimeoutMinutes();
+
+            $pendingRegistration->update([
+                'stripe_session_id'        => $session->id,
+                'stripe_payment_intent_id' => $paymentIntentId,
+                'amount_paid'              => $session->amount_total / 100,
+                'status'                   => PendingRegistration::STATUS_PENDING,
+                'expires_at'               => now('UTC')->addMinutes($timeoutMinutes),
+            ]);
+
+            DB::commit();
+
+            // Notify admins
+            $notificationService = app(\App\Services\NotificationService::class);
+            $notificationService->notifyAdmins(
+                'new_pending_tenant',
+                'New Tenant Pending Review',
+                "A new clinic '{$pendingRegistration->clinic_name}' has registered and payment received. Please review.",
+                [
+                    'tenant_id'   => $tenantId,
+                    'clinic_name' => $pendingRegistration->clinic_name,
+                    'subdomain'   => $pendingRegistration->subdomain,
+                    'admin_email' => $pendingRegistration->email,
+                    'amount_paid' => $session->amount_total / 100,
+                ],
+                'both'
+            );
+
+            // Send pending registration email
+            Mail::to($pendingRegistration->email)->send(new \App\Mail\RegistrationPending($pendingRegistration));
+
+            return ['success' => true, 'already_processed' => false, 'registration' => $pendingRegistration];
         } catch (\Exception $e) {
-            Log::error('completeRegistration failed: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Payment verification failed.'], 500);
+            DB::rollBack();
+            Log::error('Tenant creation failed in processSuccessfulRegistration: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'server_error', 'message' => 'Failed to create your clinic. Please contact support.'];
         }
     }
 

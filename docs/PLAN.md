@@ -1,26 +1,28 @@
-# Orchestration Plan: Multi-Tenancy Security Audit
+# [PLAN] Simplify Registration Configuration
 
-Analyze the Multi-Tenancy SaaS implementation for security vulnerabilities and data isolation leaks.
+The goal is to simplify the registration settings UI by removing the redundant "Auto-Approve Timing" field. The system will automatically trigger auto-approval (if enabled) exactly when the "Registration Timeout" ends.
 
-## Agents Involved
-- `explorer-agent`: Discovery and mapping (Current)
-- `project-planner`: Strategy and task breakdown
-- `security-auditor`: Deep security analysis (Auth, XSS, Tenancy leaks)
-- `database-architect`: SQL isolation and schema review
-- `penetration-tester`: Active boundary testing simulation
+## Proposed Changes
 
-## Proposed Discovery Phase (Phase 1)
-1. **Model Scoping Audit**: Verify if all tenant-owned models correctly use scoping traits or are stored in isolated databases.
-2. **Database User Isolation**: Review `CreateDatabaseUser` job to ensure tenants have restricted permissions to their own DB only.
-3. **Middleware Chain Review**: Audit the order and logic of tenancy initialization vs. authentication.
-4. **Shared Resource Verification**: Check Cache/S3/Redis scoping configuration.
+### 🎨 Frontend - `frontend-specialist`
 
-## Proposed Analysis Phase (Phase 2 - After Approval)
-- **Security Auditor**: Check for Cross-Tenant Scripting (XTS) or Direct Object Reference (IDOR) across subdomains.
-- **Database Architect**: Verify that "Central" data (Plans, System Settings) is read-only for tenants.
-- **Penetration Tester**: Simulate a malicious tenant attempting to access the central `users` table or another tenant's files.
+#### [MODIFY] [RegistrationSettings.vue](file:///d:/dentistmng/dcms_new/dcms/resources/js/Pages/Admin/SystemSettings/Partials/RegistrationSettings.vue)
+- Remove the "Auto-Approve Timing" input field and its associated description from `RegistrationSettings.vue`.
+- Keep the "Enable Auto-Approve" toggle.
+- Update the description for "Enable Auto-Approve" to clarify it triggers at the end of the timeout.
+
+### ⚙️ Backend - `backend-specialist`
+
+#### [MODIFY] [ProcessExpiredRegistrations.php](file:///d:/dentistmng/dcms_new/dcms/app/Console/Commands/ProcessExpiredRegistrations.php)
+- (Technical Cleanup) Remove the unused `$autoApproveMinutes` variable to avoid confusion in the logs/logic.
 
 ## Verification Plan
-1. **Automated Scans**: Run `security_scan.py`.
-2. **Manual Review**: Validate that `tenancy()->initialize($tenant)` is correctly called in all entry points.
-3. **Database Check**: Run `audit_users.php` to verify DB user permissions and existence.
+
+### Manual Verification
+1.  Navigate to **System Settings > Registrations**.
+2.  Verify the "Auto-Approve Timing" field is gone.
+3.  Set "Registration Timeout" to 2 minutes and "Enable Auto-Approve" to ON.
+4.  Register a new tenant clinic.
+5.  **Success Modal**: Shows 2 minutes countdown.
+6.  **Auto-Approve**: Wait 2 minutes and run `php artisan registrations:process-expired`.
+7.  Verify the tenant is automatically approved.

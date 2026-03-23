@@ -42,6 +42,9 @@ class SystemSettingsController extends Controller
             }
         }
 
+        // Retroactively update pending registration timeouts if this setting was changed
+        $this->syncPendingRegistrationsTimeouts($settings);
+
         // Clear config cache after updating settings
         $this->clearConfigCache();
 
@@ -79,6 +82,9 @@ class SystemSettingsController extends Controller
                 $updated++;
             }
         }
+
+        // Retroactively update pending registration timeouts if this setting was changed
+        $this->syncPendingRegistrationsTimeouts($settings);
 
         // Clear config cache after updating settings
         $this->clearConfigCache();
@@ -260,6 +266,25 @@ class SystemSettingsController extends Controller
         }
         catch (\Exception $e) {
         // Silently fail if cache clearing fails
+        }
+    }
+
+    /**
+     * Retroactively update timeouts for pending registrations if the setting was changed.
+     */
+    private function syncPendingRegistrationsTimeouts(array $settings): void
+    {
+        if (isset($settings['pending_timeout_default_minutes'])) {
+            $newTimeout = (int)$settings['pending_timeout_default_minutes'];
+            
+            \App\Models\PendingRegistration::where('status', \App\Models\PendingRegistration::STATUS_PENDING)
+                ->get()
+                ->each(function ($reg) use ($newTimeout) {
+                    $reg->pending_timeout_minutes = $newTimeout;
+                    // Recalculate expires_at based on creation time, not current time
+                    $reg->expires_at = $reg->created_at->copy()->addMinutes($newTimeout);
+                    $reg->save();
+                });
         }
     }
 }

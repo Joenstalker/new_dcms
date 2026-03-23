@@ -61,7 +61,7 @@
                         <div class="ml-3">
                             <p class="text-sm text-yellow-700">
                                 <strong>Refund Information</strong><br>
-                                A refund for your payment has been processed. Please allow 5-10 business days for the refund to appear in your account.
+                                The refund is processed automatically at the time of rejection. No need to wait. Immediately refunded. <strong>YOU HAVE BEEN REFUNDED.</strong>
                             </p>
                         </div>
                     </div>

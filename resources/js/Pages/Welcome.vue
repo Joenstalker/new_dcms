@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -228,9 +228,8 @@ onMounted(() => {
         sessionId.value = urlParams.get('session_id');
         isPaymentModalOpen.value = true;
         
-        // Clean up URL without reload
-        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.replaceState({ path: newUrl }, '', newUrl);
+        // Clean up URL without triggering Inertia re-render (which would cause an infinite loop)
+        window.history.replaceState({}, '', window.location.pathname);
     }
 });
 
@@ -323,11 +322,11 @@ onMounted(() => {
     
     if (urlParams.get('cancelled') === 'true') {
         alert('Payment was cancelled. You can try again anytime.');
-        window.history.replaceState({}, document.title, window.location.pathname);
+        router.replace(window.location.pathname, { preserveState: true, preserveScroll: true, replace: true });
     }
     if (urlParams.get('error') === 'clinic_not_found') {
         alert('The clinic domain you are trying to access does not exist.');
-        window.history.replaceState({}, document.title, window.location.pathname);
+        router.replace(window.location.pathname, { preserveState: true, preserveScroll: true, replace: true });
     }
     
     if (urlParams.get('success') === 'true' && urlParams.get('tenant')) {
@@ -347,7 +346,7 @@ onMounted(() => {
             window.location.href = fallbackUrl;
         }
         
-        window.history.replaceState({}, document.title, window.location.pathname);
+        router.replace(window.location.pathname, { preserveState: true, preserveScroll: true, replace: true });
     }
 });
 

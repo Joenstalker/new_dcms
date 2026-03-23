@@ -14,9 +14,8 @@ const emit = defineEmits(['save']);
 const descriptions = {
     pending_timeout_default_minutes: 'Minutes before a pending registration automatically expires',
     pending_reminder_global_enabled: 'Send reminder emails to clinics with pending registrations',
-    pending_reminder_minutes_before: 'Minutes before expiry to send the reminder email',
-    pending_auto_approve_enabled: 'Automatically approve pending registrations after a certain time',
-    pending_auto_approve_minutes: 'Minutes after registration to trigger automatic approval',
+    pending_reminder_minutes_before: 'Minutes before expiry to send characters text reminder',
+    pending_auto_approve_enabled: 'Automatically approve pending registrations when the timeout is reached',
 };
 
 const saveGroup = () => {
@@ -101,22 +100,7 @@ const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
                 </div>
             </div>
 
-            <!-- Auto-Approve Minutes -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center" v-if="form.pending_auto_approve_enabled === 'true' || form.pending_auto_approve_enabled === true">
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-bold text-base-content/70">Auto-Approve Timing</label>
-                    <p class="text-xs text-base-content/50 mt-1">{{ descriptions.pending_auto_approve_minutes }}</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <input
-                        v-model="form.pending_auto_approve_minutes"
-                        type="number"
-                        min="1"
-                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
-                    />
-                    <span class="text-sm text-base-content/50 whitespace-nowrap">minutes</span>
-                </div>
-            </div>
+
         </div>
 
         <div class="px-6 py-4 bg-base-200/50 border-t border-base-300 flex justify-end">

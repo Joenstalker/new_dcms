@@ -31,11 +31,15 @@
         <script>
             function startCountdown() {
                 // Use the exact unix timestamp from the server (in milliseconds)
-                // This prevents browser timezone parsing bugs when using unformatted date strings
                 const expiresAt = {{ isset($expires_at) ? (is_string($expires_at) ? \Carbon\Carbon::parse($expires_at)->timestamp : $expires_at->timestamp) * 1000 : (isset($created_at) ? (is_string($created_at) ? \Carbon\Carbon::parse($created_at)->timestamp : $created_at->timestamp) * 1000 : time() * 1000) }};
                 
+                // Measure the offset between the server's time right now and the browser's time
+                const serverTimeMs = {{ time() * 1000 }};
+                const timeOffset = serverTimeMs - new Date().getTime();
+                
                 function updateTimer() {
-                    const now = new Date().getTime();
+                    // Fast-forward or wind-back the current local time to match the server clock
+                    const now = new Date().getTime() + timeOffset;
                     const distance = expiresAt - now;
                     
                     if (distance <= 0) {

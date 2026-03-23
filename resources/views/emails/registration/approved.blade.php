@@ -69,7 +69,11 @@
                 </div>
                 
                 <p class="text-gray-600 text-sm mb-4">
-                    You can now log in to your clinic portal using the credentials above.
+                    You can now access your website and use the credentials above to access your portal.
+                </p>
+                
+                <p class="text-sm font-semibold text-red-600 mb-4 border border-red-200 bg-red-50 p-3 rounded">
+                    NOTE FOR THE TENANT: PLEASE CHANGE YOUR PASSWORD AS MUCH AS POSSIBLE.
                 </p>
                 
                 <p class="text-gray-600 text-sm mb-4">
