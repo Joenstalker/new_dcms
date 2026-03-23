@@ -489,7 +489,7 @@ class TenantController extends Controller
 
             DB::commit();
 
-            // Find matching pending registration to process email
+            // Find matching pending registration to process email and create user
             $registration = PendingRegistration::where('subdomain', $tenant->id)->first();
             
             if ($registration) {
@@ -499,6 +499,30 @@ class TenantController extends Controller
                         'status' => PendingRegistration::STATUS_APPROVED,
                         'approved_at' => now(),
                     ]);
+                }
+
+                // Initialize tenancy to create the user in the tenant's database
+                try {
+                    tenancy()->initialize($tenant);
+                    
+                    // Check if user already exists
+                    $user = \App\Models\User::where('email', $registration->email)->first();
+                    
+                    if (!$user) {
+                        $user = \App\Models\User::create([
+                            'name' => $registration->first_name . ' ' . $registration->last_name,
+                            'email' => $registration->email,
+                            'password' => Hash::make($registration->password),
+                        ]);
+                        
+                        // Assign Owner role
+                        $user->assignRole('Owner');
+                    }
+                    
+                    tenancy()->end();
+                } catch (\Exception $e) {
+                    Log::error("Failed to create user for tenant {$tenant->id}: " . $e->getMessage());
+                    if (tenancy()->initialized) tenancy()->end();
                 }
 
                 $appUrl = config('app.url');

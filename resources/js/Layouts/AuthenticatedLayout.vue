@@ -196,7 +196,7 @@ const handleLogout = () => {
             // Perform logout via POST request
             const form = document.createElement('form');
             form.method = 'POST';
-            form.action = route('logout');
+            form.action = '/logout';
             
             const token = document.querySelector('meta[name="csrf-token"]');
             if (token) {

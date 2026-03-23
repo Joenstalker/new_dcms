@@ -72,6 +72,6 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('central.home');
         }
 
-        return redirect('/');
+        return redirect()->route('tenant.landing');
     }
 }
