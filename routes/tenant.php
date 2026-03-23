@@ -27,6 +27,7 @@ Route::middleware([
     // Tenant Auth API Routes (Modal-based login)
     Route::middleware('guest')->group(function () {
         Route::post('/api/login', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'store'])->name('tenant.login.store');
+        Route::post('/api/login/google', [\App\Http\Controllers\Auth\GoogleAuthController::class , 'handleGoogleLogin'])->name('tenant.login.google');
         Route::post('/api/password/email', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'sendResetLink'])->name('tenant.password.email');
         Route::post('/api/password/reset', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'resetPassword'])->name('tenant.password.store');
         Route::get('/reset-password/{token}', [\App\Http\Controllers\Tenant\Auth\ResetPasswordPageController::class , 'show'])->name('tenant.password.reset');

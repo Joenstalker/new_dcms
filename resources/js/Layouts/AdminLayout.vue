@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
+import ProfileDropdown from '@/Components/ProfileDropdown.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -255,12 +256,7 @@ watch(() => page.props.flash, (flash) => {
                     <span class="text-[10px] uppercase font-bold tracking-widest text-base-content/30 hidden sm:inline">Admin System</span>
                     <ThemeSwitcher />
                     <NotificationBell type="admin" />
-                    <div 
-                        class="h-8 w-8 rounded-lg flex items-center justify-center text-white text-xs font-black shadow-sm"
-                        :style="{ backgroundColor: primaryColor }"
-                    >
-                        {{ user?.name?.charAt(0) || 'A' }}
-                    </div>
+                    <ProfileDropdown />
                 </div>
             </header>
 
@@ -368,10 +364,16 @@ watch(() => page.props.flash, (flash) => {
                     <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center gap-4 min-w-0">
                             <div 
-                                class="h-11 w-11 rounded-2xl flex items-center justify-center text-white font-black flex-shrink-0 shadow-lg"
+                                class="h-11 w-11 rounded-2xl flex items-center justify-center text-white font-black flex-shrink-0 shadow-lg overflow-hidden"
                                 :style="{ backgroundColor: primaryColor }"
                             >
-                                {{ user?.name?.charAt(0) || 'A' }}
+                                <img 
+                                    v-if="user?.profile_picture_url" 
+                                    :src="user.profile_picture_url" 
+                                    class="h-full w-full object-cover"
+                                    :alt="user?.name"
+                                />
+                                <span v-else>{{ user?.name?.charAt(0) || 'A' }}</span>
                             </div>
                             <div class="truncate">
                                 <p class="text-xs font-black truncate text-base-content">{{ user?.name || 'Administrator' }}</p>

@@ -1,30 +1,37 @@
-# [PLAN] Fix Tenant Logout Redirect & CSRF Error
+# Orchestration Plan: Tenant Schema and Profile Display Fixes
 
-The goal is to ensure that when a tenant staff member logs out, they are correctly redirected to their own clinic's landing page (subdomain) and do not encounter a 419 Page Expired error.
+This plan outlines the steps to resolve the missing `profile_picture` column in tenant databases and the display issues in the admin area.
 
 ## Proposed Changes
 
-### 🎨 Frontend - `frontend-specialist`
+### 1. Database Schema (Tenant)
+- **Goal**: Add `profile_picture` column to all tenant `users` tables.
+- **Action**: Create a new migration in `database/migrations/tenant/`.
+- **Details**: Column type `longtext`, nullable, positioned after `email`.
 
-#### [MODIFY] [AuthenticatedLayout.vue](file:///d:/dentistmng/dcms_new/dcms/resources/js/Layouts/AuthenticatedLayout.vue)
-- **Change**: In `handleLogout`, change the form action from a named route to a relative path.
-- **Logic**: Use `form.action = '/logout'` instead of `route('logout')`. 
-- **Reason**: This ensures the request is sent to the current domain (e.g., `rhodsmile.localhost:8080/logout`) rather than potentially resolving to the central domain (`localhost:8080/logout`), avoiding CSRF token mismatches (419 errors).
+### 2. Storage Infrastructure
+- **Goal**: Fix the broken image links.
+- **Action**: Run `php artisan storage:link` to create the missing public symlink.
+- **Verification**: Ensure `public/storage` points to `storage/app/public`.
 
-### ⚙️ Backend - `backend-specialist`
+### 3. Profile Display Debugging
+- **Goal**: Ensure the uploaded photo displays immediately in the header and sidebar.
+- **Action**: 
+    - Verify `User` model accessor `profile_picture_url` handles storage paths correctly with the new symlink.
+    - Ensure `ProfileDropdown.vue` and layouts reactively update after a successful Inertia visit.
+    - Check if the `user` object in `page.props.auth.user` is being refreshed after the upload.
 
-#### [MODIFY] [AuthenticatedSessionController.php](file:///d:/dentistmng/dcms_new/dcms/app/Http/Controllers/Auth/AuthenticatedSessionController.php)
-- **Method**: `destroy`
-- **Logic**: 
-    - Explicitly check for an active tenant using `tenant()`.
-    - If a tenant is present, redirect to the named route `tenant.landing`.
-    - If no tenant (central admin), continue redirecting to `central.home`.
-- **Reason**: Ensures the user lands on the clinic-specific landing page after logging out from their portal.
+### 4. Verification
+- Run `php artisan tenants:migrate` to update all tenant databases.
+- Test uploading a new photo in the admin area.
+- Verify the sidebar and header update immediately without a full page refresh.
 
-## Verification Plan
+## Orchestration Agents
+- `project-planner`: Managing this plan.
+- `database-architect`: Implementing the tenant migration.
+- `backend-specialist`: Handling the storage link and controller logic.
+- `frontend-specialist`: Verifying and polishing the UI reactivity.
+- `test-engineer`: Final verification of the entire flow.
 
-### Manual Verification
-1.  Login to a tenant portal (e.g., `rhodsmile.localhost:8080/dashboard`).
-2.  Click the **Logout** button.
-3.  **Verify No Error**: Ensure the 419 Page Expired error no longer appears.
-4.  **Verify Redirection**: Ensure you are redirected to the tenant's landing page (`rhodsmile.localhost:8080/`) and NOT the central homepage or login screen.
+---
+**Do you approve this plan? (Y/N)**

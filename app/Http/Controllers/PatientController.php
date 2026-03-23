@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Patient;
 use App\Services\TenantNotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 
 class PatientController extends Controller
@@ -35,7 +37,13 @@ class PatientController extends Controller
             'operation_history' => 'nullable|string',
             'balance' => 'nullable|numeric',
             'last_visit_time' => 'nullable|date',
+            'photo' => 'required|image|max:2048',
         ]);
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('patients/photos', 'public');
+            $validated['photo_path'] = $path;
+        }
 
         $patient = Patient::create($validated);
 
@@ -88,7 +96,17 @@ class PatientController extends Controller
             'operation_history' => 'nullable|string',
             'balance' => 'nullable|numeric',
             'last_visit_time' => 'nullable|date',
+            'photo' => 'nullable|image|max:2048',
         ]);
+
+        if ($request->hasFile('photo')) {
+            // Delete old photo if exists
+            if ($patient->photo_path) {
+                Storage::Disk('public')->delete($patient->photo_path);
+            }
+            $path = $request->file('photo')->store('patients/photos', 'public');
+            $validated['photo_path'] = $path;
+        }
 
         $patient->update($validated);
 

@@ -20,6 +20,7 @@ $registerCentralRoutes = function ($withNames = false) {
             'canLogin' => Route::has('login'),
             'canRegister' => Route::has('register'),
             'plans' => \App\Models\SubscriptionPlan::orderBy('price_monthly')->get(),
+            'googleClientId' => config('services.google.client_id'),
             ]);
         }
         );
@@ -252,6 +253,7 @@ $registerCentralRoutes = function ($withNames = false) {
             Route::middleware('auth')->group(function () use ($withNames) {
             $edit = Route::get('/profile', [ProfileController::class , 'edit']);
             $update = Route::patch('/profile', [ProfileController::class , 'update']);
+            $updatePict = Route::post('/profile/picture', [ProfileController::class , 'updatePicture']);
             $dest = Route::delete('/profile', [ProfileController::class , 'destroy']);
 
             // Settings Routes
@@ -273,6 +275,7 @@ $registerCentralRoutes = function ($withNames = false) {
                 if ($withNames) {
                     $edit->name('profile.edit');
                     $update->name('profile.update');
+                    $updatePict->name('profile.update-picture');
                     $dest->name('profile.destroy');
                 }
             }
@@ -284,6 +287,7 @@ $registerCentralRoutes = function ($withNames = false) {
             if ($withNames) {
                 Route::middleware('guest')->group(function () {
                     Route::post('login', [AuthenticatedSessionController::class , 'store'])->name('login');
+                    Route::post('login/google', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'handleGoogleLogin'])->name('admin.login.google');
                     Route::post('register', [RegisteredUserController::class , 'store'])->name('register');
                 }
                 );

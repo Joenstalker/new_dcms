@@ -33,17 +33,23 @@ defineProps({
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <tr v-for="patient in patients" :key="patient.id">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{{ patient.id }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</div>
+                                <div class="flex items-center gap-3">
+                                    <div class="h-10 w-10 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+                                        <img :src="patient.photo_url" class="h-full w-full object-cover">
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900 border-b border-gray-100 mb-0.5">#{{ patient.id }}</div>
+                                        <div class="text-sm font-black text-gray-900 uppercase tracking-tight">{{ patient.first_name }} {{ patient.last_name }}</div>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900">{{ patient.phone || 'N/A' }}</div>

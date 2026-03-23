@@ -18,7 +18,7 @@ class BookingController extends Controller
      */
     public function create()
     {
-        $dentists = User::role('Dentist')->get(['id', 'name', 'email']);
+        $dentists = User::role('Dentist')->get(['id', 'name', 'email', 'profile_picture']);
         $services = Service::approved()->get(['id', 'name', 'description', 'price']);
         
         return Inertia::render('Tenant/Booking/PublicBooking', [
@@ -43,7 +43,7 @@ class BookingController extends Controller
             'service' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'dentist_id' => 'nullable|exists:users,id',
-            'photo' => 'nullable|image|max:2048', // 2MB max
+            'photo' => 'required|image|max:2048', // 2MB max
         ]);
 
         // Generate a unique booking reference

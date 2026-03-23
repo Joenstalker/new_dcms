@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     stats: Object,
@@ -12,6 +12,21 @@ const currentTab = ref('overview');
 
 const form = useForm({
     status: '',
+});
+
+const page = usePage();
+const user = computed(() => page.props.auth.user);
+const roles = computed(() => user.value?.roles || []);
+
+const isOwner = computed(() => roles.value.includes('Owner'));
+const isDentist = computed(() => roles.value.includes('Dentist'));
+const isAssistant = computed(() => roles.value.includes('Assistant'));
+
+const portalName = computed(() => {
+    if (isOwner.value) return 'Clinic Owner Portal';
+    if (isDentist.value) return 'Dentist Portal';
+    if (isAssistant.value) return 'Assistant Portal';
+    return 'Staff Portal';
 });
 
 const updateStatus = (concern, newStatus) => {
@@ -29,7 +44,7 @@ const updateStatus = (concern, newStatus) => {
         <template #header>
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                    Clinic Dashboard
+                    {{ portalName }}
                 </h2>
                 <!-- Tabs -->
                 <div class="flex bg-gray-100 p-1 rounded-xl">
@@ -53,29 +68,52 @@ const updateStatus = (concern, newStatus) => {
                 <div v-if="currentTab === 'overview'" class="space-y-8 animate-in fade-in duration-500">
                     <!-- Stat Cards -->
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Daily Appointments (Visible to All) -->
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-blue-500 transition-hover hover:-translate-y-1 duration-300">
-                            <div class="text-xs font-bold text-blue-500 uppercase tracking-wide mb-1">Daily Appointments</div>
+                            <div class="text-xs font-bold text-blue-500 uppercase tracking-wide mb-1">
+                                {{ isDentist ? 'My Appointments' : 'Daily Appointments' }}
+                            </div>
                             <div class="text-3xl font-black text-gray-900">{{ stats.daily_appointments }}</div>
                         </div>
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-green-500 transition-hover hover:-translate-y-1 duration-300">
+
+                        <!-- Monthly Revenue (Owner Only) -->
+                        <div v-if="isOwner" class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-green-500 transition-hover hover:-translate-y-1 duration-300">
                             <div class="text-xs font-bold text-green-500 uppercase tracking-wide mb-1">Monthly Revenue</div>
                             <div class="text-3xl font-black text-gray-900">₱{{ stats.monthly_revenue }}</div>
                         </div>
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-purple-500 transition-hover hover:-translate-y-1 duration-300">
+
+                        <!-- Total Patients (Owner & Assistant) -->
+                        <div v-if="isOwner || isAssistant" class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-purple-500 transition-hover hover:-translate-y-1 duration-300">
                             <div class="text-xs font-bold text-purple-500 uppercase tracking-wide mb-1">Total Patients</div>
                             <div class="text-3xl font-black text-gray-900">{{ stats.total_patients }}</div>
                         </div>
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-yellow-500 transition-hover hover:-translate-y-1 duration-300">
+
+                        <!-- Pending Bookings (Owner & Assistant) -->
+                        <div v-if="isOwner || isAssistant" class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-yellow-500 transition-hover hover:-translate-y-1 duration-300">
                             <div class="text-xs font-bold text-yellow-500 uppercase tracking-wide mb-1">Pending Bookings</div>
                             <div class="text-3xl font-black text-gray-900">{{ stats.pending_appointments }}</div>
+                        </div>
+
+                        <!-- Dentist Specific: Assigned Patients Placeholder -->
+                        <div v-if="isDentist" class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-orange-500 transition-hover hover:-translate-y-1 duration-300">
+                            <div class="text-xs font-bold text-orange-500 uppercase tracking-wide mb-1">Assigned Patients</div>
+                            <div class="text-3xl font-black text-gray-900 px-1">--</div>
                         </div>
                     </div>
 
                     <div class="overflow-hidden bg-white shadow-sm sm:rounded-3xl p-8 border border-gray-100 relative group">
                         <div class="relative z-10">
-                            <h3 class="text-2xl font-black text-gray-900 mb-2">Welcome Back! 👋</h3>
+                            <h3 class="text-2xl font-black text-gray-900 mb-2">
+                                Welcome Back, {{ user.name.split(' ')[0] }}! 👋
+                            </h3>
                             <p class="text-gray-500 leading-relaxed max-w-2xl">
-                                Your dental clinic management dashboard is ready. You have <span class="text-blue-600 font-bold underline">{{ stats.daily_appointments }} appointments scheduled for today</span>.
+                                <span v-if="isOwner">You are currently in the <strong>Admin Control Center</strong>. Manage your clinic operations and staff efficiently.</span>
+                                <span v-else-if="isDentist">You are in the <strong>Dentist Portal</strong>. View your assigned treatments and patient records.</span>
+                                <span v-else-if="isAssistant">You are in the <strong>Assistant Portal</strong>. Manage appointments and patient inquiries.</span>
+                                <br v-if="stats.daily_appointments > 0"/>
+                                <span v-if="stats.daily_appointments > 0" class="mt-2 block">
+                                    You have <span class="text-blue-600 font-bold underline">{{ stats.daily_appointments }} appointments</span> scheduled for today.
+                                </span>
                             </p>
                         </div>
                         <div class="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700">
@@ -128,11 +166,11 @@ const updateStatus = (concern, newStatus) => {
                                         </td>
                                         <td class="py-6 px-4 text-right">
                                             <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button @click="updateStatus(concern, 'resolved')" title="Mark as Resolved" 
+                                                <button v-if="isOwner || isAssistant" @click="updateStatus(concern, 'resolved')" title="Mark as Resolved" 
                                                     class="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
                                                     ✅
                                                 </button>
-                                                <button @click="updateStatus(concern, 'in_progress')" title="Mark as In Progress" 
+                                                <button v-if="isOwner || isAssistant" @click="updateStatus(concern, 'in_progress')" title="Mark as In Progress" 
                                                     class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
                                                     ⏳
                                                 </button>

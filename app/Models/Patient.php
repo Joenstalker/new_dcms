@@ -30,6 +30,7 @@ class Patient extends Model
         'notes',
         'emergency_contact',
         'emergency_phone',
+        'photo_path',
     ];
 
     /**
@@ -54,6 +55,23 @@ class Patient extends Model
         'emergency_contact',
         'emergency_phone',
     ];
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['full_name', 'photo_url'];
+
+    /**
+     * Get the patient's photo URL.
+     */
+    public function getPhotoUrlAttribute(): string
+    {
+        return $this->photo_path 
+            ? asset('storage/' . $this->photo_path) 
+            : 'https://ui-avatars.com/api/?name=' . urlencode($this->getFullNameAttribute()) . '&color=7F9CF5&background=EBF4FF';
+    }
 
     /**
      * Boot the model.

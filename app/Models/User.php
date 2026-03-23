@@ -28,6 +28,7 @@ class User extends Authenticatable
         'password',
         'is_admin',
         'calendar_color',
+        'profile_picture',
     ];
 
     /**
@@ -52,6 +53,31 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
         ];
+    }
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['profile_picture_url'];
+
+    /**
+     * Get the profile picture URL.
+     *
+     * @return string
+     */
+    public function getProfilePictureUrlAttribute(): string
+    {
+        if (!$this->profile_picture) {
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
+        }
+
+        if (str_starts_with($this->profile_picture, 'data:image')) {
+            return $this->profile_picture;
+        }
+
+        return asset('storage/' . $this->profile_picture);
     }
 
     /**

@@ -1,9 +1,14 @@
 <template>
     <div class="p-6 max-w-7xl mx-auto space-y-6">
         <div class="flex justify-between items-center bg-white p-6 rounded-lg shadow">
-            <div>
-                <h2 class="text-3xl font-bold text-gray-800">{{ patient.first_name }} {{ patient.last_name }}</h2>
-                <p class="text-gray-500 mt-1">Patient ID: #{{ patient.id }}</p>
+            <div class="flex items-center gap-6">
+                <div class="h-24 w-24 rounded-3xl overflow-hidden border-4 border-white shadow-xl flex-shrink-0 bg-blue-50">
+                    <img :src="patient.photo_url" class="h-full w-full object-cover">
+                </div>
+                <div>
+                    <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tight">{{ patient.first_name }} {{ patient.last_name }}</h2>
+                    <p class="text-blue-500 font-bold text-xs uppercase tracking-widest mt-1">Patient ID: #{{ patient.id }}</p>
+                </div>
             </div>
             <div class="flex items-center gap-4">
                 <Link :href="`/patients/${patient.id}/edit`" class="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition text-sm font-medium">

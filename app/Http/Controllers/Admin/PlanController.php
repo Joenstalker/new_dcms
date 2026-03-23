@@ -198,7 +198,8 @@ class PlanController extends Controller
     public function pushUpdates(SubscriptionPlan $plan, \App\Services\FeatureOTAUpdateService $otaService): RedirectResponse
     {
         try {
-            $notifiedCount = $otaService->pushPlanUpdates($plan);
+            $batch = $otaService->pushPlanUpdates($plan)->dispatch();
+            $notifiedCount = $batch->totalJobs;
 
             AuditLog::record(
                 action: 'plan.features_pushed',
@@ -207,7 +208,7 @@ class PlanController extends Controller
                 targetId: (string) $plan->id
             );
 
-            return back()->with('success', "Updates pushed successfully! {$notifiedCount} tenants notified.");
+            return back()->with('success', "Updates pushed successfully! {$notifiedCount} tenants notified (Job ID: {$batch->id}).");
         } catch (\Exception $e) {
             Log::error('OTA Push Error: ' . $e->getMessage());
             return back()->with('error', 'Push failed: ' . $e->getMessage());

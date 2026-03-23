@@ -6,6 +6,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\StaffInvitation;
 
 class StaffController extends Controller
 {
@@ -40,19 +43,37 @@ class StaffController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
             'role' => 'required|string|exists:roles,name',
         ]);
+
+        $randomPassword = Str::random(12);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => bcrypt($request->password),
+            'password' => bcrypt($randomPassword),
         ]);
 
         $user->assignRole($request->role);
 
-        return redirect()->back()->with('success', 'Staff member created successfully.');
+        // Send Invitation Email
+        try {
+            $tenant = tenant();
+            $tenantUrl = request()->getScheme() . '://' . request()->getHost();
+            
+            Mail::to($user->email)->send(new StaffInvitation(
+                name: $user->name,
+                email: $user->email,
+                password: $randomPassword,
+                role: $request->role,
+                tenantName: $tenant->clinic_name ?? $tenant->id,
+                tenantUrl: $tenantUrl
+            ));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Staff invitation email failed: ' . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Staff member created successfully and invitation sent.');
     }
 
     public function edit(User $staff)

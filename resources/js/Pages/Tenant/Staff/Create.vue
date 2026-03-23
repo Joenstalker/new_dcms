@@ -24,11 +24,7 @@
                             <div v-if="form.errors.email" class="text-red-500 text-xs mt-1">{{ form.errors.email }}</div>
                         </div>
 
-                        <div class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700">Initial Password</label>
-                            <input type="password" v-model="form.password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                            <div v-if="form.errors.password" class="text-red-500 text-xs mt-1">{{ form.errors.password }}</div>
-                        </div>
+                        <!-- Password removed: will be generated automatically -->
 
                         <div class="mt-4">
                             <label class="block text-sm font-medium text-gray-700">Role</label>
@@ -64,7 +60,6 @@ const props = defineProps({
 const form = useForm({
     name: '',
     email: '',
-    password: '',
     role: ''
 });
 

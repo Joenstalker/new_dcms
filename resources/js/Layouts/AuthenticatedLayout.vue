@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
+import ProfileDropdown from '@/Components/ProfileDropdown.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 
@@ -240,18 +241,7 @@ const handleLogout = () => {
                 <div class="flex items-center space-x-4">
                     <ThemeSwitcher />
                     <NotificationBell type="tenant" />
-                    <Link 
-                        :href="route('profile.edit')"
-                        class="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-base-200 transition-all duration-200 border border-transparent hover:border-base-300"
-                    >
-                        <div 
-                            class="h-8 w-8 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm"
-                            :style="{ backgroundColor: primaryColor }"
-                        >
-                            {{ user.name.charAt(0) }}
-                        </div>
-                        <span class="hidden sm:inline text-sm font-bold text-base-content/70">Account</span>
-                    </Link>
+                    <ProfileDropdown />
                 </div>
             </header>
 
@@ -399,10 +389,16 @@ const handleLogout = () => {
                     <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center gap-4 min-w-0">
                             <div 
-                                class="h-11 w-11 rounded-2xl flex items-center justify-center text-white font-black flex-shrink-0 shadow-lg shadow-primary/10"
+                                class="h-11 w-11 rounded-2xl flex items-center justify-center text-white font-black flex-shrink-0 shadow-lg shadow-primary/10 overflow-hidden"
                                 :style="{ backgroundColor: primaryColor }"
                             >
-                                {{ user.name.charAt(0) }}
+                                <img 
+                                    v-if="user?.profile_picture_url" 
+                                    :src="user.profile_picture_url" 
+                                    class="h-full w-full object-cover"
+                                    :alt="user?.name"
+                                />
+                                <span v-else>{{ user.name.charAt(0) }}</span>
                             </div>
                             <div class="truncate">
                                 <p class="text-xs font-black truncate text-base-content">{{ user.name }}</p>

@@ -11,12 +11,12 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['email' => 'admin@dcms.com'],
-            [
-                'name' => 'DCMS Admin',
-                'password' => Hash::make('password'),
-                'is_admin' => true,
-            ]
+        ['email' => 'dcmsapps@gmail.com'],
+        [
+            'name' => 'DCMS Admin',
+            'password' => Hash::make('password'),
+            'is_admin' => true,
+        ]
         );
     }
 }

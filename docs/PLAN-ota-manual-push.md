@@ -6,7 +6,7 @@
 ## Phase 0: Socratic Gate (Clarification Required)
 Before finalizing the technical implementation steps, the following strategic questions need to be answered to ensure the system behaves exactly as expected:
 
-1. **Trigger Location**: Should the "Push OTA Update" button be located on the **Feature** management page (easiest to push one feature to all its plans), or on the **Subscription Plan** page (easiest to push multiple new features for a specific plan)? Answer: on the **Subscription Plan** page
+1. **Trigger Location**: Should the "Push OTA Update" button be located on the **Feature** management page (easiest to push one feature to all its plans), or on the **Subscription Plan** page (easiest to push multiple new features for a specific plan)? Answer: on the **Subscription Plan** page (I want that when I push update in the premium all tenants including those who did not avail the said premium will be notified because it gives advertisment to think them avail the said plan.)
 2. **Notification Batching**: If an admin stages 3 new features over a week and then clicks "Push", should the system consolidate them into **one digest email**, or fire **three separate emails**? Answer: one digest email
 3. **Admin Visibility**: Do we need to add a visual indicator (like a "Staged" vs "Pushed" badge) in the Admin panel so the admin knows which features are currently waiting to be pushed? Answer: yes
 

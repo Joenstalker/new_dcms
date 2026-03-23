@@ -52,6 +52,12 @@
                     <label class="block text-sm font-medium text-gray-700">Last Visit Time</label>
                     <input type="datetime-local" v-model="form.last_visit_time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Profile Photo <span class="text-red-500">*</span></label>
+                    <input type="file" @input="form.photo = $event.target.files[0]" required class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    <div v-if="form.errors.photo" class="text-red-500 text-sm mt-1">{{ form.errors.photo }}</div>
+                </div>
             </div>
 
             <div>
@@ -96,6 +102,7 @@ const form = useForm({
     operation_history: '',
     balance: 0,
     last_visit_time: '',
+    photo: null,
 });
 
 const submit = () => {

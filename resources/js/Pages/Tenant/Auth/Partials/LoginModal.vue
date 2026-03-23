@@ -32,10 +32,22 @@ const recaptchaForgotRef = ref(null);
 // Remember email in localStorage
 const savedEmail = ref('');
 
-// Load reCAPTCHA script on mount
+// Load scripts on mount
 onMounted(() => {
-    // reCAPTCHA script is now loaded globally from app.blade.php
-    // Wait for grecaptcha to be available
+    // Load Google GIS script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    script.onload = () => {
+        if (props.googleClientId) {
+            initializeGoogleSignIn();
+        }
+    };
+
+    // reCAPTCHA logic...
     const checkRecaptcha = setInterval(() => {
         if (window.grecaptcha && props.recaptchaSiteKey) {
             clearInterval(checkRecaptcha);
@@ -268,6 +280,9 @@ const resetForm = () => {
     recaptchaTokenForgot.value = '';
 };
 
+
+
+
 const close = () => {
     emit('close');
     setTimeout(() => {
@@ -356,6 +371,7 @@ const close = () => {
                             :style="{ backgroundColor: brandingColor }">
                             {{ isLoading ? 'Logging in...' : 'Login to the Clinic' }}
                         </button>
+
 
                         <!-- Forgot Password Link -->
                         <div class="text-center">

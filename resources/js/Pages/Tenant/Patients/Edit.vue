@@ -18,12 +18,15 @@ const form = useForm({
     operation_history: props.patient.operation_history || '',
     balance: props.patient.balance || 0,
     last_visit_time: props.patient.last_visit_time || '',
+    photo: null,
+    _method: 'put',
 });
 
 const submit = () => {
-    form.put(`/patients/${props.patient.id}`, {
+    form.post(`/patients/${props.patient.id}`, {
+        preserveScroll: true,
         onSuccess: () => {
-            // Optional: flash message is handled by Inertia
+            // Success handled by Inertia
         }
     });
 };
@@ -85,6 +88,17 @@ const submit = () => {
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Last Visit Time</label>
                         <input type="datetime-local" v-model="form.last_visit_time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Profile Photo</label>
+                        <div class="mt-2 flex items-center gap-4">
+                            <div class="h-16 w-16 rounded-xl overflow-hidden bg-gray-100 border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                <img :src="patient.photo_url" class="h-full w-full object-cover">
+                            </div>
+                            <input type="file" @input="form.photo = $event.target.files[0]" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        </div>
+                        <div v-if="form.errors.photo" class="text-red-500 text-sm mt-1">{{ form.errors.photo }}</div>
                     </div>
                 </div>
 

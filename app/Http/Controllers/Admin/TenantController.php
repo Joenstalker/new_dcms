@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Tenant;
 use App\Models\PendingRegistration;
+use App\Models\User;
 use App\Mail\TenantApproved;
 use App\Mail\TenantRejected;
 use Illuminate\Http\Request;
@@ -41,8 +42,9 @@ class TenantController extends Controller
 
         $plans = SubscriptionPlan::all();
         $tenants = $query->get()->filter(function ($tenant) use ($status) {
-            if (!$status)
+            if (!$status) {
                 return true;
+            }
             return $tenant->status === $status;
         })->map(function ($tenant) {
             $latestSubscription = $tenant->subscriptions->where('stripe_status', 'active')->last()
@@ -103,8 +105,8 @@ class TenantController extends Controller
             $tenants->count(),
             $perPage,
             $page,
-        ['path' => $request->url(), 'query' => $request->query()]
-            );
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         return Inertia::render('Admin/Tenants/Index', [
             'tenants' => $paginatedTenants,
@@ -333,7 +335,7 @@ class TenantController extends Controller
             tenancy()->initialize($tenant);
 
             // Create admin user in tenant database
-            $user = \App\Models\User::create([
+            $user = User::create([
                 'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
                 'email' => $pendingRegistration->email,
                 'password' => Hash::make($pendingRegistration->password),
@@ -376,7 +378,7 @@ class TenantController extends Controller
         }
         catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Failed to approve registration: ' . $e->getMessage());
+            Log::error('Failed to approve registration: ' . $e->getMessage());
             return back()->with('error', 'Failed to approve registration. Please try again.');
         }
     }
@@ -424,7 +426,7 @@ class TenantController extends Controller
             return back()->with('success', 'Registration rejected successfully. The applicant has been notified.');
         }
         catch (\Exception $e) {
-            \Log::error('Failed to reject registration: ' . $e->getMessage());
+            Log::error('Failed to reject registration: ' . $e->getMessage());
             return back()->with('error', 'Failed to reject registration. Please try again.');
         }
     }
@@ -457,7 +459,7 @@ class TenantController extends Controller
             return true;
         }
         catch (\Exception $e) {
-            \Log::error('Failed to process refund: ' . $e->getMessage());
+            Log::error('Failed to process refund: ' . $e->getMessage());
             return false;
         }
     }
@@ -506,10 +508,10 @@ class TenantController extends Controller
                     tenancy()->initialize($tenant);
                     
                     // Check if user already exists
-                    $user = \App\Models\User::where('email', $registration->email)->first();
+                    $user = User::where('email', $registration->email)->first();
                     
                     if (!$user) {
-                        $user = \App\Models\User::create([
+                        $user = User::create([
                             'name' => $registration->first_name . ' ' . $registration->last_name,
                             'email' => $registration->email,
                             'password' => Hash::make($registration->password),

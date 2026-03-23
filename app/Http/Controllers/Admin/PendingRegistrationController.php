@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Mail\TenantApproved;
 use App\Mail\TenantRejected;
-use App\Mail\RegistrationRefunded;
 use Stancl\Tenancy\Database\Models\Domain;
 use Carbon\Carbon;
 
@@ -57,12 +57,12 @@ class PendingRegistrationController extends Controller
 
             // Status badge
             $reg->status_badge = match ($reg->status) {
-                    'pending' => 'warning',
-                    'approved' => 'success',
-                    'rejected' => 'danger',
-                    'refunded' => 'info',
-                    default => 'secondary',
-                };
+                'pending' => 'warning',
+                'approved' => 'success',
+                'rejected' => 'danger',
+                'refunded' => 'info',
+                default => 'secondary',
+            };
 
             // Enhancement fields for UI toggles
             $reg->reminder_enabled = $reg->isReminderEnabled();
@@ -79,8 +79,8 @@ class PendingRegistrationController extends Controller
             $pendingRegistrations->count(),
             $perPage,
             $page,
-        ['path' => $request->url(), 'query' => $request->query()]
-            );
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         // Statistics
         $stats = [
@@ -165,7 +165,7 @@ class PendingRegistrationController extends Controller
                 tenancy()->initialize($tenant);
 
                 // Create admin user in tenant database
-                $user = \App\Models\User::create([
+                $user = User::create([
                     'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
                     'email' => $pendingRegistration->email,
                     'password' => $pendingRegistration->password,
@@ -193,7 +193,7 @@ class PendingRegistrationController extends Controller
                 tenancy()->initialize($tenant);
 
                 // Create admin user in tenant database
-                $user = \App\Models\User::create([
+                $user = User::create([
                     'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
                     'email' => $pendingRegistration->email,
                     'password' => $pendingRegistration->password,
@@ -262,7 +262,7 @@ class PendingRegistrationController extends Controller
 
             // Update pending registration status
             $pendingRegistration->update([
-                'status' => $refunded ?PendingRegistration::STATUS_REFUNDED : PendingRegistration::STATUS_REJECTED,
+                'status' => $refunded ? PendingRegistration::STATUS_REFUNDED : PendingRegistration::STATUS_REJECTED,
                 'rejected_at' => now(),
                 'admin_rejection_message' => $validated['rejection_message'],
             ]);

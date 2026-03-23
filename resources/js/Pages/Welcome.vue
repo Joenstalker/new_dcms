@@ -11,6 +11,7 @@ import RegistrationModal from '@/Components/RegistrationModal.vue';
 import PaymentModal from '@/Components/PaymentModal.vue';
 import ContactModal from '@/Components/ContactModal.vue';
 import Swal from 'sweetalert2';
+import axios from 'axios';
 
 import logoImage from '../../../public/images/dcms-logo.png';
 import heroImage from '../../../public/images/dentist-model.png';
@@ -30,6 +31,9 @@ const props = defineProps({
     plans: {
         type: Array,
         default: () => [],
+    },
+    googleClientId: {
+        type: String,
     }
 });
 
@@ -41,6 +45,8 @@ const isContactModalOpen = ref(false);
 const selectedPlan = ref(null);
 const registrationData = ref(null);
 const sessionId = ref(null);
+const googleButton = ref(null);
+const isGoogleLoading = ref(false);
 
 // Login form
 const form = useForm({
@@ -81,6 +87,7 @@ const closeLoginModal = () => {
     form.reset();
     form.clearErrors();
     loginRecaptchaToken.value = '';
+    isGoogleLoading.value = false;
     if (window.grecaptcha && loginRecaptchaWidgetId.value !== null) {
         try {
             window.grecaptcha.reset(loginRecaptchaWidgetId.value);
@@ -154,6 +161,59 @@ window.onLoginRecaptchaSuccess = onLoginRecaptchaSuccess;
 window.onLoginRecaptchaExpired = onLoginRecaptchaExpired;
 window.onLoginRecaptchaError = onLoginRecaptchaError;
 
+// Google Sign-In Logic
+const initializeGoogleSignIn = () => {
+    if (window.google && props.googleClientId) {
+        window.google.accounts.id.initialize({
+            client_id: props.googleClientId,
+            callback: handleGoogleCredentialResponse,
+            context: 'signin',
+            ux_mode: 'popup',
+            auto_select: false,
+        });
+        
+        if (googleButton.value) {
+            window.google.accounts.id.renderButton(googleButton.value, {
+                theme: 'outline',
+                size: 'large',
+                width: 320,
+                text: 'continue_with',
+                shape: 'pill',
+            });
+        }
+    }
+};
+
+const handleGoogleCredentialResponse = async (response) => {
+    isGoogleLoading.value = true;
+    try {
+        const res = await axios.post(route('admin.login.google', { absolute: false }), {
+            credential: response.credential,
+        });
+
+        if (res.data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Login Successful',
+                text: 'Welcome to the Admin Dashboard!',
+                timer: 1500,
+                showConfirmButton: false,
+            }).then(() => {
+                window.location.href = res.data.redirect;
+            });
+        }
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Authentication Failed',
+            text: error.response?.data?.message || 'Google login failed',
+            confirmButtonColor: '#2B7CB3',
+        });
+    } finally {
+        isGoogleLoading.value = false;
+    }
+};
+
 // Initialize reCAPTCHA for login modal
 const initLoginRecaptcha = () => {
     if (!window.grecaptcha || !recaptchaSiteKey.value) return;
@@ -193,14 +253,39 @@ const initLoginRecaptcha = () => {
 watch(() => isLoginModalOpen.value, (newVal) => {
     if (newVal) {
         loginRecaptchaToken.value = '';
-        // Use nextTick to ensure the DOM has rendered the reCAPTCHA container
+        // Use nextTick to ensure the DOM has rendered the reCAPTCHA and Google containers
         nextTick(() => {
             setTimeout(() => {
                 initLoginRecaptcha();
+                
+                // Initialize/Render Google Login if available
+                if (window.google && props.googleClientId) {
+                    initializeGoogleSignIn();
+                } else if (props.googleClientId) {
+                    // Script might still be loading
+                    loadGoogleScript();
+                }
             }, 200);
         });
     }
 });
+
+const loadGoogleScript = () => {
+    if (document.getElementById('google-gsi-script')) return;
+    
+    const script = document.createElement('script');
+    script.id = 'google-gsi-script';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    script.onload = () => {
+        if (isLoginModalOpen.value) {
+            initializeGoogleSignIn();
+        }
+    };
+};
 
 // Sticky header scroll effect
 const isScrolled = ref(false);
@@ -642,15 +727,25 @@ onUnmounted(() => {
                     <div class="pt-2">
                         <PrimaryButton
                             class="w-full justify-center py-3 text-sm font-bold bg-[#2B7CB3] hover:bg-[#24699A] focus:bg-[#24699A] active:bg-[#1e5a82] transition-all duration-300 flex items-center justify-center gap-2"
-                            :class="{ 'opacity-75 cursor-wait': form.processing }"
-                            :disabled="form.processing"
+                            :class="{ 'opacity-75 cursor-wait': form.processing || isGoogleLoading }"
+                            :disabled="form.processing || isGoogleLoading"
                         >
                             <svg v-if="form.processing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            <span>{{ form.processing ? 'Signing in...' : 'Log into Dashboard' }}</span>
+                            <span>{{ (form.processing || isGoogleLoading) ? 'Signing in...' : 'Log into Dashboard' }}</span>
                         </PrimaryButton>
+                    </div>
+
+                    <div v-if="googleClientId" class="relative flex items-center gap-4 my-6">
+                        <div class="flex-grow border-t border-gray-200"></div>
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">or</span>
+                        <div class="flex-grow border-t border-gray-200"></div>
+                    </div>
+
+                    <div v-if="googleClientId" class="flex justify-center">
+                        <div ref="googleButton" class="w-full max-w-[320px]"></div>
                     </div>
 
                     <!-- reCAPTCHA Notice -->

@@ -85,19 +85,18 @@ class TenantController extends Controller
             ->get()
             ->map(function ($tenant) {
             return [
-            'id' => $tenant->id,
-            'name' => $tenant->name,
-            'status' => $tenant->status,
-            'database_name' => $tenant->getDatabaseName(),
-            'database_connection' => $tenant->getDatabaseConnectionName(),
-            'uses_hashed_naming' => $tenant->usesHashedDatabaseName(),
-            'domains' => $tenant->domains->map(function ($domain) {
+                'id' => $tenant->id,
+                'name' => $tenant->name,
+                'status' => $tenant->status,
+                'database_name' => $tenant->getDatabaseName(),
+                'database_connection' => $tenant->getDatabaseConnectionName(),
+                'uses_hashed_naming' => $tenant->usesHashedDatabaseName(),
+                'domains' => $tenant->domains->map(function ($domain) {
                     return $domain->domain;
-                }
-                ),
+                }),
                 'created_at' => $tenant->created_at->toIso8601String(),
                 'updated_at' => $tenant->updated_at->toIso8601String(),
-                ];
+            ];
             });
 
         return response()->json([
@@ -212,7 +211,7 @@ class TenantController extends Controller
         );
 
         // Generate connection name
-        $tenantId = (string)\Illuminate\Support\Str::uuid();
+        $tenantId = (string) \Illuminate\Support\Str::uuid();
         $connectionName = TenantDatabaseHelper::generateConnectionName($tenantId);
 
         // Create the tenant

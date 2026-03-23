@@ -3,21 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\SubscriptionPlan;
-use App\Models\Tenant;
-use App\Models\User;
 use App\Mail\RegistrationPending;
 use App\Models\PendingRegistration;
+use App\Models\SubscriptionPlan;
+use App\Models\SystemSetting;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
-use Inertia\Inertia;
 use Stancl\Tenancy\Database\Models\Domain;
-use Stripe\Checkout\Session as StripeSession;
 use Stripe\StripeClient;
 
 class RegistrationController extends Controller
@@ -111,8 +109,9 @@ class RegistrationController extends Controller
             if (strlen($variant) >= 3 && !in_array($variant, $usedSubdomains)) {
                 $suggestions[] = $variant;
             }
-            if (count($suggestions) >= 3)
+            if (count($suggestions) >= 3) {
                 break;
+            }
         }
 
         // Add numeric variants if needed
@@ -122,8 +121,9 @@ class RegistrationController extends Controller
                 if (!in_array($variant, $usedSubdomains)) {
                     $suggestions[] = $variant;
                 }
-                if (count($suggestions) >= 3)
+                if (count($suggestions) >= 3) {
                     break;
+                }
             }
         }
 
@@ -187,9 +187,9 @@ class RegistrationController extends Controller
 
         try {
             // Get configurable settings from system settings
-            $defaultTimeoutMinutes = \App\Models\SystemSetting::get('pending_timeout_default_minutes', 10080);
-            $autoApproveEnabled = \App\Models\SystemSetting::get('pending_auto_approve_enabled', false);
-            $reminderEnabled = \App\Models\SystemSetting::get('pending_reminder_global_enabled', true);
+            $defaultTimeoutMinutes = SystemSetting::get('pending_timeout_default_minutes', 10080);
+            $autoApproveEnabled = SystemSetting::get('pending_auto_approve_enabled', false);
+            $reminderEnabled = SystemSetting::get('pending_reminder_global_enabled', true);
 
             // First, create or update a PendingRegistration record
             $pendingRegistration = PendingRegistration::updateOrCreate(
@@ -540,7 +540,7 @@ class RegistrationController extends Controller
             DB::commit();
 
             // Notify admins
-            $notificationService = app(\App\Services\NotificationService::class);
+            $notificationService = app(NotificationService::class);
             $notificationService->notifyAdmins(
                 'new_pending_tenant',
                 'New Tenant Pending Review',
@@ -556,7 +556,7 @@ class RegistrationController extends Controller
             );
 
             // Send pending registration email
-            Mail::to($pendingRegistration->email)->send(new \App\Mail\RegistrationPending($pendingRegistration));
+            Mail::to($pendingRegistration->email)->send(new RegistrationPending($pendingRegistration));
 
             return ['success' => true, 'already_processed' => false, 'registration' => $pendingRegistration];
         } catch (\Exception $e) {
@@ -594,7 +594,7 @@ class RegistrationController extends Controller
                         'multi_branch' => $plan->hasFeature('multi_branch'),
                     ],
                 ];
-        }),
+            }),
         ]);
     }
 
@@ -605,7 +605,7 @@ class RegistrationController extends Controller
     public function accessTenant(Request $request, $subdomain)
     {
         // Find the tenant by domain
-        $domain = \Stancl\Tenancy\Database\Models\Domain::where('domain', $subdomain)->first();
+        $domain = Domain::where('domain', $subdomain)->first();
 
         if (!$domain) {
             abort(404, 'Clinic not found');
@@ -617,10 +617,10 @@ class RegistrationController extends Controller
         // Check if tenant is pending verification
         if ($tenant->status === 'pending') {
             // Find associated pending registration to get correct expiry time
-            $pendingRegistration = \App\Models\PendingRegistration::where('subdomain', $subdomain)
-                ->where('status', \App\Models\PendingRegistration::STATUS_PENDING)
+            $pendingRegistration = PendingRegistration::where('subdomain', $subdomain)
+                ->where('status', PendingRegistration::STATUS_PENDING)
                 ->first();
-            $timeoutMinutes = $pendingRegistration ? $pendingRegistration->getEffectiveTimeoutMinutes() : \App\Models\SystemSetting::get('pending_timeout_default_minutes', 10080);
+            $timeoutMinutes = $pendingRegistration ? $pendingRegistration->getEffectiveTimeoutMinutes() : SystemSetting::get('pending_timeout_default_minutes', 10080);
 
             return response()->view('errors.pending', [
                 'tenant' => $tenant,
