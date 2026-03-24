@@ -84,7 +84,11 @@ onUnmounted(() => {
 });
 
 const brandingColor = computed(() => props.tenant?.branding_color || '#3b82f6');
-const logoUrl = computed(() => props.tenant?.logo_path ? `/storage/${props.tenant.logo_path}` : null);
+const logoUrl = computed(() => {
+    const logopath = props.tenant?.logo_login_path || props.tenant?.logo_path;
+    return logopath ? `/storage/${logopath}` : null;
+});
+const fontFamily = computed(() => props.tenant?.font_family || 'font-sans');
 
 const renderRecaptcha = () => {
     if (step.value === 'login' && recaptchaLoginRef.value) {
@@ -292,7 +296,7 @@ const close = () => {
 </script>
 
 <template>
-    <div v-if="show" class="fixed inset-0 z-[100] overflow-y-auto" role="dialog" aria-modal="true">
+    <div v-if="show" class="fixed inset-0 z-[100] overflow-y-auto" :class="fontFamily" role="dialog" aria-modal="true">
         <!-- Backdrop -->
         <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="close"></div>
 

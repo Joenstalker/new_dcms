@@ -16,12 +16,63 @@ const branding = computed(() => page.props.branding || {});
 const sidebarPosition = computed(() => branding.value.sidebar_position || 'left');
 const isRightSidebar = computed(() => sidebarPosition.value === 'right');
 
-// Primary color with auto contrast calculation
-const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+// Check if custom branding should be applied to the current user
+const shouldApplyBranding = computed(() => {
+    // If Admin/Owner, always apply branding
+    if (roles.value.includes('Owner') || roles.value.includes('Admin')) return true;
+    
+    const config = page.props.tenant?.portal_config || { apply_to: 'all', selected_staff: [] };
+    
+    if (config.apply_to === 'all') return true;
+    
+    if (config.apply_to === 'specific') {
+        return config.selected_staff.includes(user.value.id);
+    }
+    
+    return true; // Default to true if config is missing
+});
+
+// Primary color: Use tenant's branding_color if allowed, otherwise fallback to system branding
+const primaryColor = computed(() => {
+    if (!shouldApplyBranding.value) return branding.value.primary_color || '#0ea5e9';
+    return page.props.tenant?.branding_color || branding.value.primary_color || '#0ea5e9';
+});
+
+// Typography: Use tenant's granular font_family if allowed
+const fonts = computed(() => {
+    const defaults = {
+        header: 'font-sans',
+        sidebar: 'font-sans',
+        names: 'font-sans',
+        general: 'font-sans'
+    };
+    
+    const sysFont = branding.value.font_family || 'font-sans';
+    const sysDefaults = {
+        header: sysFont,
+        sidebar: sysFont,
+        names: sysFont,
+        general: sysFont
+    };
+
+    if (!shouldApplyBranding.value) return sysDefaults;
+    
+    const tenantFonts = page.props.tenant?.font_family;
+    
+    // Handle old string format or missing fonts
+    if (typeof tenantFonts === 'string') {
+        return { ...defaults, general: tenantFonts };
+    }
+    
+    return { ...defaults, ...tenantFonts };
+});
 
 // Platform info
-const platformName = computed(() => branding.value.platform_name || 'DCMS');
-const platformLogo = computed(() => branding.value.platform_logo ? '/storage/logos/' + branding.value.platform_logo : null);
+const platformName = computed(() => page.props.tenant?.name || branding.value.platform_name || 'DCMS');
+const platformLogo = computed(() => {
+    if (page.props.tenant?.logo_path) return '/storage/' + page.props.tenant.logo_path;
+    return branding.value.platform_logo ? '/storage/logos/' + branding.value.platform_logo : null;
+});
 const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');
 
 const isSidebarOpen = ref(false);
@@ -58,56 +109,18 @@ const menuCategories = computed(() => {
         {
             title: 'Main Navigation',
             items: [
-                { name: 'Dashboard', route: dashboardRoute.value, icon: 'home' },
-                { 
-                    name: 'Appointments', 
-                    icon: 'calendar', 
-                    permissions: ['view appointments'],
-                    subItems: [
-                        { name: 'Calendar View', route: 'appointments.index', routeParams: { tab: 'calendar' }, permissions: ['view appointments'] },
-                        { name: 'Booking Queue', route: 'appointments.index', routeParams: { tab: 'queue' }, permissions: ['view appointments'] },
-                        { name: 'Walk-in', route: 'appointments.index', routeParams: { tab: 'walkin' }, permissions: ['create appointments'] },
-                    ]
-                },
-                { 
-                    name: 'Patients', 
-                    icon: 'users',
-                    route: 'patients.index',
-                    permissions: ['view patients']
-                },
-                { 
-                    name: 'Billing & POS', 
-                    icon: 'cash', 
-                    permissions: ['view billing'],
-                    subItems: [
-                        { name: 'Cashier / New Invoice', route: 'billing.index', routeParams: { tab: 'cashier' }, permissions: ['create billing'] },
-                        { name: 'Transactions', route: 'billing.index', routeParams: { tab: 'transactions' }, permissions: ['view billing'] },
-                        { name: 'Receipts', route: 'billing.index', routeParams: { tab: 'receipts' }, permissions: ['view billing'] },
-                    ]
-                },
-                { 
-                    name: 'Treatment Records', 
-                    route: 'treatments.index', 
-                    icon: 'calendar', 
-                    permissions: ['view treatments'] 
-                },
+                { name: 'Dashboard', route: dashboardRoute.value, icon: 'home', feature: 'dashboard' },
+                { name: 'Appointments', route: 'appointments.index', icon: 'calendar', feature: 'appointments', permissions: ['view appointments'] },
+                { name: 'Patients', icon: 'users', route: 'patients.index', feature: 'patients', permissions: ['view patients'] },
+                { name: 'Billing & POS', icon: 'cash', feature: 'billing', permissions: ['view billing'] },
+                { name: 'Treatment Records', route: 'treatments.index', icon: 'calendar', feature: 'treatments', permissions: ['view treatments'] },
             ]
         },
         {
             title: 'Management',
             items: [
-                { 
-                    name: 'Staff Management', 
-                    icon: 'staff', 
-                    permissions: ['view staff'],
-                    subItems: [
-                        { name: 'Staff List', route: 'staff.index', permissions: ['view staff'] },
-                        { name: 'Roles & Permissions', route: 'staff.index', routeParams: { tab: 'permissions' }, permissions: ['edit staff'] },
-                        { name: 'Add Staff', route: 'staff.create', permissions: ['create staff'] },
-                        { name: 'Schedules', route: 'staff.schedules', permissions: ['view staff'] },
-                    ]
-                },
-                { name: 'Service & Pricing', route: 'services.index', icon: 'tag', permissions: ['view services'] },
+                { name: 'Staff Management', icon: 'staff', feature: 'staff', permissions: ['view staff'] },
+                { name: 'Service & Pricing', route: 'services.index', icon: 'tag', feature: 'services', permissions: ['view services'] },
             ]
         },
         {
@@ -133,10 +146,11 @@ const menuCategories = computed(() => {
                     icon: 'cog', 
                     permissions: ['manage settings'],
                     subItems: [
-                        { name: 'Clinic Profile', route: 'settings.index', permissions: ['manage settings'] },
-                        { name: 'Operating Hours', route: 'settings.index', permissions: ['manage settings'] },
-                        { name: 'QR Code Setup', route: 'settings.index', permissions: ['manage settings'] },
-                        { name: 'Your Features', route: 'settings.features', permissions: ['manage settings'] },
+                        { name: 'Clinic Branding', route: 'settings.index', routeParams: { tab: 'branding' }, permissions: ['manage settings'] },
+                        { name: 'Operating Hours', route: 'settings.index', routeParams: { tab: 'hours' }, permissions: ['manage settings'] },
+                        { name: 'QR Code Setup', route: 'settings.index', routeParams: { tab: 'qr' }, permissions: ['manage settings'] },
+                        { name: 'Feature Management', route: 'settings.index', routeParams: { tab: 'features' }, permissions: ['manage settings'] },
+                        { name: 'Landing Designer', route: 'settings.index', routeParams: { tab: 'designer' }, permissions: ['manage settings'] },
                         { name: 'Updates', route: 'settings.updates', permissions: ['manage settings'], icon: 'refresh' },
                     ]
                 },
@@ -145,6 +159,39 @@ const menuCategories = computed(() => {
         }
     ];
 
+    // Filter by branding.enabled_features if it exists
+    const enabledFeatures = page.props.tenant?.enabled_features;
+    
+    if (enabledFeatures && Array.isArray(enabledFeatures)) {
+        return categories.map(cat => ({
+            ...cat,
+            items: cat.items.filter(item => {
+                // Feature flag check
+                if (item.feature && !enabledFeatures.includes(item.feature)) return false;
+                
+                const hasRole = item.roles ? item.roles.some(role => roles.value.includes(role)) : false;
+                const hasPermission = item.permissions ? item.permissions.some(p => user.value.permissions.includes(p)) : false;
+                const isOwner = roles.value.includes('Owner');
+                const hasRoute = item.route ? route().has(item.route) : true;
+                const noAuthDefined = !item.roles && !item.permissions;
+                
+                return (isOwner || hasRole || hasPermission || noAuthDefined) && hasRoute;
+            }).map(item => ({
+                ...item,
+                subItems: item.subItems?.filter(si => {
+                    const hasRole = si.roles ? si.roles.some(role => roles.value.includes(role)) : false;
+                    const hasPermission = si.permissions ? si.permissions.some(p => user.value.permissions.includes(p)) : false;
+                    const isOwner = roles.value.includes('Owner');
+                    const hasRoute = si.route ? route().has(si.route) : true;
+                    const noAuthDefined = !si.roles && !si.permissions;
+                    
+                    return (isOwner || hasRole || hasPermission || noAuthDefined) && hasRoute;
+                })
+            })).filter(item => item.subItems ? item.subItems.length > 0 : true)
+        })).filter(cat => cat.items.length > 0 && (cat.roles ? cat.roles.some(role => roles.value.includes(role)) : true));
+    }
+
+    // Default legacy filter if features aren't defined
     return categories.map(cat => ({
         ...cat,
         items: cat.items.filter(item => {
@@ -234,7 +281,10 @@ const handleLogout = () => {
 </script>
 
 <template>
-    <div class="drawer lg:drawer-open font-sans h-screen overflow-hidden" :class="{ 'drawer-end': isRightSidebar }">
+    <div 
+        class="drawer lg:drawer-open h-screen overflow-hidden" 
+        :class="[fonts.general, { 'drawer-end': isRightSidebar }]"
+    >
         <input id="tenant-sidebar" type="checkbox" v-model="isSidebarOpen" class="drawer-toggle" />
         
         <!-- Main Content Area -->
@@ -250,7 +300,7 @@ const handleLogout = () => {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </label>
-                    <div v-if="$slots.header" class="flex-1 min-w-0">
+                    <div v-if="$slots.header" class="flex-1 min-w-0" :class="fonts.header">
                         <slot name="header" />
                     </div>
                 </div>
@@ -275,10 +325,9 @@ const handleLogout = () => {
                         :class="[
                             isSubItemActive(sub)
                                 ? 'font-black border-primary' 
-                                : 'border-transparent text-base-content/40 hover:text-base-content/70 hover:border-base-300'
+                                : 'border-transparent text-base-content/40 hover:text-base-content/70 hover:border-base-300',
+                            fonts.sidebar
                         ]"
-                        :style="isSubItemActive(sub) ? { borderColor: primaryColor, color: primaryColor } : {}"
-                        class="whitespace-nowrap py-4 px-1 border-b-2 text-[10px] uppercase tracking-widest transition-all duration-300"
                     >
                         {{ sub.name }}
                     </Link>
@@ -310,8 +359,8 @@ const handleLogout = () => {
                             <ApplicationLogo v-else class="h-7 w-7 fill-current" :style="{ color: primaryColor }" />
                         </div>
                         <div class="truncate">
-                            <span class="text-sm font-black tracking-tight text-base-content block truncate">{{ platformName }}</span>
-                            <span class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30 block" :style="{ color: primaryColor }">Professional Portal</span>
+                            <span class="text-sm font-black tracking-tight text-base-content block truncate" :class="fonts.header">{{ platformName }}</span>
+                            <span class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30 block" :class="fonts.header" :style="{ color: primaryColor }">Professional Portal</span>
                         </div>
                     </Link>
                 </div>
@@ -343,7 +392,7 @@ const handleLogout = () => {
                                     stroke="currentColor"
                                     v-html="getIcon(item.icon)"
                                 ></svg>
-                                <span class="font-bold text-xs uppercase tracking-wider">{{ item.name }}</span>
+                                <span class="font-bold text-xs uppercase tracking-wider" :class="fonts.sidebar">{{ item.name }}</span>
                                 <div v-if="isItemActive(item)" class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm"></div>
                             </Link>
                         </div>
@@ -367,8 +416,8 @@ const handleLogout = () => {
                                 <span v-else>{{ user.name.charAt(0) }}</span>
                             </div>
                             <div class="truncate">
-                                <p class="text-xs font-black truncate text-base-content">{{ user.name }}</p>
-                                <p class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30">{{ roles[0] || 'Staff' }}</p>
+                                <p class="text-xs font-black truncate text-base-content" :class="fonts.names">{{ user.name }}</p>
+                                <p class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30" :class="fonts.header">{{ roles[0] || 'Staff' }}</p>
                             </div>
                         </div>
                         <button 

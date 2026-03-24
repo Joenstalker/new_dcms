@@ -256,22 +256,6 @@ $registerCentralRoutes = function ($withNames = false) {
             $updatePict = Route::post('/profile/picture', [ProfileController::class , 'updatePicture']);
             $dest = Route::delete('/profile', [ProfileController::class , 'destroy']);
 
-            // Settings Routes
-            $settings = Route::prefix('settings');
-            if ($withNames)
-                $settings->name('settings.');
-            $settings->group(function () use ($withNames) {
-                    $sI = Route::get('/', [\App\Http\Controllers\SettingsController::class , 'index']);
-                    $sF = Route::get('/features', [\App\Http\Controllers\SettingsController::class , 'features']);
-                    $sU = Route::patch('/', [\App\Http\Controllers\SettingsController::class , 'update']);
-                    if ($withNames) {
-                        $sI->name('index');
-                        $sF->name('features');
-                        $sU->name('update');
-                    }
-                }
-                );
-
                 if ($withNames) {
                     $edit->name('profile.edit');
                     $update->name('profile.update');

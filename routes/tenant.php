@@ -89,16 +89,16 @@ Route::middleware([
                     Route::get('reports', [\App\Http\Controllers\ReportController::class , 'index'])->name('reports.index');
 
                     // Settings
-                    Route::get('settings', [\App\Http\Controllers\SettingsController::class , 'index'])->name('settings.index');
-                    Route::post('settings', [\App\Http\Controllers\SettingsController::class , 'update'])->name('settings.update');
-
+                    Route::get('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'index'])->name('settings.index');
+                    Route::post('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'update'])->name('settings.update');
+ 
                     // Settings - Features
-                    Route::get('settings/features', [\App\Http\Controllers\SettingsController::class , 'features'])->name('settings.features');
-
+                    Route::get('settings/features', [\App\Http\Controllers\Tenant\SettingsController::class , 'features'])->name('settings.features');
+ 
                     // Settings - Updates (OTA)
-                    Route::get('settings/updates', [\App\Http\Controllers\SettingsController::class , 'updates'])->name('settings.updates');
-                    Route::post('settings/updates/apply', [\App\Http\Controllers\SettingsController::class , 'applyUpdates'])->name('settings.updates.apply');
-                    Route::get('settings/updates/check', [\App\Http\Controllers\SettingsController::class , 'checkUpdates'])->name('settings.updates.check');
+                    Route::get('settings/updates', [\App\Http\Controllers\Tenant\SettingsController::class , 'updates'])->name('settings.updates');
+                    Route::post('settings/updates/apply', [\App\Http\Controllers\Tenant\SettingsController::class , 'applyUpdates'])->name('settings.updates.apply');
+                    Route::get('settings/updates/check', [\App\Http\Controllers\Tenant\SettingsController::class , 'checkUpdates'])->name('settings.updates.check');
 
                     // Stripe Customer Portal — self-service billing (upgrade, downgrade, cancel, update card)
                     Route::get('billing-portal', [\App\Http\Controllers\BillingPortalController::class , 'redirect'])->name('billing.portal');

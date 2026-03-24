@@ -37,6 +37,11 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'hero_subtitle',
         'about_us_description',
         'logo_path',
+        'logo_login_path',
+        'logo_booking_path',
+        'font_family',
+        'enabled_features',
+        'landing_page_config',
         'qr_code_path',
     ];
 
@@ -45,7 +50,24 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      */
     protected $casts = [
         'status' => 'string',
+        'enabled_features' => 'json',
+        'landing_page_config' => 'json',
+        'font_family' => 'json',
+        'portal_config' => 'json',
     ];
+
+    /**
+     * Check if the tenant can use advanced branding customizations
+     */
+    public function canCustomizeBranding(): bool
+    {
+        // Gating: Only Pro and Ultimate plans can customize branding
+        // If no subscription, assume trial/basic (safety first)
+        $sub = $this->subscription ?? null;
+        if (!$sub || !$sub->plan) return false;
+        
+        return in_array($sub->plan->name, ['Pro', 'Ultimate']);
+    }
 
     /**
      * Default status for new tenants
@@ -164,5 +186,32 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function usesHashedDatabaseName(): bool
     {
         return !empty($this->database_name) && TenantDatabaseHelper::isHashedFormat($this->database_name);
+    }
+
+    /**
+     * Get the default enabled features for a new tenant
+     */
+    public static function getDefaultFeatures(): array
+    {
+        return [
+            'dashboard',
+            'appointments',
+            'patients',
+            'billing',
+            'treatments',
+            'staff',
+            'services',
+            'reports',
+            'settings'
+        ];
+    }
+
+    /**
+     * Check if a feature is enabled
+     */
+    public function isFeatureEnabled(string $feature): bool
+    {
+        $enabled = $this->enabled_features ?? self::getDefaultFeatures();
+        return in_array($feature, $enabled);
     }
 }

@@ -41,6 +41,11 @@ const handlePhotoUpload = (e) => {
 };
 
 const brandingColor = computed(() => props.tenant?.branding_color || '#3b82f6');
+const logoUrl = computed(() => {
+    const logopath = props.tenant?.logo_booking_path || props.tenant?.logo_path;
+    return logopath ? `/storage/${logopath}` : null;
+});
+const fontFamily = computed(() => props.tenant?.font_family || 'font-sans');
 
 // Prevent background scrolling when modal is open
 watch(() => props.show, (newVal) => {
@@ -127,7 +132,7 @@ const timeSlots = [
 </script>
 
 <template>
-    <div v-if="show" class="fixed inset-0 z-[100] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div v-if="show" class="fixed inset-0 z-[100] overflow-y-auto" :class="fontFamily" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <!-- Backdrop -->
         <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="close"></div>
 
@@ -166,6 +171,10 @@ const timeSlots = [
                     <!-- Header -->
                     <div class="px-8 pt-8 pb-4 flex justify-between items-start">
                         <div>
+                            <!-- Logo -->
+                            <div v-if="logoUrl" class="mb-4">
+                                <img :src="logoUrl" :alt="tenant?.name" class="h-12 object-contain mx-auto lg:mx-0">
+                            </div>
                             <h3 class="text-2xl font-black text-gray-900" id="modal-title">
                                 Book Appointment
                             </h3>

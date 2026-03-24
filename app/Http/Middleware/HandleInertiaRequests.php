@@ -51,7 +51,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'config' => [
                 'central_domain' => config('tenancy.central_domains.0', 'localhost'),
-                'app_url' => config('app.url'),
+                'app_url' => $request->getSchemeAndHttpHost(),
                 'recaptcha_site_key' => config('services.recaptcha.site_key', ''),
             ],
             'tenant' => tenant(),

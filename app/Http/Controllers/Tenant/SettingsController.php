@@ -1,12 +1,18 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Tenant;
 
+use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Services\FeatureOTAUpdateService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
+/**
+ * Tenant Settings Controller
+ * 
+ * Handles settings for the dental clinic (tenant).
+ */
 class SettingsController extends Controller
 {
     public function index()
@@ -19,10 +25,14 @@ class SettingsController extends Controller
             ->format('svg')
             ->generate($bookingUrl);
 
+        $staff = \App\Models\User::role(['Dentist', 'Assistant'])->get(['id', 'name']);
+
         return Inertia::render('Tenant/Settings/Index', [
             'tenant' => $tenant,
+            'is_premium' => $tenant->canCustomizeBranding(),
             'booking_url' => $bookingUrl,
-            'qr_code' => (string)$qrCode
+            'qr_code' => (string)$qrCode,
+            'staff' => $staff
         ]);
     }
 
@@ -91,15 +101,69 @@ class SettingsController extends Controller
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'branding_color' => 'nullable|string|max:7',
+            'font_family' => 'nullable|string|max:50',
             'hero_title' => 'nullable|string|max:255',
             'hero_subtitle' => 'nullable|string|max:255',
             'about_us_description' => 'nullable|string',
+            'enabled_features' => 'nullable|array',
+            'landing_page_config' => 'nullable|string', // JSON string from frontend
+            'logo' => 'nullable|image|max:2048',
+            'logo_login' => 'nullable|image|max:2048',
+            'logo_booking' => 'nullable|image|max:2048',
         ]);
 
         $tenant = tenant();
-        if ($tenant) {
-            $tenant->update($validated);
+        if (!$tenant) {
+            return redirect()->back()->with('error', 'Tenant not found.');
         }
+
+        // Handle JSON decoding for landing_page_config if it's sent as a string
+        if (isset($validated['landing_page_config']) && is_string($validated['landing_page_config'])) {
+            $validated['landing_page_config'] = json_decode($validated['landing_page_config'], true);
+        }
+
+        // Handle Logo Uploads
+        if ($request->hasFile('logo')) {
+            $validated['logo_path'] = $request->file('logo')->store('branding', 'public');
+        }
+        if ($request->hasFile('logo_login')) {
+            $validated['logo_login_path'] = $request->file('logo_login')->store('branding', 'public');
+        }
+        if ($request->hasFile('logo_booking')) {
+            $validated['logo_booking_path'] = $request->file('logo_booking')->store('branding', 'public');
+        }
+
+        // Map clinic_name to 'name' and address to 'street' for database synchronization
+        if (isset($validated['clinic_name'])) {
+            $validated['name'] = $validated['clinic_name'];
+        }
+        if (isset($validated['address'])) {
+            $validated['street'] = $validated['address'];
+        }
+
+        // Apply Plan-Based Gating
+        if (!$tenant->canCustomizeBranding()) {
+            // Basic plan: Only allow logo (Landing Header), clinic_name, email, phone, address
+            // Reset other premium fields to standard defaults if provided
+            unset(
+                $validated['branding_color'], 
+                $validated['font_family'], 
+                $validated['logo_login_path'], 
+                $validated['logo_booking_path'],
+                $validated['landing_page_config']
+            );
+        }
+
+        // Clean up internal keys before update
+        unset(
+            $validated['logo'], 
+            $validated['logo_login'], 
+            $validated['logo_booking'], 
+            $validated['clinic_name'], 
+            $validated['address']
+        );
+
+        $tenant->update($validated);
 
         return redirect()->back()->with('success', 'Clinic settings updated successfully.');
     }
