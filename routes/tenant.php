@@ -83,7 +83,7 @@ Route::middleware([
                     Route::get('staff/{staff}/edit', [\App\Http\Controllers\StaffController::class , 'edit'])->name('staff.edit');
                     Route::put('staff/{staff}', [\App\Http\Controllers\StaffController::class , 'update'])->name('staff.update');
                     Route::delete('staff/{staff}', [\App\Http\Controllers\StaffController::class , 'destroy'])->name('staff.destroy');
-                    Route::put('staff/{staff}/permissions', [\App\Http\Controllers\StaffController::class , 'updatePermissions'])->name('staff.update-permissions');
+                    Route::post('staff/bulk-permissions', [\App\Http\Controllers\StaffController::class , 'bulkUpdatePermissions'])->name('staff.bulk-update-permissions');
 
                     // Reports
                     Route::get('reports', [\App\Http\Controllers\ReportController::class , 'index'])->name('reports.index');

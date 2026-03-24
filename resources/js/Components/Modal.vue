@@ -82,7 +82,7 @@ const maxWidthClass = computed(() => {
         >
             <div
                 v-if="show"
-                class="fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-0"
+                class="fixed inset-0 z-[150] overflow-y-auto px-4 py-6 sm:px-0"
                 scroll-region
             >
                 <div

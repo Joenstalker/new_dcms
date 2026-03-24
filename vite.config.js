@@ -129,6 +129,10 @@ export default defineConfig({
             '@inertiajs/vue3',
             '@inertiajs/core',
             '@vuepic/vue-datepicker',
+            '@fullcalendar/vue3',
+            '@fullcalendar/daygrid',
+            '@fullcalendar/timegrid',
+            '@fullcalendar/interaction',
         ],
     },
 });

@@ -44,35 +44,15 @@ class RolesAndPermissionsSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission]);
         }
 
-        // Create Roles and Assign Permissions
-        
-        // Owner (Admin)
+        // Create Roles (Owner retains all permissions)
         $owner = Role::firstOrCreate(['name' => 'Owner']);
         $owner->givePermissionTo(Permission::all());
 
-        // Dentist
-        $dentist = Role::firstOrCreate(['name' => 'Dentist']);
-        $dentist->givePermissionTo([
-            'view appointments', 'create appointments', 'edit appointments', 'delete appointments',
-            'view patients', 'create patients', 'edit patients',
-            'view treatments', 'create treatments',
-            'view reports',
-            'view services', 'create services', 'edit services', 'approve services',
-        ]);
-
-        // Assistant
-        $assistant = Role::firstOrCreate(['name' => 'Assistant']);
-        $assistant->givePermissionTo([
-            'view appointments', 'create appointments',
-            'view patients', 'create patients',
-            'view billing', 'create billing',
-            'view services', 'create services',
-        ]);
-
-        // Patient
+        // Dentist, Assistant, Patient remain as Role identifiers
+        Role::firstOrCreate(['name' => 'Dentist']);
+        Role::firstOrCreate(['name' => 'Assistant']);
+        
         $patient = Role::firstOrCreate(['name' => 'Patient']);
-        $patient->givePermissionTo([
-            'access public booking',
-        ]);
+        $patient->givePermissionTo(['access public booking']);
     }
 }

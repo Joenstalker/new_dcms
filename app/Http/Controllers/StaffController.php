@@ -105,14 +105,20 @@ class StaffController extends Controller
         return redirect()->route('staff.index')->with('success', 'Staff member removed successfully.');
     }
 
-    public function updatePermissions(Request $request, User $staff)
+    public function bulkUpdatePermissions(Request $request)
     {
         $request->validate([
+            'staff_ids' => 'required|array',
+            'staff_ids.*' => 'exists:users,id',
             'permissions' => 'required|array',
         ]);
 
-        $staff->syncPermissions($request->permissions);
+        $staffMembers = User::whereIn('id', $request->staff_ids)->get();
+        
+        foreach ($staffMembers as $staff) {
+            $staff->syncPermissions($request->permissions);
+        }
 
-        return redirect()->back()->with('success', 'Permissions updated successfully.');
+        return redirect()->back()->with('success', 'Permissions updated for ' . $staffMembers->count() . ' staff members.');
     }
 }
