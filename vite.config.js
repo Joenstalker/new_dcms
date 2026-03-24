@@ -128,6 +128,7 @@ export default defineConfig({
             'pinia',
             '@inertiajs/vue3',
             '@inertiajs/core',
+            '@vuepic/vue-datepicker',
         ],
     },
 });

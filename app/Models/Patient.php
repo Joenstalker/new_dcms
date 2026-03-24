@@ -13,6 +13,13 @@ class Patient extends Model
     use HasFactory, HasTenantScope;
 
     /**
+     * Indicates if the IDs are auto-incrementing.
+     *
+     * @var bool
+     */
+    public $incrementing = false;
+
+    /**
      * The attributes that are mass assignable.
      */
     protected $fillable = [
@@ -68,9 +75,15 @@ class Patient extends Model
      */
     public function getPhotoUrlAttribute(): string
     {
-        return $this->photo_path 
-            ? asset('storage/' . $this->photo_path) 
-            : 'https://ui-avatars.com/api/?name=' . urlencode($this->getFullNameAttribute()) . '&color=7F9CF5&background=EBF4FF';
+        if (empty($this->photo_path)) {
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->getFullNameAttribute()) . '&color=7F9CF5&background=EBF4FF';
+        }
+
+        if (str_starts_with($this->photo_path, 'data:image')) {
+            return $this->photo_path;
+        }
+
+        return asset('storage/' . $this->photo_path);
     }
 
     /**
@@ -80,8 +93,20 @@ class Patient extends Model
     {
         parent::boot();
 
-        // Automatically set tenant_id
+        // Automatically generate 10-digit ID and set tenant_id
         static::creating(function ($patient) {
+            if (empty($patient->id)) {
+                $datePrefix = date('ymd');
+                do {
+                    $t = microtime(true);
+                    $microPart = sprintf("%06d", ($t - floor($t)) * 1000000);
+                    $fragment = substr($microPart, 0, 4);
+                    $id = (int)($datePrefix . $fragment);
+                } while (self::where('id', $id)->exists());
+                
+                $patient->id = $id;
+            }
+
             if (empty($patient->tenant_id)) {
                 try {
                     $tenant = tenancy()->tenant();

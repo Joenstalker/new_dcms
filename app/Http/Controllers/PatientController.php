@@ -11,10 +11,22 @@ use Inertia\Inertia;
 
 class PatientController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $query = Patient::query();
+
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                  ->orWhere('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%");
+            });
+        }
+
         return Inertia::render('Tenant/Patients/Index', [
-            'patients' => Patient::latest()->get()
+            'patients' => $query->latest()->get(),
+            'filters' => $request->only('search')
         ]);
     }
 
@@ -41,8 +53,8 @@ class PatientController extends Controller
         ]);
 
         if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('patients/photos', 'public');
-            $validated['photo_path'] = $path;
+            $file = $request->file('photo');
+            $validated['photo_path'] = 'data:' . $file->getMimeType() . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
         }
 
         $patient = Patient::create($validated);
@@ -57,12 +69,17 @@ class PatientController extends Controller
         ]
         );
 
-        return redirect()->route('tenant.patients.index')->with('success', 'Patient created successfully.');
+        return redirect()->route('patients.index')->with('success', 'Patient created successfully.');
     }
 
-    public function show(Patient $patient)
+    public function show(Request $request, Patient $patient)
     {
         $patient->load('appointments', 'treatments', 'invoices');
+        
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($patient);
+        }
+
         return Inertia::render('Tenant/Patients/Show', [
             'patient' => $patient
         ]);
@@ -100,12 +117,12 @@ class PatientController extends Controller
         ]);
 
         if ($request->hasFile('photo')) {
-            // Delete old photo if exists
-            if ($patient->photo_path) {
+            // Delete old photo if exists and is a file path
+            if ($patient->photo_path && !str_starts_with($patient->photo_path, 'data:image')) {
                 Storage::Disk('public')->delete($patient->photo_path);
             }
-            $path = $request->file('photo')->store('patients/photos', 'public');
-            $validated['photo_path'] = $path;
+            $file = $request->file('photo');
+            $validated['photo_path'] = 'data:' . $file->getMimeType() . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
         }
 
         $patient->update($validated);
@@ -116,6 +133,14 @@ class PatientController extends Controller
     public function destroy(Patient $patient)
     {
         $patient->delete();
-        return redirect()->route('tenant.patients.index')->with('success', 'Patient deleted successfully.');
+        return redirect()->route('patients.index')->with('success', 'Patient deleted successfully.');
+    }
+
+    public function downloadPdf(Patient $patient)
+    {
+        $patient->load('appointments', 'treatments', 'invoices');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('tenant.patients.pdf', compact('patient'));
+        
+        return $pdf->download('Patient-Record-' . str_pad((string)$patient->id, 6, '0', STR_PAD_LEFT) . '.pdf');
     }
 }

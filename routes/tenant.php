@@ -48,6 +48,7 @@ Route::middleware([
                 ->middleware('check.subscription:max_patients')
                 ->name('patients.store');
             Route::get('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'show'])->name('patients.show');
+            Route::get('patients/{patient}/pdf', [\App\Http\Controllers\PatientController::class , 'downloadPdf'])->name('patients.pdf');
             Route::get('patients/{patient}/edit', [\App\Http\Controllers\PatientController::class , 'edit'])->name('patients.edit');
             Route::get('patients/{patient}/delete', [\App\Http\Controllers\PatientController::class , 'delete'])->name('patients.delete');
             Route::put('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'update'])->name('patients.update');

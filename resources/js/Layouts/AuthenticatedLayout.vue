@@ -25,12 +25,32 @@ const platformLogo = computed(() => branding.value.platform_logo ? '/storage/log
 const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');
 
 const isSidebarOpen = ref(false);
-const openSubMenus = ref({});
 
 const dashboardRoute = computed(() => usePage().props.tenant ? 'tenant.dashboard' : 'dashboard');
 
-const toggleSubMenu = (name) => {
-    openSubMenus.value[name] = !openSubMenus.value[name];
+// Check if a sidebar item (with sub-items) is active
+const isItemActive = (item) => {
+    if (!item.subItems) return item.route ? route().current(item.route) : false;
+    return item.subItems.some(si => route().current(si.route));
+};
+
+// Get the target route for a sidebar item
+const getItemRoute = (item) => {
+    if (item.route) return item.route;
+    if (item.subItems && item.subItems.length > 0) return item.subItems[0].route;
+    return dashboardRoute.value;
+};
+
+// Safely read tab query param (SSR-safe)
+const currentTabParam = computed(() => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('tab');
+});
+
+// Check if a sub-item tab is active
+const isSubItemActive = (sub) => {
+    if (sub.routeParams?.tab) return currentTabParam.value === sub.routeParams.tab;
+    return route().current(sub.route) && !currentTabParam.value;
 };
 
 const menuCategories = computed(() => {
@@ -44,28 +64,25 @@ const menuCategories = computed(() => {
                     icon: 'calendar', 
                     permissions: ['view appointments'],
                     subItems: [
-                        { name: 'Calendar View', route: 'appointments.index', permissions: ['view appointments'] },
-                        { name: 'Booking Queue', route: 'appointments.index', permissions: ['view appointments'] },
-                        { name: 'Walk-in', route: 'appointments.index', permissions: ['create appointments'] },
+                        { name: 'Calendar View', route: 'appointments.index', routeParams: { tab: 'calendar' }, permissions: ['view appointments'] },
+                        { name: 'Booking Queue', route: 'appointments.index', routeParams: { tab: 'queue' }, permissions: ['view appointments'] },
+                        { name: 'Walk-in', route: 'appointments.index', routeParams: { tab: 'walkin' }, permissions: ['create appointments'] },
                     ]
                 },
                 { 
                     name: 'Patients', 
-                    icon: 'users', 
-                    permissions: ['view patients'],
-                    subItems: [
-                        { name: 'Patient List', route: 'patients.index', permissions: ['view patients'] },
-                        { name: 'Medical History', route: 'patients.index', permissions: ['view treatments'] },
-                    ]
+                    icon: 'users',
+                    route: 'patients.index',
+                    permissions: ['view patients']
                 },
                 { 
                     name: 'Billing & POS', 
                     icon: 'cash', 
                     permissions: ['view billing'],
                     subItems: [
-                        { name: 'Cashier / New Invoice', route: 'billing.index', permissions: ['create billing'] },
-                        { name: 'Transactions', route: 'billing.index', permissions: ['view billing'] },
-                        { name: 'Receipts', route: 'billing.index', permissions: ['view billing'] },
+                        { name: 'Cashier / New Invoice', route: 'billing.index', routeParams: { tab: 'cashier' }, permissions: ['create billing'] },
+                        { name: 'Transactions', route: 'billing.index', routeParams: { tab: 'transactions' }, permissions: ['view billing'] },
+                        { name: 'Receipts', route: 'billing.index', routeParams: { tab: 'receipts' }, permissions: ['view billing'] },
                     ]
                 },
                 { 
@@ -254,13 +271,13 @@ const handleLogout = () => {
                     <Link 
                         v-for="sub in activeCategoryWithSubItems.subItems" 
                         :key="sub.name"
-                        :href="route(sub.route)"
+                        :href="route(sub.route, sub.routeParams || {})"
                         :class="[
-                            route().current(sub.route)
+                            isSubItemActive(sub)
                                 ? 'font-black border-primary' 
                                 : 'border-transparent text-base-content/40 hover:text-base-content/70 hover:border-base-300'
                         ]"
-                        :style="route().current(sub.route) ? { borderColor: primaryColor, color: primaryColor } : {}"
+                        :style="isSubItemActive(sub) ? { borderColor: primaryColor, color: primaryColor } : {}"
                         class="whitespace-nowrap py-4 px-1 border-b-2 text-[10px] uppercase tracking-widest transition-all duration-300"
                     >
                         {{ sub.name }}
@@ -300,86 +317,35 @@ const handleLogout = () => {
                 </div>
 
                 <!-- Navigation Categories -->
-                <nav class="flex-1 px-4 py-4 space-y-4 overflow-hidden">
+                <nav class="flex-1 px-4 py-4 space-y-4 overflow-y-auto custom-scrollbar">
                     <div v-for="category in menuCategories" :key="category.title">
                         <h3 class="px-5 mb-2 text-[10px] font-black text-base-content/20 uppercase tracking-[0.25em]">{{ category.title }}</h3>
                         <div class="space-y-1.5">
-                            <div v-for="item in category.items" :key="item.name">
-                                <!-- Regular Link -->
-                                <Link 
-                                    v-if="!item.subItems"
-                                    :href="route(item.route)"
-                                    @click="isSidebarOpen = false"
-                                    :class="[
-                                        route().current(item.route) 
-                                            ? 'shadow-lg shadow-primary/20 scale-[1.02]' 
-                                            : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
-                                    ]"
-                                    class="flex items-center px-5 py-2.5 rounded-2xl group transition-all duration-300 transform"
-                                    :style="route().current(item.route) ? { backgroundColor: primaryColor, color: '#ffffff' } : {}"
-                                >
-                                    <svg 
-                                        class="h-5 w-5 mr-4 transition-transform duration-300 group-hover:scale-110" 
-                                        :class="[route().current(item.route) ? 'text-white' : 'opacity-40 group-hover:opacity-100']"
-                                        fill="none" 
-                                        viewBox="0 0 24 24" 
-                                        stroke-width="2" 
-                                        stroke="currentColor"
-                                        v-html="getIcon(item.icon)"
-                                    ></svg>
-                                    <span class="font-bold text-xs uppercase tracking-wider">{{ item.name }}</span>
-                                </Link>
-
-                                <!-- Collapsible Link -->
-                                <div v-else>
-                                    <button 
-                                        @click="toggleSubMenu(item.name)"
-                                        :class="[
-                                            openSubMenus[item.name] ? 'bg-base-200/50 text-base-content' : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
-                                        ]"
-                                        class="w-full flex items-center justify-between px-5 py-2.5 rounded-2xl transition-all duration-300 group"
-                                    >
-                                        <div class="flex items-center">
-                                            <svg 
-                                                class="h-5 w-5 mr-4 opacity-40 group-hover:opacity-100 transition-all duration-300" 
-                                                fill="none" 
-                                                viewBox="0 0 24 24" 
-                                                stroke-width="2" 
-                                                stroke="currentColor"
-                                                v-html="getIcon(item.icon)"
-                                            ></svg>
-                                            <span class="font-bold text-xs uppercase tracking-wider">{{ item.name }}</span>
-                                        </div>
-                                        <svg 
-                                            :class="[openSubMenus[item.name] ? 'rotate-180' : '']"
-                                            class="w-4 h-4 transition-transform duration-300 opacity-20" 
-                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
-                                        >
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                        </svg>
-                                    </button>
-                                    
-                                    <!-- Sub-items -->
-                                    <div 
-                                        v-show="openSubMenus[item.name]"
-                                        class="mt-1.5 ml-8 pl-4 space-y-1 border-l-2 border-base-200"
-                                    >
-                                        <Link 
-                                            v-for="sub in item.subItems" 
-                                            :key="sub.name"
-                                            @click="isSidebarOpen = false"
-                                            :href="route(sub.route, sub.routeParams || {})"
-                                            :class="[
-                                                route().current(sub.route, sub.routeParams || {}) ? 'font-black opacity-100' : 'text-base-content/50 hover:text-base-content hover:bg-base-200'
-                                            ]"
-                                            :style="route().current(sub.route, sub.routeParams || {}) ? { color: primaryColor } : {}"
-                                            class="block py-2 px-4 rounded-xl text-[11px] uppercase tracking-widest transition-all duration-300"
-                                        >
-                                            {{ sub.name }}
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
+                            <Link 
+                                v-for="item in category.items" 
+                                :key="item.name"
+                                :href="route(getItemRoute(item))"
+                                @click="isSidebarOpen = false"
+                                :class="[
+                                    isItemActive(item) 
+                                        ? 'shadow-lg shadow-primary/20 scale-[1.02]' 
+                                        : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
+                                ]"
+                                class="flex items-center px-5 py-2.5 rounded-2xl group transition-all duration-300 transform"
+                                :style="isItemActive(item) ? { backgroundColor: primaryColor, color: '#ffffff' } : {}"
+                            >
+                                <svg 
+                                    class="h-5 w-5 mr-4 transition-transform duration-300 group-hover:scale-110" 
+                                    :class="[isItemActive(item) ? 'text-white' : 'opacity-40 group-hover:opacity-100']"
+                                    fill="none" 
+                                    viewBox="0 0 24 24" 
+                                    stroke-width="2" 
+                                    stroke="currentColor"
+                                    v-html="getIcon(item.icon)"
+                                ></svg>
+                                <span class="font-bold text-xs uppercase tracking-wider">{{ item.name }}</span>
+                                <div v-if="isItemActive(item)" class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm"></div>
+                            </Link>
                         </div>
                     </div>
                 </nav>
