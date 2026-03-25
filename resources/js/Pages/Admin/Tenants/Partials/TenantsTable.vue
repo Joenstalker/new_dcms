@@ -6,6 +6,10 @@ defineProps({
         type: Object,
         required: true,
     },
+    primaryColor: {
+        type: String,
+        default: '#0ea5e9'
+    }
 });
 
 const emit = defineEmits(['manage', 'review']);
@@ -21,9 +25,9 @@ const openReviewModal = (tenant) => {
 
 <template>
     <div class="bg-base-100 rounded-xl shadow-sm border border-base-300 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-base-300">
-                <thead class="bg-base-200">
+        <div>
+            <table class="min-w-full block lg:table divide-y divide-base-300">
+                <thead class="bg-base-200 hidden lg:table-header-group">
                     <tr>
                         <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-base-content/70 uppercase tracking-wider">
                             Name
@@ -43,74 +47,88 @@ const openReviewModal = (tenant) => {
                         <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-base-content/70 uppercase tracking-wider">
                             Created
                         </th>
-                        <th scope="col" class="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-4 text-right text-xs font-semibold text-base-content/70 uppercase tracking-wider">
                             Action
                         </th>
                     </tr>
                 </thead>
-                <tbody class="bg-base-100 divide-y divide-base-300">
-                    <tr v-for="tenant in tenants.data" :key="tenant.id" class="hover:bg-base-200/50 transition-colors">
+                <tbody class="bg-base-100 block lg:table-row-group divide-y lg:divide-y-[1px] divide-base-200">
+                    <tr v-for="tenant in tenants.data" :key="tenant.id" class="block lg:table-row hover:bg-base-200/50 transition-colors border-b-8 border-base-200 lg:border-none mb-4 lg:mb-0 rounded-lg lg:rounded-none shadow-sm lg:shadow-none overflow-hidden">
                         <!-- Name Column -->
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-base-content">
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                            <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Owner Name</span>
+                            <div class="font-medium text-base-content text-right lg:text-left">
                                 {{ tenant.owner_name || tenant.name }}
                             </div>
                         </td>
                         
                         <!-- Clinic Name Column -->
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-base-content">{{ tenant.name }}</div>
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                            <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Clinic Name</span>
+                            <div class="text-base-content text-right lg:text-left">{{ tenant.name }}</div>
                         </td>
                         
                         <!-- Clinic Domain (URL) Column -->
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <a v-if="tenant.tenant_url" :href="tenant.tenant_url" target="_blank" class="text-sm text-teal-600 hover:underline font-medium">
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                            <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Domain</span>
+                            <a v-if="tenant.tenant_url" :href="tenant.tenant_url" target="_blank" class="text-teal-600 hover:underline font-medium text-right lg:text-left bg-teal-50 lg:bg-transparent px-2 py-0.5 rounded-md lg:px-0 lg:py-0">
                                 {{ tenant.tenant_url.replace(/(^\w+:|^)\/\//, '') }}
                             </a>
-                            <span v-else class="text-sm text-base-content/50">No URL</span>
+                            <span v-else class="text-base-content/50 text-right lg:text-left">No URL</span>
                         </td>
 
                         <!-- Status Column -->
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span v-if="tenant.status === 'pending'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                Pending Review
-                            </span>
-                            <span v-else-if="(tenant.subscription_status || 'active') === 'active'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Active
-                            </span>
-                            <span v-else-if="tenant.subscription_status === 'suspended'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Suspended
-                            </span>
-                            <span v-else-if="tenant.subscription_status === 'pending_payment'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                Pending Payment
-                            </span>
-                            <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {{ tenant.subscription_status }}
-                            </span>
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                            <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Status</span>
+                            <div class="flex items-center justify-end lg:justify-start bg-base-100 lg:bg-transparent px-2 py-1 rounded-full lg:px-0 lg:py-0 border lg:border-none border-base-200">
+                                <span class="flex-shrink-0 w-2 h-2 rounded-full mr-2"
+                                    :class="{
+                                        'bg-success animate-pulse': tenant.status === 'active',
+                                        'bg-error': tenant.status === 'suspended',
+                                        'bg-warning animate-pulse': tenant.status === 'pending_payment' || tenant.status === 'pending',
+                                        'bg-gray-400': !tenant.status || tenant.status === 'cancelled'
+                                    }"
+                                ></span>
+                                <span class="text-xs font-bold capitalize text-base-content">
+                                    {{ (tenant.status || 'active').replace('_', ' ') }}
+                                </span>
+                            </div>
                         </td>
 
                         <!-- Plan Column -->
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-base-content/70">
-                            {{ tenant.plan || 'Free / Manual' }}
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                            <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Plan</span>
+                            <div class="text-base-content/70 font-semibold text-right lg:text-left">
+                                {{ tenant.plan || 'Free / Manual' }}
+                            </div>
                         </td>
 
                         <!-- Created Column -->
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ new Date(tenant.created_at).toLocaleDateString() }}
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                            <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Created</span>
+                            <div class="text-base-content/50 text-right lg:text-left font-mono text-xs">
+                                {{ new Date(tenant.created_at).toLocaleDateString() }}
+                            </div>
                         </td>
 
                         <!-- Action Column -->
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button v-if="tenant.status === 'pending'" @click="openReviewModal(tenant)" class="text-yellow-600 hover:text-yellow-900 bg-yellow-50 px-3 py-1.5 rounded-md hover:bg-yellow-100 transition-colors">
-                                Review
-                            </button>
-                            <button v-else @click="openManageModal(tenant)" class="text-teal-600 hover:text-teal-900 bg-teal-50 px-3 py-1.5 rounded-md hover:bg-teal-100 transition-colors">
-                                Manage
-                            </button>
+                        <td class="px-4 lg:px-6 py-4 flex lg:table-cell align-middle text-sm font-medium bg-base-200/30 lg:bg-transparent w-full lg:w-auto">
+                            <div class="flex justify-center lg:justify-end w-full">
+                                <button v-if="tenant.status === 'pending'" @click="openReviewModal(tenant)" class="w-full lg:w-auto justify-center text-yellow-700 hover:text-yellow-900 bg-yellow-100/50 lg:bg-yellow-50 px-4 py-2 lg:px-3 lg:py-1.5 rounded-lg hover:bg-yellow-100 transition-colors outline flex items-center gap-2 outline-1 outline-yellow-400/30 font-bold">
+                                    Review Application
+                                </button>
+                                <button v-else @click="openManageModal(tenant)" class="w-full lg:w-auto justify-center px-4 py-2 lg:px-3 lg:py-1.5 rounded-lg transition-colors font-bold flex items-center gap-2 border lg:border-transparent lg:shadow-sm hover:opacity-80" :style="{ backgroundColor: primaryColor + '15', color: primaryColor }">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Manage Clinic
+                                </button>
+                            </div>
                         </td>
                     </tr>
-                    <tr v-if="tenants.data.length === 0">
-                        <td colspan="6" class="px-6 py-12 text-center text-base-content/50">
+                    <tr v-if="tenants.data.length === 0" class="block lg:table-row">
+                        <td colspan="7" class="px-6 py-12 text-center text-base-content/50 block lg:table-cell">
                             <svg class="mx-auto h-12 w-12 text-base-content/30 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
@@ -138,12 +156,13 @@ const openReviewModal = (tenant) => {
                                     v-if="link.url"
                                     :href="link.url"
                                     v-html="link.label"
-                                    class="relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                                    class="relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-all"
                                     :class="[
-                                        link.active ? 'z-10 bg-primary/10 border-primary text-primary' : 'bg-base-100 border-base-300 text-base-content/70 hover:bg-base-200',
+                                        link.active ? 'z-10 text-white border-transparent' : 'bg-base-100 border-base-300 text-base-content/70 hover:bg-base-200',
                                         i === 0 ? 'rounded-l-md' : '',
                                         i === tenants.links.length - 1 ? 'rounded-r-md' : ''
                                     ]"
+                                    :style="link.active ? { backgroundColor: primaryColor, boxShadow: `0 4px 14px 0 ${primaryColor}33` } : {}"
                                 />
                                 <span
                                     v-else

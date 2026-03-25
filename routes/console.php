@@ -31,3 +31,6 @@ Artisan::command('fix:tenant-domains', function () {
 // Pending Registration Automated Tasks
 Schedule::command('registrations:process-expired')->everyMinute();
 Schedule::command('registrations:send-reminders')->hourly();
+
+// Appointment reminders — run daily at 8 AM
+Schedule::command('appointments:send-reminders')->dailyAt('08:00');

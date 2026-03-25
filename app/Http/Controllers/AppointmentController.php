@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\User;
+use App\Services\NotificationTriggerService;
 use App\Services\TenantNotificationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -38,7 +39,7 @@ class AppointmentController extends Controller
 
         $appointment = Appointment::create($validated);
 
-        // Send notification to owners
+        // Send in-app notification to owners
         $notificationService = app(TenantNotificationService::class);
         $patientName = $appointment->patient
             ? $appointment->patient->first_name . ' ' . $appointment->patient->last_name
@@ -52,6 +53,10 @@ class AppointmentController extends Controller
             'patient_name' => $patientName,
         ]
         );
+
+        // Send email notification (gated by subscription feature)
+        $appointment->load(['patient', 'dentist']);
+        app(NotificationTriggerService::class)->onBookingCreated($appointment);
 
         return redirect()->route('tenant.appointments.index')->with('success', 'Appointment scheduled successfully.');
     }
@@ -138,6 +143,10 @@ class AppointmentController extends Controller
             $appointment->status = 'scheduled';
             $appointment->save();
         }
+
+        // Send email notification for approval (gated by subscription feature)
+        $appointment->load(['patient', 'dentist']);
+        app(NotificationTriggerService::class)->onBookingApproved($appointment);
 
         return redirect()->back()->with('success', 'Appointment approved and patient registered.');
     }

@@ -18,9 +18,13 @@ defineProps({
         type: Function,
         required: true,
     },
+    primaryColor: {
+        type: String,
+        default: '#0ea5e9'
+    },
 });
 
-const emit = defineEmits(['view', 'edit', 'delete', 'toggle']);
+const emit = defineEmits(['manage']);
 </script>
 
 <template>
@@ -70,30 +74,11 @@ const emit = defineEmits(['view', 'edit', 'delete', 'toggle']);
                             </div>
                             <div class="flex flex-none items-center gap-x-2">
                                 <button
-                                    @click="emit('toggle', feature)"
-                                    class="btn btn-xs font-bold"
-                                    :class="feature.is_active ? 'btn-ghost text-error' : 'btn-ghost text-success'"
-                                    :title="feature.is_active ? 'Deactivate' : 'Activate'"
+                                    @click="emit('manage', feature)"
+                                    class="btn btn-sm rounded-lg shadow-sm font-bold text-white border-0 hover:brightness-110 transition-all"
+                                    :style="{ backgroundColor: primaryColor }"
                                 >
-                                    {{ feature.is_active ? 'Deactivate' : 'Activate' }}
-                                </button>
-                                <button
-                                    @click="emit('view', feature)"
-                                    class="btn btn-ghost btn-xs font-bold"
-                                >
-                                    View
-                                </button>
-                                <button
-                                    @click="emit('edit', feature)"
-                                    class="btn btn-primary btn-xs font-bold"
-                                >
-                                    Edit
-                                </button>
-                                <button
-                                    @click="emit('delete', feature)"
-                                    class="btn btn-error btn-outline btn-xs font-bold"
-                                >
-                                    Delete
+                                    Manage
                                 </button>
                             </div>
                         </div>

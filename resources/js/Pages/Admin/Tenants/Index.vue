@@ -1,5 +1,5 @@
 <script setup>
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import debounce from 'lodash/debounce';
@@ -7,6 +7,10 @@ import TenantsTable from './Partials/TenantsTable.vue';
 import CreateTenantModal from './Partials/CreateTenantModal.vue';
 import ManageTenantModal from './Partials/ManageTenantModal.vue';
 import Swal from 'sweetalert2';
+
+const page = usePage();
+const branding = computed(() => page.props.branding || {});
+const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
 
 const props = defineProps({
     tenants: Object,
@@ -236,7 +240,25 @@ const updateTenant = (formData) => {
     router.put(route('admin.tenants.update', selectedTenant.value.id), formData, {
         onSuccess: () => {
             closeManageModal();
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: 'Clinic information and status updated successfully.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
         },
+        onError: () => {
+             Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to update clinic information.',
+                confirmButtonColor: '#0d9488',
+            });
+        }
     });
 };
 
@@ -296,7 +318,8 @@ const isFormValid = computed(() => {
                 <!-- Add Clinic Button -->
                 <button
                     @click="openCreateModal"
-                    class="inline-flex items-center justify-center px-4 py-2 bg-primary border border-transparent rounded-lg font-semibold text-xs text-primary-content uppercase tracking-wider hover:bg-primary-focus focus:bg-primary-focus active:bg-primary-focus focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition ease-in-out duration-150 whitespace-nowrap"
+                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-wider shadow-sm hover:brightness-110 transition ease-in-out duration-150 whitespace-nowrap"
+                    :style="{ backgroundColor: primaryColor }"
                 >
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -308,6 +331,7 @@ const isFormValid = computed(() => {
             <!-- Tenants Table -->
             <TenantsTable 
                 :tenants="tenants" 
+                :primary-color="primaryColor"
                 @manage="openManageModal"
                 @review="openReviewModal"
             />

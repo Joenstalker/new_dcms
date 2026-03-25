@@ -14,9 +14,13 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    primaryColor: {
+        type: String,
+        default: '#0ea5e9',
+    },
 });
 
-const emit = defineEmits(['close', 'submit']);
+const emit = defineEmits(['close', 'submit', 'delete', 'toggle']);
 
 const submitForm = () => {
     emit('submit');
@@ -27,8 +31,13 @@ const submitForm = () => {
     <Modal :show="show" @close="emit('close')">
         <div class="p-6 bg-base-100 border border-base-300 rounded-lg">
             <h3 class="text-xl font-bold text-base-content mb-6">
-                {{ editingFeature ? 'Edit Feature' : 'Create New Feature' }}
+                {{ editingFeature ? 'Manage Feature' : 'Create New Feature' }}
             </h3>
+
+            <div v-if="editingFeature" class="bg-base-200/50 p-4 rounded-xl border border-base-200 mb-6 shadow-sm">
+                <div class="font-black text-base-content text-lg">{{ editingFeature.name }}</div>
+                <div class="text-xs text-base-content/50 font-mono tracking-wider">{{ editingFeature.key }}</div>
+            </div>
             
             <form @submit.prevent="submitForm" class="space-y-6">
                 <div class="form-control">
@@ -140,21 +149,43 @@ const submitForm = () => {
                     </label>
                 </div>
 
-                <div class="flex justify-end gap-3 mt-8">
-                    <button
-                        type="button"
-                        @click="emit('close')"
-                        class="btn btn-ghost btn-sm font-bold"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        :disabled="form.processing"
-                        class="btn btn-primary btn-sm font-bold"
-                    >
-                        {{ editingFeature ? 'Update Feature' : 'Create Feature' }}
-                    </button>
+                <div class="flex items-center justify-between w-full mt-8 pt-4 border-t border-base-200">
+                    <div v-if="editingFeature" class="flex gap-2">
+                        <button 
+                            type="button"
+                            @click="emit('toggle', editingFeature)" 
+                            class="btn btn-sm" 
+                            :class="editingFeature.is_active ? 'btn-outline btn-error hover:text-white' : 'btn-outline btn-success hover:text-white'"
+                        >
+                            {{ editingFeature.is_active ? 'Deactivate' : 'Activate' }}
+                        </button>
+                        <button 
+                            type="button"
+                            @click="emit('delete', editingFeature)" 
+                            class="btn btn-ghost hover:bg-error text-error hover:text-white btn-sm"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                    <div v-else></div>
+
+                    <div class="flex gap-3">
+                        <button
+                            type="button"
+                            @click="emit('close')"
+                            class="btn btn-ghost btn-sm font-bold hover:bg-base-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="form.processing"
+                            class="btn btn-sm font-bold text-white border-none shadow-md hover:opacity-90 transition-opacity"
+                            :style="{ backgroundColor: primaryColor }"
+                        >
+                            {{ editingFeature ? 'Update Feature' : 'Create Feature' }}
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

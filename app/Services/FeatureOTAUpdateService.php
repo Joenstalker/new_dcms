@@ -73,8 +73,39 @@ class FeatureOTAUpdateService
             }
         }
 
+        // Synchronize the tenant's features after applying updates
+        if (!empty($applied)) {
+            $this->syncTenantFeatures($tenantId);
+        }
+
         return $applied;
     }
+
+    /**
+     * Synchronize the tenant's enabled_features JSON column with applied OTA updates.
+     * This ensures the sidebar and frontend gating reflect the current state.
+     */
+    public function syncTenantFeatures(string $tenantId): void
+    {
+        $tenant = \App\Models\Tenant::find($tenantId);
+        if (!$tenant) return;
+
+        $defaultFeatures = \App\Models\Tenant::getDefaultFeatures();
+        
+        $appliedFeatureKeys = TenantFeatureUpdate::where('tenant_id', $tenantId)
+            ->where('status', TenantFeatureUpdate::STATUS_APPLIED)
+            ->join('features', 'tenant_feature_updates.feature_id', '=', 'features.id')
+            ->pluck('features.key')
+            ->toArray();
+
+        // Merge defaults with newly applied features
+        $allEnabled = array_unique(array_merge($defaultFeatures, $appliedFeatureKeys));
+        
+        $tenant->update(['enabled_features' => $allEnabled]);
+        
+        Log::info("Synced enabled_features for tenant [{$tenantId}]: " . json_encode($allEnabled));
+    }
+
 
     /**
      * Get pending updates for a tenant
@@ -136,13 +167,13 @@ class FeatureOTAUpdateService
             );
         }
 
+        // 2. Mark features as pushed immediately (so UI reflects "Live" status)
+        foreach ($features as $feature) {
+            $plan->features()->updateExistingPivot($feature->id, ['pushed_at' => now()]);
+        }
+
         return \Illuminate\Support\Facades\Bus::batch($jobs)
-            ->name("Plan Push: {$plan->name}")
-            ->then(function ($batch) use ($plan, $features) {
-                foreach ($features as $feature) {
-                    $plan->features()->updateExistingPivot($feature->id, ['pushed_at' => now()]);
-                }
-            });
+            ->name("Plan Push: {$plan->name}");
     }
 
     /**

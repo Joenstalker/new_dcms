@@ -18,21 +18,96 @@ class SettingsController extends Controller
     public function index()
     {
         $tenant = tenant();
-        $bookingUrl = route('tenant.book.create'); // Full booking URL
 
-        // Generate QR Code as Base64 SVG
+        $subscription = \App\Models\Subscription::where('tenant_id', $tenant->getTenantKey())
+            ->where('stripe_status', 'active')
+            ->with(['plan.features'])
+            ->latest()
+            ->first();
+
+        // All available plans for upgrade comparison
+        $plans = \App\Models\SubscriptionPlan::with('features')
+            ->orderBy('price_monthly')
+            ->get()
+            ->map(function ($plan) {
+                return [
+                    'id' => $plan->id,
+                    'name' => $plan->name,
+                    'price_monthly' => (float)$plan->price_monthly,
+                    'price_yearly' => (float)$plan->price_yearly,
+                    'features' => $plan->getFeaturesByCategory(),
+                ];
+            });
+
+        return Inertia::render('Tenant/Settings/Index', [
+            'tenant' => $tenant,
+            'days_remaining' => $subscription ? $subscription->days_remaining : null,
+            'current_plan_id' => $subscription?->subscription_plan_id,
+            'plans' => $plans,
+        ]);
+    }
+
+    /**
+     * Display Custom Branding page.
+     */
+    public function branding()
+    {
+        $tenant = tenant();
+        $subscription = \App\Models\Subscription::where('tenant_id', $tenant->getTenantKey())
+            ->where('stripe_status', 'active')
+            ->with(['plan.features'])
+            ->latest()
+            ->first();
+
+        $staff = \App\Models\User::role(['Dentist', 'Assistant'])->get(['id', 'name']);
+
+        // Booking data (for QRCodeSetup)
+        $bookingUrl = route('tenant.book.create');
         $qrCode = \SimpleSoftwareIO\QrCode\Facades\QrCode::size(200)
             ->format('svg')
             ->generate($bookingUrl);
 
-        $staff = \App\Models\User::role(['Dentist', 'Assistant'])->get(['id', 'name']);
+        // Feature data (for FeatureSettings)
+        $otaService = app(\App\Services\FeatureOTAUpdateService::class);
+        $pendingUpdates = $otaService->getPendingUpdates($tenant->getTenantKey())
+            ->pluck('feature_id')
+            ->toArray();
 
-        return Inertia::render('Tenant/Settings/Index', [
+        $featuresByCategory = \App\Models\Feature::ordered()
+            ->active()
+            ->get()
+            ->groupBy('category')
+            ->map(function ($features) use ($subscription, $pendingUpdates) {
+                return $features->map(function ($feature) use ($subscription, $pendingUpdates) {
+                    $planFeature = $subscription && $subscription->plan ? $subscription->plan->features->where('id', $feature->id)->first() : null;
+                    
+                    return [
+                        'id' => $feature->id,
+                        'name' => $feature->name,
+                        'description' => $feature->description,
+                        'type' => $feature->type,
+                        'category' => $feature->category,
+                        'is_enabled' => (bool)$planFeature,
+                        'has_pending_update' => in_array($feature->id, $pendingUpdates),
+                        'value' => $planFeature ? match($feature->type) {
+                            'boolean' => (bool)$planFeature->pivot->value_boolean,
+                            'numeric' => (int)$planFeature->pivot->value_numeric,
+                            'tiered' => $planFeature->pivot->value_tier,
+                            default => null
+                        } : null,
+                    ];
+                });
+            });
+
+        return Inertia::render('Tenant/CustomBranding/Index', [
             'tenant' => $tenant,
+            'subscription' => $subscription,
             'is_premium' => $tenant->canCustomizeBranding(),
+            'staff' => $staff,
             'booking_url' => $bookingUrl,
             'qr_code' => (string)$qrCode,
-            'staff' => $staff
+            'features' => $featuresByCategory,
+            'has_pending_updates' => count($pendingUpdates) > 0,
         ]);
     }
 
@@ -208,7 +283,7 @@ class SettingsController extends Controller
     {
         $validated = $request->validate([
             'feature_ids' => 'required|array',
-            'feature_ids.*' => 'exists:features,id',
+            'feature_ids.*' => 'exists:central.features,id',
         ]);
 
         $tenant = tenant();

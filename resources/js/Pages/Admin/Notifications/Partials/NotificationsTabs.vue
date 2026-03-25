@@ -1,5 +1,7 @@
-<script setup>
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const primaryColor = page.props.branding?.primary_color || '#0ea5e9';
 
 defineProps({
     activeTab: {
@@ -33,15 +35,17 @@ const handleTabChange = (tab) => {
                 @click="handleTabChange(tab)"
                 :class="[
                     activeTab === tab.value
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-300',
-                    'whitespace-nowrap py-5 px-1 border-b-2 font-black text-sm transition-all duration-300 uppercase tracking-widest'
+                        ? 'border-b-2 font-black text-sm transition-all duration-300 uppercase tracking-widest'
+                        : 'border-transparent text-base-content/50 hover:text-base-content hover:border-base-300 border-b-2 font-black text-sm transition-all duration-300 uppercase tracking-widest',
+                    'whitespace-nowrap py-5 px-1'
                 ]"
+                :style="activeTab === tab.value ? { borderBottomColor: primaryColor, color: primaryColor } : {}"
             >
                 {{ tab.label }}
                 <span 
                     v-if="tab.value === 'unread' && unreadCount > 0"
-                    class="ml-2 badge badge-primary badge-sm font-bold"
+                    class="ml-2 badge badge-sm font-bold text-white border-transparent"
+                    :style="{ backgroundColor: primaryColor }"
                 >
                     {{ unreadCount }}
                 </span>

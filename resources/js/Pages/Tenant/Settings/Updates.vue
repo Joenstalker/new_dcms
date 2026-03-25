@@ -142,7 +142,7 @@ const isApplyingFeature = (featureId) => {
                             v-model="form.feature_ids"
                             :value="update.feature.id"
                             class="checkbox checkbox-primary mt-1"
-                            :disabled="isApplying"
+                            :disabled="isApplying || update.feature.implementation_status !== 'active'"
                         />
                         
                         <div class="flex-1">
@@ -186,7 +186,10 @@ const isApplyingFeature = (featureId) => {
                     </button>
                     
                     <p v-if="form.feature_ids.length === 0" class="text-center text-sm text-gray-500 mt-2">
-                        Select at least one update to apply
+                        {{ pendingUpdates.every(u => u.feature.implementation_status !== 'active') 
+                            ? 'These roadmap features will be available soon.' 
+                            : 'Select at least one active update to apply' 
+                        }}
                     </p>
                 </div>
             </div>

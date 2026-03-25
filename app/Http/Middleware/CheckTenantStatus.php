@@ -23,6 +23,19 @@ class CheckTenantStatus
             $status = $tenant->status ?? 'active';
 
             if ($status === 'suspended') {
+                // Exempt the support contact route from suspension check
+                if ($request->routeIs('tenant.contact.submit')) {
+                    return $next($request);
+                }
+
+                // If it's an Inertia request, return the new Vue page
+                if ($request->header('X-Inertia')) {
+                    return Inertia::render('Error/Suspended', [
+                        'tenant_name' => $tenant->name ?? $tenant->id,
+                        'status' => 403
+                    ])->toResponse($request)->setStatusCode(403);
+                }
+
                 return response()->make(view('errors.suspended'), 403);
             }
 

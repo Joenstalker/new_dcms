@@ -1,7 +1,9 @@
-<script setup>
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+
+const page = usePage();
+const primaryColor = page.props.branding?.primary_color || '#0ea5e9';
 import debounce from 'lodash/debounce';
 
 const props = defineProps({
@@ -35,7 +37,8 @@ const updateSearch = debounce(() => {
             <div class="tabs tabs-boxed inline-flex bg-base-200 border border-base-300">
                 <Link
                     href="/admin/subscriptions"
-                    class="tab tab-active transition-colors font-medium"
+                    class="tab transition-colors font-medium border-transparent text-white shadow-sm"
+                    :style="{ backgroundColor: primaryColor }"
                 >
                     Active Subscriptions
                 </Link>
@@ -154,12 +157,13 @@ const updateSearch = debounce(() => {
                                             v-if="link.url"
                                             :href="link.url"
                                             v-html="link.label"
-                                            class="relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                                            class="relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-all"
                                             :class="[
-                                                link.active ? 'z-10 bg-primary/10 border-primary text-primary' : 'bg-base-100 border-base-300 text-base-content/50 hover:bg-base-200',
+                                                link.active ? 'z-10 text-white border-transparent' : 'bg-base-100 border-base-300 text-base-content/50 hover:bg-base-200',
                                                 i === 0 ? 'rounded-l-md' : '',
                                                 i === subscriptions.links.length - 1 ? 'rounded-r-md' : ''
                                             ]"
+                                            :style="link.active ? { backgroundColor: primaryColor, boxShadow: `0 4px 14px 0 ${primaryColor}33` } : {}"
                                         />
                                         <span
                                             v-else

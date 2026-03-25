@@ -12,6 +12,47 @@
 
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <!-- Premium Tab Navigation -->
+                <div class="mb-8 flex items-center space-x-1 bg-gray-100/50 p-1.5 rounded-3xl w-fit border border-gray-200/50">
+                    <button 
+                        @click="activeTab = 'list'"
+                        :class="activeTab === 'list' 
+                            ? 'bg-gray-900 text-white shadow-xl shadow-gray-200' 
+                            : 'text-gray-500 hover:text-gray-900 hover:bg-white/80'"
+                        class="px-8 py-3 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Staff Overview
+                    </button>
+                    <button 
+                        @click="activeTab = 'permissions'"
+                        :class="activeTab === 'permissions' 
+                            ? 'bg-gray-900 text-white shadow-xl shadow-gray-200' 
+                            : 'text-gray-500 hover:text-gray-900 hover:bg-white/80'"
+                        class="px-8 py-3 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        Permissions
+                    </button>
+                    <button 
+                        @click="activeTab = 'schedules'"
+                        :class="activeTab === 'schedules' 
+                            ? 'bg-gray-900 text-white shadow-xl shadow-gray-200' 
+                            : 'text-gray-500 hover:text-gray-900 hover:bg-white/80'"
+                        class="px-8 py-3 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Schedules
+                    </button>
+
+                </div>
+
                 <div v-if="activeTab === 'list'">
                     <!-- Add Staff Button -->
 
@@ -23,7 +64,17 @@
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100 p-8">
                         <div class="flex justify-between items-center mb-8">
                             <h2 class="text-xl font-black text-gray-900 uppercase tracking-widest">Active Staff Members</h2>
+                            <button 
+                                @click="showingAddModal = true"
+                                class="inline-flex items-center px-6 py-3 bg-gray-900 text-white border border-transparent rounded-[1.25rem] font-black text-[10px] uppercase tracking-[0.25em] hover:bg-black transition-all shadow-xl shadow-gray-200 active:scale-95 group"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2.5 group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add Staff Member
+                            </button>
                         </div>
+
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
@@ -190,8 +241,29 @@
                         </div>
                     </div>
                 </div>
-            </div>
+                <div v-else-if="activeTab === 'schedules'">
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100 p-8">
+                        <div class="flex justify-between items-center mb-8">
+                            <h2 class="text-xl font-black text-gray-900 uppercase tracking-widest">Clinic Schedule</h2>
+                            <div class="flex space-x-3">
+                                <select class="rounded-xl border-gray-100 bg-gray-50/50 text-[10px] font-black uppercase tracking-widest focus:ring-gray-900 focus:border-gray-900 px-6 py-3">
+                                    <option value="">All Staff</option>
+                                    <option v-for="member in staff" :key="member.id" :value="member.id">
+                                        {{ member.name }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="calendar-container border border-gray-100 rounded-3xl overflow-hidden p-8 shadow-inner bg-gray-50/20">
+                            <FullCalendar :options="calendarOptions" />
+                        </div>
+                    </div>
+                    </div>
+                </div>
         </div>
+
+
 
         <!-- Manage Staff Modal (Profile) -->
         <Modal :show="showingStaffModal" @close="showingStaffModal = false" maxWidth="md">
@@ -328,8 +400,86 @@
             </div>
         </Modal>
 
+        <!-- Add Staff Modal -->
+        <Modal :show="showingAddModal" @close="showingAddModal = false" maxWidth="md">
+            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 h-28 relative">
+                <div class="absolute -bottom-8 left-10 h-16 w-16 rounded-2xl bg-white p-2 shadow-2xl border border-white/50 flex items-center justify-center font-black text-blue-600 uppercase tracking-tighter text-lg shadow-blue-200/40">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                </div>
+                <button @click="showingAddModal = false" class="absolute top-4 right-4 h-9 w-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center text-white transition-all hover:rotate-90">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-10 pt-12">
+                <div class="mb-10 border-b border-gray-50 pb-8">
+                    <h3 class="text-2xl font-black text-gray-900 tracking-tight uppercase">New Staff Member</h3>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-2">Send an invitation to join your clinic</p>
+                </div>
+                
+                <form @submit.prevent="handleAddStaff" class="space-y-8">
+                    <div class="space-y-3">
+                        <InputLabel for="name" value="Full Name" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1" />
+                        <TextInput
+                            id="name"
+                            type="text"
+                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-2xl p-5 font-black text-sm bg-gray-50/50 shadow-inner"
+                            v-model="addForm.name"
+                            required
+                            placeholder="e.g. Dr. John Doe"
+                        />
+                        <InputError class="mt-2" :message="addForm.errors.name" />
+                    </div>
+
+                    <div class="space-y-3">
+                        <InputLabel for="email" value="Email Address" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1" />
+                        <TextInput
+                            id="email"
+                            type="email"
+                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-2xl p-5 font-black text-sm bg-gray-50/50 shadow-inner"
+                            v-model="addForm.email"
+                            required
+                            placeholder="john@example.com"
+                        />
+                        <InputError class="mt-2" :message="addForm.errors.email" />
+                    </div>
+
+                    <div class="space-y-3">
+                        <InputLabel for="role" value="Clinic Role" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1" />
+                        <select 
+                            id="role"
+                            v-model="addForm.role"
+                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-2xl p-5 font-black text-sm bg-gray-50/50 shadow-inner appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E')] bg-[length:1.5em_1.5em] bg-[right_1.5em_center] bg-no-repeat"
+                            required
+                        >
+                            <option v-for="role in roles" :key="role.id" :value="role.name">{{ role.name }}</option>
+                        </select>
+                        <InputError class="mt-2" :message="addForm.errors.role" />
+                    </div>
+
+                    <div class="pt-8 flex items-center space-x-4">
+                        <SecondaryButton @click="showingAddModal = false" class="flex-[0.4] py-5 justify-center border-gray-200 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
+                            Cancel
+                        </SecondaryButton>
+                        <PrimaryButton 
+                            class="flex-1 py-5 justify-center bg-gray-900 border-none rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl shadow-gray-400 transition-all hover:bg-black active:scale-95" 
+                            :class="{ 'opacity-25': addForm.processing }" 
+                            :disabled="addForm.processing"
+                        >
+                            Send Invitation
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
+
     </AuthenticatedLayout>
 </template>
+
 
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -342,20 +492,81 @@ import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Swal from 'sweetalert2';
+import FullCalendar from '@fullcalendar/vue3';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import googleCalendarPlugin from '@fullcalendar/google-calendar';
+
 
 const props = defineProps({
     staff: Array,
+    roles: Array,
     allPermissions: Array,
+    api_key: String,
     initialTab: { type: String, default: 'list' }
 });
+
 
 const page = usePage();
 
 // Tabs State
 const activeTab = ref(props.initialTab);
-const goToSchedules = () => {
-    router.get(route('staff.schedules'));
+
+// Add Staff Modal State
+const showingAddModal = ref(false);
+const addForm = useForm({
+    name: '',
+    email: '',
+    role: 'Dentist',
+});
+
+const handleAddStaff = () => {
+    addForm.post(route('staff.store'), {
+        onSuccess: () => {
+            showingAddModal.value = false;
+            addForm.reset();
+            Swal.fire({
+                icon: 'success',
+                title: 'Staff Invited!',
+                text: 'A permanent login invitation has been sent to their email.',
+                timer: 3000,
+                showConfirmButton: false
+            });
+        },
+        onError: () => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to create staff member. Please check the email uniqueness.',
+            });
+        }
+    });
 };
+
+// Calendar State
+const calendarOptions = computed(() => ({
+    plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, googleCalendarPlugin],
+    initialView: 'timeGridWeek',
+    headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+    },
+    editable: true,
+    selectable: true,
+    selectMirror: true,
+    dayMaxEvents: true,
+    weekends: true,
+    height: 'auto',
+    googleCalendarApiKey: props.api_key,
+    events: {
+        googleCalendarId: 'primary'
+    },
+    eventClick: (info) => console.log('Event clicked:', info.event),
+    select: (selectInfo) => console.log('Selection:', selectInfo)
+}));
+
 
 // View Modal State
 const showingStaffModal = ref(false);
@@ -569,3 +780,70 @@ const confirmDelete = (member) => {
 
 // No more local can helper, using global from app.js
 </script>
+
+<style scoped>
+.calendar-container {
+    background: white;
+}
+
+:deep(.fc-header-toolbar) {
+    margin-bottom: 2rem !important;
+}
+
+:deep(.fc-toolbar-title) {
+    font-size: 1.25rem !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+    color: #111827 !important;
+}
+
+:deep(.fc-button-primary) {
+    background-color: #f9fafb !important;
+    border: 1px solid #f3f4f6 !important;
+    color: #4b5563 !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+    padding: 10px 20px !important;
+    border-radius: 12px !important;
+    transition: all 0.3s !important;
+}
+
+:deep(.fc-button-primary:hover) {
+    background-color: #111827 !important;
+    color: white !important;
+    border-color: #111827 !important;
+}
+
+:deep(.fc-button-active) {
+    background-color: #111827 !important;
+    color: white !important;
+    border-color: #111827 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+:deep(.fc-daygrid-event) {
+    border-radius: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+}
+
+:deep(.fc-col-header-cell) {
+    padding: 15px 0 !important;
+    background-color: #f9fafb !important;
+    border-color: #f3f4f6 !important;
+}
+
+:deep(.fc-col-header-cell-cushion) {
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+    color: #9ca3af !important;
+}
+</style>
+

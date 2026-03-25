@@ -9,6 +9,7 @@ use App\Models\PendingRegistration;
 use App\Models\User;
 use App\Mail\TenantApproved;
 use App\Mail\TenantRejected;
+use App\Mail\TenantSuspended;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -85,10 +86,10 @@ class TenantController extends Controller
                 
                 // Storage
                 $tenant->max_storage_mb = $latestSubscription->plan->max_storage_mb ?? 500;
-                $tenant->storage_used_mb = $this->getTenantStorageUsage($tenant->database_name);
+                $tenant->storage_used_mb = round($tenant->storage_used_bytes / (1024 * 1024), 2);
             } else {
                 $tenant->days_left = 0;
-                $tenant->storage_used_mb = 0;
+                $tenant->storage_used_mb = round($tenant->storage_used_bytes / (1024 * 1024), 2);
                 $tenant->max_storage_mb = 500;
                 $tenant->payment_method = 'N/A';
             }
@@ -170,10 +171,12 @@ class TenantController extends Controller
             'owner_name' => 'required|string|max:255',
             'status' => 'required|in:active,suspended,pending_payment',
             'plan_id' => 'required|exists:subscription_plans,id',
+            'reason' => 'required|string|max:255',
         ]);
 
         DB::beginTransaction();
         try {
+            $oldStatus = $tenant->status;
             // Update Tenant
             $tenant->update([
                 'name' => $validated['name'],
@@ -194,16 +197,43 @@ class TenantController extends Controller
                 $latestSubscription->update([
                     'subscription_plan_id' => $validated['plan_id']
                 ]);
+
+                // Sync new features via OTA Service
+                try {
+                    $otaService = app(\App\Services\FeatureOTAUpdateService::class);
+                    $newPlan = \App\Models\SubscriptionPlan::find($validated['plan_id']);
+                    if ($newPlan) {
+                        $otaService->pushPlanUpdates($tenant, $newPlan);
+                        Log::info("Pushed plan updates for tenant {$tenant->id} to plan {$newPlan->name}");
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Failed to push OTA updates for tenant {$tenant->id}: " . $e->getMessage());
+                }
             }
 
             // Log action
             AuditLog::record(
                 'tenant_updated',
-                "Updated clinic '{$tenant->name}' information.",
+                "Updated clinic '{$tenant->name}' information. Reason: " . ($validated['reason'] ?? 'N/A'),
                 'Tenant',
                 $tenant->id,
                 ['changes' => $validated]
             );
+
+            // If status changed to suspended, notify the tenant
+            if ($oldStatus !== 'suspended' && $validated['status'] === 'suspended') {
+                try {
+                    $primaryDomain = $tenant->domains->first()?->domain;
+                    $tenantUrl = $primaryDomain ? $this->getTenantUrl($primaryDomain) : null;
+                    
+                    if ($tenantUrl) {
+                        Mail::to($tenant->email)->send(new TenantSuspended($tenant, $validated['reason'], $tenantUrl));
+                        Log::info("Suspension email sent to tenant: {$tenant->email}");
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Failed to send suspension email to tenant {$tenant->id}: " . $e->getMessage());
+                }
+            }
 
             // Notify Tenant
             try {
@@ -234,6 +264,11 @@ class TenantController extends Controller
      */
     public function destroy(Tenant $tenant): RedirectResponse
     {
+        // Guard: Prevent deletion of active paying tenants
+        if (!$tenant->canBeDeleted()) {
+            return back()->with('error', 'Active paying clinics cannot be deleted. Please suspend or cancel the subscription first.');
+        }
+
         try {
             $clinicName = $tenant->name;
             $tenantId = $tenant->id;

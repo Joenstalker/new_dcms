@@ -20,10 +20,11 @@ class PlanController extends Controller
     public function index(): Response
     {
         $plans = SubscriptionPlan::with('features')->orderBy('price_monthly')->get();
+        $allFeatures = \App\Models\Feature::active()->ordered()->get();
 
         return Inertia::render('Admin/Plans/Index', [
-            'plans' => $plans
-
+            'plans' => $plans,
+            'allFeatures' => $allFeatures,
         ]);
     }
 
@@ -65,12 +66,32 @@ class PlanController extends Controller
 
         $plan->update($validated);
 
+        // Sync features if provided
+        if ($request->has('features')) {
+            foreach ($request->input('features') as $featureData) {
+                $feature = \App\Models\Feature::find($featureData['id']);
+                if (!$feature) continue;
+
+                if ($featureData['assigned']) {
+                    // Plan::addFeature handles pivot logic based on type
+                    $plan->addFeature($feature, $featureData['value'] ?? null);
+                } else {
+                    $plan->removeFeature($feature);
+                }
+            }
+        }
+
         AuditLog::record(
             action: 'plan.updated',
-            description: "Subscription plan '{$plan->name}' updated.",
+            description: "Subscription plan '{$plan->name}' updated with usage limits and features.",
             targetType: 'SubscriptionPlan',
             targetId: (string) $plan->id,
-            metadata: ['name' => $plan->name, 'price_monthly' => $plan->price_monthly]
+            metadata: [
+                'name' => $plan->name, 
+                'price_monthly' => $plan->price_monthly,
+                'price_yearly' => $plan->price_yearly,
+                'yearly_discount' => $plan->yearly_discount_percent
+            ]
         );
 
         // Sync to dynamic features
@@ -205,13 +226,59 @@ class PlanController extends Controller
                 action: 'plan.features_pushed',
                 description: "Pushed updates for plan '{$plan->name}' to $notifiedCount tenants.",
                 targetType: 'SubscriptionPlan',
-                targetId: (string) $plan->id
+                targetId: (string) $plan->id,
+                metadata: ['name' => $plan->name, 'job_id' => $batch->id]
             );
 
             return back()->with('success', "Updates pushed successfully! {$notifiedCount} tenants notified (Job ID: {$batch->id}).");
         } catch (\Exception $e) {
             Log::error('OTA Push Error: ' . $e->getMessage());
             return back()->with('error', 'Push failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Push updates to multiple plans at once.
+     */
+    public function batchPushUpdates(Request $request, \App\Services\FeatureOTAUpdateService $otaService): RedirectResponse
+    {
+        $planIds = $request->input('plan_ids', []);
+        
+        if (empty($planIds)) {
+            return back()->with('error', 'No plans selected for update.');
+        }
+
+        $plans = SubscriptionPlan::whereIn('id', $planIds)->get();
+        $totalNotified = 0;
+        $jobIds = [];
+
+        try {
+            foreach ($plans as $plan) {
+                // Check if plan has staged features
+                $stagedCount = $plan->features()->wherePivotNull('pushed_at')->count();
+                if ($stagedCount === 0) continue;
+
+                $batch = $otaService->pushPlanUpdates($plan)->dispatch();
+                $totalNotified += $batch->totalJobs;
+                $jobIds[] = $batch->id;
+
+                AuditLog::record(
+                    action: 'plan.features_pushed_batch',
+                    description: "Batch pushed updates for plan '{$plan->name}' as part of a multi-plan push.",
+                    targetType: 'SubscriptionPlan',
+                    targetId: (string) $plan->id,
+                    metadata: ['name' => $plan->name, 'job_id' => $batch->id]
+                );
+            }
+
+            if (empty($jobIds)) {
+                return back()->with('info', 'No staged features found to push.');
+            }
+
+            return back()->with('success', "Started batch update for " . count($jobIds) . " plans. Total notifications queued: {$totalNotified}.");
+        } catch (\Exception $e) {
+            Log::error('Batch OTA Push Error: ' . $e->getMessage());
+            return back()->with('error', 'Batch push failed: ' . $e->getMessage());
         }
     }
 
@@ -224,6 +291,7 @@ class PlanController extends Controller
             'name' => 'required|string|max:255|unique:subscription_plans,name' . ($id ? ",$id" : ""),
             'price_monthly' => 'required|numeric|min:0',
             'price_yearly' => 'required|numeric|min:0',
+            'yearly_discount_percent' => 'nullable|numeric|min:0|max:100',
             'max_users' => 'required|integer|min:1',
             'max_patients' => 'nullable|integer|min:0',
             'max_appointments' => 'nullable|integer|min:0',
@@ -234,6 +302,7 @@ class PlanController extends Controller
             'has_priority_support' => 'boolean',
             'has_multi_branch' => 'boolean',
             'report_level' => 'required|string|in:basic,enhanced,advanced',
+            'max_storage_mb' => 'nullable|integer|min:0',
         ]);
 
         // Transform 0 to null (unlimited) for specific input fields

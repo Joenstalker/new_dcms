@@ -1,5 +1,7 @@
-<script setup>
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const primaryColor = page.props.branding?.primary_color || '#0ea5e9';
 
 defineProps({
     unreadCount: {
@@ -39,7 +41,8 @@ const handleMarkAllRead = () => {
                 <button
                     v-if="unreadCount > 0"
                     @click="handleMarkAllRead"
-                    class="btn btn-primary btn-sm font-bold shadow-lg shadow-primary/20"
+                    class="btn btn-sm font-bold shadow-sm text-white border-transparent hover:brightness-110"
+                    :style="{ backgroundColor: primaryColor }"
                 >
                     <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />

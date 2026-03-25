@@ -8,6 +8,10 @@ import logoImage from '../../../public/images/dcms-logo.png';
 
 const props = defineProps({
     show: Boolean,
+    submitUrl: {
+        type: String,
+        default: '/contact'
+    }
 });
 
 const emit = defineEmits(['close']);
@@ -175,7 +179,7 @@ const actuallySubmit = async () => {
     });
 
     try {
-        const response = await fetch('/contact', {
+        const response = await fetch(props.submitUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

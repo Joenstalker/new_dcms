@@ -24,8 +24,10 @@ const form = ref({
     owner_name: '',
     status: 'active',
     plan_id: null,
+    reason: '',
 });
 
+const isProcessing = ref(false);
 const showMoreDetails = ref(false);
 
 watch(() => props.tenant, (newTenant) => {
@@ -33,30 +35,84 @@ watch(() => props.tenant, (newTenant) => {
         form.value = {
             name: newTenant.name || '',
             owner_name: newTenant.owner_name || '',
-            status: newTenant.subscription_status || 'active',
+            status: newTenant.status || 'active',
             plan_id: newTenant.plan_id || null,
+            reason: '',
         };
     }
 }, { immediate: true });
 
 const submit = () => {
+    if (!form.value.reason || form.value.reason.length < 5) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Reason Required',
+            text: 'Please provide a justification (at least 5 characters) in the Action Reason field before updating.',
+            confirmButtonColor: '#0d9488',
+        });
+        return;
+    }
     emit('update', form.value);
 };
 
-const confirmDelete = () => {
+const confirmSuspend = () => {
+    if (!form.value.reason || form.value.reason.length < 5) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Reason Required',
+            text: 'Please provide a justification (at least 5 characters) in the Action Reason field before changing the clinic status.',
+            confirmButtonColor: '#0d9488',
+        });
+        return;
+    }
+
+    const isSuspended = form.value.status === 'suspended';
+    const actionGoal = isSuspended ? 'active' : 'suspended';
+    const actionText = isSuspended ? 'reactivate' : 'suspend';
+    
     Swal.fire({
-        title: 'Are you sure?',
-        text: "This will permanently delete the clinic, all its data, and its database. This action cannot be undone!",
+        title: `${isSuspended ? 'Reactivate' : 'Suspend'} Clinic?`,
+        text: `Are you sure you want to ${actionText} "${props.tenant.name}"?`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete it!',
+        confirmButtonColor: isSuspended ? '#0d9488' : '#d33',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: `Yes, ${actionText} it!`,
         cancelButtonText: 'Cancel',
-        reverseButtons: true
+        reverseButtons: true,
+        allowOutsideClick: () => !Swal.isLoading()
     }).then((result) => {
         if (result.isConfirmed) {
-            emit('delete', props.tenant);
+            // 1. Immediate Visual Update
+            const originalStatus = form.value.status;
+            form.value.status = actionGoal;
+            isProcessing.value = true;
+            
+            // 2. Show Processing State
+            Swal.fire({
+                title: 'Processing...',
+                html: `${isSuspended ? 'Reactivating' : 'Suspending'} clinic, please wait.`,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // 3. Emit update (Mother component will handle the router.put)
+            try {
+                emit('update', form.value);
+                // Note: The modal usually closes via router.then/onSuccess in Index.vue
+                // but we keep the local status update just in case or for the brief moment before close.
+            } catch (error) {
+                // Revert on error
+                form.value.status = originalStatus;
+                isProcessing.value = false;
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Action Failed',
+                    text: 'An error occurred while updating the clinic status.'
+                });
+            }
         }
     });
 };
@@ -104,11 +160,22 @@ const getStorageColorClass = (percentage) => {
                                         </div>
                                         <div>
                                             <label class="block text-xs font-medium text-base-content/60 uppercase tracking-wider">Status</label>
-                                            <select v-model="form.status" class="mt-1 block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
-                                                <option value="active">Active</option>
-                                                <option value="suspended">Suspended</option>
-                                                <option value="pending_payment">Pending Payment</option>
-                                            </select>
+                                            <div class="mt-1 h-[38px] flex items-center px-3 rounded-md border border-base-300 bg-base-200/50">
+                                                <span class="flex-shrink-0 w-2 h-2 rounded-full mr-2"
+                                                    :class="{
+                                                        'bg-success': form.status === 'active',
+                                                        'bg-error': form.status === 'suspended',
+                                                        'bg-warning': form.status === 'pending_payment'
+                                                    }"
+                                                ></span>
+                                                <span class="text-sm font-semibold capitalize text-base-content">
+                                                    {{ form.status.replace('_', ' ') }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-base-content/60 uppercase tracking-wider">Action Reason <span class="text-error">*</span></label>
+                                            <input v-model="form.reason" type="text" placeholder="Reason for change..." class="mt-1 block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm" />
                                         </div>
                                         <div>
                                             <label class="block text-xs font-medium text-base-content/60 uppercase tracking-wider">Plan</label>
@@ -228,13 +295,17 @@ const getStorageColorClass = (percentage) => {
                     </button>
                     <div class="flex-grow"></div>
                     <button
-                        @click="confirmDelete"
-                        class="mt-3 w-full inline-flex justify-center items-center rounded-md border border-error/20 shadow-sm px-4 py-2 bg-error/10 text-base font-medium text-error hover:bg-error/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error sm:mt-0 sm:w-auto sm:text-sm transition-colors"
+                        @click="confirmSuspend"
+                        class="mt-3 w-full inline-flex justify-center items-center rounded-md border shadow-sm px-4 py-2 text-base font-medium sm:mt-0 sm:w-auto sm:text-sm transition-colors"
+                        :class="form.status === 'suspended' 
+                            ? 'border-success/20 bg-success/10 text-success hover:bg-success/20 focus:ring-success' 
+                            : 'border-error/20 bg-error/10 text-error hover:bg-error/20 focus:ring-error'"
                     >
                         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <path v-if="form.status !== 'suspended'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Delete Clinic
+                        {{ form.status === 'suspended' ? 'Reactivate Clinic' : 'Suspend Clinic' }}
                     </button>
                 </div>
             </div>

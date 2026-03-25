@@ -366,8 +366,14 @@ class RegistrationController extends Controller
                     }
                     break;
 
+                case 'customer.subscription.updated':
+                    $subscriptionObj = $event->data->object;
+                    $this->handleSubscriptionUpdated($subscriptionObj);
+                    break;
+
                 case 'customer.subscription.deleted':
-                    // Handle subscription cancellation
+                    $subscriptionObj = $event->data->object;
+                    $this->handleSubscriptionDeleted($subscriptionObj);
                     break;
 
                 default:
@@ -649,6 +655,134 @@ class RegistrationController extends Controller
 
         return $this->accessTenant($request, $subdomain);
     }
+    /**
+     * Handle Stripe customer.subscription.updated webhook
+     */
+    protected function handleSubscriptionUpdated($subscriptionObj)
+    {
+        try {
+            $stripeSubscriptionId = $subscriptionObj->id;
+            
+            // Find subscription by stripe_id in DB
+            $subscription = \App\Models\Subscription::where('stripe_id', $stripeSubscriptionId)->first();
+            
+            if (!$subscription) {
+                Log::warning("Webhook updated: Subscription not found for Stripe ID: {$stripeSubscriptionId}");
+                return;
+            }
+
+            // Get new price ID
+            $priceId = $subscriptionObj->items->data[0]->price->id ?? null;
+            
+            if (!$priceId) {
+                Log::warning("Webhook updated: No price ID found for Stripe ID: {$stripeSubscriptionId}");
+                return;
+            }
+
+            // Find matching SubscriptionPlan
+            $plan = SubscriptionPlan::where('stripe_monthly_price_id', $priceId)
+                ->orWhere('stripe_yearly_price_id', $priceId)
+                ->first();
+
+            if (!$plan) {
+                Log::warning("Webhook updated: Unknown Stripe price ID: {$priceId}");
+                return;
+            }
+
+            // Determine if the billing cycle changed based on which price matched
+            $billingCycle = ($plan->stripe_yearly_price_id === $priceId) ? 'yearly' : 'monthly';
+            
+            // Get current plan info for notification
+            $oldPlanName = $subscription->plan->name ?? 'Unknown';
+            $isUpgradeOrDowngrade = $subscription->subscription_plan_id !== $plan->id;
+            $status = $subscriptionObj->status;
+
+            // Extract ends_at timestamp if provided
+            $currentPeriodEnd = $subscriptionObj->current_period_end ?? null;
+            $endsAt = $currentPeriodEnd ? \Carbon\Carbon::createFromTimestamp($currentPeriodEnd) : null;
+
+            // Update local DB
+            $subscription->update([
+                'subscription_plan_id' => $plan->id,
+                'stripe_price'         => $subscriptionObj->items->data[0]->price->unit_amount / 100,
+                'stripe_status'        => $status,
+                'billing_cycle'        => $billingCycle,
+                'payment_status'       => $status === 'active' ? 'paid' : 'unpaid',
+                'billing_cycle_end'    => $endsAt,
+            ]);
+
+            // Notify Admin
+            $notificationService = app(NotificationService::class);
+            
+            if ($isUpgradeOrDowngrade) {
+                $tenant = $subscription->tenant;
+                if ($tenant) {
+                    $notificationService->notifyAdmins(
+                        'subscription_updated',
+                        'Tenant Plan Updated',
+                        "Tenant '{$tenant->name}' has changed their plan from {$oldPlanName} to {$plan->name} ({$billingCycle}).",
+                        [
+                            'tenant_id' => $tenant->id,
+                            'clinic_name' => $tenant->name,
+                            'new_plan' => $plan->name,
+                            'billing_cycle' => $billingCycle,
+                            'status' => $status
+                        ],
+                        'both'
+                    );
+                }
+            }
+
+            Log::info("Webhook processed: Subscription {$stripeSubscriptionId} updated to plan {$plan->name}");
+
+        } catch (\Exception $e) {
+            Log::error("Failed to handle subscription updated: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handle Stripe customer.subscription.deleted webhook
+     */
+    protected function handleSubscriptionDeleted($subscriptionObj)
+    {
+        try {
+            $stripeSubscriptionId = $subscriptionObj->id;
+            
+            $subscription = \App\Models\Subscription::where('stripe_id', $stripeSubscriptionId)->first();
+            
+            if (!$subscription) {
+                Log::warning("Webhook deleted: Subscription not found for Stripe ID: {$stripeSubscriptionId}");
+                return;
+            }
+
+            $subscription->update([
+                'stripe_status' => 'canceled',
+            ]);
+
+            $tenant = $subscription->tenant;
+            
+            // Notify Admin
+            if ($tenant) {
+                $notificationService = app(NotificationService::class);
+                $notificationService->notifyAdmins(
+                    'subscription_canceled',
+                    'Tenant Subscription Canceled',
+                    "Tenant '{$tenant->name}' has canceled their subscription via Stripe.",
+                    [
+                        'tenant_id' => $tenant->id,
+                        'clinic_name' => $tenant->name,
+                    ],
+                    'both'
+                );
+            }
+
+            Log::info("Webhook processed: Subscription {$stripeSubscriptionId} canceled");
+
+        } catch (\Exception $e) {
+            Log::error("Failed to handle subscription deleted: " . $e->getMessage());
+        }
+    }
+
     /**
      * Get the StripeClient instance.
      * Overridden in tests to mock Stripe.

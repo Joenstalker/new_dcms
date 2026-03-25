@@ -18,6 +18,7 @@ Route::middleware([
 ])->group(function () {
     Route::get('/', [\App\Http\Controllers\Tenant\LandingController::class , 'index'])->name('tenant.landing');
     Route::post('/concerns', [\App\Http\Controllers\Tenant\LandingController::class , 'submitConcern'])->name('tenant.concern.store');
+    Route::post('/contact-support', [\App\Http\Controllers\ContactController::class, 'submit'])->name('tenant.contact.submit');
     Route::patch('/concerns/{concern}', [\App\Http\Controllers\Tenant\ConcernController::class , 'update'])->name('tenant.concern.update');
 
     // Public QR Booking Route (no auth required — patients scan QR code)
@@ -74,23 +75,36 @@ Route::middleware([
             // Owner only routes
             Route::middleware(['role:Owner'])->group(function () {
                     // Staff management — enforces max_users limit on create
-                    Route::get('staff/schedules', [\App\Http\Controllers\StaffController::class , 'schedules'])->name('staff.schedules');
                     Route::get('staff', [\App\Http\Controllers\StaffController::class , 'index'])->name('staff.index');
-                    Route::get('staff/create', [\App\Http\Controllers\StaffController::class , 'create'])->name('staff.create');
                     Route::post('staff', [\App\Http\Controllers\StaffController::class , 'store'])
                         ->middleware('check.subscription:max_users')
                         ->name('staff.store');
-                    Route::get('staff/{staff}/edit', [\App\Http\Controllers\StaffController::class , 'edit'])->name('staff.edit');
                     Route::put('staff/{staff}', [\App\Http\Controllers\StaffController::class , 'update'])->name('staff.update');
                     Route::delete('staff/{staff}', [\App\Http\Controllers\StaffController::class , 'destroy'])->name('staff.destroy');
                     Route::post('staff/bulk-permissions', [\App\Http\Controllers\StaffController::class , 'bulkUpdatePermissions'])->name('staff.bulk-update-permissions');
 
                     // Reports
                     Route::get('reports', [\App\Http\Controllers\ReportController::class , 'index'])->name('reports.index');
+                    Route::get('reports/export/{format}', [\App\Http\Controllers\ReportController::class , 'export'])->name('reports.export');
+
+                    // Analytics (Ultimate only)
+                    Route::get('analytics', [\App\Http\Controllers\Tenant\AnalyticsController::class , 'index'])
+                        ->name('analytics.index')
+                        ->middleware('check.subscription:advanced_analytics');
+
+                    // Branches (Ultimate only)
+                    Route::middleware(['check.subscription:multi_branch'])->group(function () {
+                        Route::get('branches', [\App\Http\Controllers\Tenant\BranchController::class, 'index'])->name('branches.index');
+                        Route::post('branches', [\App\Http\Controllers\Tenant\BranchController::class, 'store'])->name('branches.store');
+                        Route::put('branches/{branch}', [\App\Http\Controllers\Tenant\BranchController::class, 'update'])->name('branches.update');
+                        Route::delete('branches/{branch}', [\App\Http\Controllers\Tenant\BranchController::class, 'destroy'])->name('branches.destroy');
+                        Route::post('branches/switch', [\App\Http\Controllers\Tenant\BranchController::class, 'switchBranch'])->name('branches.switch');
+                    });
 
                     // Settings
                     Route::get('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'index'])->name('settings.index');
                     Route::post('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'update'])->name('settings.update');
+                    Route::get('settings/branding', [\App\Http\Controllers\Tenant\SettingsController::class , 'branding'])->name('settings.branding');
  
                     // Settings - Features
                     Route::get('settings/features', [\App\Http\Controllers\Tenant\SettingsController::class , 'features'])->name('settings.features');

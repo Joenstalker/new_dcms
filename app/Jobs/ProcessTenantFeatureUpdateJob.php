@@ -57,7 +57,27 @@ class ProcessTenantFeatureUpdateJob implements ShouldQueue
                 }
             }
 
-            // 2. Find the administrator User for emailing
+            // 2. Create in-app notifications for tenant administrators (within tenant context)
+            if (!$this->isAdvertisement && !empty($this->features)) {
+                $this->tenant->run(function () {
+                    $notificationService = app(\App\Services\TenantNotificationService::class);
+                    foreach ($this->features as $feature) {
+                        $isRoadmap = in_array($feature->implementation_status, [
+                            Feature::STATUS_COMING_SOON,
+                            Feature::STATUS_IN_DEVELOPMENT
+                        ]);
+
+                        $title = $isRoadmap ? "Roadmap Update: {$feature->name}" : "New Feature: {$feature->name}";
+                        $message = $isRoadmap 
+                            ? "We've added '{$feature->name}' to our roadmap! It will be available soon."
+                            : "The feature '{$feature->name}' is now ready for your clinic! Visit the Updates page to apply it.";
+
+                        $notificationService->notifyNewFeature($feature->name, $message);
+                    }
+                });
+            }
+
+            // 3. Find the administrator User for emailing (central context is fine for Mail)
             $adminEmail = $this->tenant->email ?? null;
             if ($adminEmail) {
                 $admin = \App\Models\User::where('email', $adminEmail)->first();

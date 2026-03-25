@@ -16,9 +16,118 @@
         <h1 class="text-2xl font-bold text-gray-900 mb-2">Clinic Suspended</h1>
         <p class="text-gray-600 mb-8">Access to this platform has been suspended by the administrator. Please contact support to resolve this issue.</p>
         
-        <a href="mailto:admin@dcms.com" class="inline-block bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors w-full">
+        <button onclick="openModal()" class="inline-block bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors w-full shadow-lg shadow-red-100">
             Contact Support
-        </a>
+        </button>
     </div>
+
+    <!-- Contact Modal -->
+    <div id="contactModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl">
+            <div class="h-1.5 w-full bg-gradient-to-r from-red-500 to-red-600"></div>
+            <div class="p-8">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">Support Ticket</h2>
+                        <p class="text-sm text-gray-500">Send a message to the administrator.</p>
+                    </div>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                
+                <form id="contactForm" class="space-y-4">
+                    @csrf
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+                        <input type="text" name="name" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500/20 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                        <input type="email" name="email" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500/20 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Message</label>
+                        <textarea name="message" rows="4" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500/20 outline-none resize-none"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-center py-2">
+                        <div id="recaptcha-container"></div>
+                    </div>
+
+                    <button type="submit" id="submitBtn" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-all">
+                        Send Message
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        let recaptchaWidgetId = null;
+        const siteKey = "{{ config('services.recaptcha.site_key') }}";
+
+        function openModal() {
+            const modal = document.getElementById('contactModal');
+            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
+            if (recaptchaWidgetId === null && window.grecaptcha) {
+                recaptchaWidgetId = grecaptcha.render('recaptcha-container', {
+                    'sitekey': siteKey,
+                    'theme': 'light'
+                });
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('contactModal');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        document.getElementById('contactForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.innerText;
+            
+            const token = grecaptcha.getResponse(recaptchaWidgetId);
+            if (!token) {
+                Swal.fire({ icon: 'warning', text: 'Please complete the reCAPTCHA' });
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Sending...';
+
+            const formData = new FormData(e.target);
+            formData.append('recaptcha_token', token);
+
+            try {
+                const response = await fetch('/contact-support', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    Swal.fire({ icon: 'success', title: 'Sent!', text: result.message });
+                    closeModal();
+                    e.target.reset();
+                    grecaptcha.reset(recaptchaWidgetId);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Oops!', text: result.message || 'Validation failed' });
+                    grecaptcha.reset(recaptchaWidgetId);
+                }
+            } catch (err) {
+                Swal.fire({ icon: 'error', text: 'Connection failed' });
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        };
+    </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <script setup>
-import { useForm } from '@inertiajs/vue3';
+import { useForm, usePage } from '@inertiajs/vue3';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
@@ -17,6 +17,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['submit', 'cancel']);
+
+const page = usePage();
+const primaryColor = page.props.branding?.primary_color || '#0ea5e9';
 
 const form = useForm({
     name: props.plan?.name ?? '',
@@ -44,7 +47,7 @@ const submit = () => {
         <header class="border-b border-base-300 pb-4">
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-bold text-base-content">
-                    {{ plan ? 'Edit' : 'Create' }} <span class="text-primary">Subscription Plan</span>
+                    {{ plan ? 'Edit' : 'Create' }} <span :style="{ color: primaryColor }">Subscription Plan</span>
                 </h2>
                 <div v-if="plan?.stripe_product_id" class="flex items-center space-x-1 px-2 py-0.5 bg-success/10 rounded text-[10px] font-bold text-success border border-success/20">
                     <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
@@ -188,7 +191,7 @@ const submit = () => {
             <SecondaryButton @click="$emit('cancel')" :disabled="processing" class="btn btn-ghost btn-sm normal-case">
                 Cancel
             </SecondaryButton>
-            <PrimaryButton class="btn btn-primary btn-sm normal-case px-6 shadow-sm shadow-primary/20" :class="{ 'opacity-25': processing }" :disabled="processing">
+            <PrimaryButton class="text-white border-transparent btn-sm normal-case px-6 shadow-sm transition-all hover:brightness-110" :style="{ backgroundColor: primaryColor }" :class="{ 'opacity-25': processing }" :disabled="processing">
                 {{ plan ? 'Update Plan' : 'Save Plan' }}
             </PrimaryButton>
         </div>

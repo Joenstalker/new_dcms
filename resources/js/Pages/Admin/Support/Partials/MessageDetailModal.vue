@@ -1,5 +1,8 @@
-<script setup>
 import { ref, watch } from 'vue';
+import { usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const primaryColor = page.props.branding?.primary_color || '#0ea5e9';
 
 const props = defineProps({
     show: {
@@ -112,7 +115,7 @@ const formatFileSize = (bytes) => {
                         <div class="px-8 py-6 border-b border-base-300/50 bg-base-100">
                             <div class="flex items-start gap-5">
                                 <div class="avatar placeholder">
-                                    <div class="bg-primary/10 text-primary border border-primary/20 rounded-2xl w-14 h-14 shadow-sm">
+                                    <div class="text-white border border-transparent rounded-2xl w-14 h-14 shadow-sm flex items-center justify-center" :style="{ backgroundColor: primaryColor }">
                                         <span class="text-xl font-black">{{ message.name.charAt(0).toUpperCase() }}</span>
                                     </div>
                                 </div>
@@ -137,7 +140,7 @@ const formatFileSize = (bytes) => {
                         <!-- Subject & Message -->
                         <div class="px-8 py-6 border-b border-base-300/50">
                             <h3 class="text-sm font-black text-base-content tracking-tight mb-3 flex items-center gap-2">
-                                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                <span class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: primaryColor }"></span>
                                 {{ message.subject }}
                             </h3>
                             <div class="bg-base-200/50 rounded-2xl p-5 border border-base-300/50 shadow-inner">
@@ -177,7 +180,7 @@ const formatFileSize = (bytes) => {
                         <!-- Reply Form -->
                         <div class="px-8 py-6 bg-base-200/20">
                             <h4 class="text-sm font-black text-base-content mb-4 tracking-tight flex items-center gap-2">
-                                <svg class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <svg class="w-4 h-4 text-base-content/50" :style="{ color: primaryColor }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                                 </svg>
                                 Compose Reply
@@ -245,7 +248,8 @@ const formatFileSize = (bytes) => {
                                 <button
                                     @click="handleSendReply"
                                     :disabled="!replyText.trim() || isSendingReply"
-                                    class="btn btn-primary font-black shadow-lg shadow-primary/20 min-w-[140px] rounded-xl"
+                                    class="btn font-black shadow-sm min-w-[140px] rounded-xl text-white border-transparent hover:brightness-110 disabled:opacity-50"
+                                    :style="{ backgroundColor: primaryColor }"
                                 >
                                     <span v-if="isSendingReply" class="loading loading-spinner loading-xs mr-2"></span>
                                     <svg v-else class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">

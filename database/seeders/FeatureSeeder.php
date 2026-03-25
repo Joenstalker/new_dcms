@@ -174,7 +174,7 @@ class FeatureSeeder extends Seeder
         // Create all features
         foreach ($features as $featureData) {
             Feature::updateOrCreate(
-            ['key' => $featureData['key']],
+                ['key' => $featureData['key']],
                 $featureData
             );
         }
@@ -188,78 +188,106 @@ class FeatureSeeder extends Seeder
      */
     private function assignFeaturesToPlans(): void
     {
-        $basicPlan = SubscriptionPlan::where('name', 'Basic')->first();
-        $proPlan = SubscriptionPlan::where('name', 'Pro')->first();
-        $ultimatePlan = SubscriptionPlan::where('name', 'Ultimate')->first();
+        // Define Plan Details (including limits and prices)
+        $plans = [
+            'Basic' => [
+                'price_monthly' => 1499.00,
+                'price_yearly' => 14990.00,
+                'max_users' => 4,
+                'max_patients' => 150,
+                'max_appointments' => 500,
+                'max_storage_mb' => 500,
+                'features' => [
+                    'qr_booking' => ['value_boolean' => true],
+                    'appointment_scheduling' => ['value_boolean' => true],
+                    'patient_records' => ['value_boolean' => true],
+                    'billing_pos' => ['value_boolean' => true],
+                    'clinic_setup' => ['value_boolean' => true],
+                    'role_based_access' => ['value_boolean' => true],
+                    'max_users' => ['value_numeric' => 4],
+                    'max_patients' => ['value_numeric' => 150],
+                    'max_appointments' => ['value_numeric' => 500],
+                    'sms_notifications' => ['value_boolean' => false],
+                    'custom_branding' => ['value_boolean' => false],
+                    'priority_support' => ['value_boolean' => false],
+                    'report_level' => ['value_tier' => 'basic'],
+                    'advanced_analytics' => ['value_boolean' => false],
+                    'multi_branch' => ['value_boolean' => false],
+                    'max_storage_mb' => ['value_numeric' => 500],
+                ]
+            ],
+            'Pro' => [
+                'price_monthly' => 2499.00,
+                'price_yearly' => 24990.00,
+                'max_users' => 10,
+                'max_patients' => 1000,
+                'max_appointments' => 2000,
+                'max_storage_mb' => 5000,
+                'features' => [
+                    'qr_booking' => ['value_boolean' => true],
+                    'appointment_scheduling' => ['value_boolean' => true],
+                    'patient_records' => ['value_boolean' => true],
+                    'billing_pos' => ['value_boolean' => true],
+                    'clinic_setup' => ['value_boolean' => true],
+                    'role_based_access' => ['value_boolean' => true],
+                    'max_users' => ['value_numeric' => 10],
+                    'max_patients' => ['value_numeric' => 1000],
+                    'max_appointments' => ['value_numeric' => 2000],
+                    'sms_notifications' => ['value_boolean' => true],
+                    'custom_branding' => ['value_boolean' => true],
+                    'priority_support' => ['value_boolean' => false],
+                    'report_level' => ['value_tier' => 'enhanced'],
+                    'advanced_analytics' => ['value_boolean' => false],
+                    'multi_branch' => ['value_boolean' => false],
+                    'max_storage_mb' => ['value_numeric' => 5000],
+                ]
+            ],
+            'Ultimate' => [
+                'price_monthly' => 3999.00,
+                'price_yearly' => 39990.00,
+                'max_users' => 100, // Unlimited
+                'max_patients' => null, // Unlimited
+                'max_appointments' => null, // Unlimited
+                'max_storage_mb' => 50000,
+                'features' => [
+                    'qr_booking' => ['value_boolean' => true],
+                    'appointment_scheduling' => ['value_boolean' => true],
+                    'patient_records' => ['value_boolean' => true],
+                    'billing_pos' => ['value_boolean' => true],
+                    'clinic_setup' => ['value_boolean' => true],
+                    'role_based_access' => ['value_boolean' => true],
+                    'max_users' => ['value_numeric' => null], // Unlimited
+                    'max_patients' => ['value_numeric' => null], // Unlimited
+                    'max_appointments' => ['value_numeric' => null], // Unlimited
+                    'sms_notifications' => ['value_boolean' => true],
+                    'custom_branding' => ['value_boolean' => true],
+                    'priority_support' => ['value_boolean' => true],
+                    'report_level' => ['value_tier' => 'advanced'],
+                    'advanced_analytics' => ['value_boolean' => true],
+                    'multi_branch' => ['value_boolean' => true],
+                    'max_storage_mb' => ['value_numeric' => 50000],
+                ]
+            ],
+        ];
 
-        if (!$basicPlan || !$proPlan || !$ultimatePlan) {
-            return;
+        foreach ($plans as $name => $data) {
+            $plan = SubscriptionPlan::updateOrCreate(
+                ['name' => $name],
+                [
+                    'price_monthly' => $data['price_monthly'],
+                    'price_yearly' => $data['price_yearly'],
+                    'max_users' => $data['max_users'],
+                    'max_patients' => $data['max_patients'],
+                    'max_appointments' => $data['max_appointments'],
+                    'max_storage_mb' => $data['max_storage_mb'],
+                    // Legacy sync for transition
+                    'has_qr_booking' => $data['features']['qr_booking']['value_boolean'] ?? false,
+                    'has_sms' => $data['features']['sms_notifications']['value_boolean'] ?? false,
+                ]
+            );
+
+            $this->syncPlanFeatures($plan, $data['features']);
         }
-
-        // Basic Plan Features
-        $basicFeatures = [
-            'qr_booking' => ['value_boolean' => true],
-            'appointment_scheduling' => ['value_boolean' => true],
-            'patient_records' => ['value_boolean' => true],
-            'billing_pos' => ['value_boolean' => true],
-            'clinic_setup' => ['value_boolean' => true],
-            'role_based_access' => ['value_boolean' => true],
-            'max_users' => ['value_numeric' => 4],
-            'max_patients' => ['value_numeric' => 150],
-            'max_appointments' => ['value_numeric' => 500],
-            'sms_notifications' => ['value_boolean' => false],
-            'custom_branding' => ['value_boolean' => false],
-            'priority_support' => ['value_boolean' => false],
-            'report_level' => ['value_tier' => 'basic'],
-            'advanced_analytics' => ['value_boolean' => false],
-            'multi_branch' => ['value_boolean' => false],    'max_storage_mb' => ['value_numeric' => 500],
-        
-        ];
-
-        // Pro Plan Features
-        $proFeatures = [
-            'qr_booking' => ['value_boolean' => true],
-            'appointment_scheduling' => ['value_boolean' => true],
-            'patient_records' => ['value_boolean' => true],
-            'billing_pos' => ['value_boolean' => true],
-            'clinic_setup' => ['value_boolean' => true],
-            'role_based_access' => ['value_boolean' => true],
-            'max_users' => ['value_numeric' => 6],
-            'max_patients' => ['value_numeric' => 1000],
-            'max_appointments' => ['value_numeric' => 2000],
-            'sms_notifications' => ['value_boolean' => true],
-            'custom_branding' => ['value_boolean' => true],
-            'priority_support' => ['value_boolean' => false],
-            'report_level' => ['value_tier' => 'enhanced'],
-            'advanced_analytics' => ['value_boolean' => false],
-            'multi_branch' => ['value_boolean' => false],    'max_storage_mb' => ['value_numeric' => 5000],
-        
-        ];
-
-        // Ultimate Plan Features
-        $ultimateFeatures = [
-            'qr_booking' => ['value_boolean' => true],
-            'appointment_scheduling' => ['value_boolean' => true],
-            'patient_records' => ['value_boolean' => true],
-            'billing_pos' => ['value_boolean' => true],
-            'clinic_setup' => ['value_boolean' => true],
-            'role_based_access' => ['value_boolean' => true],
-            'max_users' => ['value_numeric' => 10],
-            'max_patients' => ['value_numeric' => null], // Unlimited
-            'max_appointments' => ['value_numeric' => null], // Unlimited
-            'sms_notifications' => ['value_boolean' => true],
-            'custom_branding' => ['value_boolean' => true],
-            'priority_support' => ['value_boolean' => true],
-            'report_level' => ['value_tier' => 'advanced'],
-            'advanced_analytics' => ['value_boolean' => true],
-            'multi_branch' => ['value_boolean' => true],
-            'max_storage_mb' => ['value_numeric' => 50000],
-        ];
-
-        // Sync features to plans
-        $this->syncPlanFeatures($basicPlan, $basicFeatures);
-        $this->syncPlanFeatures($proPlan, $proFeatures);
-        $this->syncPlanFeatures($ultimatePlan, $ultimateFeatures);
     }
 
     /**

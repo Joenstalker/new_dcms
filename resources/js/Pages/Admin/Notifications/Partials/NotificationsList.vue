@@ -1,5 +1,7 @@
-<script setup>
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const primaryColor = page.props.branding?.primary_color || '#0ea5e9';
 
 defineProps({
     notifications: {
@@ -80,17 +82,18 @@ const handleDelete = (id) => {
                 v-for="notification in notifications.data" 
                 :key="notification.id"
                 :class="[
-                    'group hover:bg-base-200/50 transition-all duration-300 relative',
-                    !notification.is_read ? 'bg-primary/5' : ''
+                    'group hover:bg-base-200/50 transition-all duration-300 relative'
                 ]"
+                :style="!notification.is_read ? { backgroundColor: primaryColor + '0A' } : {}"
             >
                 <div class="flex items-start gap-5 p-5 sm:px-8">
                     <!-- Icon -->
                     <div 
                         :class="[
                             'flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm transition-colors duration-300',
-                            !notification.is_read ? 'bg-primary text-primary-content border-primary shadow-primary/20' : 'bg-base-200 text-base-content/40 border-base-300'
+                            !notification.is_read ? 'text-white border-transparent' : 'bg-base-200 text-base-content/40 border-base-300'
                         ]"
+                        :style="!notification.is_read ? { backgroundColor: primaryColor, boxShadow: `0 4px 14px 0 ${primaryColor}33` } : {}"
                     >
                         <svg 
                             class="w-6 h-6" 
@@ -116,7 +119,7 @@ const handleDelete = (id) => {
                                     <p class="text-[10px] font-black uppercase tracking-widest text-base-content/30">
                                         {{ formatDate(notification.created_at) }}
                                     </p>
-                                    <span v-if="!notification.is_read" class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                    <span v-if="!notification.is_read" class="w-1.5 h-1.5 rounded-full animate-pulse" :style="{ backgroundColor: primaryColor }"></span>
                                 </div>
                             </div>
 
@@ -147,7 +150,8 @@ const handleDelete = (id) => {
                         <!-- Unread Indicator (Left border style) -->
                         <div 
                             v-if="!notification.is_read"
-                            class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"
+                            class="absolute left-0 top-0 bottom-0 w-1 rounded-r-full"
+                            :style="{ backgroundColor: primaryColor }"
                         ></div>
                     </div>
                 </div>
@@ -166,11 +170,12 @@ const handleDelete = (id) => {
                             v-if="link.url"
                             :href="link.url"
                             :class="[
-                                'btn btn-xs font-black transition-all duration-300',
+                                'btn btn-xs font-black transition-all duration-300 border-transparent',
                                 link.active
-                                    ? 'btn-primary shadow-lg shadow-primary/20'
+                                    ? 'shadow-sm text-white'
                                     : 'btn-ghost text-base-content/50 hover:text-base-content hover:bg-base-300'
                             ]"
+                            :style="link.active ? { backgroundColor: primaryColor } : {}"
                             v-html="link.label"
                         />
                         <span 

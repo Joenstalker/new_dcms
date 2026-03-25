@@ -119,6 +119,47 @@ class Patient extends Model
             }
         });
 
+        // Update storage usage when photo changes
+        static::updated(function ($patient) {
+            if ($patient->wasChanged('photo_path')) {
+                $oldPath = $patient->getOriginal('photo_path');
+                $newPath = $patient->photo_path;
+
+                $oldSize = (str_starts_with($oldPath ?? '', 'data:image')) ? strlen($oldPath) : 0;
+                $newSize = (str_starts_with($newPath ?? '', 'data:image')) ? strlen($newPath) : 0;
+
+                $diff = $newSize - $oldSize;
+                if ($diff !== 0) {
+                    $tenant = $patient->tenant ?? Tenant::find($patient->tenant_id);
+                    if ($tenant) {
+                        $tenant->increment('storage_used_bytes', $diff);
+                    }
+                }
+            }
+        });
+
+        // Add storage usage on creation
+        static::created(function ($patient) {
+            if ($patient->photo_path && str_starts_with($patient->photo_path, 'data:image')) {
+                $size = strlen($patient->photo_path);
+                $tenant = $patient->tenant ?? Tenant::find($patient->tenant_id);
+                if ($tenant) {
+                    $tenant->increment('storage_used_bytes', $size);
+                }
+            }
+        });
+
+        // Subtract storage usage on deletion
+        static::deleted(function ($patient) {
+            if ($patient->photo_path && str_starts_with($patient->photo_path, 'data:image')) {
+                $size = strlen($patient->photo_path);
+                $tenant = $patient->tenant ?? Tenant::find($patient->tenant_id);
+                if ($tenant) {
+                    $tenant->decrement('storage_used_bytes', $size);
+                }
+            }
+        });
+
         // Encrypt sensitive fields before saving
         static::saving(function ($patient) {
             $encryptionService = app(DataEncryptionService::class);
@@ -207,6 +248,14 @@ class Patient extends Model
     public function invoices()
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * Get the tenant for the patient.
+     */
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     /**

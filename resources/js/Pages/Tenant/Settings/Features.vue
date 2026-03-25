@@ -3,9 +3,9 @@ import { computed } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
-import CurrentPlanBanner from './Features/Partials/CurrentPlanBanner.vue';
-import FeatureCategory from './Features/Partials/FeatureCategory.vue';
-import UpgradeCta from './Features/Partials/UpgradeCta.vue';
+import CurrentPlanBanner from './Partials/CurrentPlanBanner.vue';
+import FeatureCategory from '../CustomBranding/Partials/FeatureCategory.vue';
+import UpgradeCta from './Partials/UpgradeCta.vue';
 
 const props = defineProps({
     tenant: Object,
@@ -43,6 +43,21 @@ const getCategoryStatus = (category) => {
     if (someEnabled) return 'partial';
     return 'locked';
 };
+
+// Filter out features that are NOT part of the active plan
+const filteredFeatures = computed(() => {
+    const result = {};
+    for (const [category, categoryFeatures] of Object.entries(props.features)) {
+        // Only keep features that are explicitly enabled or have a pending OTA update
+        const available = categoryFeatures.filter(f => f.is_enabled || f.has_pending_update);
+        
+        // Only include the entire category if there's at least one feature available to display
+        if (available.length > 0) {
+            result[category] = available;
+        }
+    }
+    return result;
+});
 </script>
 
 <template>
@@ -68,7 +83,7 @@ const getCategoryStatus = (category) => {
                 <!-- Features by Category -->
                 <div class="space-y-8">
                     <FeatureCategory 
-                        v-for="(categoryFeatures, category) in features" 
+                        v-for="(categoryFeatures, category) in filteredFeatures" 
                         :key="category"
                         :category="category"
                         :category-features="categoryFeatures"

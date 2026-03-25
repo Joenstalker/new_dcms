@@ -14,21 +14,37 @@ class PlanFeatureUpdateMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct()
-    {
-        //
-    }
+    public function __construct(
+        public \App\Models\SubscriptionPlan $plan,
+        public array $features,
+        public \App\Models\Tenant $tenant,
+        public \App\Models\User $user,
+        public bool $isAdvertisement = false
+    ) {}
 
     /**
      * Get the message envelope.
      */
     public function envelope(): Envelope
     {
+        $featureCount = count($this->features);
+        $subject = $this->isAdvertisement 
+            ? "New Features available for '{$this->plan->name}'" 
+            : "Update Available: {$featureCount} new features for '{$this->tenant->name}'";
+
+        if ($featureCount === 1) {
+            $feature = $this->features[0];
+            $isRoadmap = in_array($feature->implementation_status, [
+                \App\Models\Feature::STATUS_COMING_SOON,
+                \App\Models\Feature::STATUS_IN_DEVELOPMENT
+            ]);
+            if ($isRoadmap) {
+                $subject = "Roadmap Announcement: {$feature->name}";
+            }
+        }
+
         return new Envelope(
-            subject: 'Plan Feature Update Mail',
+            subject: $subject,
         );
     }
 

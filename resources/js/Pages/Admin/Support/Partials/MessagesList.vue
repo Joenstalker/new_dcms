@@ -1,5 +1,7 @@
-<script setup>
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const primaryColor = page.props.branding?.primary_color || '#0ea5e9';
 
 defineProps({
     messages: {
@@ -104,7 +106,7 @@ const handleSelect = (message) => {
                         :key="message.id"
                         @click="handleSelect(message)"
                         class="hover:bg-base-200/30 cursor-pointer transition-all duration-300 group relative border-none"
-                        :class="{ 'bg-primary/5': message.status === 'unread' }"
+                        :style="message.status === 'unread' ? { backgroundColor: primaryColor + '0A' } : {}"
                     >
                         <td class="px-8 py-6 whitespace-nowrap border-none">
                             <span 
@@ -159,7 +161,7 @@ const handleSelect = (message) => {
         <div v-if="messages.links && messages.links.length > 1" class="px-8 py-6 border-t border-base-300 bg-base-200/30">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div class="text-[10px] font-black text-base-content/40 uppercase tracking-widest">
-                    Showing <span class="text-base-content">{{ messages.from }}</span> to <span class="text-base-content">{{ messages.to }}</span> of <span class="text-primary">{{ messages.total }}</span> results
+                    Showing <span class="text-base-content">{{ messages.from }}</span> to <span class="text-base-content">{{ messages.to }}</span> of <span class="font-bold" :style="{ color: primaryColor }">{{ messages.total }}</span> results
                 </div>
                 <div class="flex gap-2">
                     <template v-for="(link, index) in messages.links" :key="index">
@@ -169,9 +171,10 @@ const handleSelect = (message) => {
                             :class="[
                                 'btn btn-xs font-black transition-all duration-300 px-4 h-8 rounded-xl',
                                 link.active
-                                    ? 'btn-primary shadow-lg shadow-primary/20'
+                                    ? 'shadow-lg text-white border-transparent'
                                     : 'btn-ghost text-base-content/50 hover:text-base-content hover:bg-base-300 border-none'
                             ]"
+                            :style="link.active ? { backgroundColor: primaryColor, boxShadow: `0 4px 14px 0 ${primaryColor}33` } : {}"
                             v-html="link.label"
                         />
                         <span 

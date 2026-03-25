@@ -8,6 +8,12 @@ import FeatureList from './Partials/FeatureList.vue';
 import BatchProgressBar from '@/Components/BatchProgressBar.vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import { usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const branding = computed(() => page.props.branding || {});
+const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+
 const props = defineProps({
     features: Object,
     plans: Array,
@@ -276,7 +282,8 @@ const handleBatchFinished = () => {
                     </p>
                     <button
                         @click="openCreateModal"
-                        class="btn btn-primary btn-sm shrink-0"
+                        class="btn btn-sm shrink-0 border-0 text-white hover:brightness-110 shadow-md transition-all"
+                        :style="{ backgroundColor: primaryColor }"
                     >
                         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -309,10 +316,8 @@ const handleBatchFinished = () => {
                     :category-labels="categoryLabels"
                     :plans="plans"
                     :get-type-label="getTypeLabel"
-                    @view="openViewModal"
-                    @edit="openEditModal"
-                    @delete="deleteFeature"
-                    @toggle="toggleFeature"
+                    :primary-color="primaryColor"
+                    @manage="openEditModal"
                 />
             </div>
         </div>
@@ -322,8 +327,11 @@ const handleBatchFinished = () => {
             :show="showModal"
             :editing-feature="editingFeature"
             :form="form"
+            :primary-color="primaryColor"
             @close="closeModal"
             @submit="submitForm"
+            @delete="deleteFeature"
+            @toggle="toggleFeature"
         />
 
         <!-- View Modal -->

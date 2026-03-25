@@ -43,6 +43,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'enabled_features',
         'landing_page_config',
         'qr_code_path',
+        'storage_used_bytes',
     ];
 
     /**
@@ -54,6 +55,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'landing_page_config' => 'json',
         'font_family' => 'json',
         'portal_config' => 'json',
+        'storage_used_bytes' => 'integer',
     ];
 
     /**
@@ -213,5 +215,28 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     {
         $enabled = $this->enabled_features ?? self::getDefaultFeatures();
         return in_array($feature, $enabled);
+    }
+
+    /**
+     * Check if the tenant can be safely deleted by an admin.
+     * Prevents deletion of active paying tenants.
+     */
+    public function canBeDeleted(): bool
+    {
+        // If they have an active subscription, they cannot be deleted.
+        $activeSubscription = $this->subscriptions()
+            ->where('stripe_status', 'active')
+            ->exists();
+
+        if ($activeSubscription) {
+            return false;
+        }
+
+        // Additional guard: cannot delete if status is 'active'
+        if ($this->status === self::STATUS_ACTIVE) {
+            return false;
+        }
+
+        return true;
     }
 }

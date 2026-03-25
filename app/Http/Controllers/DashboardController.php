@@ -35,6 +35,10 @@ class DashboardController extends Controller
         }
 
         // Stats for the tenant clinic
+        $tenant = tenant();
+        $subscription = $tenant->subscription()->with('plan')->first();
+        $maxStorageMb = $subscription?->plan?->max_storage_mb ?? 500;
+
         $stats = [
             'daily_appointments' => Appointment::whereDate('appointment_date', Carbon::today())->count(),
             'monthly_revenue' => Invoice::where('status', 'paid')
@@ -42,6 +46,8 @@ class DashboardController extends Controller
                 ->sum('total_amount'),
             'total_patients' => Patient::count(),
             'pending_appointments' => Appointment::where('status', 'pending')->count(),
+            'storage_used_bytes' => (int) $tenant->storage_used_bytes,
+            'max_storage_bytes' => $maxStorageMb * 1024 * 1024,
         ];
 
         return Inertia::render('Tenant/Dashboard', [

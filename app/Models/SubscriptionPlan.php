@@ -18,6 +18,7 @@ class SubscriptionPlan extends Model
         'legacy_stripe_id',
         'price_monthly',
         'price_yearly',
+        'yearly_discount_percent',
         'max_users',
         'max_patients',
         'max_appointments',
@@ -55,6 +56,7 @@ class SubscriptionPlan extends Model
     protected $casts = [
         'price_monthly' => 'decimal:2',
         'price_yearly' => 'decimal:2',
+        'yearly_discount_percent' => 'float',
         'max_users' => 'integer',
         'max_patients' => 'integer',
         'max_appointments' => 'integer',

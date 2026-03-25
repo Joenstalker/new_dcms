@@ -99,6 +99,29 @@ const updateStatus = (concern, newStatus) => {
                             <div class="text-xs font-bold text-orange-500 uppercase tracking-wide mb-1">Assigned Patients</div>
                             <div class="text-3xl font-black text-gray-900 px-1">--</div>
                         </div>
+
+                        <!-- Storage Usage (Owner only) -->
+                        <div v-if="isOwner" class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-indigo-500 transition-hover hover:-translate-y-1 duration-300">
+                            <div class="flex justify-between items-center mb-1">
+                                <div class="text-xs font-bold text-indigo-500 uppercase tracking-wide">Storage Used</div>
+                                <div class="text-[10px] font-bold text-gray-400 italic">
+                                    {{ (stats.storage_used_bytes / stats.max_storage_bytes * 100).toFixed(1) }}%
+                                </div>
+                            </div>
+                            <div class="text-2xl font-black text-gray-900 leading-none mb-2">
+                                {{ stats.storage_used_bytes >= 1048576 ? (stats.storage_used_bytes / 1048576).toFixed(1) + ' MB' : (stats.storage_used_bytes / 1024).toFixed(0) + ' KB' }}
+                            </div>
+                            <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden shadow-inner">
+                                <div 
+                                    class="h-full bg-indigo-500 rounded-full transition-all duration-1000" 
+                                    :style="{ width: Math.min((stats.storage_used_bytes / stats.max_storage_bytes * 100), 100) + '%' }"
+                                ></div>
+                            </div>
+                            <div class="text-[10px] text-gray-400 mt-2 flex justify-between items-center">
+                                <span>Plan: <span class="font-bold">{{ (stats.max_storage_bytes / 1048576).toFixed(0) }}MB</span></span>
+                                <span v-if="stats.storage_used_bytes > stats.max_storage_bytes" class="text-red-500 font-bold animate-pulse">Limit Exceeded</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="overflow-hidden bg-white shadow-sm sm:rounded-3xl p-8 border border-gray-100 relative group">

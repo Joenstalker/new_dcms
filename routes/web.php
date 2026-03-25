@@ -155,6 +155,7 @@ $registerCentralRoutes = function ($withNames = false) {
                     $plansD->name('plans.destroy');
                     $plansF->name('plans.force-sync');
                     $plansP->name('plans.push-updates');
+                    Route::post('/plans/batch-push-updates', [\App\Http\Controllers\Admin\PlanController::class, 'batchPushUpdates'])->name('plans.batch-push-updates');
                 }
 
                 // Subscriptions
