@@ -150,4 +150,27 @@ class AppointmentController extends Controller
 
         return redirect()->back()->with('success', 'Appointment approved and patient registered.');
     }
+
+    public function destroy(Appointment $appointment)
+    {
+        $patientName = $appointment->patient
+            ? $appointment->patient->first_name . ' ' . $appointment->patient->last_name
+            : ($appointment->guest_first_name . ' ' . $appointment->guest_last_name);
+
+        $notificationService = app(TenantNotificationService::class);
+        $notificationService->notifyOwners(
+            'appointment_deleted',
+            'Appointment Deleted',
+            "Appointment for {$patientName} has been deleted",
+        [
+            'appointment_id' => $appointment->id,
+            'patient_name' => $patientName,
+        ],
+            auth()->user()
+        );
+
+        $appointment->delete();
+
+        return redirect()->route('tenant.appointments.index')->with('success', 'Appointment deleted.');
+    }
 }

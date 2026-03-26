@@ -51,6 +51,12 @@ Route::middleware([
     Route::middleware(['auth', 'check.subscription'])->group(function () {
             Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class , 'index'])->name('tenant.dashboard');
 
+            // Staff Settings (personal, permission-gated per section — NOT inside Owner block)
+            Route::get('my-settings', [\App\Http\Controllers\Tenant\StaffSettingsController::class, 'index'])->name('staff-settings.index');
+            Route::put('my-settings/calendar-color', [\App\Http\Controllers\Tenant\StaffSettingsController::class, 'updateCalendarColor'])->name('staff-settings.calendar-color');
+            Route::put('my-settings/notifications', [\App\Http\Controllers\Tenant\StaffSettingsController::class, 'updateNotificationPreferences'])->name('staff-settings.notifications');
+            Route::put('my-settings/working-hours', [\App\Http\Controllers\Tenant\StaffSettingsController::class, 'updateWorkingHours'])->name('staff-settings.working-hours');
+
             // Patient management — enforces max_patients limit on create
             Route::middleware(['permission:view patients'])->group(function () {
                 Route::get('patients', [\App\Http\Controllers\PatientController::class , 'index'])->name('patients.index');
@@ -67,14 +73,26 @@ Route::middleware([
             });
 
             // Appointment management — enforces max_appointments limit on create
-            Route::middleware(['permission:view appointments'])->group(function () {
-                Route::get('appointments', [\App\Http\Controllers\AppointmentController::class , 'index'])->name('appointments.index');
-                Route::post('appointments', [\App\Http\Controllers\AppointmentController::class , 'store'])
-                    ->middleware('check.subscription:max_appointments')
-                    ->name('appointments.store');
-                Route::put('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class , 'update'])->name('appointments.update');
-                Route::post('appointments/{appointment}/approve', [\App\Http\Controllers\AppointmentController::class , 'approve'])->name('appointments.approve');
-            });
+            // Appointment management
+            Route::get('appointments', [\App\Http\Controllers\AppointmentController::class, 'index'])
+                ->middleware('permission:view appointments')
+                ->name('appointments.index');
+
+            Route::post('appointments', [\App\Http\Controllers\AppointmentController::class, 'store'])
+                ->middleware(['permission:create appointments', 'check.subscription:max_appointments'])
+                ->name('appointments.store');
+
+            Route::put('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class, 'update'])
+                ->middleware('permission:edit appointments')
+                ->name('appointments.update');
+
+            Route::post('appointments/{appointment}/approve', [\App\Http\Controllers\AppointmentController::class, 'approve'])
+                ->middleware('permission:edit appointments')
+                ->name('appointments.approve');
+
+            Route::delete('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class, 'destroy'])
+                ->middleware('permission:delete appointments')
+                ->name('appointments.destroy');
 
             // Treatment records
             Route::middleware(['permission:view treatments'])->group(function () {

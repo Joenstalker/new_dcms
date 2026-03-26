@@ -9,6 +9,8 @@ const props = defineProps({
 
 const branding = computed(() => usePage().props.branding || {});
 const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+const permissions = computed(() => usePage().props.auth.user.permissions);
+const canEdit = computed(() => permissions.value.includes('edit appointments'));
 
 // Filter only pending / queued appointments
 const queuedAppointments = computed(() => 
@@ -65,7 +67,7 @@ const queuedAppointments = computed(() =>
                 </div>
 
                 <!-- Actions -->
-                <div class="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div v-if="canEdit" class="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button class="btn btn-sm btn-ghost btn-circle text-success" title="Check In">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />

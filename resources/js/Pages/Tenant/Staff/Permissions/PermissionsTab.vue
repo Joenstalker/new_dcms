@@ -197,6 +197,11 @@ const savePermissionsTab = () => {
 const permissionGroups = computed(() => {
     const groups = {};
     const featureMap = {
+        // Staff Settings (personal)
+        'manage own calendar': 'Staff Settings',
+        'manage own notifications': 'Staff Settings',
+        'manage own working hours': 'Staff Settings',
+
         // Clinical Module
         'patients': 'Clinical Module',
         'treatments': 'Clinical Module',
@@ -215,7 +220,7 @@ const permissionGroups = computed(() => {
         'clinic': 'Administration',
         'settings': 'Administration',
         'subscription': 'Administration',
-        'dashboard': 'Administration'
+        'dashboard': 'Administration',
     };
 
     props.allPermissions.forEach(p => {

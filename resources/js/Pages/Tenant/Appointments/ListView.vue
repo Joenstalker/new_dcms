@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
+import ShowAppointments from './ShowAppointments.vue';
+import EditAppointments from './EditAppointments.vue';
+import DeleteAppointments from './DeleteAppointments.vue';
 
 const props = defineProps({
     appointments: {
@@ -11,8 +14,33 @@ const props = defineProps({
     selectedTypes: Array
 });
 
+const permissions = computed(() => usePage().props.auth.user.permissions);
+const canEdit = computed(() => permissions.value.includes('edit appointments'));
+const canDelete = computed(() => permissions.value.includes('delete appointments'));
+
 const searchQuery = ref('');
 const dateFilter = ref('this-month'); // Default as per image style
+
+// Item Detail States
+const showDetailModal = ref(false);
+const showEditModal = ref(false);
+const showDeleteModal = ref(false);
+const selectedAppointment = ref(null);
+
+const openDetail = (apt) => {
+    selectedAppointment.value = apt;
+    showDetailModal.value = true;
+};
+
+const openEdit = (apt) => {
+    selectedAppointment.value = apt;
+    showEditModal.value = true;
+};
+
+const openDelete = (apt) => {
+    selectedAppointment.value = apt;
+    showDeleteModal.value = true;
+};
 
 const filteredAppointments = computed(() => {
     return props.appointments.filter(apt => {
@@ -117,7 +145,7 @@ const setDateFilter = (filter) => {
             </div>
 
             <!-- Table -->
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto min-h-[400px]">
                 <table class="min-w-full">
                     <thead>
                         <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider text-left border-b border-gray-100">
@@ -131,7 +159,7 @@ const setDateFilter = (filter) => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
-                        <tr v-for="apt in filteredAppointments" :key="apt.id" class="hover:bg-gray-50 transition group">
+                        <tr v-for="apt in filteredAppointments" :key="apt.id" class="hover:bg-gray-50 transition group cursor-pointer" @click="openDetail(apt)">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-bold text-gray-800">{{ new Date(apt.appointment_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) }}</div>
                                 <div class="text-xs text-gray-400">{{ new Date(apt.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</div>
@@ -140,9 +168,9 @@ const setDateFilter = (filter) => {
                                 <span class="text-lg" :title="apt.type">{{ apt.type === 'appointment' ? '🦷' : '📅' }}</span>
                             </td>
                             <td class="px-6 py-4">
-                                <Link v-if="apt.patient" :href="`/patients/${apt.patient_id}`" class="text-sm font-bold text-teal-600 hover:underline">
+                                <div v-if="apt.patient" class="text-sm font-bold text-teal-600 hover:underline">
                                     {{ apt.patient.first_name }} {{ apt.patient.last_name }}
-                                </Link>
+                                </div>
                                 <div v-else class="text-sm font-bold text-gray-800">
                                     {{ apt.guest_first_name }} {{ apt.guest_last_name }}
                                     <span class="text-[10px] bg-gray-100 px-1 rounded ml-1 font-normal text-gray-500">Guest</span>
@@ -163,11 +191,18 @@ const setDateFilter = (filter) => {
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-right">
-                                <button class="text-gray-300 hover:text-gray-600 transition">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                                    </svg>
-                                </button>
+                                <div class="dropdown dropdown-left">
+                                    <label tabindex="0" class="btn btn-ghost btn-xs text-gray-300 hover:text-gray-600 transition" @click.stop>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                                        </svg>
+                                    </label>
+                                    <ul tabindex="0" class="dropdown-content z-[10] menu p-2 shadow-xl bg-base-100 rounded-box w-40 border border-base-300 text-[10px] font-black uppercase tracking-widest">
+                                        <li><a @click="openDetail(apt)">View Details</a></li>
+                                        <li v-if="canEdit"><a @click="openEdit(apt)">Edit</a></li>
+                                        <li v-if="canDelete"><a @click="openDelete(apt)" class="text-red-500">Delete</a></li>
+                                    </ul>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
@@ -178,5 +213,24 @@ const setDateFilter = (filter) => {
                 </div>
             </div>
         </div>
+
+        <!-- Granular Component Modals -->
+        <ShowAppointments 
+            :appointment="selectedAppointment"
+            :show="showDetailModal"
+            @close="showDetailModal = false"
+        />
+
+        <EditAppointments 
+            :appointment="selectedAppointment"
+            :show="showEditModal"
+            @close="showEditModal = false"
+        />
+
+        <DeleteAppointments 
+            :appointment-id="selectedAppointment?.id"
+            :show="showDeleteModal"
+            @close="showDeleteModal = false"
+        />
     </div>
 </template>

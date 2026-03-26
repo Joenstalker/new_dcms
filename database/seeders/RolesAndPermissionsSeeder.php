@@ -38,6 +38,9 @@ class RolesAndPermissionsSeeder extends Seeder
             
             // Staff
             'view staff', 'create staff', 'edit staff', 'delete staff',
+
+            // Staff Settings (personal, permission-gated per section)
+            'manage own calendar', 'manage own notifications', 'manage own working hours',
         ];
 
         foreach ($permissions as $permission) {

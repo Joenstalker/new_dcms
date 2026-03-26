@@ -4,7 +4,10 @@ import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
+import ShowAppointments from './ShowAppointments.vue';
+import EditAppointments from './EditAppointments.vue';
+import DeleteAppointments from './DeleteAppointments.vue';
 
 const props = defineProps({
     appointments: Array,
@@ -13,10 +16,35 @@ const props = defineProps({
     selectedTypes: Array
 });
 
+const permissions = computed(() => usePage().props.auth.user.permissions);
+const canEdit = computed(() => permissions.value.includes('edit appointments'));
+const canDelete = computed(() => permissions.value.includes('delete appointments'));
+
 // Calendar Overlay State
 const showDayOverlay = ref(false);
 const selectedDayData = ref(null);
 const selectedDateString = ref('');
+
+// Item Detail States
+const showDetailModal = ref(false);
+const showEditModal = ref(false);
+const showDeleteModal = ref(false);
+const selectedAppointment = ref(null);
+
+const openDetail = (apt) => {
+    selectedAppointment.value = apt;
+    showDetailModal.value = true;
+};
+
+const openEdit = (apt) => {
+    selectedAppointment.value = apt;
+    showEditModal.value = true;
+};
+
+const openDelete = (apt) => {
+    selectedAppointment.value = apt;
+    showDeleteModal.value = true;
+};
 
 const filteredAppointments = computed(() => {
     return props.appointments.filter(apt => {
@@ -43,6 +71,9 @@ const calendarOptions = computed(() => ({
         extendedProps: apt,
         color: apt.dentist?.calendar_color || '#3b82f6'
     })),
+    eventClick: (info) => {
+        openDetail(info.event.extendedProps);
+    },
     dateClick: (info) => {
         const dateStr = info.dateStr;
         const dayAppointments = filteredAppointments.value.filter(apt => 
@@ -107,7 +138,7 @@ const getDayEventIcons = (date) => {
         </FullCalendar>
 
         <!-- Day Detail Overlay -->
-        <div v-if="showDayOverlay" class="absolute inset-0 bg-black/60 z-[100] flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div v-if="showDayOverlay" class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div class="bg-gray-800 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden text-white border border-gray-700">
                 <div class="p-4 bg-gray-900 flex justify-between items-center border-b border-gray-700">
                     <h3 class="text-lg font-bold flex items-center">
@@ -121,7 +152,7 @@ const getDayEventIcons = (date) => {
                         <div class="mr-4">
                             <span class="text-xl" :style="{ color: apt.dentist?.calendar_color || '#3b82f6' }">🦷</span>
                         </div>
-                        <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
+                        <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-2 items-center cursor-pointer" @click="openDetail(apt)">
                             <div class="text-sm font-mono text-blue-400">
                                 {{ new Date(apt.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
                             </div>
@@ -136,17 +167,52 @@ const getDayEventIcons = (date) => {
                                 [{{ apt.dentist ? apt.dentist.name : 'Unassigned' }}]
                             </div>
                         </div>
-                        <div class="ml-4 opacity-0 group-hover:opacity-100 transition">
+                        <div class="ml-4 flex gap-2">
+                            <button 
+                                v-if="canEdit"
+                                @click.stop="openEdit(apt)"
+                                class="p-2 hover:bg-gray-600 rounded-lg text-blue-400 transition"
+                                title="Edit"
+                            > 
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </button>
+                            <button 
+                                v-if="canDelete"
+                                @click.stop="openDelete(apt)"
+                                class="p-2 hover:bg-gray-600 rounded-lg text-red-400 transition"
+                                title="Delete"
+                            > 
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
                             <button 
                                 v-if="!apt.patient && (apt.type === 'online_booking' || !apt.patient_id)"
-                                @click="approveBooking(apt.id)"
-                                class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded-full shadow-lg"
+                                @click.stop="approveBooking(apt.id)"
+                                class="bg-blue-600 hover:bg-blue-700 text-white text-[10px] px-3 py-1 rounded-full shadow-lg font-black uppercase tracking-widest"
                             > Approve </button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Granular Component Modals -->
+        <ShowAppointments 
+            :appointment="selectedAppointment"
+            :show="showDetailModal"
+            @close="showDetailModal = false"
+        />
+
+        <EditAppointments 
+            :appointment="selectedAppointment"
+            :show="showEditModal"
+            @close="showEditModal = false"
+        />
+
+        <DeleteAppointments 
+            :appointment-id="selectedAppointment?.id"
+            :show="showDeleteModal"
+            @close="showDeleteModal = false"
+        />
     </div>
 </template>
 

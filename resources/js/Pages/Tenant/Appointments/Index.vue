@@ -8,6 +8,7 @@ import ListView from './ListView.vue';
 import BookingQueue from './BookingQueue.vue';
 import WalkIn from './WalkIn.vue';
 import NewAppointmentModal from './NewAppointmentModal.vue';
+import CreateAppointments from './CreateAppointments.vue';
 
 const props = defineProps({
     appointments: {
@@ -39,6 +40,10 @@ const calendarSubView = ref('calendar');
 const selectedAssociates = ref(props.dentists.map(d => d.id));
 const selectedTypes = ref(['appointment', 'recall', 'birthday', 'event', 'online_booking']);
 
+const permissions = computed(() => usePage().props.auth.user.permissions);
+const canCreate = computed(() => permissions.value.includes('create appointments'));
+const canView = computed(() => permissions.value.includes('view appointments'));
+
 // Modal State
 const showNewAppointmentModal = ref(false);
 
@@ -63,131 +68,179 @@ const toggleType = (type) => {
             <h2 class="text-xl font-black tracking-tight text-base-content">Appointments</h2>
         </template>
 
-        <!-- Calendar View Tab -->
-        <div v-if="activeTab === 'calendar'">
-            <!-- Action Bar (below tab nav) -->
-            <div class="flex items-center justify-between mb-6">
-                <div class="bg-base-200 p-1 rounded-xl flex">
-                    <button 
-                        @click="calendarSubView = 'calendar'"
-                        :class="['px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all duration-300', 
-                            calendarSubView === 'calendar' ? 'shadow-md text-white' : 'text-base-content/50 hover:text-base-content']"
-                        :style="calendarSubView === 'calendar' ? { backgroundColor: primaryColor } : {}"
-                    >
-                        Calendar
-                    </button>
-                    <button 
-                        @click="calendarSubView = 'list'"
-                        :class="['px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all duration-300', 
-                            calendarSubView === 'list' ? 'shadow-md text-white' : 'text-base-content/50 hover:text-base-content']"
-                        :style="calendarSubView === 'list' ? { backgroundColor: primaryColor } : {}"
-                    >
-                        List
-                    </button>
+        <!-- Zero-Trust Access Board -->
+        <div v-if="!canView" class="py-12">
+            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                <div class="bg-base-100 p-12 rounded-3xl border border-dashed border-base-300 text-center shadow-2xl">
+                    <div class="w-20 h-20 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-amber-200/50">
+                        <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-black text-base-content uppercase tracking-tight">Access Restricted</h3>
+                    <p class="text-xs font-bold text-base-content/40 mt-3 uppercase tracking-[0.2em] leading-relaxed max-w-md mx-auto">
+                        You do not have the required permissions to view scheduling data. Please contact your clinic administrator.
+                    </p>
                 </div>
+            </div>
+        </div>
 
+        <div v-else class="pb-12">
+            <!-- Navigation -->
+            <div class="mb-8 flex items-center space-x-1 bg-base-300/30 p-1.5 rounded-2xl w-fit border border-base-300">
                 <button 
-                    @click="showNewAppointmentModal = true"
-                    class="text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 flex items-center gap-2"
-                    :style="{ backgroundColor: primaryColor }"
+                    @click="activeTab = 'calendar'"
+                    :class="['px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300', 
+                        activeTab === 'calendar' ? 'bg-base-content text-base-100 shadow-xl' : 'text-base-content/50 hover:text-base-content']"
                 >
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    New Appointment
+                    Overview
+                </button>
+                <button 
+                    @click="activeTab = 'queue'"
+                    :class="['px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300', 
+                        activeTab === 'queue' ? 'bg-base-content text-base-100 shadow-xl' : 'text-base-content/50 hover:text-base-content']"
+                >
+                    Booking Queue
+                </button>
+                <button 
+                    v-if="canCreate"
+                    @click="activeTab = 'walkin'"
+                    :class="['px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300', 
+                        activeTab === 'walkin' ? 'bg-base-content text-base-100 shadow-xl' : 'text-base-content/50 hover:text-base-content']"
+                >
+                    Walk-in
                 </button>
             </div>
 
-            <div class="flex flex-col lg:flex-row gap-6 min-h-[600px]">
-                <!-- Sidebar Filters -->
-                <div class="w-full lg:w-60 space-y-6 bg-base-100 p-5 rounded-2xl shadow-sm border border-base-300 self-start">
-                    <!-- Associates Section -->
-                    <div>
-                        <h3 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-3">Associates</h3>
-                        <div class="space-y-2.5">
-                            <label v-for="dentist in dentists" :key="dentist.id" class="flex items-center space-x-3 cursor-pointer group">
-                                <input 
-                                    type="checkbox" 
-                                    :checked="selectedAssociates.includes(dentist.id)"
-                                    @change="toggleAssociate(dentist.id)"
-                                    class="checkbox checkbox-xs rounded"
-                                    :style="{ borderColor: dentist.calendar_color || primaryColor }"
-                                >
-                                <span class="text-xs font-bold transition" :style="{ color: dentist.calendar_color || primaryColor }">
-                                    {{ dentist.name }}
-                                </span>
-                            </label>
-                        </div>
+            <!-- Calendar View Tab -->
+            <div v-if="activeTab === 'calendar'">
+                <!-- Action Bar (below tab nav) -->
+                <div class="flex items-center justify-between mb-6">
+                    <div class="bg-base-200 p-1 rounded-xl flex">
+                        <button 
+                            @click="calendarSubView = 'calendar'"
+                            :class="['px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all duration-300', 
+                                calendarSubView === 'calendar' ? 'shadow-md text-white' : 'text-base-content/50 hover:text-base-content']"
+                            :style="calendarSubView === 'calendar' ? { backgroundColor: primaryColor } : {}"
+                        >
+                            Calendar
+                        </button>
+                        <button 
+                            @click="calendarSubView = 'list'"
+                            :class="['px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all duration-300', 
+                                calendarSubView === 'list' ? 'shadow-md text-white' : 'text-base-content/50 hover:text-base-content']"
+                            :style="calendarSubView === 'list' ? { backgroundColor: primaryColor } : {}"
+                        >
+                            List
+                        </button>
                     </div>
 
-                    <!-- Divider -->
-                    <div class="border-t border-base-300"></div>
-
-                    <!-- Type Section -->
-                    <div>
-                        <h3 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-3">Type</h3>
-                        <div class="space-y-2.5">
-                            <label v-for="type in [
-                                { id: 'appointment', label: 'Appointments', icon: '🦷' },
-                                { id: 'recall', label: 'Recalls', icon: '🕒' },
-                                { id: 'birthday', label: 'Birthdays', icon: '🎂' },
-                                { id: 'event', label: 'Events/Schedules', icon: '📅' },
-                                { id: 'online_booking', label: 'Online Bookings', icon: '🖱️' }
-                            ]" :key="type.id" class="flex items-center space-x-3 cursor-pointer group">
-                                <input 
-                                    type="checkbox" 
-                                    :checked="selectedTypes.includes(type.id)"
-                                    @change="toggleType(type.id)"
-                                    class="checkbox checkbox-xs rounded"
-                                >
-                                <span class="text-xs">{{ type.icon }}</span>
-                                <span class="text-xs font-medium text-base-content/50 group-hover:text-base-content transition">{{ type.label }}</span>
-                            </label>
-                        </div>
-                    </div>
+                    <button 
+                        v-if="canCreate"
+                        @click="showNewAppointmentModal = true"
+                        class="text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 flex items-center gap-2"
+                        :style="{ backgroundColor: primaryColor }"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        New Appointment
+                    </button>
                 </div>
 
-                <!-- View Content -->
-                <div class="flex-1">
-                    <CalendarView 
-                        v-if="calendarSubView === 'calendar'"
-                        :appointments="appointments"
-                        :dentists="dentists"
-                        :selectedAssociates="selectedAssociates"
-                        :selectedTypes="selectedTypes"
-                    />
-                    <ListView 
-                        v-else
-                        :appointments="appointments"
-                        :selectedAssociates="selectedAssociates"
-                        :selectedTypes="selectedTypes"
-                    />
+                <div class="flex flex-col lg:flex-row gap-6 min-h-[600px]">
+                    <!-- Sidebar Filters -->
+                    <div class="w-full lg:w-60 space-y-6 bg-base-100 p-5 rounded-2xl shadow-sm border border-base-300 self-start">
+                        <!-- Associates Section -->
+                        <div>
+                            <h3 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-3">Associates</h3>
+                            <div class="space-y-2.5">
+                                <label v-for="dentist in dentists" :key="dentist.id" class="flex items-center space-x-3 cursor-pointer group">
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="selectedAssociates.includes(dentist.id)"
+                                        @change="toggleAssociate(dentist.id)"
+                                        class="checkbox checkbox-xs rounded"
+                                        :style="{ borderColor: dentist.calendar_color || primaryColor }"
+                                    >
+                                    <span class="text-xs font-bold transition" :style="{ color: dentist.calendar_color || primaryColor }">
+                                        {{ dentist.name }}
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="border-t border-base-300"></div>
+
+                        <!-- Type Section -->
+                        <div>
+                            <h3 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-3">Type</h3>
+                            <div class="space-y-2.5">
+                                <label v-for="type in [
+                                    { id: 'appointment', label: 'Appointments', icon: '🦷' },
+                                    { id: 'recall', label: 'Recalls', icon: '🕒' },
+                                    { id: 'birthday', label: 'Birthdays', icon: '🎂' },
+                                    { id: 'event', label: 'Events/Schedules', icon: '📅' },
+                                    { id: 'online_booking', label: 'Online Bookings', icon: '🖱️' }
+                                ]" :key="type.id" class="flex items-center space-x-3 cursor-pointer group">
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="selectedTypes.includes(type.id)"
+                                        @change="toggleType(type.id)"
+                                        class="checkbox checkbox-xs rounded"
+                                    >
+                                    <span class="text-xs">{{ type.icon }}</span>
+                                    <span class="text-xs font-medium text-base-content/50 group-hover:text-base-content transition">{{ type.label }}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- View Content -->
+                    <div class="flex-1">
+                        <CalendarView 
+                            v-if="calendarSubView === 'calendar'"
+                            :appointments="appointments"
+                            :dentists="dentists"
+                            :selectedAssociates="selectedAssociates"
+                            :selectedTypes="selectedTypes"
+                        />
+                        <ListView 
+                            v-else
+                            :appointments="appointments"
+                            :selectedAssociates="selectedAssociates"
+                            :selectedTypes="selectedTypes"
+                        />
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Booking Queue Tab -->
-        <div v-else-if="activeTab === 'queue'">
-            <BookingQueue 
-                :appointments="appointments"
+            <!-- Booking Queue Tab -->
+            <div v-else-if="activeTab === 'queue'">
+                <BookingQueue 
+                    :appointments="appointments"
+                    :dentists="dentists"
+                />
+            </div>
+
+            <!-- Walk-in Tab -->
+            <div v-else-if="activeTab === 'walkin'">
+                <CreateAppointments 
+                    :isWalkIn="true"
+                    :dentists="dentists"
+                    :patients="patients || []"
+                />
+            </div>
+
+            <!-- Create Modal Component -->
+            <CreateAppointments 
+                :showModal="showNewAppointmentModal"
+                :patients="patients"
                 :dentists="dentists"
+                @close="showNewAppointmentModal = false"
             />
         </div>
-
-        <!-- Walk-in Tab -->
-        <div v-else-if="activeTab === 'walkin'">
-            <WalkIn 
-                :dentists="dentists"
-                :patients="patients || []"
-            />
-        </div>
-
-        <NewAppointmentModal 
-            :show="showNewAppointmentModal"
-            :patients="patients"
-            :dentists="dentists"
-            @close="showNewAppointmentModal = false"
-        />
     </AuthenticatedLayout>
 </template>
 
