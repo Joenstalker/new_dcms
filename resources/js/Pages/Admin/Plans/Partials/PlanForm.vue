@@ -76,13 +76,11 @@ const submit = () => {
                             id="name" 
                             type="text" 
                             class="mt-1 block w-full text-sm bg-base-100 border-base-300 focus:border-primary focus:ring-primary" 
-                            :class="{'bg-base-200/50 cursor-not-allowed': !!plan}"
                             v-model="form.name" 
                             required 
-                            :disabled="!!plan"
                             placeholder="e.g. Starter, Pro, Ultimate" 
                         />
-                        <p v-if="plan" class="text-[9px] text-base-content/40 mt-1 italic">Plan name cannot be changed.</p>
+                        <p v-if="plan" class="text-[9px] text-base-content/40 mt-1 italic">Plan name changes will be pushed to Stripe.</p>
                         <InputError class="mt-1" :message="form.errors.name" />
                     </div>
 

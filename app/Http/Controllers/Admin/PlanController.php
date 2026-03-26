@@ -144,6 +144,12 @@ class PlanController extends Controller
                 'description' => 'Subscription plan for ' . $plan->name,
             ]);
             $plan->stripe_product_id = $product->id;
+        } else {
+            // Update existing product name to match the new local name
+            $stripe->products->update($plan->stripe_product_id, [
+                'name' => 'DCMS - ' . $plan->name,
+                'description' => 'Subscription plan for ' . $plan->name,
+            ]);
         }
 
         // 2. Handle Monthly Price

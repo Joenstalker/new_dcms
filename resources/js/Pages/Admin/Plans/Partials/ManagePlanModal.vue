@@ -175,11 +175,11 @@ watch(() => [form.price_monthly, form.yearly_discount_percent], ([newMonthly, ne
                             <TextInput 
                                 id="name" 
                                 type="text" 
-                                class="mt-1 block w-full bg-base-200/50 cursor-not-allowed border-base-300" 
+                                class="mt-1 block w-full bg-base-100 border-base-300 focus:border-primary focus:ring-primary" 
                                 v-model="form.name" 
-                                disabled
+                                required
                             />
-                            <p class="text-[10px] text-base-content/40 mt-1.5 italic">Plan identifier is immutable to maintain Stripe consistency.</p>
+                            <p class="text-[10px] text-base-content/40 mt-1.5 italic">Plan name will be synchronized with Stripe automatically.</p>
                         </div>
 
                         <div class="grid grid-cols-3 gap-6 pt-2">
