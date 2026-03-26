@@ -175,7 +175,7 @@ const menuCategories = computed(() => {
                 { 
                     name: 'Custom Branding', 
                     icon: 'paint', 
-                    route: 'custom-branding.index', 
+                    route: 'settings.branding', 
                     permissions: ['manage settings'],
                     featureKey: 'custom_branding'
                 },
