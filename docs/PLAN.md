@@ -1,33 +1,49 @@
-# Apply Admin Branding Primary Color PLAN
+# Dynamic Subscription Plan Features
 
 ## Objective
-Harmonize the Admin UI by applying the customizable Admin Branding `primaryColor` to four new key sections: Notifications, Support Tickets, Subscriptions, and Subscription Plans.
+Enforce subscription plan limits and feature access dynamically across the tenant portal. We want to ensure tenants only access what they've paid for, while actively upselling higher tiers to grow revenue.
 
-## Approach (Phase 1)
-For each section, we will follow the established dynamic styling pattern:
+## Architectural Decisions
+Based on our discussion, we will implement the industry standard SaaS pattern:
+1. **Feature Visibility UI**: Show unavailable features in the Sidebar with a **"Lock" icon** to encourage upgrades, rather than hiding them completely.
+2. **Handling Downgrades/Limits**: If a tenant exceeds a numerical limit (e.g. 5 users on a 4 user plan), we apply a **"Soft Lock"**: preventing the creation of *new* resources until they upgrade or delete existing ones. We will never delete user data automatically.
+3. **Enforcement Scope**: Strict validation at *both* the UI level (hiding/locking) and the **Backend level (Middleware)** for total security.
 
-1. **State Fetching (`Index.vue`)**:
-   - Import `usePage` from `@inertiajs/vue3`.
-   - Calculate the primary color: `const primaryColor = computed(() => usePage().props.branding?.primary_color || '#0ea5e9');`
-   - Apply inline styles to top-level "Create/Add" buttons (e.g., "Create Plan", "New Ticket").
+---
 
-2. **Component Delegation**:
-   - Pass `:primary-color="primaryColor"` as a prop to deeply nested layout components or tables (e.g., `<TicketList>`, `<PlanCards>`).
-   - Define `primaryColor: { type: String, default: '#0ea5e9' }` in the children.
+## 🛑 Phase 1: User Review
+*Requires user approval before proceeding to Phase 2.*
 
-3. **Dynamic Inline Styles**:
-   - **Primary Buttons:** `:style="{ backgroundColor: primaryColor }"`
-   - **Secondary/Action Buttons (Tables):** `:style="{ color: primaryColor, backgroundColor: primaryColor + '15', borderColor: primaryColor + '30' }"` (Matching the Tenant table 'Manage Clinic' style).
-   - **Text Highlights/Links:** `:style="{ color: primaryColor }"`
+---
 
-## Targeted Sections & Expected Files
-- **Notifications**: `resources/js/Pages/Admin/Notifications/Index.vue` (and dropdowns)
-- **Support Tickets**: `resources/js/Pages/Admin/Tickets/Index.vue`
-- **Subscriptions**: `resources/js/Pages/Admin/Subscriptions/Index.vue`
-- **Subscription Plans**: The Plans management page (whether standalone or combined with Subscriptions).
+## 🚀 Phase 2: Implementation (Parallel Orchestration)
 
-## Orchestration Phase 2 (Implementation)
-Upon approval, the orchestrator will coordinate the following agents:
-- 🕵️ **`explorer-agent`**: Verify the exact file paths for these four sections in the codebase.
-- 🎨 **`frontend-specialist`**: Inject the `usePage` logic and apply the dynamic styles to all interactive elements across the 4 sections.
-- 🧪 **`test-engineer`**: Validate prop propagation, test template compilation, and perform final syntax checks.
+Upon approval, the orchestrator will coordinate the following agents concurrently:
+
+### 1. 🏗️ `database-architect` (Core Logic)
+- **Task**: Enhance the `Tenant` / `SubscriptionPlan` models.
+- **Details**: Add helper methods to quickly evaluate numerical limits (`canAddMoreUsers()`, `canAddMorePatients()`, `canAddMoreAppointments()`) and strict feature presence.
+
+### 2. 🛡️ `backend-specialist` (Middleware & Infrastructure)
+- **Task**: Secure the API and prepare data for the UI.
+- **Details**: 
+  - Create `CheckTenantFeature` and `CheckTenantLimit` middleware to protect routes.
+  - Apply middleware to critical tenant routes.
+  - Share active plan limits and locked features via Inertia shared props (`HandleInertiaRequests.php`).
+
+### 3. 🎨 `frontend-specialist` (UI / UX)
+- **Task**: Reflect limits and locked features in the UI.
+- **Details**: 
+  - Update `AuthenticatedLayout.vue` sidebar to display a 🔒 **Lock icon** and a tooltip/modal on restricted menu items.
+  - Update `Index` views (e.g., Staff, Patients) to disable the "Create" buttons and show an "Upgrade Plan" banner if limits are reached.
+
+### 4. 🧪 `test-engineer` (Verification)
+- **Task**: Validate security and code quality.
+- **Details**:
+  - Run `.agent/skills/vulnerability-scanner/scripts/security_scan.py` (if available) or standard checks.
+  - Run linting and verify that the app builds correctly.
+
+---
+
+## 🏁 Phase 3: Synthesis & Handoff
+- Generate the final Orchestration Report detailing all agent findings and actions.

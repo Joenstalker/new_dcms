@@ -104,8 +104,9 @@ Route::middleware([
                     // Settings
                     Route::get('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'index'])->name('settings.index');
                     Route::post('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'update'])->name('settings.update');
-                    Route::get('settings/branding', [\App\Http\Controllers\Tenant\SettingsController::class , 'branding'])->name('settings.branding');
- 
+                    Route::get('settings/branding', [\App\Http\Controllers\Tenant\SettingsController::class , 'branding'])
+                        ->name('settings.branding')
+                        ->middleware('check.subscription:custom_branding'); 
                     // Settings - Features
                     Route::get('settings/features', [\App\Http\Controllers\Tenant\SettingsController::class , 'features'])->name('settings.features');
  

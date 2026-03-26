@@ -218,6 +218,30 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     }
 
     /**
+     * Check if the tenant's subscription plan has a specific feature enabled.
+     */
+    public function hasPlanFeature(string $key): bool
+    {
+        $subscription = $this->subscription;
+        if (!$subscription || !$subscription->plan) {
+            return false;
+        }
+        return $subscription->plan->hasFeature($key);
+    }
+
+    /**
+     * Get a numeric limit from the tenant's subscription plan.
+     */
+    public function getPlanLimit(string $key): mixed
+    {
+        $subscription = $this->subscription;
+        if (!$subscription || !$subscription->plan) {
+            return null;
+        }
+        return $subscription->plan->getFeatureValue($key);
+    }
+
+    /**
      * Check if the tenant can be safely deleted by an admin.
      * Prevents deletion of active paying tenants.
      */

@@ -1,3 +1,4 @@
+<script setup>
 import { ref, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 

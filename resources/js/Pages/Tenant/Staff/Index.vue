@@ -65,7 +65,7 @@
                         <div class="flex justify-between items-center mb-8">
                             <h2 class="text-xl font-black text-gray-900 uppercase tracking-widest">Active Staff Members</h2>
                             <button 
-                                @click="showingAddModal = true"
+                                @click="checkLimitAndOpenAddStaff"
                                 class="inline-flex items-center px-6 py-3 bg-gray-900 text-white border border-transparent rounded-[1.25rem] font-black text-[10px] uppercase tracking-[0.25em] hover:bg-black transition-all shadow-xl shadow-gray-200 active:scale-95 group"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2.5 group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -512,6 +512,33 @@ const page = usePage();
 
 // Tabs State
 const activeTab = ref(props.initialTab);
+
+const tenantLimits = computed(() => usePage().props.tenant_plan?.limits || {});
+const tenantUsage = computed(() => usePage().props.tenant_plan?.current_usage || {});
+
+const checkLimitAndOpenAddStaff = () => {
+    const maxUsers = tenantLimits.value.max_users;
+    const currentUsers = tenantUsage.value.users || props.staff?.length || 0;
+    
+    if (maxUsers !== undefined && maxUsers !== null && currentUsers >= maxUsers) {
+        Swal.fire({
+            title: 'Staff Limit Reached',
+            text: `Your plan allows up to ${maxUsers} staff members. You currently have ${currentUsers}. Please upgrade to grow your team.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#111827',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'View Upgrades',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.get(route('settings.features'));
+            }
+        });
+        return;
+    }
+    showingAddModal.value = true;
+};
 
 // Add Staff Modal State
 const showingAddModal = ref(false);

@@ -55,6 +55,26 @@ class HandleInertiaRequests extends Middleware
                 'recaptcha_site_key' => config('services.recaptcha.site_key', ''),
             ],
             'tenant' => tenant(),
+            'tenant_plan' => tenant() ? [
+                'features' => [
+                    'sms_notifications' => tenant()->hasPlanFeature('sms_notifications'),
+                    'custom_branding' => tenant()->hasPlanFeature('custom_branding'),
+                    'advanced_analytics' => tenant()->hasPlanFeature('advanced_analytics'),
+                    'priority_support' => tenant()->hasPlanFeature('priority_support'),
+                    'qr_booking' => tenant()->hasPlanFeature('qr_booking'),
+                    'multi_branch' => tenant()->hasPlanFeature('multi_branch'),
+                ],
+                'limits' => [
+                    'max_users' => tenant()->getPlanLimit('max_users'),
+                    'max_patients' => tenant()->getPlanLimit('max_patients'),
+                    'max_appointments' => tenant()->getPlanLimit('max_appointments'),
+                ],
+                'current_usage' => [
+                    'users' => \App\Models\User::count(),
+                    'patients' => \App\Models\Patient::count(),
+                    'appointments' => \App\Models\Appointment::count(),
+                ]
+            ] : null,
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

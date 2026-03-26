@@ -4,14 +4,30 @@ import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import ProfileDropdown from '@/Components/ProfileDropdown.vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const roles = computed(() => user.value?.roles || []);
 const branding = computed(() => page.props.branding || {});
-const subscription = computed(() => page.props.subscription || {});
+
+const showUpgradeAlert = (featureName) => {
+    Swal.fire({
+        title: 'Premium Feature',
+        text: `The ${featureName} feature is not included in your current plan. Upgrade your subscription to unlock this tool and grow your clinic!`,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: primaryColor.value,
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'View Upgrades',
+        cancelButtonText: 'Cancel',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.get(route('settings.features'));
+        }
+    });
+};
 
 // Sidebar position (left or right)
 const sidebarPosition = computed(() => branding.value.sidebar_position || 'left');
@@ -149,7 +165,7 @@ const menuCategories = computed(() => {
                         { name: 'Appointments Report', route: 'reports.index', permissions: ['view reports'] },
                     ]
                 },
-                { name: 'Analytics', route: 'analytics.index', icon: 'analytics', permissions: ['view reports'], subscriptionFeature: 'has_analytics' },
+                { name: 'Analytics', route: 'analytics.index', icon: 'analytics', permissions: ['view reports'], featureKey: 'advanced_analytics' },
             ]
         },
         {
@@ -160,7 +176,7 @@ const menuCategories = computed(() => {
                     icon: 'paint', 
                     route: 'custom-branding.index', 
                     permissions: ['manage settings'],
-                    subscriptionFeature: 'has_branding'
+                    featureKey: 'custom_branding'
                 },
                 { 
                     name: 'Settings', 
@@ -172,77 +188,50 @@ const menuCategories = computed(() => {
                         { name: 'Updates', route: 'settings.updates', permissions: ['manage settings'], icon: 'refresh' },
                     ]
                 },
-                { name: 'Branches', route: 'branches.index', icon: 'branch', permissions: ['manage settings'], subscriptionFeature: 'has_multi_branch' },
+                { name: 'Branches', route: 'branches.index', icon: 'branch', permissions: ['manage settings'], featureKey: 'multi_branch' },
             ]
         }
     ];
 
-    // Filter by branding.enabled_features if it exists
-    const enabledFeatures = page.props.tenant?.enabled_features;
-    
-    if (enabledFeatures && Array.isArray(enabledFeatures)) {
+    const processItems = (categories) => {
         return categories.map(cat => ({
             ...cat,
             items: cat.items.filter(item => {
-                // Feature flag check
-                if (item.feature && !enabledFeatures.includes(item.feature)) return false;
-                
                 const hasRole = item.roles ? item.roles.some(role => roles.value.includes(role)) : false;
                 const hasPermission = item.permissions ? item.permissions.some(p => user.value.permissions.includes(p)) : false;
                 const isOwner = roles.value.includes('Owner');
                 const hasRoute = item.route ? route().has(item.route) : true;
                 const noAuthDefined = !item.roles && !item.permissions;
-                const featureAllowed = item.subscriptionFeature ? !!subscription.value[item.subscriptionFeature] : true;
                 
-                return (isOwner || hasRole || hasPermission || noAuthDefined) && hasRoute && featureAllowed;
-            }).map(item => ({
-                ...item,
-                subItems: item.subItems?.filter(si => {
-                    const hasRole = si.roles ? si.roles.some(role => roles.value.includes(role)) : false;
-                    const hasPermission = si.permissions ? si.permissions.some(p => user.value.permissions.includes(p)) : false;
-                    const isOwner = roles.value.includes('Owner');
-                    const hasRoute = si.route ? route().has(si.route) : true;
-                    const noAuthDefined = !si.roles && !si.permissions;
-                    const featureAllowed = si.subscriptionFeature ? !!subscription.value[si.subscriptionFeature] : true;
-                    
-                    return (isOwner || hasRole || hasPermission || noAuthDefined) && hasRoute && featureAllowed;
-                })
-            })).filter(item => item.subItems ? item.subItems.length > 0 : true)
+                return (isOwner || hasRole || hasPermission || noAuthDefined) && hasRoute;
+            }).map(item => {
+                const isLocked = item.featureKey ? !page.props.tenant_plan?.features?.[item.featureKey] : false;
+                return {
+                    ...item,
+                    isLocked,
+                    subItems: item.subItems?.filter(si => {
+                        const hasRole = si.roles ? si.roles.some(role => roles.value.includes(role)) : false;
+                        const hasPermission = si.permissions ? si.permissions.some(p => user.value.permissions.includes(p)) : false;
+                        const isOwner = roles.value.includes('Owner');
+                        const hasRoute = si.route ? route().has(si.route) : true;
+                        const noAuthDefined = !si.roles && !si.permissions;
+                        
+                        return (isOwner || hasRole || hasPermission || noAuthDefined) && hasRoute;
+                    }).map(si => {
+                        const isSubLocked = si.featureKey ? !page.props.tenant_plan?.features?.[si.featureKey] : false;
+                        return { ...si, isLocked: isSubLocked };
+                    })
+                };
+            }).filter(item => item.subItems ? item.subItems.length > 0 : true)
         })).filter(cat => cat.items.length > 0 && (cat.roles ? cat.roles.some(role => roles.value.includes(role)) : true));
-    }
+    };
 
-    // Default legacy filter if features aren't defined
-    return categories.map(cat => ({
-        ...cat,
-        items: cat.items.filter(item => {
-            const hasRole = item.roles ? item.roles.some(role => roles.value.includes(role)) : false;
-            const hasPermission = item.permissions ? item.permissions.some(p => user.value.permissions.includes(p)) : false;
-            const isOwner = roles.value.includes('Owner');
-            const hasRoute = item.route ? route().has(item.route) : true;
-            
-            // If no roles/permissions defined, show to everyone (like Dashboard)
-            const noAuthDefined = !item.roles && !item.permissions;
-            const featureAllowed = item.subscriptionFeature ? !!subscription.value[item.subscriptionFeature] : true;
-            
-            return (isOwner || hasRole || hasPermission || noAuthDefined) && hasRoute && featureAllowed;
-        }).map(item => ({
-            ...item,
-            subItems: item.subItems?.filter(si => {
-                const hasRole = si.roles ? si.roles.some(role => roles.value.includes(role)) : false;
-                const hasPermission = si.permissions ? si.permissions.some(p => user.value.permissions.includes(p)) : false;
-                const isOwner = roles.value.includes('Owner');
-                const hasRoute = si.route ? route().has(si.route) : true;
-                const noAuthDefined = !si.roles && !si.permissions;
-                const featureAllowed = si.subscriptionFeature ? !!subscription.value[si.subscriptionFeature] : true;
-                
-                return (isOwner || hasRole || hasPermission || noAuthDefined) && hasRoute && featureAllowed;
-            })
-        })).filter(item => item.subItems ? item.subItems.length > 0 : true)
-    })).filter(cat => cat.items.length > 0 && (cat.roles ? cat.roles.some(role => roles.value.includes(role)) : true));
+    return processItems(categories);
 });
 
 const getIcon = (name) => {
     const icons = {
+        lock: `<path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />`,
         home: `<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />`,
         calendar: `<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />`,
         users: `<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />`,
@@ -456,27 +445,31 @@ function getContrastColor(hex) {
                             <Link 
                                 v-for="item in category.items" 
                                 :key="item.name"
-                                :href="route(getItemRoute(item))"
-                                @click="isSidebarOpen = false"
+                                :href="item.isLocked ? '#' : route(getItemRoute(item))"
+                                @click="item.isLocked ? ($event.preventDefault(), showUpgradeAlert(item.name)) : (isSidebarOpen = false)"
                                 :class="[
-                                    isItemActive(item) 
+                                    isItemActive(item) && !item.isLocked
                                         ? 'shadow-lg shadow-primary/20 scale-[1.02]' 
-                                        : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
+                                        : 'text-base-content/60 hover:bg-base-200 hover:text-base-content',
+                                    item.isLocked ? 'opacity-70 hover:opacity-100 bg-base-100/50' : ''
                                 ]"
                                 class="flex items-center px-5 py-2.5 rounded-2xl group transition-all duration-300 transform"
-                                :style="isItemActive(item) ? { backgroundColor: primaryColor, color: '#ffffff' } : {}"
+                                :style="isItemActive(item) && !item.isLocked ? { backgroundColor: primaryColor, color: '#ffffff' } : {}"
                             >
                                 <svg 
-                                    class="h-5 w-5 mr-4 transition-transform duration-300 group-hover:scale-110" 
-                                    :class="[isItemActive(item) ? 'text-white' : 'opacity-40 group-hover:opacity-100']"
+                                    class="h-5 w-5 mr-4 transition-transform duration-300 group-hover:scale-110 flex-shrink-0" 
+                                    :class="[isItemActive(item) && !item.isLocked ? 'text-white' : (item.isLocked ? 'text-warning opacity-100' : 'opacity-40 group-hover:opacity-100')]"
                                     fill="none" 
                                     viewBox="0 0 24 24" 
                                     stroke-width="2" 
                                     stroke="currentColor"
-                                    v-html="getIcon(item.icon)"
+                                    v-html="item.isLocked ? getIcon('lock') : getIcon(item.icon)"
                                 ></svg>
-                                <span class="font-bold text-xs uppercase tracking-wider" :class="fonts.sidebar">{{ item.name }}</span>
-                                <div v-if="isItemActive(item)" class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm"></div>
+                                <span class="font-bold text-xs uppercase tracking-wider truncate" :class="fonts.sidebar">{{ item.name }}</span>
+                                <div v-if="isItemActive(item) && !item.isLocked" class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm flex-shrink-0"></div>
+                                <div v-if="item.isLocked" class="ml-auto inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-warning/20 text-warning flex-shrink-0">
+                                    PRO
+                                </div>
                             </Link>
                         </div>
                     </div>

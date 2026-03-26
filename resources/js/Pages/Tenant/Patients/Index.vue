@@ -73,6 +73,33 @@ const openAddModal = () => {
     editPatientData.value = null;
     showAddModal.value = true;
 };
+
+const tenantLimits = computed(() => usePage().props.tenant_plan?.limits || {});
+const tenantUsage = computed(() => usePage().props.tenant_plan?.current_usage || {});
+
+const checkLimitAndOpenAddModal = () => {
+    const maxPatients = tenantLimits.value.max_patients;
+    const currentPatients = tenantUsage.value.patients || props.patients?.length || 0;
+    
+    if (maxPatients !== undefined && maxPatients !== null && currentPatients >= maxPatients) {
+        Swal.fire({
+            title: 'Patient Limit Reached',
+            text: `Your plan allows up to ${maxPatients} patients. You currently have ${currentPatients}. Please upgrade your subscription to add more.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: primaryColor.value,
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'Upgrade Plan',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.get(route('settings.features'));
+            }
+        });
+        return;
+    }
+    openAddModal();
+};
 </script>
 
 <template>
@@ -98,7 +125,7 @@ const openAddModal = () => {
                     >
                 </div>
                 <button 
-                    @click="openAddModal"
+                    @click="checkLimitAndOpenAddModal"
                     class="btn rounded-xl border-0 text-white shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl transition-all w-full sm:w-auto text-xs font-black uppercase tracking-widest"
                     :style="{ backgroundColor: primaryColor }"
                 >

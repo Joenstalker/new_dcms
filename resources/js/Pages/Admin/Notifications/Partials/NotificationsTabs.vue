@@ -1,3 +1,4 @@
+<script setup>
 import { router, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
