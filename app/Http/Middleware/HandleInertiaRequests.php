@@ -66,6 +66,7 @@ class HandleInertiaRequests extends Middleware
                     'enhanced_reports' => tenant()->hasPlanFeature('enhanced_reports'),
                     'custom_system_features' => tenant()->hasPlanFeature('custom_system_features'),
                 ],
+                'feature_requirements' => \App\Models\SubscriptionPlan::getFeatureRequirementMap(),
                 'limits' => [
                     'max_users' => tenant()->getPlanLimit('max_users'),
                     'max_patients' => tenant()->getPlanLimit('max_patients'),

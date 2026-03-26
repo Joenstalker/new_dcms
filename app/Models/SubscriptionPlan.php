@@ -252,4 +252,26 @@ class SubscriptionPlan extends Model
     {
         $this->features()->detach($feature->id);
     }
+
+    /**
+     * Get a map of feature keys to the first plan name that enables them.
+     * Useful for frontend badges (e.g., 'PRO', 'ULTIMATE').
+     */
+    public static function getFeatureRequirementMap(): array
+    {
+        $plans = self::orderBy('price_monthly')->get();
+        $features = Feature::all();
+        $map = [];
+
+        foreach ($features as $feature) {
+            foreach ($plans as $plan) {
+                if ($plan->hasFeature($feature->key)) {
+                    $map[$feature->key] = strtoupper($plan->name);
+                    break;
+                }
+            }
+        }
+
+        return $map;
+    }
 }

@@ -405,7 +405,7 @@ function getContrastColor(hex) {
                     >
                         {{ sub.name }}
                         <span v-if="sub.featureKey && sub.isLocked" class="ml-2 px-2 py-0.5 text-[10px] font-bold text-amber-900 bg-amber-100 rounded-lg border border-amber-200">
-                            PREMIUM
+                            {{ page.props.tenant_plan?.feature_requirements?.[sub.featureKey] || 'PREMIUM' }}
                         </span>
                     </Link>
                 </div>
@@ -473,7 +473,7 @@ function getContrastColor(hex) {
                                 <span class="font-bold text-xs uppercase tracking-wider truncate" :class="fonts.sidebar">{{ item.name }}</span>
                                 <div v-if="isItemActive(item) && !item.isLocked" class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm flex-shrink-0"></div>
                                 <div v-if="item.isLocked" class="ml-auto inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-warning/20 text-warning flex-shrink-0">
-                                    PREMIUM
+                                    {{ page.props.tenant_plan?.feature_requirements?.[item.featureKey] || 'PREMIUM' }}
                                 </div>
                             </Link>
                         </div>
