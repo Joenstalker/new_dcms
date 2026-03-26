@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, watch, inject } from 'vue';
 
 import ClinicBranding from './Partials/ClinicBranding.vue';
 import PortalCustomization from './Partials/PortalCustomization.vue';
@@ -38,7 +38,7 @@ const form = useForm({
     email: props.tenant?.email || '',
     phone: props.tenant?.phone || '',
     address: props.tenant?.street || '',
-    branding_color: props.tenant?.branding_color || '#2563eb',
+    branding_color: props.tenant?.branding_color || page.props.branding?.primary_color || '#0ea5e9',
     font_family: props.tenant?.font_family || {
         header: 'font-sans',
         sidebar: 'font-sans',
@@ -58,6 +58,24 @@ const form = useForm({
     logo_login: null,
     logo_booking: null,
 });
+
+// 3. Inject Live Preview state from AuthenticatedLayout
+const liveBranding = inject('liveBranding');
+
+// 4. Watch for real-time changes to push to the Layout (Interactive Mode)
+watch(() => form.branding_color, (newColor) => {
+    if (liveBranding) {
+        liveBranding.value.primary_color = newColor;
+        
+        // Instant contrast calculation for the preview
+        const hex = newColor.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        liveBranding.value.contrast_color = luminance > 0.5 ? '#1f2937' : '#ffffff';
+    }
+}, { immediate: true });
 
 const submit = () => {
     form.post('/settings', { 

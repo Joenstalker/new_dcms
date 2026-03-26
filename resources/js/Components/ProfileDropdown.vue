@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, inject } from 'vue';
 import { usePage, Link } from '@inertiajs/vue3';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
@@ -8,7 +8,23 @@ import AccountSettingsModal from '@/Components/AccountSettingsModal.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
-const primaryColor = computed(() => page.props.branding?.primary_color || '#0ea5e9');
+
+// 1. Initial State from Server-Side Computation
+const brandingComputed = computed(() => page.props.branding_computed || {
+    primary_color: '#0ea5e9',
+    contrast_color: '#ffffff'
+});
+
+// 2. Inject Live Preview state for real-time interactivity
+const liveBranding = inject('liveBranding', null);
+
+const primaryColor = computed(() => {
+    return liveBranding?.value?.primary_color || brandingComputed.value.primary_color;
+});
+
+const primaryTextColor = computed(() => {
+    return liveBranding?.value?.contrast_color || brandingComputed.value.contrast_color;
+});
 
 const showPictureModal = ref(false);
 const showSettingsModal = ref(false);
@@ -31,8 +47,8 @@ const openSettingsModal = () => {
                     class="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-base-200 transition-all duration-200 border border-transparent hover:border-base-300 group"
                 >
                     <div 
-                        class="h-8 w-8 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm overflow-hidden"
-                        :style="{ backgroundColor: primaryColor }"
+                        class="h-8 w-8 rounded-lg flex items-center justify-center font-black text-xs shadow-sm overflow-hidden"
+                        :style="{ backgroundColor: primaryColor, color: primaryTextColor }"
                     >
                         <img 
                             v-if="user.profile_picture_url" 

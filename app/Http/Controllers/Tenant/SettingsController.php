@@ -100,7 +100,11 @@ class SettingsController extends Controller
             });
 
         return Inertia::render('Tenant/CustomBranding/Index', [
-            'tenant' => $tenant,
+            'tenant' => array_merge($tenant->toArray(), [
+                'branding_color' => $tenant->branding_color,
+                'font_family' => $tenant->font_family,
+                'portal_config' => $tenant->portal_config,
+            ]),
             'subscription' => $subscription,
             'is_premium' => $tenant->canCustomizeBranding(),
             'staff' => $staff,
@@ -176,12 +180,13 @@ class SettingsController extends Controller
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'branding_color' => 'nullable|string|max:7',
-            'font_family' => 'nullable|string|max:50',
+            'font_family' => 'nullable|array',
             'hero_title' => 'nullable|string|max:255',
             'hero_subtitle' => 'nullable|string|max:255',
             'about_us_description' => 'nullable|string',
             'enabled_features' => 'nullable|array',
-            'landing_page_config' => 'nullable|string', // JSON string from frontend
+            'landing_page_config' => 'nullable|array',
+            'portal_config' => 'nullable|array',
             'logo' => 'nullable|image|max:2048',
             'logo_login' => 'nullable|image|max:2048',
             'logo_booking' => 'nullable|image|max:2048',
@@ -192,10 +197,7 @@ class SettingsController extends Controller
             return redirect()->back()->with('error', 'Tenant not found.');
         }
 
-        // Handle JSON decoding for landing_page_config if it's sent as a string
-        if (isset($validated['landing_page_config']) && is_string($validated['landing_page_config'])) {
-            $validated['landing_page_config'] = json_decode($validated['landing_page_config'], true);
-        }
+        // The config is already validated as an array now
 
         // Handle Logo Uploads
         if ($request->hasFile('logo')) {
@@ -224,10 +226,19 @@ class SettingsController extends Controller
                 $validated['branding_color'], 
                 $validated['font_family'], 
                 $validated['logo_login_path'], 
-                $validated['logo_booking_path'],
-                $validated['landing_page_config']
             );
         }
+
+        // Explicitly set virtual attributes to ensure they are captured by Stancl's data sync
+        // Force save to the data column to ensure persistence
+        $data = $tenant->data ?? [];
+        if (isset($validated['branding_color'])) $data['branding_color'] = $validated['branding_color'];
+        if (isset($validated['font_family'])) $data['font_family'] = $validated['font_family'];
+        if (isset($validated['portal_config'])) $data['portal_config'] = $validated['portal_config'];
+        if (isset($validated['landing_page_config'])) $data['landing_page_config'] = $validated['landing_page_config'];
+        
+        $tenant->data = $data;
+        $tenant->save();
 
         // Clean up internal keys before update
         unset(
@@ -238,6 +249,7 @@ class SettingsController extends Controller
             $validated['address']
         );
 
+        // Also update regular columns
         $tenant->update($validated);
 
         return redirect()->back()->with('success', 'Clinic settings updated successfully.');

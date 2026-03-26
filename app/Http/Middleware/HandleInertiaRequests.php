@@ -54,7 +54,19 @@ class HandleInertiaRequests extends Middleware
                 'app_url' => $request->getSchemeAndHttpHost(),
                 'recaptcha_site_key' => config('services.recaptcha.site_key', ''),
             ],
-            'tenant' => tenant(),
+            'tenant' => function () {
+                $tenant = tenant();
+                if (!$tenant) return null;
+                
+                $data = $tenant->data ?? [];
+                
+                return array_merge($tenant->toArray(), [
+                    'branding_color' => $data['branding_color'] ?? $tenant->branding_color,
+                    'font_family' => $data['font_family'] ?? $tenant->font_family,
+                    'portal_config' => $data['portal_config'] ?? $tenant->portal_config,
+                    'is_premium' => $tenant->canCustomizeBranding(),
+                ]);
+            },
             'tenant_plan' => tenant() ? [
                 'features' => [
                     'sms_notifications' => tenant()->hasPlanFeature('sms_notifications'),
@@ -82,8 +94,28 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
-            // Branding settings shared globally
             'branding' => $this->getBrandingSettings(),
+            'branding_computed' => function () {
+                $tenant = tenant();
+                $centralColor = SystemSetting::get('primary_color', '#0ea5e9');
+                $tenantColor = $tenant->data['branding_color'] ?? $tenant->branding_color ?? null;
+                
+                $activeColor = $tenantColor ?: $centralColor;
+                
+                // Server-side luminance calculation for contrast color
+                $hex = ltrim($activeColor, '#');
+                $r = hexdec(substr($hex, 0, 2));
+                $g = hexdec(substr($hex, 2, 2));
+                $b = hexdec(substr($hex, 4, 2));
+                $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
+                $contrastColor = $luminance > 0.5 ? '#1f2937' : '#ffffff';
+
+                return [
+                    'primary_color' => $activeColor,
+                    'contrast_color' => $contrastColor,
+                    'source' => $tenantColor ? 'tenant' : 'central',
+                ];
+            },
         ];
     }
 
@@ -92,9 +124,10 @@ class HandleInertiaRequests extends Middleware
      */
     private function getBrandingSettings(): array
     {
+        $tenant = tenant();
         return [
-            'platform_name' => SystemSetting::get('platform_name', 'DCMS'),
-            'platform_logo' => SystemSetting::get('platform_logo'),
+            'platform_name' => $tenant->name ?? SystemSetting::get('platform_name', 'DCMS'),
+            'platform_logo' => $tenant->logo_path ?? SystemSetting::get('platform_logo'),
             'primary_color' => SystemSetting::get('primary_color', '#0ea5e9'),
             'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
             'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),

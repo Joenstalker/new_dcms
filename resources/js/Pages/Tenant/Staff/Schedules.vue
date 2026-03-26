@@ -6,7 +6,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import googleCalendarPlugin from '@fullcalendar/google-calendar';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     staff: Array,
@@ -41,6 +42,10 @@ const calendarOptions = ref({
     }
 });
 
+// Branding
+const branding = computed(() => usePage().props.branding || {});
+const primaryColor = computed(() => usePage().props.tenant?.branding_color || branding.value.primary_color || '#0ea5e9');
+
 // If we wanted to add a specific Google Calendar ID, we could do:
 // events: {
 //   googleCalendarId: 'primary' // or a specific calendar ID
@@ -70,7 +75,10 @@ const calendarOptions = ref({
                                     {{ member.name }}
                                 </option>
                             </select>
-                            <button class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition text-sm">
+                            <button 
+                                class="px-4 py-2 text-white rounded-md transition text-sm shadow-sm"
+                                :style="{ backgroundColor: primaryColor }"
+                            >
                                 Add Shift
                             </button>
                         </div>
@@ -97,17 +105,15 @@ const calendarOptions = ref({
 }
 
 :deep(.fc-button-primary) {
-    background-color: #2563eb !important;
-    border-color: #2563eb !important;
+    background-color: v-bind(primaryColor) !important;
+    border-color: v-bind(primaryColor) !important;
 }
 
 :deep(.fc-button-primary:hover) {
-    background-color: #1d4ed8 !important;
-    border-color: #1d4ed8 !important;
+    opacity: 0.9;
 }
 
 :deep(.fc-button-active) {
-    background-color: #1e40af !important;
-    border-color: #1e40af !important;
+    filter: brightness(0.8);
 }
 </style>

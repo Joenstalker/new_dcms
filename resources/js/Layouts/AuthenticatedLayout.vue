@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, provide, onMounted } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
@@ -11,6 +11,27 @@ const page = usePage();
 const user = computed(() => page.props.auth.user);
 const roles = computed(() => user.value?.roles || []);
 const branding = computed(() => page.props.branding || {});
+
+// 1. Initial State from Server-Side Computation (Robust)
+const brandingComputed = computed(() => page.props.branding_computed || {
+    primary_color: '#0ea5e9',
+    contrast_color: '#ffffff'
+});
+
+// 2. Live Preview State (for interactivity)
+const liveBranding = ref({
+    primary_color: brandingComputed.value.primary_color,
+    contrast_color: brandingComputed.value.contrast_color
+});
+
+// Provide to children (like the Branding page)
+provide('liveBranding', liveBranding);
+
+// Sync live state when props change (after save)
+onMounted(() => {
+    liveBranding.value.primary_color = brandingComputed.value.primary_color;
+    liveBranding.value.contrast_color = brandingComputed.value.contrast_color;
+});
 
 const showUpgradeAlert = (featureName) => {
     Swal.fire({
@@ -49,13 +70,20 @@ const shouldApplyBranding = computed(() => {
     return true; // Default to true if config is missing
 });
 
-// Primary color: Use tenant's branding_color if allowed, otherwise fallback to a standard tenant default
+// Primary color: Prioritize live preview, then computed prop
 const primaryColor = computed(() => {
-    // Standard platform default (e.g., Sky 500) for all tenants who haven't set their own
-    const tenantDefault = '#0ea5e9';
+    if (!shouldApplyBranding.value) return page.props.branding?.primary_color || '#0ea5e9';
+    return liveBranding.value.primary_color || brandingComputed.value.primary_color;
+});
+
+// Contrast color: Ensure text is always readable (matching AdminLayout logic)
+const primaryTextColor = computed(() => {
+    if (!shouldApplyBranding.value) return '#ffffff';
     
-    if (!shouldApplyBranding.value) return tenantDefault;
-    return page.props.tenant?.branding_color || tenantDefault;
+    // If we have a live preview contrast, use it
+    if (liveBranding.value.contrast_color) return liveBranding.value.contrast_color;
+    
+    return brandingComputed.value.contrast_color;
 });
 
 // Typography: Use tenant's granular font_family if allowed
@@ -90,8 +118,15 @@ const fonts = computed(() => {
 // Platform info
 const platformName = computed(() => page.props.tenant?.name || branding.value.platform_name || 'DCMS');
 const platformLogo = computed(() => {
-    if (page.props.tenant?.logo_path) return '/tenancy/assets/' + page.props.tenant.logo_path;
-    return branding.value.platform_logo ? '/storage/logos/' + branding.value.platform_logo : null;
+    const logoFile = page.props.tenant?.logo_path || branding.value.platform_logo;
+    if (!logoFile) return null;
+    
+    // If it's a full path (like from tenant storage or central)
+    if (logoFile.startsWith('branding/')) return '/storage/' + logoFile;
+    if (logoFile.startsWith('logos/')) return '/storage/' + logoFile;
+    
+    // Fallback for legacy central logos or simple filenames
+    return '/storage/logos/' + logoFile;
 });
 const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');
 
@@ -354,13 +389,39 @@ const handleLogout = () => {
 // Update CSS variables for DaisyUI integration
 const brandStyle = computed(() => {
     const color = primaryColor.value;
+    const hsl = hexToHsl(color);
+    const focus = hexToHsl(darkenColor(color, 10));
+    const content = hexToHsl(primaryTextColor.value);
     
     // Inject CSS variables for primary color to handle bg-primary, text-primary, etc.
+    // Target both :root and [data-theme] to override DaisyUI defaults
     return `
-        :root {
-            --p: ${hexToHsl(color)};
-            --pf: ${hexToHsl(darkenColor(color, 20))};
-            --pc: ${getContrastColor(color)};
+        :root, [data-theme], [data-theme="light"], [data-theme="dark"] {
+            --p: ${hsl};
+            --pf: ${focus};
+            --pc: ${content};
+            
+            /* Success and other states can also be derived if needed */
+            --s: ${hsl}; /* Primary as Secondary fallback */
+        }
+        
+        .btn-primary {
+            background-color: ${color} !important;
+            border-color: ${color} !important;
+            color: hsl(${content}) !important;
+        }
+        
+        .btn-primary:hover {
+            background-color: ${darkenColor(color, 10)} !important;
+            border-color: ${darkenColor(color, 10)} !important;
+        }
+
+        .text-primary {
+            color: ${color} !important;
+        }
+        
+        .bg-primary {
+            background-color: ${color} !important;
         }
     `;
 });
@@ -407,7 +468,7 @@ function getContrastColor(hex) {
     const g = parseInt(color.substr(2, 2), 16);
     const b = parseInt(color.substr(4, 2), 16);
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance > 0.5 ? '0 0% 12%' : '0 0% 100%'; // HSL format for DaisyUI
+    return luminance > 0.5 ? '#1f2937' : '#ffffff';
 }
 </script>
 
@@ -422,7 +483,10 @@ function getContrastColor(hex) {
         <!-- Main Content Area -->
         <div class="drawer-content flex flex-col h-screen bg-base-200 overflow-hidden">
             <!-- Top Navigation for Mobile & Title -->
-            <header class="bg-base-100 border-b border-base-300 sticky top-0 z-40 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0 shadow-sm">
+            <header 
+                class="bg-base-100 border-b border-base-300 sticky top-0 z-40 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0 shadow-sm"
+                :style="{ borderTop: `4px solid ${primaryColor}` }"
+            >
                 <div class="flex items-center space-x-4">
                     <label 
                         for="tenant-sidebar"
@@ -536,12 +600,12 @@ function getContrastColor(hex) {
                                 @click="item.isLocked ? ($event.preventDefault(), showUpgradeAlert(item.name)) : (isSidebarOpen = false)"
                                 :class="[
                                     isItemActive(item) && !item.isLocked
-                                        ? 'shadow-lg shadow-primary/20 scale-[1.02]' 
-                                        : 'text-base-content/60 hover:bg-base-200 hover:text-base-content',
+                                        ? 'shadow-lg shadow-primary/20 scale-[1.02] bg-primary' 
+                                        : 'hover:bg-primary/10 hover:text-primary',
                                     item.isLocked ? 'opacity-70 hover:opacity-100 bg-base-100/50' : ''
                                 ]"
                                 class="flex items-center px-5 py-2.5 rounded-2xl group transition-all duration-300 transform"
-                                :style="isItemActive(item) && !item.isLocked ? { backgroundColor: primaryColor, color: '#ffffff' } : {}"
+                                :style="isItemActive(item) && !item.isLocked ? { backgroundColor: primaryColor, color: primaryTextColor } : {}"
                             >
                                 <svg 
                                     class="h-5 w-5 mr-4 transition-transform duration-300 group-hover:scale-110 flex-shrink-0" 
@@ -567,8 +631,8 @@ function getContrastColor(hex) {
                     <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center gap-4 min-w-0">
                             <div 
-                                class="h-11 w-11 rounded-2xl flex items-center justify-center text-white font-black flex-shrink-0 shadow-lg shadow-primary/10 overflow-hidden"
-                                :style="{ backgroundColor: primaryColor }"
+                                class="h-11 w-11 rounded-2xl flex items-center justify-center font-black flex-shrink-0 shadow-lg shadow-primary/10 overflow-hidden"
+                                :style="{ backgroundColor: primaryColor, color: primaryTextColor }"
                             >
                                 <img 
                                     v-if="user?.profile_picture_url" 

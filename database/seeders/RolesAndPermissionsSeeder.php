@@ -31,7 +31,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view appointments', 'create appointments', 'edit appointments', 'delete appointments',
             
             // Treatments
-            'view treatments', 'create treatments',
+            'view treatments', 'create treatments', 'edit treatments', 'delete treatments',
             
             // Billing
             'view billing', 'create billing', 'edit billing',

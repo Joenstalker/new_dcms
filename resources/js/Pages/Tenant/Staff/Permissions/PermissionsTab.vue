@@ -204,8 +204,10 @@ const permissionGroups = computed(() => {
 
         // Clinical Module
         'patients': 'Clinical Module',
-        'treatments': 'Clinical Module',
         'services': 'Clinical Module',
+        
+        // Treatment Module
+        'treatments': 'Treatment Module',
         
         // Scheduling Module
         'appointments': 'Scheduling Module',

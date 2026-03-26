@@ -429,6 +429,8 @@ const page = usePage();
 // Tabs State
 const activeTab = ref(props.initialTab);
 
+const branding = computed(() => usePage().props.branding || {});
+const primaryColor = computed(() => usePage().props.tenant?.branding_color || branding.value.primary_color || '#0ea5e9');
 const tenantLimits = computed(() => usePage().props.tenant_plan?.limits || {});
 const tenantUsage = computed(() => usePage().props.tenant_plan?.current_usage || {});
 

@@ -63,12 +63,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      */
     public function canCustomizeBranding(): bool
     {
-        // Gating: Only Pro and Ultimate plans can customize branding
-        // If no subscription, assume trial/basic (safety first)
-        $sub = $this->subscription ?? null;
-        if (!$sub || !$sub->plan) return false;
-        
-        return in_array($sub->plan->name, ['Pro', 'Ultimate']);
+        return $this->hasPlanFeature('custom_branding');
     }
 
     /**

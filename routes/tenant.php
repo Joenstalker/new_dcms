@@ -97,7 +97,10 @@ Route::middleware([
             // Treatment records
             Route::middleware(['permission:view treatments'])->group(function () {
                 Route::get('treatments', [\App\Http\Controllers\TreatmentController::class , 'index'])->name('treatments.index');
-                Route::post('treatments', [\App\Http\Controllers\TreatmentController::class , 'store'])->name('treatments.store');
+                Route::post('treatments', [\App\Http\Controllers\TreatmentController::class , 'store'])->middleware('permission:create treatments')->name('treatments.store');
+                Route::get('treatments/{treatment}', [\App\Http\Controllers\TreatmentController::class , 'show'])->name('treatments.show');
+                Route::put('treatments/{treatment}', [\App\Http\Controllers\TreatmentController::class , 'update'])->middleware('permission:edit treatments')->name('treatments.update');
+                Route::delete('treatments/{treatment}', [\App\Http\Controllers\TreatmentController::class , 'destroy'])->middleware('permission:delete treatments')->name('treatments.destroy');
             });
 
             // Billing
