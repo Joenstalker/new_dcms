@@ -109,7 +109,7 @@ class Feature extends Model
         $value = $this->getValueForPlan($plan);
 
         return match ($this->type) {
-                'boolean' => $value === true,
+                'boolean' => !!$value,
                 'numeric' => $value !== null,
                 'tiered' => $value !== null,
                 default => false,
