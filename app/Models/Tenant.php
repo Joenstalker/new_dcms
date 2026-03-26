@@ -242,6 +242,51 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     }
 
     /**
+     * Check if the tenant can add more patients based on their plan limits.
+     */
+    public function canAddMorePatients(): bool
+    {
+        $limit = $this->getPlanLimit('max_patients');
+        if ($limit === null || $limit === -1) return true; // Unlimited
+
+        $currentCount = \DB::connection($this->getDatabaseConnectionName())
+            ->table('patients')
+            ->count();
+
+        return $currentCount < $limit;
+    }
+
+    /**
+     * Check if the tenant can add more users (staff) based on their plan limits.
+     */
+    public function canAddMoreUsers(): bool
+    {
+        $limit = $this->getPlanLimit('max_users');
+        if ($limit === null || $limit === -1) return true; // Unlimited
+
+        $currentCount = \DB::connection($this->getDatabaseConnectionName())
+            ->table('users')
+            ->count();
+
+        return $currentCount < $limit;
+    }
+
+    /**
+     * Check if the tenant can add more appointments based on their plan limits.
+     */
+    public function canAddMoreAppointments(): bool
+    {
+        $limit = $this->getPlanLimit('max_appointments');
+        if ($limit === null || $limit === -1) return true; // Unlimited
+
+        $currentCount = \DB::connection($this->getDatabaseConnectionName())
+            ->table('appointments')
+            ->count();
+
+        return $currentCount < $limit;
+    }
+
+    /**
      * Check if the tenant can be safely deleted by an admin.
      * Prevents deletion of active paying tenants.
      */

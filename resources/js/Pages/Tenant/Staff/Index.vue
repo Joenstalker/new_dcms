@@ -61,6 +61,28 @@
                         {{ $page.props.flash.success }}
                     </div>
 
+                    <div v-if="limitReached" class="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div class="bg-warning/10 border border-warning/20 rounded-2xl p-5 flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-2xl bg-warning/20 flex items-center justify-center text-warning shadow-sm">
+                                    <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-base font-black text-gray-900 tracking-tight">Staff Limit Reached</h4>
+                                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mt-0.5">Plan Max: {{ tenantLimits.max_users }} members. Upgrade to expand your team.</p>
+                                </div>
+                            </div>
+                            <Link
+                                :href="route('billing.portal')"
+                                class="btn btn-sm btn-warning font-black text-white shadow-xl shadow-warning/20 rounded-[1.25rem] px-6 h-10 min-h-0 border-none"
+                            >
+                                Upgrade Now
+                            </Link>
+                        </div>
+                    </div>
+
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100 p-8">
                         <div class="flex justify-between items-center mb-8">
                             <h2 class="text-xl font-black text-gray-900 uppercase tracking-widest">Active Staff Members</h2>
@@ -515,6 +537,12 @@ const activeTab = ref(props.initialTab);
 
 const tenantLimits = computed(() => usePage().props.tenant_plan?.limits || {});
 const tenantUsage = computed(() => usePage().props.tenant_plan?.current_usage || {});
+
+const limitReached = computed(() => {
+    const max = tenantLimits.value.max_users;
+    const current = tenantUsage.value.users || props.staff?.length || 0;
+    return max !== undefined && max !== null && max !== -1 && current >= max;
+});
 
 const checkLimitAndOpenAddStaff = () => {
     const maxUsers = tenantLimits.value.max_users;

@@ -23,7 +23,9 @@ Route::middleware([
 
     // Public QR Booking Route (no auth required — patients scan QR code)
     Route::get('/book', [\App\Http\Controllers\BookingController::class , 'create'])->name('tenant.book.create');
-    Route::post('/book', [\App\Http\Controllers\BookingController::class , 'store'])->name('tenant.book.store');
+    Route::post('/book', [\App\Http\Controllers\BookingController::class , 'store'])
+        ->middleware('check.subscription:max_appointments')
+        ->name('tenant.book.store');
 
     // Tenant Auth API Routes (Modal-based login)
     Route::middleware('guest')->group(function () {

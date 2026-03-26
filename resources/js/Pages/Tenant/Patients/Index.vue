@@ -77,6 +77,12 @@ const openAddModal = () => {
 const tenantLimits = computed(() => usePage().props.tenant_plan?.limits || {});
 const tenantUsage = computed(() => usePage().props.tenant_plan?.current_usage || {});
 
+const limitReached = computed(() => {
+    const max = tenantLimits.value.max_patients;
+    const current = tenantUsage.value.patients || props.patients?.length || 0;
+    return max !== undefined && max !== null && max !== -1 && current >= max;
+});
+
 const checkLimitAndOpenAddModal = () => {
     const maxPatients = tenantLimits.value.max_patients;
     const currentPatients = tenantUsage.value.patients || props.patients?.length || 0;
@@ -111,6 +117,29 @@ const checkLimitAndOpenAddModal = () => {
         </template>
 
         <div class="mt-8 space-y-6">
+            <!-- Limit Reached Banner -->
+            <div v-if="limitReached" class="mb-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div class="bg-warning/10 border border-warning/20 rounded-2xl p-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-warning/20 flex items-center justify-center text-warning">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-black text-base-content tracking-tight">Patient Limit Reached</h4>
+                            <p class="text-xs text-base-content/60 font-medium">You have reached the maximum number of patients allowed for your current plan ({{ tenantLimits.max_patients }}). Upgrade to add more.</p>
+                        </div>
+                    </div>
+                    <Link
+                        :href="route('billing.portal')"
+                        class="btn btn-sm btn-warning font-black text-white shadow-sm normal-case"
+                    >
+                        Upgrade Now
+                    </Link>
+                </div>
+            </div>
+
             <!-- Top Actions -->
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-100 p-6 rounded-2xl border border-base-300">
                 <div class="flex-1 w-full sm:max-w-md relative">

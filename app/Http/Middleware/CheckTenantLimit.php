@@ -29,22 +29,16 @@ class CheckTenantLimit
             return $next($request);
         }
 
-        $limit = $tenant->getPlanLimit("max_{$resource}");
-        
-        // If limit is not set or unlimited (null), proceed
-        if ($limit === null) {
-            return $next($request);
-        }
-
-        // Check the current count. Stancl Tenancy automatically scopes these queries to the current tenant connection.
-        $currentCount = match ($resource) {
-            'users' => User::count(),
-            'patients' => Patient::count(),
-            'appointments' => Appointment::count(), // Consider grouping this by month if appointments are monthly limited
-            default => 0,
+        // Use the new semantic helper methods from the Tenant model
+        $canAddMore = match ($resource) {
+            'patients' => $tenant->canAddMorePatients(),
+            'users' => $tenant->canAddMoreUsers(),
+            'appointments' => $tenant->canAddMoreAppointments(),
+            default => true,
         };
 
-        if ($currentCount >= $limit) {
+        if (!$canAddMore) {
+            $limit = $tenant->getPlanLimit("max_{$resource}");
             $message = "You have reached your plan limit for {$resource} ({$limit}). Please upgrade your subscription to add more.";
             
             if ($request->wantsJson() || $request->inertia()) {
