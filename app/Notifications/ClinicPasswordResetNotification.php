@@ -43,7 +43,7 @@ class ClinicPasswordResetNotification extends Notification implements ShouldQueu
         $brandingColor = '#3b82f6';
 
         try {
-            $tenant = tenancy()->tenant();
+            $tenant = tenancy()->tenant;
             if ($tenant) {
                 $brandingColor = $tenant->branding_color ?? '#3b82f6';
             }

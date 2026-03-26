@@ -43,6 +43,9 @@ class StaffController extends Controller
 
         $user->assignRole($request->role);
 
+        // Auto-assign base permissions for Guided Onboarding
+        $user->syncPermissions(['view dashboard']);
+
         // Send Invitation Email
         try {
             $tenant = tenant();
@@ -90,7 +93,7 @@ class StaffController extends Controller
         $request->validate([
             'staff_ids' => 'required|array',
             'staff_ids.*' => 'exists:users,id',
-            'permissions' => 'required|array',
+            'permissions' => 'present|array',
         ]);
 
         $staffMembers = User::whereIn('id', $request->staff_ids)->get();

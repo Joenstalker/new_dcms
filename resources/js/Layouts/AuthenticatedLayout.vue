@@ -124,12 +124,37 @@ const isSubItemActive = (sub) => {
     return route().current(sub.route) && !currentTabParam.value;
 };
 
+// Authorization Guard: Check if the current route is allowed for the user
+const currentRouteName = computed(() => route().current() || '');
+const isRouteAuthorized = computed(() => {
+    const isOwner = roles.value.includes('Owner');
+    if (isOwner) return true;
+
+    // Check against the processed menu items to see if the current route is "reachable"
+    // This automatically respects the exact rules used to show/hide sidebar items
+    const allAuthorizedRoutes = menuCategories.value.flatMap(cat => 
+        cat.items.flatMap(item => {
+            const routes = [];
+            if (item.route) routes.push(item.route);
+            if (item.subItems) item.subItems.forEach(si => routes.push(si.route));
+            return routes;
+        })
+    );
+
+    // Dashboard and Profile routes are always authorized for base access
+    const baseRoutes = [dashboardRoute.value, 'profile.edit', 'tenant.dashboard'];
+    if (baseRoutes.includes(currentRouteName.value)) return true;
+
+    // If the current route is not in the authorized list, block it
+    return allAuthorizedRoutes.includes(currentRouteName.value);
+});
+
 const menuCategories = computed(() => {
     const categories = [
         {
             title: 'Main Navigation',
             items: [
-                { name: 'Dashboard', route: dashboardRoute.value, icon: 'home', feature: 'dashboard' },
+                { name: 'Dashboard', route: dashboardRoute.value, icon: 'home', feature: 'dashboard', permissions: ['view dashboard'] },
                 { name: 'Appointments', route: 'appointments.index', icon: 'calendar', feature: 'appointments', permissions: ['view appointments'] },
                 { name: 'Patients', icon: 'users', route: 'patients.index', feature: 'patients', permissions: ['view patients'] },
                 { name: 'Billing & POS', icon: 'cash', feature: 'billing', permissions: ['view billing'] },
@@ -198,14 +223,25 @@ const menuCategories = computed(() => {
         return categories.map(cat => ({
             ...cat,
             items: cat.items.filter(item => {
+                const isOwner = roles.value.includes('Owner');
                 const hasRole = item.roles ? item.roles.some(role => roles.value.includes(role)) : false;
                 const hasPermission = item.permissions ? item.permissions.some(p => user.value.permissions.includes(p)) : false;
-                const isOwner = roles.value.includes('Owner');
                 const hasRoute = item.route ? route().has(item.route) : true;
                 const noAuthDefined = !item.roles && !item.permissions;
                 
-                return (isOwner || hasRole || hasPermission || noAuthDefined) && hasRoute;
+                // Owner sees everything relevant to their role/route
+                // Staff only sees if they have permission AND it's not locked by the plan
+                const isLocked = item.featureKey ? !page.props.tenant_plan?.features?.[item.featureKey] : false;
+                
+                if (isOwner) {
+                    return hasRoute;
+                }
+                
+                // For Staff: MUST have explicit Role or Permission AND must NOT be locked.
+                // Removing noAuthDefined fallback for staff to achieve "Zero-Trust" (hidden by default).
+                return (hasRole || hasPermission) && !isLocked && hasRoute;
             }).map(item => {
+                const isOwner = roles.value.includes('Owner');
                 const isLocked = item.featureKey ? !page.props.tenant_plan?.features?.[item.featureKey] : false;
                 return {
                     ...item,
@@ -213,11 +249,17 @@ const menuCategories = computed(() => {
                     subItems: item.subItems?.filter(si => {
                         const hasRole = si.roles ? si.roles.some(role => roles.value.includes(role)) : false;
                         const hasPermission = si.permissions ? si.permissions.some(p => user.value.permissions.includes(p)) : false;
-                        const isOwner = roles.value.includes('Owner');
                         const hasRoute = si.route ? route().has(si.route) : true;
                         const noAuthDefined = !si.roles && !si.permissions;
                         
-                        return (isOwner || hasRole || hasPermission || noAuthDefined) && hasRoute;
+                        const isSubLocked = si.featureKey ? !page.props.tenant_plan?.features?.[si.featureKey] : false;
+
+                        if (isOwner) {
+                            return hasRoute;
+                        }
+                        
+                        // For Staff: MUST have explicit Role or Permission.
+                        return (hasRole || hasPermission) && !isSubLocked && hasRoute;
                     }).map(si => {
                         const isSubLocked = si.featureKey ? !page.props.tenant_plan?.features?.[si.featureKey] : false;
                         return { ...si, isLocked: isSubLocked };
@@ -404,7 +446,7 @@ function getContrastColor(hex) {
                         ]"
                     >
                         {{ sub.name }}
-                        <span v-if="sub.featureKey && sub.isLocked" class="ml-2 px-2 py-0.5 text-[10px] font-bold text-amber-900 bg-amber-100 rounded-lg border border-amber-200">
+                        <span v-if="roles.includes('Owner') && sub.featureKey && sub.isLocked" class="ml-2 px-2 py-0.5 text-[10px] font-bold text-amber-900 bg-amber-100 rounded-lg border border-amber-200">
                             {{ page.props.tenant_plan?.feature_requirements?.[sub.featureKey] || 'PREMIUM' }}
                         </span>
                     </Link>
@@ -414,7 +456,31 @@ function getContrastColor(hex) {
             <!-- Content Area -->
             <main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8">
                 <div class="max-w-[1600px] mx-auto">
-                    <slot />
+                    <!-- Authorization Guard -->
+                    <template v-if="isRouteAuthorized">
+                        <slot />
+                    </template>
+                    <template v-else>
+                        <div class="flex flex-col items-center justify-center h-[60vh] text-center px-4 animate-fade-in">
+                            <div class="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-red-500">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.248-8.25-3.286Zm0 13.036h.008v.008H12v-.008Z" />
+                                </svg>
+                            </div>
+                            <h2 class="text-2xl font-black text-gray-900 uppercase tracking-widest mb-2">Restricted Access</h2>
+                            <p class="text-gray-500 max-w-md mx-auto font-medium">
+                                You do not have permission to access the 
+                                <span class="text-red-600 font-bold uppercase">{{ currentRouteName.split('.')[0] }}</span> 
+                                module. Please contact your clinic owner to request access.
+                            </p>
+                            <Link 
+                                :href="route('tenant.dashboard')"
+                                class="mt-8 btn btn-outline btn-sm border-2 rounded-xl uppercase font-black tracking-widest px-8"
+                            >
+                                Back to Dashboard
+                            </Link>
+                        </div>
+                    </template>
                 </div>
             </main>
 
@@ -472,7 +538,7 @@ function getContrastColor(hex) {
                                 ></svg>
                                 <span class="font-bold text-xs uppercase tracking-wider truncate" :class="fonts.sidebar">{{ item.name }}</span>
                                 <div v-if="isItemActive(item) && !item.isLocked" class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm flex-shrink-0"></div>
-                                <div v-if="item.isLocked" class="ml-auto inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-warning/20 text-warning flex-shrink-0">
+                                <div v-if="roles.includes('Owner') && item.isLocked" class="ml-auto inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-warning/20 text-warning flex-shrink-0">
                                     {{ page.props.tenant_plan?.feature_requirements?.[item.featureKey] || 'PREMIUM' }}
                                 </div>
                             </Link>

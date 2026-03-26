@@ -12,7 +12,10 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-const step = ref('login'); // 'login', 'forgot', 'reset-sent'
+// Steps: 'login', 'forgot', 'verify-code', 'new-password', 'reset-sent'
+const step = ref('login'); 
+const isLoading = ref(false);
+
 const form = useForm({
     email: '',
     password: '',
@@ -21,13 +24,16 @@ const form = useForm({
 
 const forgotForm = useForm({
     email: '',
+    code: '',
+    password: '',
+    password_confirmation: '',
 });
 
 const recaptchaTokenLogin = ref('');
 const recaptchaTokenForgot = ref('');
-const isLoading = ref(false);
 const recaptchaLoginRef = ref(null);
 const recaptchaForgotRef = ref(null);
+const recaptchaError = ref(false);
 
 // Remember email in localStorage
 const savedEmail = ref('');
@@ -40,12 +46,6 @@ onMounted(() => {
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
-
-    script.onload = () => {
-        if (props.googleClientId) {
-            initializeGoogleSignIn();
-        }
-    };
 
     // reCAPTCHA logic...
     const checkRecaptcha = setInterval(() => {
@@ -91,32 +91,35 @@ const logoUrl = computed(() => {
 const fontFamily = computed(() => props.tenant?.font_family || 'font-sans');
 
 const renderRecaptcha = () => {
+    recaptchaError.value = false;
     if (step.value === 'login' && recaptchaLoginRef.value) {
-        // Only render if not already rendered (check if div is empty)
         if (recaptchaLoginRef.value.children.length === 0 && window.grecaptcha) {
             try {
                 window.grecaptcha.render(recaptchaLoginRef.value, {
                     sitekey: props.recaptchaSiteKey,
                     callback: onRecaptchaLoginVerify,
                     'expired-callback': onRecaptchaLoginExpire,
+                    'error-callback': () => { recaptchaError.value = true; },
                     theme: 'light'
                 });
             } catch (e) {
                 console.error('reCAPTCHA render error:', e);
+                recaptchaError.value = true;
             }
         }
     } else if (step.value === 'forgot' && recaptchaForgotRef.value) {
-        // Only render if not already rendered
         if (recaptchaForgotRef.value.children.length === 0 && window.grecaptcha) {
             try {
                 window.grecaptcha.render(recaptchaForgotRef.value, {
                     sitekey: props.recaptchaSiteKey,
                     callback: onRecaptchaForgotVerify,
                     'expired-callback': onRecaptchaForgotExpire,
+                    'error-callback': () => { recaptchaError.value = true; },
                     theme: 'light'
                 });
             } catch (e) {
                 console.error('reCAPTCHA render error:', e);
+                recaptchaError.value = true;
             }
         }
     }
@@ -139,9 +142,7 @@ const onRecaptchaForgotExpire = () => {
 };
 
 const submitLogin = async () => {
-    console.log('submitLogin triggered');
     if (!recaptchaTokenLogin.value) {
-        console.log('reCAPTCHA missing');
         Swal.fire({
             icon: 'warning',
             title: 'Verification Required',
@@ -151,7 +152,6 @@ const submitLogin = async () => {
         return;
     }
 
-    // Save email if remember is checked
     if (form.remember) {
         localStorage.setItem('rememberClinicEmail', form.email);
     } else {
@@ -159,7 +159,6 @@ const submitLogin = async () => {
     }
 
     isLoading.value = true;
-    console.log('Attempting login for:', form.email);
     
     try {
         const response = await axios.post(route('tenant.login.store'), {
@@ -170,7 +169,6 @@ const submitLogin = async () => {
         });
 
         if (response.data.success) {
-            console.log('Login success response:', response.data);
             Swal.fire({
                 icon: 'success',
                 title: 'Login Successful',
@@ -182,14 +180,12 @@ const submitLogin = async () => {
             });
         }
     } catch (error) {
-        console.error('Login error details:', error);
         Swal.fire({
             icon: 'error',
             title: 'Login Failed',
             text: error.response?.data?.message || 'Invalid email or password',
             confirmButtonColor: brandingColor.value,
         });
-        // Reset recaptcha on error
         recaptchaTokenLogin.value = '';
         if (window.grecaptcha && recaptchaLoginRef.value) {
             window.grecaptcha.reset();
@@ -199,7 +195,7 @@ const submitLogin = async () => {
     }
 };
 
-const submitForgot = async () => {
+const submitSendCode = async () => {
     if (!recaptchaTokenForgot.value) {
         Swal.fire({
             icon: 'warning',
@@ -213,36 +209,105 @@ const submitForgot = async () => {
     isLoading.value = true;
     
     try {
-        const response = await axios.post(route('tenant.password.email'), {
+        const response = await axios.post(route('tenant.password.send-code'), {
             email: forgotForm.email,
             'g-recaptcha-response': recaptchaTokenForgot.value,
         });
 
         if (response.data.success) {
+            step.value = 'verify-code';
             Swal.fire({
                 icon: 'success',
-                title: 'Sent!',
-                text: 'Check your email for the password reset link.',
-                confirmButtonColor: brandingColor.value,
-            }).then(() => {
-                step.value = 'reset-sent';
-                recaptchaTokenForgot.value = '';
-                if (window.grecaptcha && recaptchaForgotRef.value) {
-                    window.grecaptcha.reset();
-                }
+                title: 'Code Sent!',
+                text: 'Please check your email for the 6-digit verification code.',
+                timer: 2000,
+                showConfirmButton: false,
             });
         }
     } catch (error) {
         Swal.fire({
             icon: 'error',
             title: 'Error',
-            text: error.response?.data?.message || 'Unable to send reset link',
+            text: error.response?.data?.message || 'Unable to send reset code',
             confirmButtonColor: brandingColor.value,
         });
-        recaptchaTokenForgot.value = '';
-        if (window.grecaptcha && recaptchaForgotRef.value) {
-            window.grecaptcha.reset();
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+const submitVerifyCode = async () => {
+    if (forgotForm.code.length !== 6) return;
+    
+    isLoading.value = true;
+    try {
+        const response = await axios.post(route('tenant.password.verify-code'), {
+            email: forgotForm.email,
+            code: forgotForm.code,
+        });
+
+        if (response.data.success) {
+            step.value = 'new-password';
         }
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid Code',
+            text: error.response?.data?.message || 'The code you entered is invalid or expired.',
+            confirmButtonColor: brandingColor.value,
+        });
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+const submitResetPassword = async () => {
+    if (!forgotForm.password || forgotForm.password.length < 8) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Invalid Password',
+            text: 'Password must be at least 8 characters.',
+            confirmButtonColor: brandingColor.value,
+        });
+        return;
+    }
+
+    if (forgotForm.password !== forgotForm.password_confirmation) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Mismatch',
+            text: 'Passwords do not match.',
+            confirmButtonColor: brandingColor.value,
+        });
+        return;
+    }
+
+    isLoading.value = true;
+    try {
+        const response = await axios.post(route('tenant.password.reset-with-code'), {
+            email: forgotForm.email,
+            code: forgotForm.code,
+            password: forgotForm.password,
+            password_confirmation: forgotForm.password_confirmation,
+        });
+
+        if (response.data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Password Updated!',
+                text: 'Your password has been successfully reset. You can now login.',
+                confirmButtonColor: brandingColor.value,
+            }).then(() => {
+                goBackToLogin();
+            });
+        }
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Reset Failed',
+            text: error.response?.data?.message || 'Unable to reset password.',
+            confirmButtonColor: brandingColor.value,
+        });
     } finally {
         isLoading.value = false;
     }
@@ -255,10 +320,7 @@ const goToForgot = () => {
     if (window.grecaptcha && recaptchaLoginRef.value) {
         window.grecaptcha.reset();
     }
-    // Render forgot recaptcha
-    setTimeout(() => {
-        renderRecaptcha();
-    }, 50);
+    setTimeout(() => renderRecaptcha(), 50);
 };
 
 const goBackToLogin = () => {
@@ -269,177 +331,265 @@ const goBackToLogin = () => {
     if (window.grecaptcha && recaptchaForgotRef.value) {
         window.grecaptcha.reset();
     }
-    // Render login recaptcha
-    setTimeout(() => {
-        renderRecaptcha();
-    }, 50);
+    setTimeout(() => renderRecaptcha(), 50);
 };
 
-const resetForm = () => {
-    if (step.value === 'login') {
-        form.reset();
+// Auto-verify when 6 digits are entered
+watch(() => forgotForm.code, (newVal) => {
+    if (newVal && newVal.length === 6 && step.value === 'verify-code') {
+        submitVerifyCode();
     }
+});
+
+const resetForm = () => {
+    if (step.value === 'login') form.reset();
     step.value = 'login';
     recaptchaTokenLogin.value = '';
     recaptchaTokenForgot.value = '';
 };
 
-
-
-
 const close = () => {
     emit('close');
-    setTimeout(() => {
-        resetForm();
-    }, 300);
+    setTimeout(() => resetForm(), 300);
 };
 </script>
 
 <template>
-    <div v-if="show" class="fixed inset-0 z-[100] overflow-y-auto" :class="fontFamily" role="dialog" aria-modal="true">
+    <div v-if="show" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" :class="fontFamily" role="dialog" aria-modal="true">
         <!-- Backdrop -->
-        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="close"></div>
+        <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity duration-300" @click="close"></div>
 
-        <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
-            <div class="relative transform overflow-hidden rounded-[2.5rem] bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md animate-in fade-in zoom-in duration-300">
-                
-                <!-- Header -->
-                <div class="px-8 pt-8 pb-4 flex justify-between items-start border-b border-gray-100">
-                    <div>
-                        <!-- Logo or Clinic Name -->
-                        <div v-if="logoUrl" class="mb-4">
-                            <img :src="logoUrl" :alt="tenant?.name" class="h-12 object-contain">
-                        </div>
-                        <h3 class="text-2xl font-black text-gray-900" v-if="step === 'login'">Clinic Login</h3>
-                        <h3 class="text-2xl font-black text-gray-900" v-else-if="step === 'forgot'">Reset Password</h3>
-                        <h3 class="text-2xl font-black text-gray-900" v-else>Check Your Email</h3>
-                        <p class="text-sm text-gray-500 font-medium mt-1">
-                            {{ step === 'login' ? 'Staff login for ' : '' }}{{ tenant?.name }}
-                        </p>
+        <!-- Modal Container -->
+        <div class="relative w-full max-w-md transform flex flex-col bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all animate-in fade-in zoom-in duration-300 max-h-[calc(100vh-2rem)] sm:max-h-[min(90vh,750px)]">
+            
+            <!-- Sticky Header -->
+            <div class="px-8 py-4 flex justify-between items-center border-b border-slate-100 flex-shrink-0">
+                <div class="flex flex-col gap-0.5">
+                    <div v-if="logoUrl" class="mb-1">
+                        <img :src="logoUrl" :alt="tenant?.name" class="h-8 w-full object-contain object-left">
                     </div>
-                    <button @click="close" class="text-gray-400 hover:text-gray-600">
-                        <span class="text-2xl">✕</span>
-                    </button>
+                    <h3 class="text-lg font-bold text-slate-900 leading-tight" v-if="step === 'login'">Clinic Access</h3>
+                    <h3 class="text-lg font-bold text-slate-900 leading-tight" v-else-if="step === 'forgot'">Reset Password</h3>
+                    <h3 class="text-lg font-bold text-slate-900 leading-tight" v-else-if="step === 'verify-code'">Verify Code</h3>
+                    <h3 class="text-lg font-bold text-slate-900 leading-tight" v-else>New Password</h3>
+                    
+                    <p class="text-xs text-slate-500 font-medium">
+                        {{ step === 'login' ? 'Staff Portal •' : '' }} {{ tenant?.name }}
+                    </p>
                 </div>
+                <button @click="close" class="p-2 rounded-full hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
 
-                <!-- Content -->
-                <div class="px-8 py-8">
-                    <!-- Login Form -->
-                    <div v-if="step === 'login'" class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
-                            <input 
-                                v-model="form.email" 
-                                type="email" 
-                                required 
-                                class="w-full bg-gray-50 border-none rounded-2xl focus:ring-2 p-4 transition-all" 
-                                :style="{ '--tw-ring-color': brandingColor }"
-                                placeholder="your@email.com"
-                            >
-                        </div>
+            <!-- Scrollable Content -->
+            <div class="px-8 py-6 overflow-y-auto custom-scrollbar flex-grow">
+                <!-- Login Form -->
+                <div v-if="step === 'login'" class="space-y-4">
+                    <div>
+                        <label class="block text-[12px] font-bold text-slate-700 mb-1 ml-1">Email Address</label>
+                        <input 
+                            v-model="form.email" 
+                            type="email" 
+                            required 
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 p-3.5 transition-all text-sm font-medium" 
+                            :style="{ '--tw-ring-color': brandingColor }"
+                            placeholder="name@clinic.com"
+                        >
+                    </div>
 
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">Password</label>
-                            <input 
-                                v-model="form.password" 
-                                type="password" 
-                                required 
-                                class="w-full bg-gray-50 border-none rounded-2xl focus:ring-2 p-4 transition-all" 
-                                :style="{ '--tw-ring-color': brandingColor }"
-                                placeholder="Enter your password"
-                            >
-                        </div>
+                    <div>
+                        <label class="block text-[12px] font-bold text-slate-700 mb-1 ml-1">Password</label>
+                        <input 
+                            v-model="form.password" 
+                            type="password" 
+                            required 
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 p-3.5 transition-all text-sm font-medium" 
+                            :style="{ '--tw-ring-color': brandingColor }"
+                            placeholder="••••••••"
+                        >
+                    </div>
 
-                        <!-- Remember Me -->
-                        <div class="flex items-center">
+                    <!-- Forgot Password Link -->
+                    <div class="flex justify-end -mt-3">
+                        <button @click="goToForgot" type="button" class="text-xs font-bold transition-colors hover:opacity-80" :style="{ color: brandingColor }">
+                            Forgot password?
+                        </button>
+                    </div>
+
+                    <!-- Remember Me -->
+                    <div class="flex items-center group cursor-pointer" @click="form.remember = !form.remember">
+                        <div class="relative flex items-center">
                             <input 
                                 v-model="form.remember" 
                                 type="checkbox" 
                                 id="remember" 
-                                class="w-4 h-4 rounded"
+                                class="w-4 h-4 rounded-md border-slate-200 transition-all cursor-pointer"
                                 :style="{ 'accent-color': brandingColor }"
+                                @click.stop
                             >
-                            <label for="remember" class="ml-2 text-sm text-gray-600">Remember email</label>
                         </div>
+                        <label for="remember" class="ml-2.5 text-[13px] text-slate-600 font-medium cursor-pointer select-none">Remember this email</label>
+                    </div>
 
-                        <!-- reCAPTCHA -->
-                        <div class="flex justify-center">
-                            <div ref="recaptchaLoginRef"></div>
-                        </div>
-
-                        <!-- Submit Button -->
-                        <button 
-                            @click="submitLogin"
-                            :disabled="isLoading"
-                            class="w-full py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50" 
-                            :style="{ backgroundColor: brandingColor }">
-                            {{ isLoading ? 'Logging in...' : 'Login to the Clinic' }}
-                        </button>
-
-
-                        <!-- Forgot Password Link -->
-                        <div class="text-center">
-                            <button @click="goToForgot" class="text-sm font-medium transition-colors" :style="{ color: brandingColor }">
-                                Forgot password?
+                    <!-- reCAPTCHA -->
+                    <div class="flex flex-col gap-2">
+                        <div v-if="recaptchaError" class="text-center p-4 bg-orange-50 border border-orange-100 rounded-xl space-y-2">
+                            <p class="text-[11px] text-orange-700 font-medium">Verification failed to load. Please check your connection.</p>
+                            <button @click="renderRecaptcha" class="text-xs font-bold text-orange-600 hover:text-orange-800 underline active:scale-95 transition-all">
+                                Retry Verification
                             </button>
+                        </div>
+                        <div v-show="!recaptchaError" class="flex justify-center bg-slate-50 p-2 rounded-xl border border-dashed border-slate-200">
+                            <div ref="recaptchaLoginRef" class="scale-[0.85] origin-center h-[65px] flex items-center overflow-hidden"></div>
                         </div>
                     </div>
 
-                    <!-- Forgot Password Form -->
-                    <div v-if="step === 'forgot'" class="space-y-6">
-                        <p class="text-sm text-gray-600">Enter your email address and we'll send you a link to reset your password.</p>
+                    <!-- Submit Button -->
+                    <button 
+                        @click="submitLogin"
+                        :disabled="isLoading"
+                        class="w-full py-3.5 text-white font-bold text-base rounded-xl shadow-[0_10px_20px_rgba(0,0,0,0.1)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.15)] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2" 
+                        :style="{ backgroundColor: brandingColor }">
+                        <span v-if="isLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        {{ isLoading ? 'Entering Portal...' : 'Login to the Clinic' }}
+                    </button>
+                </div>
 
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
-                            <input 
-                                v-model="forgotForm.email" 
-                                type="email" 
-                                required 
-                                class="w-full bg-gray-50 border-none rounded-2xl focus:ring-2 p-4 transition-all" 
-                                :style="{ '--tw-ring-color': brandingColor }"
-                                placeholder="your@email.com"
-                            >
-                        </div>
+                <!-- Forgot Password Form -->
+                <div v-if="step === 'forgot'" class="space-y-4">
+                    <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
+                        <p class="text-[12px] text-blue-700 font-bold leading-tight">
+                            Recovery Access
+                        </p>
+                        <p class="text-[11px] text-blue-600 font-medium leading-relaxed mt-1">
+                            Enter your email to receive a secure 6-digit verification code.
+                        </p>
+                    </div>
 
-                        <!-- reCAPTCHA -->
-                        <div class="flex justify-center">
-                            <div ref="recaptchaForgotRef"></div>
-                        </div>
+                    <div>
+                        <label class="block text-[12px] font-bold text-slate-700 mb-1 ml-1">Email Address</label>
+                        <input 
+                            v-model="forgotForm.email" 
+                            type="email" 
+                            required 
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 p-3.5 transition-all text-sm font-medium" 
+                            :style="{ '--tw-ring-color': brandingColor }"
+                            placeholder="name@clinic.com"
+                        >
+                    </div>
 
-                        <!-- Submit Button -->
-                        <button 
-                            @click="submitForgot"
-                            :disabled="isLoading"
-                            class="w-full py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50" 
-                            :style="{ backgroundColor: brandingColor }">
-                            {{ isLoading ? 'Sending...' : 'Send Reset Link' }}
-                        </button>
-
-                        <!-- Back Link -->
-                        <div class="text-center">
-                            <button @click="goBackToLogin" class="text-sm font-medium transition-colors" :style="{ color: brandingColor }">
-                                Back to login
+                    <!-- reCAPTCHA -->
+                    <div class="flex flex-col gap-2">
+                        <div v-if="recaptchaError" class="text-center p-4 bg-orange-50 border border-orange-100 rounded-xl space-y-2">
+                            <p class="text-[11px] text-orange-700 font-medium">Verification failed to load. Please check your connection.</p>
+                            <button @click="renderRecaptcha" class="text-xs font-bold text-orange-600 hover:text-orange-800 underline active:scale-95 transition-all">
+                                Retry Verification
                             </button>
+                        </div>
+                        <div v-show="!recaptchaError" class="flex justify-center bg-slate-50 p-2 rounded-xl border border-dashed border-slate-200">
+                            <div ref="recaptchaForgotRef" class="scale-[0.85] origin-center h-[65px] flex items-center overflow-hidden"></div>
                         </div>
                     </div>
 
-                    <!-- Reset Link Sent Confirmation -->
-                    <div v-if="step === 'reset-sent'" class="space-y-6 text-center">
-                        <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
-                            <span class="text-5xl">✓</span>
-                        </div>
-                        <div>
-                            <h4 class="text-lg font-black text-gray-900 mb-2">Check Your Email</h4>
-                            <p class="text-sm text-gray-600">We've sent a password reset link to {{ forgotForm.email }}</p>
-                        </div>
+                    <!-- Submit Button -->
+                    <button 
+                        @click="submitSendCode"
+                        :disabled="isLoading"
+                        class="w-full py-3.5 text-white font-bold text-base rounded-xl shadow-[0_10px_20px_rgba(0,0,0,0.1)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.15)] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2" 
+                        :style="{ backgroundColor: brandingColor }">
+                        <span v-if="isLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        {{ isLoading ? 'Sending Code...' : 'Send Verification Code' }}
+                    </button>
 
-                        <!-- Back Link -->
-                        <button @click="goBackToLogin" class="w-full py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all" 
-                            :style="{ backgroundColor: brandingColor }">
+                    <!-- Back Link -->
+                    <div class="text-center">
+                        <button @click="goBackToLogin" class="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center gap-2 mx-auto">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
                             Back to login
                         </button>
                     </div>
                 </div>
+
+                <!-- Verify Code Form -->
+                <div v-if="step === 'verify-code'" class="space-y-6 text-center">
+                    <div class="space-y-2">
+                        <h4 class="text-base font-bold text-slate-900">Enter Verification Code</h4>
+                        <p class="text-xs text-slate-500">We've sent a 6-digit code to <br><span class="font-bold text-slate-700">{{ forgotForm.email }}</span></p>
+                    </div>
+
+                    <div class="relative max-w-[240px] mx-auto">
+                        <input 
+                            v-model="forgotForm.code"
+                            type="text"
+                            maxlength="6"
+                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 text-center text-3xl font-black tracking-[0.5em] focus:border-blue-500 focus:ring-0 transition-all"
+                            :style="{ borderColor: brandingColor }"
+                            placeholder="000000"
+                        >
+                    </div>
+
+                    <button 
+                        @click="submitVerifyCode"
+                        :disabled="isLoading || forgotForm.code.length !== 6"
+                        class="w-full py-3.5 text-white font-bold text-base rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50" 
+                        :style="{ backgroundColor: brandingColor }">
+                        {{ isLoading ? 'Verifying...' : 'Verify Code' }}
+                    </button>
+
+                    <button @click="step = 'forgot'" class="text-xs font-bold text-slate-400 hover:text-slate-600">
+                        Didn't get the code? Resend
+                    </button>
+                </div>
+
+                <!-- New Password Form -->
+                <div v-if="step === 'new-password'" class="space-y-4">
+                    <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50">
+                        <p class="text-[12px] text-emerald-700 font-bold leading-tight">
+                            Identity Verified
+                        </p>
+                        <p class="text-[11px] text-emerald-600 font-medium leading-relaxed mt-1">
+                            Choose a strong new password for your account.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-[12px] font-bold text-slate-700 mb-1 ml-1">New Password</label>
+                        <input 
+                            v-model="forgotForm.password" 
+                            type="password" 
+                            required 
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 p-3.5 transition-all text-sm font-medium" 
+                            :style="{ '--tw-ring-color': brandingColor }"
+                            placeholder="••••••••"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-[12px] font-bold text-slate-700 mb-1 ml-1">Confirm Password</label>
+                        <input 
+                            v-model="forgotForm.password_confirmation" 
+                            type="password" 
+                            required 
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 p-3.5 transition-all text-sm font-medium" 
+                            :style="{ '--tw-ring-color': brandingColor }"
+                            placeholder="••••••••"
+                        >
+                    </div>
+
+                    <button 
+                        @click="submitResetPassword"
+                        :disabled="isLoading"
+                        class="w-full py-3.5 text-white font-bold text-base rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50" 
+                        :style="{ backgroundColor: brandingColor }">
+                        {{ isLoading ? 'Updating Password...' : 'Reset Password' }}
+                    </button>
+                </div>
+
             </div>
         </div>
     </div>
@@ -462,4 +612,21 @@ const close = () => {
 
 .fade-in { animation-name: fade-in; }
 .zoom-in { animation-name: zoom-in; }
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+}
 </style>

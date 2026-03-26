@@ -31,6 +31,13 @@ Route::middleware([
     Route::middleware('guest')->group(function () {
         Route::post('/api/login', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'store'])->name('tenant.login.store');
         Route::post('/api/login/google', [\App\Http\Controllers\Auth\GoogleAuthController::class , 'handleGoogleLogin'])->name('tenant.login.google');
+        
+        // Code-based password reset
+        Route::post('/api/password/code/send', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'sendResetCode'])->name('tenant.password.send-code');
+        Route::post('/api/password/code/verify', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'verifyResetCode'])->name('tenant.password.verify-code');
+        Route::post('/api/password/code/reset', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'resetWithCode'])->name('tenant.password.reset-with-code');
+
+        // Legacy/Traditional reset routes (keeping for compatibility if needed elsewhere)
         Route::post('/api/password/email', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'sendResetLink'])->name('tenant.password.email');
         Route::post('/api/password/reset', [\App\Http\Controllers\Tenant\Auth\TenantAuthController::class , 'resetPassword'])->name('tenant.password.store');
         Route::get('/reset-password/{token}', [\App\Http\Controllers\Tenant\Auth\ResetPasswordPageController::class , 'show'])->name('tenant.password.reset');
@@ -45,34 +52,42 @@ Route::middleware([
             Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class , 'index'])->name('tenant.dashboard');
 
             // Patient management — enforces max_patients limit on create
-            Route::get('patients', [\App\Http\Controllers\PatientController::class , 'index'])->name('patients.index');
-            Route::get('patients/create', [\App\Http\Controllers\PatientController::class , 'create'])->name('patients.create');
-            Route::post('patients', [\App\Http\Controllers\PatientController::class , 'store'])
-                ->middleware('check.subscription:max_patients')
-                ->name('patients.store');
-            Route::get('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'show'])->name('patients.show');
-            Route::get('patients/{patient}/pdf', [\App\Http\Controllers\PatientController::class , 'downloadPdf'])->name('patients.pdf');
-            Route::get('patients/{patient}/edit', [\App\Http\Controllers\PatientController::class , 'edit'])->name('patients.edit');
-            Route::get('patients/{patient}/delete', [\App\Http\Controllers\PatientController::class , 'delete'])->name('patients.delete');
-            Route::put('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'update'])->name('patients.update');
-            Route::delete('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'destroy'])->name('patients.destroy');
+            Route::middleware(['permission:view patients'])->group(function () {
+                Route::get('patients', [\App\Http\Controllers\PatientController::class , 'index'])->name('patients.index');
+                Route::get('patients/create', [\App\Http\Controllers\PatientController::class , 'create'])->name('patients.create');
+                Route::post('patients', [\App\Http\Controllers\PatientController::class , 'store'])
+                    ->middleware('check.subscription:max_patients')
+                    ->name('patients.store');
+                Route::get('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'show'])->name('patients.show');
+                Route::get('patients/{patient}/pdf', [\App\Http\Controllers\PatientController::class , 'downloadPdf'])->name('patients.pdf');
+                Route::get('patients/{patient}/edit', [\App\Http\Controllers\PatientController::class , 'edit'])->name('patients.edit');
+                Route::get('patients/{patient}/delete', [\App\Http\Controllers\PatientController::class , 'delete'])->name('patients.delete');
+                Route::put('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'update'])->name('patients.update');
+                Route::delete('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'destroy'])->name('patients.destroy');
+            });
 
             // Appointment management — enforces max_appointments limit on create
-            Route::get('appointments', [\App\Http\Controllers\AppointmentController::class , 'index'])->name('appointments.index');
-            Route::post('appointments', [\App\Http\Controllers\AppointmentController::class , 'store'])
-                ->middleware('check.subscription:max_appointments')
-                ->name('appointments.store');
-            Route::put('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class , 'update'])->name('appointments.update');
-            Route::post('appointments/{appointment}/approve', [\App\Http\Controllers\AppointmentController::class , 'approve'])->name('appointments.approve');
+            Route::middleware(['permission:view appointments'])->group(function () {
+                Route::get('appointments', [\App\Http\Controllers\AppointmentController::class , 'index'])->name('appointments.index');
+                Route::post('appointments', [\App\Http\Controllers\AppointmentController::class , 'store'])
+                    ->middleware('check.subscription:max_appointments')
+                    ->name('appointments.store');
+                Route::put('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class , 'update'])->name('appointments.update');
+                Route::post('appointments/{appointment}/approve', [\App\Http\Controllers\AppointmentController::class , 'approve'])->name('appointments.approve');
+            });
 
             // Treatment records
-            Route::get('treatments', [\App\Http\Controllers\TreatmentController::class , 'index'])->name('treatments.index');
-            Route::post('treatments', [\App\Http\Controllers\TreatmentController::class , 'store'])->name('treatments.store');
+            Route::middleware(['permission:view treatments'])->group(function () {
+                Route::get('treatments', [\App\Http\Controllers\TreatmentController::class , 'index'])->name('treatments.index');
+                Route::post('treatments', [\App\Http\Controllers\TreatmentController::class , 'store'])->name('treatments.store');
+            });
 
             // Billing
-            Route::get('billing', [\App\Http\Controllers\BillingController::class , 'index'])->name('billing.index');
-            Route::post('billing', [\App\Http\Controllers\BillingController::class , 'store'])->name('billing.store');
-            Route::put('billing/{invoice}', [\App\Http\Controllers\BillingController::class , 'update'])->name('billing.update');
+            Route::middleware(['permission:view billing'])->group(function () {
+                Route::get('billing', [\App\Http\Controllers\BillingController::class , 'index'])->name('billing.index');
+                Route::post('billing', [\App\Http\Controllers\BillingController::class , 'store'])->name('billing.store');
+                Route::put('billing/{invoice}', [\App\Http\Controllers\BillingController::class , 'update'])->name('billing.update');
+            });
 
             // Owner only routes
             Route::middleware(['role:Owner'])->group(function () {
@@ -125,7 +140,7 @@ Route::middleware([
                 );
 
                 // Services — accessible by Owner, Dentist, and Assistant
-                Route::middleware(['role:Owner|Dentist|Assistant'])->group(function () {
+                Route::middleware(['role:Owner|Dentist|Assistant', 'permission:view services'])->group(function () {
                     Route::resource('services', \App\Http\Controllers\ServiceController::class);
                 }
                 );

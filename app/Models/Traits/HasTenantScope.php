@@ -18,7 +18,7 @@ trait HasTenantScope
     protected static function getCurrentTenantId()
     {
         try {
-            $tenant = tenancy()->tenant();
+            $tenant = tenancy()->tenant;
             return $tenant ? $tenant->id : null;
         } catch (\Exception $e) {
             return null;

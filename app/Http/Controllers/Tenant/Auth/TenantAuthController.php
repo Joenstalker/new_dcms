@@ -8,7 +8,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use GuzzleHttp\Client;
+
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Models\User;
+use App\Mail\Tenant\PasswordResetCode;
+use Carbon\Carbon;
 
 class TenantAuthController extends Controller
 {
@@ -26,42 +32,37 @@ class TenantAuthController extends Controller
             ], 422);
         }
 
-        $request->validate([
+        $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
 
-        // Attempt login
-        if (Auth::attempt(
-            ['email' => $request->email, 'password' => $request->password],
-            $request->boolean('remember')
-        )) {
+        if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
-            $user = Auth::user();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Login successful',
-                'redirect' => route('tenant.dashboard', absolute: false),
+                'redirect' => route('tenant.dashboard'),
             ]);
         }
 
         return response()->json([
             'success' => false,
-            'message' => 'Invalid email or password',
-        ], 401);
+            'message' => 'The provided credentials do not match our records.',
+        ], 422);
     }
 
     /**
-     * Send password reset link
+     * Send password reset code (6 digits)
      */
-    public function sendResetLink(Request $request)
+    public function sendResetCode(Request $request)
     {
         // Verify reCAPTCHA
         $captchaToken = $request->input('g-recaptcha-response');
         if (!$this->verifyRecaptcha($captchaToken)) {
             return response()->json([
                 'success' => false,
+                'status' => 'error',
                 'message' => 'reCAPTCHA verification failed',
             ], 422);
         }
@@ -70,55 +71,128 @@ class TenantAuthController extends Controller
             'email' => 'required|email',
         ]);
 
-        // Send reset link
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+        $user = User::where('email', $request->email)->first();
 
-        if ($status == Password::RESET_LINK_SENT) {
+        if (!$user) {
             return response()->json([
-                'success' => true,
-                'message' => 'Reset link sent to your email',
-            ]);
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Email address not found',
+            ], 404);
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Unable to send reset link. Email may not exist.',
-        ], 404);
+        // Generate 6-digit code
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Store code in password_reset_tokens
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $request->email],
+            [
+                'token' => $code, // We store the code in the token field
+                'created_at' => Carbon::now()
+            ]
+        );
+
+        // Get tenant branding
+        $tenant = tenancy()->tenant;
+        $tenantName = $tenant->name ?? 'Clinic Portal';
+        $brandingColor = $tenant->branding_color ?? '#3b82f6';
+
+        // Send Email
+        try {
+            Mail::to($user->email)->send(new PasswordResetCode($user, $code, $tenantName, $brandingColor));
+
+            return response()->json([
+                'success' => true,
+                'status' => 'success',
+                'message' => 'Verification code sent to your email',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send reset code: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Failed to send email. Please try again later.',
+            ], 500);
+        }
     }
 
     /**
-     * Reset password from modal
+     * Verify the 6-digit code
      */
-    public function resetPassword(Request $request)
+    public function verifyResetCode(Request $request)
     {
         $request->validate([
-            'token' => 'required',
             'email' => 'required|email',
-            'password' => 'required|min:8|confirmed',
+            'code' => 'required|string|size:6',
         ]);
 
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user, $password) {
-                $user->forceFill([
-                    'password' => bcrypt($password),
-                ])->save();
-            }
-        );
+        $record = DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->where('token', $request->code)
+            ->first();
 
-        if ($status == Password::PASSWORD_RESET) {
+        if (!$record || (isset($record->created_at) && Carbon::parse($record->created_at)->addMinutes(60)->isPast())) {
             return response()->json([
-                'success' => true,
-                'message' => 'Password reset successful',
-            ]);
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Invalid or expired verification code',
+            ], 422);
         }
 
         return response()->json([
-            'success' => false,
-            'message' => 'Unable to reset password',
-        ], 400);
+            'success' => true,
+            'status' => 'success',
+            'message' => 'Code verified successfully',
+        ]);
+    }
+
+    /**
+     * Reset password using the code
+     */
+    public function resetWithCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'code' => 'required|string|size:6',
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        // Verify code again to be sure
+        $record = DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->where('token', $request->code)
+            ->first();
+
+        if (!$record || (isset($record->created_at) && Carbon::parse($record->created_at)->addMinutes(60)->isPast())) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Session expired. Please request a new code.',
+            ], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        // Update password
+        $user->password = bcrypt($request->password);
+        $user->save();
+
+        // Delete the token
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return response()->json([
+            'success' => true,
+            'status' => 'success',
+            'message' => 'Password has been successfully updated',
+        ]);
     }
 
     /**

@@ -30,7 +30,7 @@ const showModal = ref(true);
                 :show="showModal"
                 :token="token"
                 :email="email"
-                :tenantSubdomain="tenant?.id"
+                :tenant="tenant"
                 @close="showModal = false"
             />
         </div>
