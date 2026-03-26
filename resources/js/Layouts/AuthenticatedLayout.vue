@@ -128,6 +128,11 @@ const isSubItemActive = (sub) => {
 const currentRouteName = computed(() => route().current() || '');
 const isRouteAuthorized = computed(() => {
     const isOwner = roles.value.includes('Owner');
+    
+    // Explicitly block Owners from staff-only modules like personal settings
+    const staffOnlyRoutes = ['staff-settings.index', 'staff-settings.calendar-color', 'staff-settings.notifications', 'staff-settings.working-hours'];
+    if (isOwner && staffOnlyRoutes.includes(currentRouteName.value)) return false;
+
     if (isOwner) return true;
 
     // Check against the processed menu items to see if the current route is "reachable"
@@ -201,7 +206,8 @@ const menuCategories = computed(() => {
                     name: 'My Settings', 
                     icon: 'user-cog', 
                     route: 'staff-settings.index', 
-                    permissions: ['manage own calendar', 'manage own notifications', 'manage own working hours']
+                    permissions: ['manage own calendar', 'manage own notifications', 'manage own working hours'],
+                    staffOnly: true
                 },
                 { 
                     name: 'Custom Branding', 
@@ -240,6 +246,8 @@ const menuCategories = computed(() => {
                 const isLocked = item.featureKey ? !page.props.tenant_plan?.features?.[item.featureKey] : false;
                 
                 if (isOwner) {
+                    // Hide items explicitly marked for Staff Only
+                    if (item.staffOnly) return false;
                     return hasRoute;
                 }
                 

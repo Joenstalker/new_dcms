@@ -99,6 +99,11 @@ class StaffController extends Controller
         $staffMembers = User::whereIn('id', $request->staff_ids)->get();
         
         foreach ($staffMembers as $staff) {
+            \Illuminate\Support\Facades\Log::info("Syncing permissions for staff ID {$staff->id}", [
+                'permissions' => $request->permissions,
+                'user_guard' => $staff->guard_name ?? 'default (probably web)',
+                'existing_permissions' => $staff->permissions->pluck('name')->toArray()
+            ]);
             $staff->syncPermissions($request->permissions);
         }
 

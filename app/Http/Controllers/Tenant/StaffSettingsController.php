@@ -12,6 +12,10 @@ class StaffSettingsController extends Controller
     {
         $user = $request->user();
 
+        if ($user->hasRole('Owner')) {
+            return redirect()->route('tenant.dashboard');
+        }
+
         // Check if user has ANY of the staff settings permissions
         $hasAnySettingsPermission = $user->hasAnyPermission([
             'manage own calendar',
@@ -19,10 +23,7 @@ class StaffSettingsController extends Controller
             'manage own working hours',
         ]);
 
-        // Owner always has access
-        $isOwner = $user->hasRole('Owner');
-
-        if (!$isOwner && !$hasAnySettingsPermission) {
+        if (!$hasAnySettingsPermission) {
             abort(403, 'You do not have permission to access staff settings.');
         }
 
@@ -31,9 +32,9 @@ class StaffSettingsController extends Controller
             'notificationPreferences' => $user->notification_preferences ?? $this->defaultNotificationPreferences(),
             'workingHours' => $user->working_hours ?? $this->defaultWorkingHours(),
             'permissions' => [
-                'calendar' => $isOwner || $user->hasPermissionTo('manage own calendar'),
-                'notifications' => $isOwner || $user->hasPermissionTo('manage own notifications'),
-                'workingHours' => $isOwner || $user->hasPermissionTo('manage own working hours'),
+                'calendar' => $user->hasPermissionTo('manage own calendar'),
+                'notifications' => $user->hasPermissionTo('manage own notifications'),
+                'workingHours' => $user->hasPermissionTo('manage own working hours'),
             ],
         ]);
     }
@@ -42,7 +43,11 @@ class StaffSettingsController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasRole('Owner') && !$user->hasPermissionTo('manage own calendar')) {
+        if ($user->hasRole('Owner')) {
+            abort(403);
+        }
+
+        if (!$user->hasPermissionTo('manage own calendar')) {
             abort(403);
         }
 
@@ -59,7 +64,11 @@ class StaffSettingsController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasRole('Owner') && !$user->hasPermissionTo('manage own notifications')) {
+        if ($user->hasRole('Owner')) {
+            abort(403);
+        }
+
+        if (!$user->hasPermissionTo('manage own notifications')) {
             abort(403);
         }
 
@@ -78,7 +87,11 @@ class StaffSettingsController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasRole('Owner') && !$user->hasPermissionTo('manage own working hours')) {
+        if ($user->hasRole('Owner')) {
+            abort(403);
+        }
+
+        if (!$user->hasPermissionTo('manage own working hours')) {
             abort(403);
         }
 
