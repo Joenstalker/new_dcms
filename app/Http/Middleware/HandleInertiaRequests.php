@@ -63,6 +63,8 @@ class HandleInertiaRequests extends Middleware
                     'priority_support' => tenant()->hasPlanFeature('priority_support'),
                     'qr_booking' => tenant()->hasPlanFeature('qr_booking'),
                     'multi_branch' => tenant()->hasPlanFeature('multi_branch'),
+                    'enhanced_reports' => tenant()->hasPlanFeature('enhanced_reports'),
+                    'custom_system_features' => tenant()->hasPlanFeature('custom_system_features'),
                 ],
                 'limits' => [
                     'max_users' => tenant()->getPlanLimit('max_users'),
