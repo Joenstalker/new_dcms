@@ -1,4 +1,5 @@
 <script setup>
+import { brandingState } from '@/States/brandingState';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import { VueDatePicker } from '@vuepic/vue-datepicker';
@@ -14,8 +15,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-const branding = computed(() => usePage().props.branding || {});
-const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+const primaryColor = computed(() => brandingState.primary_color);
 
 const form = useForm({
     first_name: '',

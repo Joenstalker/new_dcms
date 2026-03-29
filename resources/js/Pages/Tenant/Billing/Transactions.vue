@@ -1,4 +1,5 @@
 <script setup>
+import { brandingState } from '@/States/brandingState';
 import { computed } from 'vue';
 import { usePage, Link, router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
@@ -7,8 +8,7 @@ const props = defineProps({
     invoices: { type: Array, default: () => [] },
 });
 
-const branding = computed(() => usePage().props.branding || {});
-const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+const primaryColor = computed(() => brandingState.primary_color);
 
 const statusColor = (status) => {
     const colors = {

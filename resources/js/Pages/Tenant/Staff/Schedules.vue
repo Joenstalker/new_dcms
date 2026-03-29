@@ -1,4 +1,5 @@
 <script setup>
+import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import FullCalendar from '@fullcalendar/vue3';
@@ -43,8 +44,7 @@ const calendarOptions = ref({
 });
 
 // Branding
-const branding = computed(() => usePage().props.branding || {});
-const primaryColor = computed(() => usePage().props.tenant?.branding_color || branding.value.primary_color || '#0ea5e9');
+const primaryColor = computed(() => brandingState.primary_color);
 
 // If we wanted to add a specific Google Calendar ID, we could do:
 // events: {

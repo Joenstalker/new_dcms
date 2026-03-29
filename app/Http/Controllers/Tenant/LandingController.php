@@ -26,6 +26,8 @@ class LandingController extends Controller
             'services' => $services,
             'dentists' => $dentists,
             'recaptchaSiteKey' => config('services.recaptcha.site_key'),
+            'online_booking_enabled' => $tenant->isOnlineBookingEnabled(),
+            'operating_hours' => $tenant->getOperatingHoursWithDefaults(),
         ]);
     }
 

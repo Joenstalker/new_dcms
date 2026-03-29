@@ -1,13 +1,13 @@
 <script setup>
-import { computed } from 'vue';
+import { brandingState } from '@/States/brandingState';
+import { ref, onMounted, computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 
 defineProps({
     patient: { type: Object, required: true }
 });
 
-const branding = computed(() => usePage().props.branding || {});
-const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+const primaryColor = computed(() => brandingState.primary_color);
 
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';

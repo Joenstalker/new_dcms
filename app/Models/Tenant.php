@@ -42,6 +42,8 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'font_family',
         'enabled_features',
         'landing_page_config',
+        'operating_hours',
+        'online_booking_enabled',
         'qr_code_path',
         'storage_used_bytes',
     ];
@@ -55,6 +57,8 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'landing_page_config' => 'json',
         'font_family' => 'json',
         'portal_config' => 'json',
+        'operating_hours' => 'json',
+        'online_booking_enabled' => 'boolean',
         'storage_used_bytes' => 'integer',
     ];
 
@@ -64,6 +68,31 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function canCustomizeBranding(): bool
     {
         return $this->hasPlanFeature('custom_branding');
+    }
+
+    /**
+     * Check if online booking is enabled for this tenant
+     */
+    public function isOnlineBookingEnabled(): bool
+    {
+        return $this->online_booking_enabled ?? true;
+    }
+
+    /**
+     * Get operating hours with sensible defaults
+     */
+    public function getOperatingHoursWithDefaults(): array
+    {
+        $defaults = [];
+        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        foreach ($days as $day) {
+            $defaults[$day] = [
+                'enabled' => !in_array($day, ['saturday', 'sunday']),
+                'open' => '08:00',
+                'close' => '17:00',
+            ];
+        }
+        return $this->operating_hours ?? $defaults;
     }
 
     /**

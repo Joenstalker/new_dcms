@@ -1,4 +1,5 @@
 <script setup>
+import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
@@ -22,8 +23,7 @@ const props = defineProps({
     patients: Array,
 });
 
-const branding = computed(() => usePage().props.branding || {});
-const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+const primaryColor = computed(() => brandingState.primary_color);
 
 // Active tab from URL query
 const activeTab = ref('calendar');

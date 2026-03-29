@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
+import { Link } from '@inertiajs/vue3';
 
 const props = defineProps({
     form: {
@@ -24,23 +25,85 @@ const fontOptions = [
     { name: 'Open Sans', value: 'font-open-sans' },
 ];
 
-const handleFileChange = (e, field) => {
-    const file = e.target.files[0];
-    if (file) {
-        // Convert to Base64 for dynamic saving as requested
+// Store object URLs for real-time preview without altering the form payload
+const logoPreviews = ref({
+    logo: null,
+    logo_login: null,
+    logo_booking: null,
+});
+
+const resizeImage = (file, maxWidth = 800, maxHeight = 800) => {
+    return new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onload = (event) => {
-            props.form[field] = event.target.result;
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth || height > maxHeight) {
+                    if (width > height) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    } else {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    const resizedFile = new File([blob], file.name, {
+                        type: file.type,
+                        lastModified: Date.now(),
+                    });
+                    resolve(resizedFile);
+                }, file.type, 0.9);
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
+    });
+};
+
+const handleFileChange = async (e, field) => {
+    const file = e.target.files[0];
+    if (file) {
+        // Show loading state or immediate preview if possible
+        if (logoPreviews.value[field]) {
+            URL.revokeObjectURL(logoPreviews.value[field]);
+        }
+        logoPreviews.value[field] = URL.createObjectURL(file);
+
+        // Perform client-side resizing if it's an image
+        if (file.type.startsWith('image/')) {
+            const resizedFile = await resizeImage(file);
+            props.form[field] = resizedFile;
+            
+            // Update preview to the resized version for accuracy
+            URL.revokeObjectURL(logoPreviews.value[field]);
+            logoPreviews.value[field] = URL.createObjectURL(resizedFile);
+        } else {
+            props.form[field] = file;
+        }
     }
 };
 
 const getLogoUrl = (path, field) => {
-    if (props.form[field] && typeof props.form[field] === 'string' && props.form[field].startsWith('data:image')) {
-        return props.form[field];
+    if (logoPreviews.value[field]) {
+        return logoPreviews.value[field];
     }
-    return path ? '/storage/' + path : null;
+    if (!path) return null;
+    
+    // Handle Base64 data URLs directly (Support for Database-Only Isolation)
+    if (path.startsWith('data:image/')) return path;
+    
+    return '/storage/' + path;
 };
 </script>
 

@@ -1,4 +1,5 @@
 <script setup>
+import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
@@ -13,8 +14,7 @@ const props = defineProps({
 });
 
 const page = usePage();
-const branding = computed(() => page.props.branding || {});
-const primaryColor = computed(() => page.props.tenant?.branding_color || branding.value.primary_color || '#0ea5e9');
+const primaryColor = computed(() => brandingState.primary_color);
 
 const permissions = computed(() => page.props.auth.user?.permissions || []);
 const canCreate = computed(() => permissions.value.includes('create treatments'));

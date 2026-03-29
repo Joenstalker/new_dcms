@@ -9,21 +9,15 @@ import AccountSettingsModal from '@/Components/AccountSettingsModal.vue';
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 
-// 1. Initial State from Server-Side Computation
-const brandingComputed = computed(() => page.props.branding_computed || {
-    primary_color: '#0ea5e9',
-    contrast_color: '#ffffff'
-});
-
-// 2. Inject Live Preview state for real-time interactivity
-const liveBranding = inject('liveBranding', null);
+// 1. We rely on brandingState which is globally reactive
+import { brandingState } from '@/States/brandingState';
 
 const primaryColor = computed(() => {
-    return liveBranding?.value?.primary_color || brandingComputed.value.primary_color;
+    return brandingState.primary_color;
 });
 
 const primaryTextColor = computed(() => {
-    return liveBranding?.value?.contrast_color || brandingComputed.value.contrast_color;
+    return brandingState.contrast_color;
 });
 
 const showPictureModal = ref(false);

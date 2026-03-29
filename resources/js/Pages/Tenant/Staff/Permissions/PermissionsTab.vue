@@ -223,6 +223,9 @@ const permissionGroups = computed(() => {
         'settings': 'Administration',
         'subscription': 'Administration',
         'dashboard': 'Administration',
+
+        // Custom Branding (delegatable)
+        'branding': 'Custom Branding',
     };
 
     props.allPermissions.forEach(p => {

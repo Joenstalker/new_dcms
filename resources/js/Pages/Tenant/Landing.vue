@@ -9,6 +9,14 @@ const props = defineProps({
     services: Array,
     dentists: Array,
     recaptchaSiteKey: String,
+    online_booking_enabled: {
+        type: Boolean,
+        default: true
+    },
+    operating_hours: {
+        type: Object,
+        default: () => ({})
+    },
 });
 
 const showBookingModal = ref(false);
@@ -83,6 +91,26 @@ const getSectionImage = (name) => {
     }
     return img ? '/storage/' + img : null;
 };
+
+const bookingEnabled = computed(() => props.online_booking_enabled);
+
+const formatTime = (time) => {
+    if (!time) return '';
+    const [h, m] = time.split(':');
+    const hour = parseInt(h);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const h12 = hour % 12 || 12;
+    return `${h12}:${m} ${ampm}`;
+};
+
+const dayLabels = {
+    monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', 
+    thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun'
+};
+
+const hasOperatingHours = computed(() => {
+    return props.operating_hours && Object.keys(props.operating_hours).length > 0;
+});
 </script>
 
 <template>
@@ -103,7 +131,7 @@ const getSectionImage = (name) => {
                         <a v-if="isSectionActive('team')" href="#team" class="text-sm font-medium hover:text-gray-600 transition-colors">Our team</a>
                         <a v-if="isSectionActive('contact')" href="#contact" class="text-sm font-medium hover:text-gray-600 transition-colors">Contact</a>
                         <button @click="showLoginModal = true" class="text-sm font-medium text-gray-500 hover:text-gray-900">Login</button>
-                        <button @click="showBookingModal = true" 
+                        <button v-if="bookingEnabled" @click="showBookingModal = true" 
                            class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-full shadow-sm text-white transition-all transform hover:scale-105 active:scale-95"
                            :style="{ backgroundColor: brandingColor }">
                             Book Appointment
@@ -111,7 +139,7 @@ const getSectionImage = (name) => {
                     </div>
                     <!-- Mobile Button (Simplified) -->
                     <div class="md:hidden">
-                        <button @click="showBookingModal = true" 
+                        <button v-if="bookingEnabled" @click="showBookingModal = true" 
                            class="inline-flex items-center px-4 py-2 border border-transparent text-xs font-bold rounded-full text-white"
                            :style="{ backgroundColor: brandingColor }">
                             Book Now
@@ -135,17 +163,16 @@ const getSectionImage = (name) => {
                         {{ heroSubtitle }}
                     </p>
                     <div class="flex flex-col sm:flex-row items-center gap-6">
-                        <button @click="showBookingModal = true" 
+                        <button v-if="bookingEnabled" @click="showBookingModal = true" 
                            class="inline-flex justify-center items-center px-8 py-4 border border-transparent text-lg font-bold rounded-full shadow-xl text-white transition-all hover:shadow-2xl hover:scale-105 active:scale-95"
                            :style="{ backgroundColor: brandingColor }">
                             Schedule Your Visit
                         </button>
                         
-                        <!-- QR Code Section -->
-                        <div class="flex items-center gap-4 p-3 bg-white rounded-3xl shadow-sm border border-gray-100">
+                        <!-- QR Code Section (only when booking enabled) -->
+                        <div v-if="bookingEnabled && tenant.qr_code_path" class="flex items-center gap-4 p-3 bg-white rounded-3xl shadow-sm border border-gray-100">
                             <div class="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden">
-                                <img v-if="tenant.qr_code_path" :src="'/storage/' + tenant.qr_code_path" class="w-full h-full object-cover">
-                                <div v-else class="text-2xl opacity-20">QR</div>
+                                <img :src="'/storage/' + tenant.qr_code_path" class="w-full h-full object-cover">
                             </div>
                             <div class="text-left">
                                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Mobile Booking</p>
@@ -349,13 +376,34 @@ const getSectionImage = (name) => {
                     <div>
                         <h4 class="text-lg font-bold mb-6">Quick Links</h4>
                         <ul class="space-y-4 text-gray-400">
-                            <li><button @click="showBookingModal = true" class="hover:text-white transition-colors">Book Now</button></li>
+                            <li><button v-if="bookingEnabled" @click="showBookingModal = true" class="hover:text-white transition-colors">Book Now</button></li>
                            <li><button @click="showLoginModal = true" class="hover:text-white transition-colors">Login</button></li>
                         </ul>
                     </div>
                 </div>
-                <div class="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
-                    <p>&copy; 2026 {{ tenant.name }}. All rights reserved.</p>
+            <div class="border-t border-gray-800 pt-8">
+                    <!-- Operating Hours -->
+                    <div v-if="hasOperatingHours" class="mb-8">
+                        <h4 class="text-lg font-bold mb-4">Operating Hours</h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                            <div 
+                                v-for="(schedule, day) in operating_hours" 
+                                :key="day"
+                                class="text-center p-3 rounded-xl"
+                                :class="schedule.enabled ? 'bg-gray-800' : 'bg-gray-800/30'"
+                            >
+                                <p class="text-xs font-bold uppercase tracking-wider mb-1" :class="schedule.enabled ? 'text-white' : 'text-gray-600'">{{ dayLabels[day] || day }}</p>
+                                <p v-if="schedule.enabled" class="text-[10px] text-gray-400">
+                                    {{ formatTime(schedule.open) }}<br>{{ formatTime(schedule.close) }}
+                                </p>
+                                <p v-else class="text-[10px] text-gray-600">Closed</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
+                        <p>&copy; 2026 {{ tenant.name }}. All rights reserved.</p>
+                    </div>
                 </div>
             </div>
         </footer>

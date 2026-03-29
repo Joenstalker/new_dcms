@@ -1,4 +1,5 @@
 <script setup>
+import { brandingState } from '@/States/brandingState';
 import { ref, computed } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
@@ -8,8 +9,7 @@ const props = defineProps({
     invoices: { type: Array, default: () => [] },
 });
 
-const branding = computed(() => usePage().props.branding || {});
-const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+const primaryColor = computed(() => brandingState.primary_color);
 
 // Cart / POS state
 const selectedPatient = ref('');

@@ -44,6 +44,9 @@ class RolesAndPermissionsSeeder extends Seeder
 
             // Staff Settings (personal, permission-gated per section)
             'manage own calendar', 'manage own notifications', 'manage own working hours',
+
+            // Custom Branding (delegatable to Assistant)
+            'manage clinic branding',
         ];
 
         foreach ($permissions as $permission) {

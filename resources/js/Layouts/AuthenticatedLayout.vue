@@ -6,6 +6,7 @@ import NotificationBell from '@/Components/NotificationBell.vue';
 import ProfileDropdown from '@/Components/ProfileDropdown.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
+import { brandingState } from '@/States/brandingState';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -13,25 +14,17 @@ const roles = computed(() => user.value?.roles || []);
 const branding = computed(() => page.props.branding || {});
 
 // 1. Initial State from Server-Side Computation (Robust)
-const brandingComputed = computed(() => page.props.branding_computed || {
-    primary_color: '#0ea5e9',
-    contrast_color: '#ffffff'
-});
+// Initialize immediately before first render to prevent flickering
+brandingState.initialize(page.props);
 
-// 2. Live Preview State (for interactivity)
-const liveBranding = ref({
-    primary_color: brandingComputed.value.primary_color,
-    contrast_color: brandingComputed.value.contrast_color
-});
-
-// Provide to children (like the Branding page)
-provide('liveBranding', liveBranding);
-
-// Sync live state when props change (after save)
-onMounted(() => {
-    liveBranding.value.primary_color = brandingComputed.value.primary_color;
-    liveBranding.value.contrast_color = brandingComputed.value.contrast_color;
-});
+// Sync live state when props change (e.g., after an Inertia page navigate/save)
+import { watch } from 'vue';
+watch(() => page.props.branding_computed, (newBranding) => {
+    if (newBranding) {
+        brandingState.primary_color = newBranding.primary_color;
+        brandingState.contrast_color = newBranding.contrast_color;
+    }
+}, { deep: true });
 
 const showUpgradeAlert = (featureName) => {
     Swal.fire({
@@ -73,17 +66,13 @@ const shouldApplyBranding = computed(() => {
 // Primary color: Prioritize live preview, then computed prop
 const primaryColor = computed(() => {
     if (!shouldApplyBranding.value) return page.props.branding?.primary_color || '#0ea5e9';
-    return liveBranding.value.primary_color || brandingComputed.value.primary_color;
+    return brandingState.primary_color;
 });
 
 // Contrast color: Ensure text is always readable (matching AdminLayout logic)
 const primaryTextColor = computed(() => {
     if (!shouldApplyBranding.value) return '#ffffff';
-    
-    // If we have a live preview contrast, use it
-    if (liveBranding.value.contrast_color) return liveBranding.value.contrast_color;
-    
-    return brandingComputed.value.contrast_color;
+    return brandingState.contrast_color;
 });
 
 // Typography: Use tenant's granular font_family if allowed
@@ -120,6 +109,9 @@ const platformName = computed(() => page.props.tenant?.name || branding.value.pl
 const platformLogo = computed(() => {
     const logoFile = page.props.tenant?.logo_path || branding.value.platform_logo;
     if (!logoFile) return null;
+
+    // Handle Base64 data URLs directly (Support for Database-Only Isolation)
+    if (logoFile.startsWith('data:image/')) return logoFile;
     
     // If it's a full path (like from tenant storage or central)
     if (logoFile.startsWith('branding/')) return '/storage/' + logoFile;
@@ -197,7 +189,18 @@ const menuCategories = computed(() => {
                 { name: 'Dashboard', route: dashboardRoute.value, icon: 'home', feature: 'dashboard', permissions: ['view dashboard'] },
                 { name: 'Appointments', route: 'appointments.index', icon: 'calendar', feature: 'appointments', permissions: ['view appointments'] },
                 { name: 'Patients', icon: 'users', route: 'patients.index', feature: 'patients', permissions: ['view patients'] },
-                { name: 'Billing & POS', icon: 'cash', feature: 'billing', permissions: ['view billing'] },
+                { 
+                    name: 'Billing & POS', 
+                    icon: 'cash', 
+                    route: 'billing.index',
+                    feature: 'billing', 
+                    permissions: ['view billing'],
+                    subItems: [
+                        { name: 'POS Cashier', route: 'billing.index', routeParams: { tab: 'cashier' }, permissions: ['view billing'] },
+                        { name: 'Transactions', route: 'billing.index', routeParams: { tab: 'transactions' }, permissions: ['view billing'] },
+                        { name: 'Receipts', route: 'billing.index', routeParams: { tab: 'receipts' }, permissions: ['view billing'] },
+                    ]
+                },
                 { name: 'Treatment Records', route: 'treatments.index', icon: 'calendar', feature: 'treatments', permissions: ['view treatments'] },
             ]
         },
@@ -248,7 +251,7 @@ const menuCategories = computed(() => {
                     name: 'Custom Branding', 
                     icon: 'paint', 
                     route: 'settings.branding', 
-                    permissions: ['manage settings'],
+                    permissions: ['manage settings', 'manage clinic branding'],
                     featureKey: 'custom_branding'
                 },
                 { 
@@ -283,6 +286,13 @@ const menuCategories = computed(() => {
                 if (isOwner) {
                     // Hide items explicitly marked for Staff Only
                     if (item.staffOnly) return false;
+                    
+                    // Clinic Owner Toggle Logic (Hide/Show sidebar features)
+                    // Custom Branding is always allowed to remain visible for the Owner 
+                    if (item.feature && !page.props.tenant?.enabled_features?.includes(item.feature)) {
+                        if (item.featureKey !== 'custom_branding') return false;
+                    }
+                    
                     return hasRoute;
                 }
                 

@@ -141,10 +141,6 @@ Route::middleware([
 
                     // Settings
                     Route::get('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'index'])->name('settings.index');
-                    Route::post('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'update'])->name('settings.update');
-                    Route::get('settings/branding', [\App\Http\Controllers\Tenant\SettingsController::class , 'branding'])
-                        ->name('settings.branding')
-                        ->middleware('check.subscription:custom_branding'); 
                     // Settings - Features
                     Route::get('settings/features', [\App\Http\Controllers\Tenant\SettingsController::class , 'features'])
                         ->name('settings.features')
@@ -159,6 +155,16 @@ Route::middleware([
                     Route::get('billing-portal', [\App\Http\Controllers\BillingPortalController::class , 'redirect'])->name('billing.portal');
                 }
                 );
+
+                // Custom Branding — Owner OR staff with 'manage clinic branding' permission
+                Route::middleware(['role:Owner|Assistant', 'check.subscription:custom_branding'])->group(function () {
+                    Route::get('settings/branding', [\App\Http\Controllers\Tenant\SettingsController::class , 'branding'])
+                        ->name('settings.branding');
+                    Route::get('settings/branding/logo/{key}', [\App\Http\Controllers\Tenant\SettingsController::class , 'serveLogo'])
+                        ->name('settings.logo');
+                    Route::post('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'update'])
+                        ->name('settings.update');
+                });
 
                 // Services — accessible by Owner, Dentist, and Assistant
                 Route::middleware(['role:Owner|Dentist|Assistant', 'permission:view services'])->group(function () {

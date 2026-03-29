@@ -1,7 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, watch, inject } from 'vue';
+import Swal from 'sweetalert2';
 
 import ClinicBranding from './Partials/ClinicBranding.vue';
 import PortalCustomization from './Partials/PortalCustomization.vue';
@@ -33,56 +34,94 @@ const currentTab = computed(() => {
     return urlParams.get('tab') || 'branding';
 });
 
+const initialFontFamily = (typeof props.tenant?.font_family === 'object' && props.tenant?.font_family !== null && !Array.isArray(props.tenant?.font_family))
+    ? props.tenant.font_family
+    : { header: 'font-sans', sidebar: 'font-sans', names: 'font-sans', general: 'font-sans' };
+
+const initialEnabledFeatures = Array.isArray(props.tenant?.enabled_features)
+    ? props.tenant.enabled_features
+    : (props.tenant?.enabled_features ? JSON.parse(props.tenant?.enabled_features) : []);
+
 const form = useForm({
     clinic_name: props.tenant?.name || '',
     email: props.tenant?.email || '',
     phone: props.tenant?.phone || '',
     address: props.tenant?.street || '',
     branding_color: props.tenant?.branding_color || page.props.branding?.primary_color || '#0ea5e9',
-    font_family: props.tenant?.font_family || {
-        header: 'font-sans',
-        sidebar: 'font-sans',
-        names: 'font-sans',
-        general: 'font-sans'
-    },
+    font_family: initialFontFamily,
     hero_title: props.tenant?.hero_title || '',
     hero_subtitle: props.tenant?.hero_subtitle || '',
     about_us_description: props.tenant?.about_us_description || '',
-    enabled_features: props.tenant?.enabled_features || [],
+    enabled_features: initialEnabledFeatures,
     landing_page_config: props.tenant?.landing_page_config || {},
     portal_config: props.tenant?.portal_config || {
         apply_to: 'all',
         selected_staff: []
     },
+    operating_hours: props.tenant?.operating_hours || {},
+    online_booking_enabled: props.tenant?.online_booking_enabled ?? true,
     logo: null,
     logo_login: null,
     logo_booking: null,
 });
 
-// 3. Inject Live Preview state from AuthenticatedLayout
-const liveBranding = inject('liveBranding');
+// 3. Import global Branding State to drive Live Preview
+import { brandingState } from '@/States/brandingState';
 
 // 4. Watch for real-time changes to push to the Layout (Interactive Mode)
 watch(() => form.branding_color, (newColor) => {
-    if (liveBranding) {
-        liveBranding.value.primary_color = newColor;
-        
-        // Instant contrast calculation for the preview
-        const hex = newColor.replace('#', '');
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        liveBranding.value.contrast_color = luminance > 0.5 ? '#1f2937' : '#ffffff';
+    if (newColor) {
+        brandingState.setPrimaryColor(newColor);
     }
 }, { immediate: true });
 
 const submit = () => {
+    // Transform arrays into JSON strings to protect them during multipart/form-data submission
+    // This prevents Laravel validation errors like "must be an array" on multipart requests
     form.post('/settings', { 
         preserveScroll: true,
         forceFormData: true,
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Configuration saved successfully!',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                customClass: {
+                    popup: 'colored-toast'
+                }
+            });
+        },
+        onError: (errors) => {
+            const errorList = Object.values(errors).map(msg => `<li class="text-left text-xs mb-1">${msg}</li>`).join('');
+            Swal.fire({
+                title: 'Validation Error',
+                html: `<ul class="list-disc pl-4 mt-2 text-error font-bold">${errorList}</ul>`,
+                icon: 'error',
+                confirmButtonColor: brandingState.primary_color,
+                confirmButtonText: 'Check Form',
+            });
+        }
     });
 };
+
+// Also catch session flash errors natively
+watch(() => usePage().props.flash, (flash) => {
+    if (flash && flash.error) {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: flash.error,
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true,
+        });
+    }
+}, { immediate: true, deep: true });
 </script>
 
 <template>
@@ -96,11 +135,6 @@ const submit = () => {
         </template>
 
         <div class="mt-6">
-            <div v-if="$page.props.flash && $page.props.flash.success" class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl shadow-sm flex items-center gap-3">
-                <span class="text-xl">✅</span>
-                {{ $page.props.flash.success }}
-            </div>
-
             <form @submit.prevent="submit" class="space-y-6">
                 <!-- Tabs Navigation -->
                 <div class="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4 overflow-x-auto no-scrollbar">
@@ -169,6 +203,7 @@ const submit = () => {
                     <QRCodeSetup 
                         :qr-code="qr_code"
                         :booking-url="booking_url"
+                        :form="form"
                     />
                 </div>
 
@@ -221,8 +256,8 @@ const submit = () => {
                     <FeatureSettings :form="form" />
                 </div>
 
-                <!-- Save Button (hidden for read-only tabs) -->
-                <div v-if="currentTab !== 'qr' && currentTab !== 'features'" class="flex justify-end pt-4">
+                <!-- Save Button (always shown) -->
+                <div class="flex justify-end pt-4">
                     <button 
                         type="submit" 
                         :disabled="form.processing" 

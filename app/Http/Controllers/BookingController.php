@@ -18,6 +18,15 @@ class BookingController extends Controller
      */
     public function create()
     {
+        $tenant = tenant();
+
+        // Gate: If online booking is disabled, show unavailable page
+        if (!$tenant->isOnlineBookingEnabled()) {
+            return Inertia::render('Tenant/Booking/BookingUnavailable', [
+                'tenant' => $tenant,
+            ]);
+        }
+
         $dentists = User::role('Dentist')->get(['id', 'name', 'email', 'profile_picture']);
         $services = Service::approved()->get(['id', 'name', 'description', 'price']);
         

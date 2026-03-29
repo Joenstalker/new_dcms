@@ -58,12 +58,16 @@ class HandleInertiaRequests extends Middleware
                 $tenant = tenant();
                 if (!$tenant) return null;
                 
-                $data = $tenant->data ?? [];
+                // Optimized: Only fetch what's needed for the layout/gating
+                $branding = \App\Services\TenantBrandingService::findMany([
+                    'primary_color', 'font_family', 'portal_config', 'enabled_features'
+                ]);
                 
                 return array_merge($tenant->toArray(), [
-                    'branding_color' => $data['branding_color'] ?? $tenant->branding_color,
-                    'font_family' => $data['font_family'] ?? $tenant->font_family,
-                    'portal_config' => $data['portal_config'] ?? $tenant->portal_config,
+                    'branding_color' => $branding['primary_color'] ?? $tenant->branding_color,
+                    'font_family' => $branding['font_family'] ?? $tenant->font_family,
+                    'portal_config' => $branding['portal_config'] ?? $tenant->portal_config,
+                    'enabled_features' => $branding['enabled_features'] ?? $tenant->enabled_features,
                     'is_premium' => $tenant->canCustomizeBranding(),
                 ]);
             },
@@ -94,11 +98,31 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
-            'branding' => $this->getBrandingSettings(),
+            'branding' => function () {
+                $tenant = tenant();
+                if (!$tenant) return null;
+
+                // Only fetch minimal branding for global header/sidebar
+                $branding = \App\Services\TenantBrandingService::findMany([
+                    'clinic_name', 'logo_base64', 'primary_color'
+                ]);
+
+                return [
+                    'platform_name' => $branding['clinic_name'] ?? $tenant->name ?? SystemSetting::get('platform_name', 'DCMS'),
+                    'platform_logo' => $branding['logo_base64'] ?? $tenant->logo_path ?? SystemSetting::get('platform_logo'),
+                    'primary_color' => $branding['primary_color'] ?? $tenant->branding_color ?? SystemSetting::get('primary_color', '#0ea5e9'),
+                    'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
+                    'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
+                ];
+            },
             'branding_computed' => function () {
                 $tenant = tenant();
+                if (!$tenant) return [];
+                
+                $branding = \App\Services\TenantBrandingService::findMany(['primary_color']);
+                
                 $centralColor = SystemSetting::get('primary_color', '#0ea5e9');
-                $tenantColor = $tenant->data['branding_color'] ?? $tenant->branding_color ?? null;
+                $tenantColor = $branding['primary_color'] ?? $tenant->branding_color ?? null;
                 
                 $activeColor = $tenantColor ?: $centralColor;
                 
@@ -116,21 +140,6 @@ class HandleInertiaRequests extends Middleware
                     'source' => $tenantColor ? 'tenant' : 'central',
                 ];
             },
-        ];
-    }
-
-    /**
-     * Get branding settings from the database.
-     */
-    private function getBrandingSettings(): array
-    {
-        $tenant = tenant();
-        return [
-            'platform_name' => $tenant->name ?? SystemSetting::get('platform_name', 'DCMS'),
-            'platform_logo' => $tenant->logo_path ?? SystemSetting::get('platform_logo'),
-            'primary_color' => SystemSetting::get('primary_color', '#0ea5e9'),
-            'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
-            'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
         ];
     }
 }

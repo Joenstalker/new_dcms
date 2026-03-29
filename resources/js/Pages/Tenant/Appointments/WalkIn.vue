@@ -1,4 +1,5 @@
 <script setup>
+import { brandingState } from '@/States/brandingState';
 import { ref, computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 
@@ -7,8 +8,7 @@ const props = defineProps({
     patients: { type: Array, default: () => [] },
 });
 
-const branding = computed(() => usePage().props.branding || {});
-const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
+const primaryColor = computed(() => brandingState.primary_color);
 
 // Walk-in form state
 const walkinForm = ref({

@@ -9,7 +9,15 @@ const branding = computed(() => page.props.branding || {});
 
 // Platform info
 const platformName = computed(() => branding.value.platform_name || 'DCMS');
-const platformLogo = computed(() => branding.value.platform_logo ? '/storage/logos/' + branding.value.platform_logo : null);
+const platformLogo = computed(() => {
+    const logo = branding.value.platform_logo;
+    if (!logo) return null;
+    
+    // Handle Base64 data URLs directly (Support for Database-Only Isolation)
+    if (logo.startsWith('data:image/')) return logo;
+    
+    return '/storage/logos/' + logo;
+});
 const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
 const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');
 </script>

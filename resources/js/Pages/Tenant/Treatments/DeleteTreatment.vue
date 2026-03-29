@@ -1,4 +1,5 @@
 <script setup>
+import { brandingState } from '@/States/brandingState';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import Modal from '@/Components/Modal.vue';
@@ -13,8 +14,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-const branding = computed(() => usePage().props.branding || {});
-const primaryColor = computed(() => usePage().props.tenant?.branding_color || branding.value.primary_color || '#0ea5e9');
+const primaryColor = computed(() => brandingState.primary_color);
 
 const form = useForm({});
 

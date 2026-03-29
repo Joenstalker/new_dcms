@@ -397,6 +397,7 @@
 
 
 <script setup>
+import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
@@ -429,8 +430,7 @@ const page = usePage();
 // Tabs State
 const activeTab = ref(props.initialTab);
 
-const branding = computed(() => usePage().props.branding || {});
-const primaryColor = computed(() => usePage().props.tenant?.branding_color || branding.value.primary_color || '#0ea5e9');
+const primaryColor = computed(() => brandingState.primary_color);
 const tenantLimits = computed(() => usePage().props.tenant_plan?.limits || {});
 const tenantUsage = computed(() => usePage().props.tenant_plan?.current_usage || {});
 
