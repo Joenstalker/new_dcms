@@ -51,6 +51,9 @@ Route::middleware([
     Route::middleware(['auth', 'check.subscription'])->group(function () {
             Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class , 'index'])->name('tenant.dashboard');
 
+            // Profile picture upload (all authenticated tenant users)
+            Route::post('profile/picture', [\App\Http\Controllers\ProfileController::class , 'updatePicture'])->name('profile.update-picture');
+
             // Staff Settings (personal, permission-gated per section — NOT inside Owner block)
             Route::get('my-settings', [\App\Http\Controllers\Tenant\StaffSettingsController::class, 'index'])->name('staff-settings.index');
             Route::put('my-settings/calendar-color', [\App\Http\Controllers\Tenant\StaffSettingsController::class, 'updateCalendarColor'])->name('staff-settings.calendar-color');

@@ -45,6 +45,7 @@ class HandleInertiaRequests extends Middleware
                     'id' => $request->user()->id,
                     'name' => $request->user()->name,
                     'email' => $request->user()->email,
+                    'profile_picture_url' => $request->user()->profile_picture_url,
                     'roles' => $request->user()->getRoleNames()->toArray(),
                     'permissions' => $request->user()->getAllPermissions()->pluck('name')->toArray(),
                 ] : null,
@@ -100,9 +101,19 @@ class HandleInertiaRequests extends Middleware
             ],
             'branding' => function () {
                 $tenant = tenant();
-                if (!$tenant) return null;
 
-                // Only fetch minimal branding for global header/sidebar
+                // Central Admin: use SystemSetting values only
+                if (!$tenant) {
+                    return [
+                        'platform_name' => SystemSetting::get('platform_name', 'DCMS'),
+                        'platform_logo' => SystemSetting::get('platform_logo'),
+                        'primary_color' => SystemSetting::get('primary_color', '#0ea5e9'),
+                        'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
+                        'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
+                    ];
+                }
+
+                // Tenant: use TenantBrandingService (untouched)
                 $branding = \App\Services\TenantBrandingService::findMany([
                     'clinic_name', 'logo_base64', 'primary_color'
                 ]);
@@ -117,8 +128,23 @@ class HandleInertiaRequests extends Middleware
             },
             'branding_computed' => function () {
                 $tenant = tenant();
-                if (!$tenant) return [];
-                
+
+                // Central Admin: compute from SystemSetting only
+                if (!$tenant) {
+                    $color = SystemSetting::get('primary_color', '#0ea5e9');
+                    $hex = ltrim($color, '#');
+                    $r = hexdec(substr($hex, 0, 2));
+                    $g = hexdec(substr($hex, 2, 2));
+                    $b = hexdec(substr($hex, 4, 2));
+                    $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
+                    return [
+                        'primary_color' => $color,
+                        'contrast_color' => $luminance > 0.5 ? '#1f2937' : '#ffffff',
+                        'source' => 'central',
+                    ];
+                }
+
+                // Tenant: compute from TenantBrandingService (untouched)
                 $branding = \App\Services\TenantBrandingService::findMany(['primary_color']);
                 
                 $centralColor = SystemSetting::get('primary_color', '#0ea5e9');

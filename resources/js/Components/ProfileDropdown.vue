@@ -45,7 +45,7 @@ const openSettingsModal = () => {
                         :style="{ backgroundColor: primaryColor, color: primaryTextColor }"
                     >
                         <img 
-                            v-if="user.profile_picture_url" 
+                            v-if="user.profile_picture_url && !user.profile_picture_url.includes('ui-avatars')" 
                             :src="user.profile_picture_url" 
                             class="h-full w-full object-cover"
                             :alt="user.name"

@@ -64,7 +64,7 @@ const save = () => {
         quality: 0.9,
     }).then((base64) => {
         form.image = base64;
-        form.post(route('profile.update-picture'), {
+        form.post('/profile/picture', {
             preserveScroll: true,
             onSuccess: () => {
                 close();

@@ -4,10 +4,14 @@ import { Link, usePage } from '@inertiajs/vue3';
 import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import ProfileDropdown from '@/Components/ProfileDropdown.vue';
+import { brandingState } from '@/States/brandingState';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const branding = computed(() => page.props.branding || {});
+
+// Initialize brandingState for admin context so ProfileDropdown uses admin system color
+brandingState.initialize(page.props);
 
 // Sidebar position (left or right)
 const sidebarPosition = computed(() => branding.value.sidebar_position || 'left');
@@ -368,7 +372,7 @@ watch(() => page.props.flash, (flash) => {
                                 :style="{ backgroundColor: primaryColor }"
                             >
                                 <img 
-                                    v-if="user?.profile_picture_url" 
+                                    v-if="user?.profile_picture_url && !user.profile_picture_url.includes('ui-avatars')" 
                                     :src="user.profile_picture_url" 
                                     class="h-full w-full object-cover"
                                     :alt="user?.name"
