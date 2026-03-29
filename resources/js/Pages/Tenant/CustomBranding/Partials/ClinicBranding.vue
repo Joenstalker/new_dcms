@@ -33,10 +33,12 @@ const logoPreviews = ref({
 });
 
 const resizeImage = (file, maxWidth = 800, maxHeight = 800) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Failed to read the file.'));
         reader.onload = (e) => {
             const img = new Image();
+            img.onerror = () => reject(new Error('Cannot read image: the file may be corrupted or in an unsupported format.'));
             img.onload = () => {
                 const canvas = document.createElement('canvas');
                 let width = img.width;
@@ -58,6 +60,10 @@ const resizeImage = (file, maxWidth = 800, maxHeight = 800) => {
                 ctx.drawImage(img, 0, 0, width, height);
 
                 canvas.toBlob((blob) => {
+                    if (!blob) {
+                        reject(new Error('Failed to process the image.'));
+                        return;
+                    }
                     const resizedFile = new File([blob], file.name, {
                         type: file.type,
                         lastModified: Date.now(),
@@ -82,12 +88,18 @@ const handleFileChange = async (e, field) => {
 
         // Perform client-side resizing if it's an image
         if (file.type.startsWith('image/')) {
-            const resizedFile = await resizeImage(file);
-            props.form[field] = resizedFile;
-            
-            // Update preview to the resized version for accuracy
-            URL.revokeObjectURL(logoPreviews.value[field]);
-            logoPreviews.value[field] = URL.createObjectURL(resizedFile);
+            try {
+                const resizedFile = await resizeImage(file);
+                props.form[field] = resizedFile;
+                
+                // Update preview to the resized version for accuracy
+                URL.revokeObjectURL(logoPreviews.value[field]);
+                logoPreviews.value[field] = URL.createObjectURL(resizedFile);
+            } catch (error) {
+                console.error('Image resize error:', error.message);
+                // Fall back to original file if resizing fails
+                props.form[field] = file;
+            }
         } else {
             props.form[field] = file;
         }
@@ -103,7 +115,10 @@ const getLogoUrl = (path, field) => {
     // Handle Base64 data URLs directly (Support for Database-Only Isolation)
     if (path.startsWith('data:image/')) return path;
     
-    return '/storage/' + path;
+    // If it's a full URL (from TenantBrandingService route), use as-is
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    
+    return '/tenant-storage/' + path;
 };
 </script>
 

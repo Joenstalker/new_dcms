@@ -81,7 +81,11 @@ class User extends Authenticatable
             return $this->profile_picture;
         }
 
-        return asset('storage/' . $this->profile_picture);
+        if (tenant()) {
+            return tenant_asset($this->profile_picture);
+        }
+
+        return asset('storage/' . ltrim($this->profile_picture, '/'));
     }
 
     /**

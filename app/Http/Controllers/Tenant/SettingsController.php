@@ -217,9 +217,23 @@ class SettingsController extends Controller
             abort(404);
         }
 
-        // Return the binary data directly with correct headers
+        // Detect MIME type from binary header
+        $mime = 'image/png'; // default
+        $header = substr($row->binary_value, 0, 12);
+        if (str_starts_with($header, "\xFF\xD8\xFF")) {
+            $mime = 'image/jpeg';
+        } elseif (str_starts_with($header, "\x89PNG")) {
+            $mime = 'image/png';
+        } elseif (str_starts_with($header, 'GIF87a') || str_starts_with($header, 'GIF89a')) {
+            $mime = 'image/gif';
+        } elseif (str_starts_with($header, 'RIFF') && substr($row->binary_value, 8, 4) === 'WEBP') {
+            $mime = 'image/webp';
+        } elseif (str_contains($row->binary_value, '<svg') || str_contains($row->binary_value, '<SVG')) {
+            $mime = 'image/svg+xml';
+        }
+
         return response($row->binary_value)
-            ->header('Content-Type', 'image/png')
+            ->header('Content-Type', $mime)
             ->header('Cache-Control', 'public, max-age=31536000');
     }
 
@@ -250,9 +264,9 @@ class SettingsController extends Controller
             'portal_config' => 'nullable|array',
             'operating_hours' => 'nullable|array',
             'online_booking_enabled' => 'nullable|boolean',
-            'logo' => 'nullable|image|max:2048',
-            'logo_login' => 'nullable|image|max:2048',
-            'logo_booking' => 'nullable|image|max:2048',
+            'logo' => 'nullable|image|mimes:jpeg,png,gif,webp,svg|max:2048',
+            'logo_login' => 'nullable|image|mimes:jpeg,png,gif,webp,svg|max:2048',
+            'logo_booking' => 'nullable|image|mimes:jpeg,png,gif,webp,svg|max:2048',
         ]);
 
         $tenant = tenant();
@@ -268,13 +282,14 @@ class SettingsController extends Controller
                 $file = $request->file($field);
                 
                 // Validate Dimensions before processing (Memory efficient)
-                $dimensions = getimagesize($file->path());
-                if ($dimensions) {
-                    $width = $dimensions[0];
-                    $height = $dimensions[1];
-                    if ($width > 2000 || $height > 2000) {
-                        return redirect()->back()->with('error', "The {$field} is too large ({$width}x{$height}). Maximum allowed resolution is 2000x2000 pixels.");
-                    }
+                $dimensions = @getimagesize($file->path());
+                if ($dimensions === false) {
+                    return redirect()->back()->with('error', "The uploaded {$field} file could not be read. Please ensure it is a valid image file (JPEG, PNG, GIF, WebP, or SVG).");
+                }
+                $width = $dimensions[0];
+                $height = $dimensions[1];
+                if ($width > 2000 || $height > 2000) {
+                    return redirect()->back()->with('error', "The {$field} is too large ({$width}x{$height}). Maximum allowed resolution is 2000x2000 pixels.");
                 }
 
                 // Use the new Streamed Storage to avoid loading into memory strings

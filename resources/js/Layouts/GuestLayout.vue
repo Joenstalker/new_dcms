@@ -16,7 +16,10 @@ const platformLogo = computed(() => {
     // Handle Base64 data URLs directly (Support for Database-Only Isolation)
     if (logo.startsWith('data:image/')) return logo;
     
-    return '/storage/logos/' + logo;
+    // If it's a full URL (from TenantBrandingService route), use as-is
+    if (logo.startsWith('http://') || logo.startsWith('https://')) return logo;
+
+    return '/tenant-storage/logos/' + logo;
 });
 const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
 const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');

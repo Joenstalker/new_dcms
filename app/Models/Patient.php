@@ -83,7 +83,7 @@ class Patient extends Model
             return $this->photo_path;
         }
 
-        return asset('storage/' . $this->photo_path);
+        return tenant_asset($this->photo_path);
     }
 
     /**

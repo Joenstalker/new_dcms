@@ -61,7 +61,7 @@ const getPreviewUrl = (section) => {
     if (imgData && typeof imgData === 'string' && imgData.startsWith('data:image')) {
         return imgData;
     }
-    return imgData ? '/storage/' + imgData : null;
+    return imgData ? '/tenant-storage/' + imgData : null;
 };
 </script>
 

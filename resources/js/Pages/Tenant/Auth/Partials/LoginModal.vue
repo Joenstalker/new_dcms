@@ -86,7 +86,9 @@ onUnmounted(() => {
 const brandingColor = computed(() => props.tenant?.branding_color || '#3b82f6');
 const logoUrl = computed(() => {
     const logopath = props.tenant?.logo_login_path || props.tenant?.logo_path;
-    return logopath ? `/storage/${logopath}` : null;
+    if (!logopath) return null;
+    if (logopath.startsWith('http://') || logopath.startsWith('https://')) return logopath;
+    return `/tenant-storage/${logopath}`;
 });
 const fontFamily = computed(() => props.tenant?.font_family || 'font-sans');
 

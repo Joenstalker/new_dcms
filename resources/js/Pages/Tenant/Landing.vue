@@ -89,7 +89,7 @@ const getSectionImage = (name) => {
     if (img && typeof img === 'string' && img.startsWith('data:image')) {
         return img;
     }
-    return img ? '/storage/' + img : null;
+    return img ? '/tenant-storage/' + img : null;
 };
 
 const bookingEnabled = computed(() => props.online_booking_enabled);
@@ -172,7 +172,7 @@ const hasOperatingHours = computed(() => {
                         <!-- QR Code Section (only when booking enabled) -->
                         <div v-if="bookingEnabled && tenant.qr_code_path" class="flex items-center gap-4 p-3 bg-white rounded-3xl shadow-sm border border-gray-100">
                             <div class="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden">
-                                <img :src="'/storage/' + tenant.qr_code_path" class="w-full h-full object-cover">
+                                <img :src="'/tenant-storage/' + tenant.qr_code_path" class="w-full h-full object-cover">
                             </div>
                             <div class="text-left">
                                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Mobile Booking</p>

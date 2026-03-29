@@ -52,13 +52,18 @@ class TenantBrandingService
         try {
             if (!file_exists($filePath)) return;
 
+            $fp = fopen($filePath, 'rb');
+            if ($fp === false) {
+                \Illuminate\Support\Facades\Log::error("TenantBrandingService setStreamed($key) Error: Unable to open file: $filePath");
+                return;
+            }
+
             // Use RAW PDO for LOB streaming support
             $pdo = DB::getPdo();
             $stmt = $pdo->prepare("INSERT INTO branding_settings (`key`, `binary_value`, `type`, `updated_at`, `created_at`) 
                                     VALUES (?, ?, 'binary', NOW(), NOW()) 
                                     ON DUPLICATE KEY UPDATE `binary_value` = VALUES(`binary_value`), `updated_at` = NOW()");
             
-            $fp = fopen($filePath, 'rb');
             $stmt->bindParam(1, $key);
             $stmt->bindParam(2, $fp, \PDO::PARAM_LOB);
             $stmt->execute();
@@ -112,7 +117,12 @@ class TenantBrandingService
             if (!empty($missingKeys)) {
                 $rows = DB::table('branding_settings')->whereIn('key', $missingKeys)->get();
                 foreach ($rows as $row) {
-                    self::$cache[$row->key] = self::castValue($row->value);
+                    // Priority 1: Binary value — return route URL
+                    if ($row->binary_value !== null) {
+                        self::$cache[$row->key] = route('settings.logo', ['key' => $row->key]);
+                    } else {
+                        self::$cache[$row->key] = self::castValue($row->value);
+                    }
                 }
             }
 
@@ -133,7 +143,12 @@ class TenantBrandingService
             $rows = DB::table('branding_settings')->get();
             $settings = [];
             foreach ($rows as $row) {
-                $settings[$row->key] = self::castValue($row->value);
+                // Priority 1: Binary value — return route URL
+                if ($row->binary_value !== null) {
+                    $settings[$row->key] = route('settings.logo', ['key' => $row->key]);
+                } else {
+                    $settings[$row->key] = self::castValue($row->value);
+                }
                 self::$cache[$row->key] = $settings[$row->key];
             }
             return $settings;

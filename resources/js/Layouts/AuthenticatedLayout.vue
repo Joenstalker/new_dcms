@@ -113,12 +113,15 @@ const platformLogo = computed(() => {
     // Handle Base64 data URLs directly (Support for Database-Only Isolation)
     if (logoFile.startsWith('data:image/')) return logoFile;
     
-    // If it's a full path (like from tenant storage or central)
-    if (logoFile.startsWith('branding/')) return '/storage/' + logoFile;
-    if (logoFile.startsWith('logos/')) return '/storage/' + logoFile;
+    // If it's a full URL (from TenantBrandingService route), use as-is
+    if (logoFile.startsWith('http://') || logoFile.startsWith('https://')) return logoFile;
+
+    // Tenant filesystem paths — served through tenant-storage controller
+    if (logoFile.startsWith('branding/')) return '/tenant-storage/' + logoFile;
+    if (logoFile.startsWith('logos/')) return '/tenant-storage/' + logoFile;
     
-    // Fallback for legacy central logos or simple filenames
-    return '/storage/logos/' + logoFile;
+    // Fallback for legacy paths
+    return '/tenant-storage/logos/' + logoFile;
 });
 const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');
 

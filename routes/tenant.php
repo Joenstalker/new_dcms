@@ -16,6 +16,17 @@ Route::middleware([
     PreventAccessFromCentralDomains::class ,
     \App\Http\Middleware\CheckTenantStatus::class ,
 ])->group(function () {
+    // Tenant storage — serves files from the tenant's isolated storage directory.
+    // No auth required (profile pictures must load on login/landing pages).
+    // Tenant isolation is guaranteed by InitializeTenancyBySubdomain.
+    Route::get('/tenant-storage/{path}', [\App\Http\Controllers\Tenant\TenantStorageController::class , 'serve'])
+        ->where('path', '.*')
+        ->name('tenant.storage');
+
+    // Serve branding logos from tenant database (no auth — images needed on public pages)
+    Route::get('settings/branding/logo/{key}', [\App\Http\Controllers\Tenant\SettingsController::class , 'serveLogo'])
+        ->name('settings.logo');
+
     Route::get('/', [\App\Http\Controllers\Tenant\LandingController::class , 'index'])->name('tenant.landing');
     Route::post('/concerns', [\App\Http\Controllers\Tenant\LandingController::class , 'submitConcern'])->name('tenant.concern.store');
     Route::post('/contact-support', [\App\Http\Controllers\ContactController::class, 'submit'])->name('tenant.contact.submit');
@@ -163,8 +174,6 @@ Route::middleware([
                 Route::middleware(['role:Owner|Assistant', 'check.subscription:custom_branding'])->group(function () {
                     Route::get('settings/branding', [\App\Http\Controllers\Tenant\SettingsController::class , 'branding'])
                         ->name('settings.branding');
-                    Route::get('settings/branding/logo/{key}', [\App\Http\Controllers\Tenant\SettingsController::class , 'serveLogo'])
-                        ->name('settings.logo');
                     Route::post('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'update'])
                         ->name('settings.update');
                 });
