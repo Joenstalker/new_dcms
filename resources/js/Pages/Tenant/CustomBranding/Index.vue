@@ -60,9 +60,6 @@ const form = useForm({
     },
     operating_hours: props.tenant?.operating_hours || {},
     online_booking_enabled: props.tenant?.online_booking_enabled ?? true,
-    logo: null,
-    logo_login: null,
-    logo_booking: null,
 });
 
 // 3. Import global Branding State to drive Live Preview

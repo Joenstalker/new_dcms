@@ -104,6 +104,14 @@ class TenantBrandingService
     }
 
     /**
+     * Remove a branding setting from the local cache.
+     */
+    public static function forget(string $key): void
+    {
+        unset(self::$cache[$key]);
+    }
+
+    /**
      * Get multiple settings at once (Optimized).
      */
     public static function findMany(array $keys): array

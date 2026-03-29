@@ -76,13 +76,14 @@ class TenantController extends Controller
                 $tenant->amount_paid = $latestSubscription->stripe_price;
                 $tenant->payment_method = $latestSubscription->payment_method ?? 'N/A';
                 
-                // Days left
+                // Days left & Actual date
                 $expiry = $latestSubscription->ends_at;
                 if (!$expiry) {
                     $days = $latestSubscription->billing_cycle === 'yearly' ? 365 : 30;
                     $expiry = $latestSubscription->created_at->addDays($days);
                 }
                 $tenant->days_left = (int) max(0, ceil(Carbon::now()->diffInHours($expiry, false) / 24));
+                $tenant->ends_at = $expiry ? $expiry->toDateString() : null; // YYYY-MM-DD for frontend input
                 
                 // Storage
                 $tenant->max_storage_mb = $latestSubscription->plan->max_storage_mb ?? 500;
@@ -172,6 +173,7 @@ class TenantController extends Controller
             'status' => 'required|in:active,suspended,pending_payment',
             'plan_id' => 'required|exists:subscription_plans,id',
             'reason' => 'required|string|max:255',
+            'expiry_date' => 'nullable|date|after_or_equal:today',
         ]);
 
         DB::beginTransaction();
@@ -194,17 +196,22 @@ class TenantController extends Controller
             // Update Subscription
             $latestSubscription = $tenant->subscriptions()->latest()->first();
             if ($latestSubscription && $latestSubscription->subscription_plan_id != $validated['plan_id']) {
+                // Update Subscription DETAILS
                 $latestSubscription->update([
-                    'subscription_plan_id' => $validated['plan_id']
+                    'subscription_plan_id' => $validated['plan_id'],
+                    'stripe_status' => 'active', // Admin Power: Force active
+                    'payment_status' => 'paid',
+                    'payment_method' => 'admin_override',
+                    'ends_at' => $validated['expiry_date'] ? Carbon::parse($validated['expiry_date']) : now()->addYears(10),
                 ]);
 
-                // Sync new features via OTA Service
+                // Sync new features via OTA Service (Fixed signature)
                 try {
                     $otaService = app(\App\Services\FeatureOTAUpdateService::class);
                     $newPlan = \App\Models\SubscriptionPlan::find($validated['plan_id']);
                     if ($newPlan) {
-                        $otaService->pushPlanUpdates($tenant, $newPlan);
-                        Log::info("Pushed plan updates for tenant {$tenant->id} to plan {$newPlan->name}");
+                        $otaService->pushTenantPlanUpdates($tenant, $newPlan);
+                        Log::info("Pushed manual plan updates for tenant {$tenant->id} to plan {$newPlan->name}");
                     }
                 } catch (\Exception $e) {
                     Log::error("Failed to push OTA updates for tenant {$tenant->id}: " . $e->getMessage());
@@ -237,17 +244,26 @@ class TenantController extends Controller
 
             // Notify Tenant
             try {
+                // 1. Send Email to Tenant Owner
+                if ($tenant->email) {
+                    $newPlan = \App\Models\SubscriptionPlan::find($validated['plan_id']);
+                    Mail::to($tenant->email)->send(new \App\Mail\TenantPlanUpgraded($tenant, $newPlan, $validated['expiry_date']));
+                    Log::info("Plan upgrade email sent to tenant: {$tenant->email}");
+                }
+
+                // 2. Broadcast to Tenant DB
                 tenancy()->initialize($tenant);
                 $notificationService = app(TenantNotificationService::class);
+                $newPlanName = \App\Models\SubscriptionPlan::find($validated['plan_id'])?->name ?? 'Higher Plan';
                 $notificationService->broadcastToTenant(
-                    'system_update',
-                    'Clinic Information Updated',
-                    'An administrator has updated your clinic information or subscription status.',
-                    ['updated_by' => 'Central Admin', 'status' => $validated['status']]
+                    'subscription_upgraded',
+                    'Subscription Upgraded! 🎉',
+                    "An administrator has upgraded your clinic plan to '{$newPlanName}'. Enjoy your new features!",
+                    ['updated_by' => 'Central Admin', 'plan' => $newPlanName, 'expiry' => $validated['expiry_date']]
                 );
                 tenancy()->end();
             } catch (\Exception $e) {
-                Log::warning("Failed to notify tenant {$tenant->id}: " . $e->getMessage());
+                Log::warning("Failed to notify tenant {$tenant->id} about plan upgrade: " . $e->getMessage());
                 if (tenancy()->initialized) tenancy()->end();
             }
 

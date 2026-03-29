@@ -176,6 +176,10 @@ Route::middleware([
                         ->name('settings.branding');
                     Route::post('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'update'])
                         ->name('settings.update');
+                    Route::post('settings/logo', [\App\Http\Controllers\Tenant\SettingsController::class , 'uploadLogo'])
+                        ->name('settings.logo.upload');
+                    Route::delete('settings/logo', [\App\Http\Controllers\Tenant\SettingsController::class , 'deleteLogo'])
+                        ->name('settings.logo.delete');
                 });
 
                 // Services — accessible by Owner, Dentist, and Assistant

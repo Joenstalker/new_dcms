@@ -7,6 +7,8 @@ const props = defineProps({
     tenant: Object,
     days_remaining: Number,
     current_plan_id: Number,
+    payment_method: String,
+    stripe_id: String,
     plans: Array,
 });
 
@@ -115,6 +117,9 @@ const planBadge = {
                                 <span :class="['inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border', statusColor(subscription.stripe_status)]">
                                     {{ subscription.stripe_status?.toUpperCase() }}
                                 </span>
+                                <span v-if="payment_method === 'admin_override'" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border bg-purple-100 text-purple-700 border-purple-200">
+                                    🛡️ ADMIN MANAGED
+                                </span>
                                 <span class="text-white/60 text-sm">
                                     {{ billingCycle === 'monthly' ? 'Monthly' : 'Yearly' }} billing
                                 </span>
@@ -123,9 +128,9 @@ const planBadge = {
                         <div class="text-right">
                             <p class="text-white/60 text-xs">Current Price</p>
                             <p class="text-3xl font-black">
-                                {{ formatPrice(currentPlan ? (billingCycle === 'monthly' ? currentPlan.price_monthly : currentPlan.price_yearly) : 0) }}
+                                {{ payment_method === 'admin_override' ? 'FREE' : formatPrice(currentPlan ? (billingCycle === 'monthly' ? currentPlan.price_monthly : currentPlan.price_yearly) : 0) }}
                             </p>
-                            <p class="text-white/50 text-xs">/{{ billingCycle === 'monthly' ? 'month' : 'year' }}</p>
+                            <p class="text-white/50 text-xs" v-if="payment_method !== 'admin_override'">/{{ billingCycle === 'monthly' ? 'month' : 'year' }}</p>
                         </div>
                     </div>
                 </div>
@@ -142,6 +147,7 @@ const planBadge = {
                         <span v-if="subscription.has_multi_branch" class="text-emerald-600 font-semibold">🏢 Multi-branch ✓</span>
                     </div>
                     <a
+                        v-if="stripe_id || payment_method !== 'admin_override'"
                         :href="route('billing.portal')"
                         target="_blank"
                         class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-center cursor-pointer"
@@ -151,6 +157,9 @@ const planBadge = {
                         </svg>
                         Manage Billing
                     </a>
+                    <div v-else class="text-xs text-gray-400 italic">
+                        Billing managed by administrator
+                    </div>
                 </div>
             </div>
 

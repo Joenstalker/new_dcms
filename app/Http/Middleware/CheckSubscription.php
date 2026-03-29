@@ -46,6 +46,11 @@ class CheckSubscription
         // Load the active subscription with its plan
         $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
             ->where('stripe_status', 'active')
+            ->where(function ($query) {
+                // If billing_cycle_end is set, it must be in the future
+                $query->whereNull('billing_cycle_end')
+                      ->orWhere('billing_cycle_end', '>', now());
+            })
             ->with('plan')
             ->latest()
             ->first();

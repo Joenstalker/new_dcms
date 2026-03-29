@@ -1,6 +1,7 @@
 <script setup>
-import { computed, ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { ref, reactive } from 'vue';
+import { router } from '@inertiajs/vue3';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     form: {
@@ -25,8 +26,22 @@ const fontOptions = [
     { name: 'Open Sans', value: 'font-open-sans' },
 ];
 
-// Store object URLs for real-time preview without altering the form payload
+// Track upload state per logo field
+const uploading = reactive({
+    logo: false,
+    logo_login: false,
+    logo_booking: false,
+});
+
+// Track object URLs for live preview
 const logoPreviews = ref({
+    logo: null,
+    logo_login: null,
+    logo_booking: null,
+});
+
+// Store the confirmed server URL for each logo (to use after upload)
+const logoUrls = ref({
     logo: null,
     logo_login: null,
     logo_booking: null,
@@ -79,45 +94,156 @@ const resizeImage = (file, maxWidth = 800, maxHeight = 800) => {
 
 const handleFileChange = async (e, field) => {
     const file = e.target.files[0];
-    if (file) {
-        // Show loading state or immediate preview if possible
+    if (!file) return;
+
+    // Show local preview immediately
+    if (logoPreviews.value[field]) {
+        URL.revokeObjectURL(logoPreviews.value[field]);
+    }
+    logoPreviews.value[field] = URL.createObjectURL(file);
+
+    uploading[field] = true;
+
+    try {
+        // Resize client-side if image
+        let uploadFile = file;
+        if (file.type.startsWith('image/')) {
+            try {
+                uploadFile = await resizeImage(file);
+                // Update preview to resized version
+                URL.revokeObjectURL(logoPreviews.value[field]);
+                logoPreviews.value[field] = URL.createObjectURL(uploadFile);
+            } catch (resizeErr) {
+                console.warn('Resize failed, uploading original:', resizeErr.message);
+            }
+        }
+
+        // Upload via dedicated endpoint — NOT through the main form
+        const formData = new FormData();
+        formData.append('field', field);
+        formData.append('image', uploadFile);
+
+        const response = await fetch('/settings/logo', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'Accept': 'application/json',
+            },
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Upload failed');
+        }
+
+        // Store the server URL and update preview
+        logoUrls.value[field] = result.url;
         if (logoPreviews.value[field]) {
             URL.revokeObjectURL(logoPreviews.value[field]);
         }
-        logoPreviews.value[field] = URL.createObjectURL(file);
+        logoPreviews.value[field] = result.url;
 
-        // Perform client-side resizing if it's an image
-        if (file.type.startsWith('image/')) {
-            try {
-                const resizedFile = await resizeImage(file);
-                props.form[field] = resizedFile;
-                
-                // Update preview to the resized version for accuracy
-                URL.revokeObjectURL(logoPreviews.value[field]);
-                logoPreviews.value[field] = URL.createObjectURL(resizedFile);
-            } catch (error) {
-                console.error('Image resize error:', error.message);
-                // Fall back to original file if resizing fails
-                props.form[field] = file;
-            }
-        } else {
-            props.form[field] = file;
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: `${fieldLabel(field)} uploaded successfully!`,
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true,
+        });
+
+    } catch (error) {
+        console.error('Logo upload error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Upload Failed',
+            text: error.message || 'Could not upload the logo. Please try again.',
+        });
+        // Revert preview on error
+        if (logoPreviews.value[field]) {
+            URL.revokeObjectURL(logoPreviews.value[field]);
+            logoPreviews.value[field] = null;
         }
+    } finally {
+        uploading[field] = false;
+        // Reset file input so same file can be re-selected
+        e.target.value = '';
     }
 };
 
+const handleDeleteLogo = async (field) => {
+    const result = await Swal.fire({
+        title: 'Remove Logo?',
+        text: `Are you sure you want to remove the ${fieldLabel(field)}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Yes, remove it',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const response = await fetch('/settings/logo', {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ field }),
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Delete failed');
+        }
+
+        // Clear preview
+        if (logoPreviews.value[field]) {
+            URL.revokeObjectURL(logoPreviews.value[field]);
+            logoPreviews.value[field] = null;
+        }
+        logoUrls.value[field] = null;
+
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: `${fieldLabel(field)} removed`,
+            showConfirmButton: false,
+            timer: 2000,
+        });
+
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message || 'Could not remove the logo.',
+        });
+    }
+};
+
+const fieldLabel = (field) => ({
+    logo: 'Header Logo',
+    logo_login: 'Login Logo',
+    logo_booking: 'Booking Logo',
+}[field] || field);
+
 const getLogoUrl = (path, field) => {
+    // Priority: local preview > uploaded server URL > tenant prop path
     if (logoPreviews.value[field]) {
         return logoPreviews.value[field];
     }
+    if (logoUrls.value[field]) {
+        return logoUrls.value[field];
+    }
     if (!path) return null;
-    
-    // Handle Base64 data URLs directly (Support for Database-Only Isolation)
     if (path.startsWith('data:image/')) return path;
-    
-    // If it's a full URL (from TenantBrandingService route), use as-is
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    
     return '/tenant-storage/' + path;
 };
 </script>
@@ -237,43 +363,81 @@ const getLogoUrl = (path, field) => {
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <!-- Main Header Logo (BASIC ALLOWED) -->
-                <div class="form-control bg-base-200/50 p-5 rounded-3xl border border-dashed border-base-300 hover:border-primary transition-colors cursor-pointer relative group">
+                <div class="form-control bg-base-200/50 p-5 rounded-3xl border border-dashed border-base-300 hover:border-primary transition-colors relative group"
+                    :class="{ 'pointer-events-none': uploading.logo }">
                     <label class="label mb-2"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-50">Header & Sidebar (Public)</span></label>
-                    <div class="h-24 w-full flex flex-col items-center justify-center gap-2">
+                    <div class="h-24 w-full flex flex-col items-center justify-center gap-2 relative">
+                        <!-- Upload spinner overlay -->
+                        <div v-if="uploading.logo" class="absolute inset-0 flex items-center justify-center bg-base-200/80 rounded-xl z-10">
+                            <span class="loading loading-spinner loading-md text-primary"></span>
+                        </div>
                         <img v-if="getLogoUrl(tenant.logo_path, 'logo')" :src="getLogoUrl(tenant.logo_path, 'logo')" class="h-full w-full object-contain" />
                         <div v-else class="text-2xl opacity-20">🏥</div>
-                        <input type="file" @change="handleFileChange($event, 'logo')" class="absolute inset-0 opacity-0 cursor-pointer">
+                        <input type="file" accept="image/*" @change="handleFileChange($event, 'logo')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.logo">
                     </div>
-                    <div class="mt-3 text-center">
-                        <span class="text-[9px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity">Change Logo</span>
+                    <div class="mt-3 text-center flex items-center justify-center gap-3">
+                        <span class="text-[9px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            {{ getLogoUrl(tenant.logo_path, 'logo') ? 'Replace' : 'Upload' }}
+                        </span>
+                        <button v-if="getLogoUrl(tenant.logo_path, 'logo')" 
+                            @click.stop="handleDeleteLogo('logo')" 
+                            class="text-[9px] font-black uppercase tracking-widest text-error opacity-0 group-hover:opacity-100 transition-opacity hover:underline">
+                            Remove
+                        </button>
                     </div>
                 </div>
 
                 <!-- Login Modal Logo (PREMIUM) -->
-                <div class="form-control bg-base-200/50 p-5 rounded-3xl border border-dashed transition-colors cursor-pointer relative group"
-                    :class="[is_premium ? 'border-base-300 hover:border-primary' : 'border-base-200 opacity-40 grayscale pointer-events-none']">
+                <div class="form-control bg-base-200/50 p-5 rounded-3xl border border-dashed transition-colors relative group"
+                    :class="[is_premium ? 'border-base-300 hover:border-primary cursor-pointer' : 'border-base-200 opacity-40 grayscale pointer-events-none', { 'pointer-events-none': uploading.logo_login }]">
                     <label class="label mb-2 font-bold text-[9px] uppercase tracking-widest opacity-50 space-x-2">
                         <span>Login Modal</span>
                         <span v-if="!is_premium">🏆</span>
                     </label>
-                    <div class="h-24 w-full flex flex-col items-center justify-center gap-2">
+                    <div class="h-24 w-full flex flex-col items-center justify-center gap-2 relative">
+                        <div v-if="uploading.logo_login" class="absolute inset-0 flex items-center justify-center bg-base-200/80 rounded-xl z-10">
+                            <span class="loading loading-spinner loading-md text-primary"></span>
+                        </div>
                         <img v-if="getLogoUrl(tenant.logo_login_path, 'logo_login')" :src="getLogoUrl(tenant.logo_login_path, 'logo_login')" class="h-full w-full object-contain" />
                         <div v-else class="text-2xl opacity-20">🔐</div>
-                        <input type="file" v-if="is_premium" @change="handleFileChange($event, 'logo_login')" class="absolute inset-0 opacity-0 cursor-pointer">
+                        <input type="file" v-if="is_premium" accept="image/*" @change="handleFileChange($event, 'logo_login')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.logo_login">
+                    </div>
+                    <div v-if="is_premium" class="mt-3 text-center flex items-center justify-center gap-3">
+                        <span class="text-[9px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            {{ getLogoUrl(tenant.logo_login_path, 'logo_login') ? 'Replace' : 'Upload' }}
+                        </span>
+                        <button v-if="getLogoUrl(tenant.logo_login_path, 'logo_login')" 
+                            @click.stop="handleDeleteLogo('logo_login')" 
+                            class="text-[9px] font-black uppercase tracking-widest text-error opacity-0 group-hover:opacity-100 transition-opacity hover:underline">
+                            Remove
+                        </button>
                     </div>
                 </div>
 
                 <!-- Booking Modal Logo (PREMIUM) -->
-                <div class="form-control bg-base-200/50 p-5 rounded-3xl border border-dashed transition-colors cursor-pointer relative group"
-                    :class="[is_premium ? 'border-base-300 hover:border-primary' : 'border-base-200 opacity-40 grayscale pointer-events-none']">
+                <div class="form-control bg-base-200/50 p-5 rounded-3xl border border-dashed transition-colors relative group"
+                    :class="[is_premium ? 'border-base-300 hover:border-primary cursor-pointer' : 'border-base-200 opacity-40 grayscale pointer-events-none', { 'pointer-events-none': uploading.logo_booking }]">
                     <label class="label mb-2 font-bold text-[9px] uppercase tracking-widest opacity-50 space-x-2">
                         <span>Booking Modal</span>
                         <span v-if="!is_premium">🏆</span>
                     </label>
-                    <div class="h-24 w-full flex flex-col items-center justify-center gap-2">
+                    <div class="h-24 w-full flex flex-col items-center justify-center gap-2 relative">
+                        <div v-if="uploading.logo_booking" class="absolute inset-0 flex items-center justify-center bg-base-200/80 rounded-xl z-10">
+                            <span class="loading loading-spinner loading-md text-primary"></span>
+                        </div>
                         <img v-if="getLogoUrl(tenant.logo_booking_path, 'logo_booking')" :src="getLogoUrl(tenant.logo_booking_path, 'logo_booking')" class="h-full w-full object-contain" />
                         <div v-else class="text-2xl opacity-20">📅</div>
-                        <input type="file" v-if="is_premium" @change="handleFileChange($event, 'logo_booking')" class="absolute inset-0 opacity-0 cursor-pointer">
+                        <input type="file" v-if="is_premium" accept="image/*" @change="handleFileChange($event, 'logo_booking')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.logo_booking">
+                    </div>
+                    <div v-if="is_premium" class="mt-3 text-center flex items-center justify-center gap-3">
+                        <span class="text-[9px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            {{ getLogoUrl(tenant.logo_booking_path, 'logo_booking') ? 'Replace' : 'Upload' }}
+                        </span>
+                        <button v-if="getLogoUrl(tenant.logo_booking_path, 'logo_booking')" 
+                            @click.stop="handleDeleteLogo('logo_booking')" 
+                            class="text-[9px] font-black uppercase tracking-widest text-error opacity-0 group-hover:opacity-100 transition-opacity hover:underline">
+                            Remove
+                        </button>
                     </div>
                 </div>
             </div>

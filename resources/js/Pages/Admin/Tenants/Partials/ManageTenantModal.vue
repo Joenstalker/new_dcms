@@ -25,6 +25,7 @@ const form = ref({
     status: 'active',
     plan_id: null,
     reason: '',
+    expiry_date: '',
 });
 
 const isProcessing = ref(false);
@@ -38,6 +39,7 @@ watch(() => props.tenant, (newTenant) => {
             status: newTenant.status || 'active',
             plan_id: newTenant.plan_id || null,
             reason: '',
+            expiry_date: newTenant.ends_at || '',
         };
     }
 }, { immediate: true });
@@ -182,6 +184,11 @@ const getStorageColorClass = (percentage) => {
                                             <select v-model="form.plan_id" class="mt-1 block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
                                                 <option v-for="plan in plans" :key="plan.id" :value="plan.id">{{ plan.name }}</option>
                                             </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-base-content/60 uppercase tracking-wider">Expiry Date</label>
+                                            <input v-model="form.expiry_date" type="date" class="mt-1 block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm" />
+                                            <span class="text-[10px] text-base-content/40 italic">Leave empty for 10-year override</span>
                                         </div>
                                     </div>
                                     <div class="mt-3">

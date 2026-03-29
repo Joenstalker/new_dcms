@@ -87,7 +87,7 @@ If you are on Windows:
 2. Extract the `stripe.exe` file.
 3. Open your terminal in that folder and run:
    ```bash
-   .\stripe.exe login
+   .\stripe login
    ```
 
 ### 3. Forward Webhooks Locally
@@ -95,7 +95,7 @@ Because Stripe cannot natively send POST requests to a private `localhost` URL, 
 
 Open a terminal and run the following command to forward Stripe events to the local webhook handler:
 ```bash
-stripe listen --forward-to http://localhost:8080/registration/webhook
+.\stripe listen --forward-to http://localhost:8080/registration/webhook
 ```
 *(If you are on Windows, use `.\stripe.exe listen ...`)*
 

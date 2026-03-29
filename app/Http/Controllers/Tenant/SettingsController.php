@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Services\FeatureOTAUpdateService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 /**
@@ -43,6 +44,8 @@ class SettingsController extends Controller
             'tenant' => $tenant,
             'days_remaining' => $subscription ? $subscription->days_remaining : null,
             'current_plan_id' => $subscription?->subscription_plan_id,
+            'payment_method' => $subscription?->payment_method,
+            'stripe_id' => $subscription?->stripe_id,
             'plans' => $plans,
         ]);
     }
@@ -264,9 +267,6 @@ class SettingsController extends Controller
             'portal_config' => 'nullable|array',
             'operating_hours' => 'nullable|array',
             'online_booking_enabled' => 'nullable|boolean',
-            'logo' => 'nullable|image|mimes:jpeg,png,gif,webp,svg|max:2048',
-            'logo_login' => 'nullable|image|mimes:jpeg,png,gif,webp,svg|max:2048',
-            'logo_booking' => 'nullable|image|mimes:jpeg,png,gif,webp,svg|max:2048',
         ]);
 
         $tenant = tenant();
@@ -274,36 +274,7 @@ class SettingsController extends Controller
             return redirect()->back()->with('error', 'Tenant not found.');
         }
 
-        // The config is already validated as an array now
-
-        // Handle Logo Uploads (Memory-Safe Streamed Uploads with Dimension Validation)
-        foreach (['logo', 'logo_login', 'logo_booking'] as $field) {
-            if ($request->hasFile($field)) {
-                $file = $request->file($field);
-                
-                // Validate Dimensions before processing (Memory efficient)
-                $dimensions = @getimagesize($file->path());
-                if ($dimensions === false) {
-                    return redirect()->back()->with('error', "The uploaded {$field} file could not be read. Please ensure it is a valid image file (JPEG, PNG, GIF, WebP, or SVG).");
-                }
-                $width = $dimensions[0];
-                $height = $dimensions[1];
-                if ($width > 2000 || $height > 2000) {
-                    return redirect()->back()->with('error', "The {$field} is too large ({$width}x{$height}). Maximum allowed resolution is 2000x2000 pixels.");
-                }
-
-                // Use the new Streamed Storage to avoid loading into memory strings
-                $keyMap = [
-                    'logo' => 'logo_base64',
-                    'logo_login' => 'logo_login_base64',
-                    'logo_booking' => 'logo_booking_base64'
-                ];
-                
-                \App\Services\TenantBrandingService::setStreamed($keyMap[$field], $file->path());
-            }
-        }
-
-        // Store other branding settings in tenant database
+        // Store branding settings in tenant database
         if (isset($validated['clinic_name'])) \App\Services\TenantBrandingService::set('clinic_name', $validated['clinic_name']);
         if (isset($validated['email'])) \App\Services\TenantBrandingService::set('clinic_email', $validated['email']);
         if (isset($validated['phone'])) \App\Services\TenantBrandingService::set('clinic_phone', $validated['phone']);
@@ -331,14 +302,11 @@ class SettingsController extends Controller
 
         // Apply Plan-Based Gating
         if (!$tenant->canCustomizeBranding()) {
-            // Basic plan: Only allow logo (Landing Header), clinic_name, email, phone, address
+            // Basic plan: Only allow clinic_name, email, phone, address
             // Reset other premium fields to standard defaults if provided
             unset(
                 $validated['branding_color'], 
                 $validated['font_family'], 
-                $validated['logo'], 
-                $validated['logo_login'], 
-                $validated['logo_booking'],
                 $validated['operating_hours']
             );
         }
@@ -358,9 +326,6 @@ class SettingsController extends Controller
 
         // Clean up internal keys before update
         unset(
-            $validated['logo'], 
-            $validated['logo_login'], 
-            $validated['logo_booking'], 
             $validated['clinic_name'], 
             $validated['address']
         );
@@ -369,6 +334,80 @@ class SettingsController extends Controller
         $tenant->update($validated);
 
         return redirect()->back()->with('success', 'Clinic settings updated successfully.');
+    }
+
+    /**
+     * Upload a single logo via AJAX (memory-safe, decoupled from main form).
+     */
+    public function uploadLogo(Request $request)
+    {
+        $request->validate([
+            'field' => 'required|in:logo,logo_login,logo_booking',
+            'image' => 'required|image|mimes:jpeg,png,gif,webp,svg|max:2048',
+        ]);
+
+        $tenant = tenant();
+        if (!$tenant) {
+            return response()->json(['error' => 'Tenant not found.'], 404);
+        }
+
+        $field = $request->input('field');
+        $file = $request->file('image');
+
+        // Validate dimensions
+        $dimensions = @getimagesize($file->path());
+        if ($dimensions === false) {
+            return response()->json(['error' => 'The uploaded file could not be read. Please ensure it is a valid image file.'], 422);
+        }
+        $width = $dimensions[0];
+        $height = $dimensions[1];
+        if ($width > 2000 || $height > 2000) {
+            return response()->json(['error' => "Image too large ({$width}x{$height}). Maximum allowed resolution is 2000x2000 pixels."], 422);
+        }
+
+        $keyMap = [
+            'logo' => 'logo_base64',
+            'logo_login' => 'logo_login_base64',
+            'logo_booking' => 'logo_booking_base64'
+        ];
+
+        \App\Services\TenantBrandingService::setStreamed($keyMap[$field], $file->path());
+
+        return response()->json([
+            'success' => true,
+            'url' => route('settings.logo', ['key' => $keyMap[$field]]) . '?v=' . time(),
+        ]);
+    }
+
+    /**
+     * Delete a single logo via AJAX.
+     */
+    public function deleteLogo(Request $request)
+    {
+        $request->validate([
+            'field' => 'required|in:logo,logo_login,logo_booking',
+        ]);
+
+        $tenant = tenant();
+        if (!$tenant) {
+            return response()->json(['error' => 'Tenant not found.'], 404);
+        }
+
+        $field = $request->input('field');
+        $keyMap = [
+            'logo' => 'logo_base64',
+            'logo_login' => 'logo_login_base64',
+            'logo_booking' => 'logo_booking_base64'
+        ];
+
+        try {
+            DB::table('branding_settings')->where('key', $keyMap[$field])->delete();
+            \App\Services\TenantBrandingService::forget($keyMap[$field]);
+        } catch (\Exception $e) {
+            // Ignore if row doesn't exist
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**

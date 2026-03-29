@@ -207,4 +207,29 @@ class FeatureOTAUpdateService
         return \Illuminate\Support\Facades\Bus::batch($jobs)
             ->name("Feature Push: {$feature->name}");
     }
+
+    /**
+     * Push ALL features for a specific plan to a SINGLE tenant.
+     * Used when an administrator manually updates a tenant's plan.
+     */
+    public function pushTenantPlanUpdates(\App\Models\Tenant $tenant, \App\Models\SubscriptionPlan $plan): void
+    {
+        // 1. Get all features attached to the plan
+        $features = $plan->getLoadedFeatures();
+        if ($features->isEmpty()) {
+            Log::warning("No features found for plan [{$plan->name}] while updating tenant [{$tenant->id}].");
+            return;
+        }
+
+        // 2. Dispatch a job for this specific tenant
+        // We do this sync if it's a single tenant to ensure immediate availability
+        \App\Jobs\ProcessTenantFeatureUpdateJob::dispatch(
+            $tenant,
+            $plan,
+            $features->all(),
+            false // Not an advertisement
+        );
+
+        Log::info("Dispatched single-tenant plan features update for tenant [{$tenant->id}] to plan [{$plan->name}].");
+    }
 }

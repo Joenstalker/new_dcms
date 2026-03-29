@@ -709,6 +709,7 @@ class RegistrationController extends Controller
                 'billing_cycle'        => $billingCycle,
                 'payment_status'       => $status === 'active' ? 'paid' : 'unpaid',
                 'billing_cycle_end'    => $endsAt,
+                'payment_method'       => 'card', // Revert to Stripe managed
             ]);
 
             // Notify Admin
@@ -752,6 +753,12 @@ class RegistrationController extends Controller
             
             if (!$subscription) {
                 Log::warning("Webhook deleted: Subscription not found for Stripe ID: {$stripeSubscriptionId}");
+                return;
+            }
+
+            // Guard: If plan was manually overridden by admin, ignore Stripe deletion
+            if ($subscription->payment_method === 'admin_override') {
+                Log::info("Webhook ignored: Subscription {$stripeSubscriptionId} was deleted in Stripe but is currently under Admin Override.");
                 return;
             }
 
