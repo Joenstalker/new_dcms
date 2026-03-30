@@ -724,9 +724,9 @@ onUnmounted(() => {
                         <div id="login-recaptcha-container" class="inline-block"></div>
                     </div>
 
-                    <div class="pt-2">
+                    <div class="pt-2 flex justify-center">
                         <PrimaryButton
-                            class="w-full justify-center py-3 text-sm font-bold bg-[#2B7CB3] hover:bg-[#24699A] focus:bg-[#24699A] active:bg-[#1e5a82] transition-all duration-300 flex items-center justify-center gap-2"
+                            class="w-full max-w-[320px] justify-center py-3 text-sm font-bold bg-[#2B7CB3] hover:bg-[#24699A] focus:bg-[#24699A] active:bg-[#1e5a82] transition-all duration-300 flex items-center justify-center gap-2"
                             :class="{ 'opacity-75 cursor-wait': form.processing || isGoogleLoading }"
                             :disabled="form.processing || isGoogleLoading"
                         >
