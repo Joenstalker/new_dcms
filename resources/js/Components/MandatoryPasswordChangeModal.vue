@@ -6,6 +6,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     show: {
@@ -71,8 +72,23 @@ const updatePassword = () => {
         preserveScroll: true,
         onSuccess: () => {
             passwordForm.reset();
-            // Wait for Inertia to finish and update props, then reload to landing page
-            window.location.reload(); 
+            
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                }
+            });
+
+            Toast.fire({
+                icon: 'success',
+                title: 'Password updated successfully!'
+            });
         },
         onError: () => {
             if (passwordForm.errors.password) {

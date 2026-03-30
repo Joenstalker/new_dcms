@@ -1,34 +1,38 @@
-# Mandatory Password Change for New Tenants and Staff
+# Custom Branding - Auto-Save and Image Optimization
 
 ## Objective
-Enforce a mandatory password change for new tenants (Clinic Owners) and new staff (Dentists, Assistants) upon their first login. The users must be prompted with a modal to change their password before they can access their landing page. The new password must pass strength requirements (min 10 chars, uppercase, lowercase, numbers, special characters).
+Implement auto-save functionality for the Custom Branding settings page, eliminating the need to manually click "Save Configuration". Concurrently, resolve a memory exhaustion issue where large Base64-encoded strings for landing page section images inside `landing_page_config` exceed PHP's memory limit.
 
 ## Proposed Changes
 
-### 1. Database & Model
-- **Create Migration**: `add_requires_password_change_to_users_table.php` to add a boolean column `requires_password_change` (default `false`) to the `users` table.
-- **Update Model**: Add `requires_password_change` to the `$fillable` and `$casts` arrays in `app/Models/User.php`.
+### Phase 1: Landing Page Image Optimization (Memory Exhaustion Fix)
+- **Backend (`app/Http/Controllers/Tenant/SettingsController.php` & `routes/tenant.php`)**:
+  - Add an endpoint `POST /settings/landing-images` to handle binary image uploads for landing page sections.
+  - Implement a method to store these images as binary BLOBs using `TenantBrandingService::setStreamed()`.
+  - Add a dedicated serve method (e.g., `serveLandingImage()`) to stream the binary data to the frontend, mirroring the existing `serveLogo()` method.
+- **Backend (`app/Http/Controllers/Tenant/SettingsController.php`)**:
+  - Remove `landing_page_config` from the duplicated `tenant->data` JSON column when updating the settings to prevent doubling the memory payload.
+- **Frontend (`resources/js/Pages/tenant/CustomBranding/Partials/LandingPageCustomizer.vue`)**:
+  - Update image upload handlers to:
+    1. Resize images client-side to a max width (like logos currently do).
+    2. Upload to the new endpoint `POST /settings/landing-images` using standard `FormData` file uploads (Multipart).
+    3. Update `form.landing_page_config.sections[section].image` with the generated streaming URL (e.g., `/settings/landing-image/...`) instead of raw Base64 strings.
 
-### 2. Account Creation Flow
-- **Tenant Approval (`Admin\PendingRegistrationController@approve`)**: When creating the `Owner` user inside the tenant context, set `requires_password_change => true`.
-- **Staff Creation (`StaffController@store`)**: When creating a new staff member, set `requires_password_change => true`.
-
-### 3. Backend Logic & Middleware
-- **Middleware**: Create `EnsurePasswordIsChanged` middleware. If `auth()->check()` and `auth()->user()->requires_password_change` is true, redirect all requests (except `logout`, `password.update`, and frontend page loads if handled via modal) or share a prop.
-- **Inertia Shared Props**: Update `HandleInertiaRequests.php` to share `requires_password_change` so the frontend knows when to trigger the modal globally.
-- **Password Update Endpoint**: Use the existing `PasswordController` or create a new endpoint that:
-  - Validates the new password with strong rules (`min:10`, `mixedCase`, `letters`, `numbers`, `symbols`).
-  - Updates the password.
-  - Sets `requires_password_change = false`.
-
-### 4. Frontend Implementation
-- **Component**: Create `resources/js/Components/MandatoryPasswordChangeModal.vue` based on `AccountSettingsModal.vue`.
-  - Set it as uncloseable (no "X" button, no click-outside-to-close).
-  - Include Current Password field (autofilled or required to type if not possible to autofill securely, though the prompt says "autofill the generated password" - we might need to pass the generated password via session flush on first login, or just leave it blank if they already logged in with it. Wait, the prompt says "autofill the generated password" - if they just logged in, they know it, but we can't retrieve the raw password from DB. If it's literally autofilled, we might just require New Password and Confirm Password, or accept the current password if they type it. *Note: We will clarify this in implementation, typically we just ask for New and Confirm if forced by admin, or ask for Current if standard.*)
-  - Include Password Strength Indicator.
-- **Global Layout**: Inject the modal into the main tenant layout (e.g., `TenantLayout.vue` or `AuthenticatedLayout.vue`). It will automatically show if `page.props.auth.requires_password_change` is true.
+### Phase 2: Form Auto-Save
+- **Frontend (`resources/js/Pages/tenant/CustomBranding/Index.vue`)**:
+  - Replace the manual "Save Configuration" button with subtle "Saving..." / "All changes saved" UI indicators.
+  - Add a deeply debounced `watch` (~1000-1500ms) on the Inertia `form` object.
+  - Automatically fire an Inertia `post` or a manual Axios request (if avoiding full page lifecycle is preferred) on content change.
+  - Ensure image uploads in child components (like `LandingPageCustomizer.vue` and `ClinicBranding.vue`) securely trigger saves or update states correctly without interfering with text uploads.
 
 ## Verification Plan
-1. **Tenant Testing**: Register a new tenant, approve as admin. Log in as the new tenant. Verify the modal appears, cannot be dismissed, and requires a strong password. Upon success, verify the flag is cleared and the landing page is accessible.
-2. **Staff Testing**: Log in as Owner, create a new Dentist. Log in as the Dentist. Verify the same modal behavior.
-3. **Security Testing**: Attempt to navigate to other URLs or make API requests while `requires_password_change` is true to ensure the middleware blocks them.
+
+### Automated Tests
+- Run `lint_runner.py` after writing the components.
+- Run `security_scan.py` to ensure uploading processes are secured.
+
+### Manual Verification
+1. **Memory Limits Check**: Upload exceptionally large images (5MB+ per image) across the 3 landing page sections simultaneously and verify that PHP does not throw the 1GB memory exhaustion error.
+2. **Database Integrity**: Inspect `tenant_brandings` and `tenants.data` to confirm the JSON columns no longer encapsulate massive Base64 strings, ensuring only paths/URLs are stored in JSON.
+3. **Auto-Save Functionality**: Modify diverse inputs (text inputs, color pickers, and checkboxes like QR Booking) on the Custom Branding page. Check that a non-intrusive UI indicates successful saving and the page accurately reflects updates on refresh without manual saves action.
+4. **Rendering**: Ensure the landing page and portal visually display the successfully streamed landing page images to guests/patients.
