@@ -4,6 +4,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import ProfileDropdown from '@/Components/ProfileDropdown.vue';
+import MandatoryPasswordChangeModal from '@/Components/MandatoryPasswordChangeModal.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import { brandingState } from '@/States/brandingState';
@@ -672,6 +673,8 @@ function getContrastColor(hex) {
                 </div>
             </aside>
         </div>
+        
+        <MandatoryPasswordChangeModal />
     </div>
 </template>
 

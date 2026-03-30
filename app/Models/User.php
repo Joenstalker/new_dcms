@@ -31,6 +31,7 @@ class User extends Authenticatable
         'profile_picture',
         'notification_preferences',
         'working_hours',
+        'requires_password_change',
     ];
 
     /**
@@ -56,6 +57,7 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'notification_preferences' => 'array',
             'working_hours' => 'array',
+            'requires_password_change' => 'boolean',
         ];
     }
 

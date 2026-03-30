@@ -390,6 +390,7 @@ class TenantController extends Controller
                 'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
                 'email' => $pendingRegistration->email,
                 'password' => Hash::make($pendingRegistration->password),
+                'requires_password_change' => true,
             ]);
 
             // Assign Owner role
@@ -566,6 +567,7 @@ class TenantController extends Controller
                             'name' => $registration->first_name . ' ' . $registration->last_name,
                             'email' => $registration->email,
                             'password' => Hash::make($registration->password),
+                            'requires_password_change' => true,
                         ]);
                         
                         // Assign Owner role

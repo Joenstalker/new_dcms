@@ -39,6 +39,7 @@ class StaffController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => bcrypt($randomPassword),
+            'requires_password_change' => true,
         ]);
 
         $user->assignRole($request->role);

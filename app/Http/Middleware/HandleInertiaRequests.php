@@ -48,6 +48,7 @@ class HandleInertiaRequests extends Middleware
                     'profile_picture_url' => $request->user()->profile_picture_url,
                     'roles' => $request->user()->getRoleNames()->toArray(),
                     'permissions' => $request->user()->getAllPermissions()->pluck('name')->toArray(),
+                    'requires_password_change' => (bool)$request->user()->requires_password_change,
                 ] : null,
             ],
             'config' => [
