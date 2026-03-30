@@ -144,6 +144,7 @@ class PendingRegistrationController extends Controller
                     'name' => $pendingRegistration->clinic_name,
                     'owner_name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
                     'status' => 'active',
+                    'enabled_features' => \App\Models\Tenant::getDefaultFeatures(),
                     'email' => $pendingRegistration->email,
                     'phone' => $pendingRegistration->phone,
                     'street' => $pendingRegistration->street,
@@ -208,7 +209,10 @@ class PendingRegistrationController extends Controller
                 tenancy()->end();
 
                 // Now update status to active
-                $tenant->update(['status' => 'active']);
+                $tenant->update([
+                    'status' => 'active',
+                    'enabled_features' => $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures(),
+                ]);
             }
 
             // Update pending registration status

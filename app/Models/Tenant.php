@@ -146,6 +146,11 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             if (empty($tenant->status)) {
                 $tenant->status = self::STATUS_ACTIVE;
             }
+
+            // Set default enabled features
+            if (empty($tenant->enabled_features)) {
+                $tenant->enabled_features = self::getDefaultFeatures();
+            }
         });
     }
 

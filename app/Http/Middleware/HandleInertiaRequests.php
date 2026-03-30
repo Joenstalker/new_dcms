@@ -69,7 +69,7 @@ class HandleInertiaRequests extends Middleware
                     'branding_color' => $branding['primary_color'] ?? $tenant->branding_color,
                     'font_family' => $branding['font_family'] ?? $tenant->font_family,
                     'portal_config' => $branding['portal_config'] ?? $tenant->portal_config,
-                    'enabled_features' => $branding['enabled_features'] ?? $tenant->enabled_features,
+                    'enabled_features' => $branding['enabled_features'] ?? $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures(),
                     'is_premium' => $tenant->canCustomizeBranding(),
                 ]);
             },

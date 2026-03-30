@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed, watch, inject } from 'vue';
+import { computed, watch, inject, ref } from 'vue';
 import Swal from 'sweetalert2';
 
 import ClinicBranding from './Partials/ClinicBranding.vue';
@@ -72,27 +72,24 @@ watch(() => form.branding_color, (newColor) => {
     }
 }, { immediate: true });
 
-const submit = () => {
-    // Transform arrays into JSON strings to protect them during multipart/form-data submission
-    // This prevents Laravel validation errors like "must be an array" on multipart requests
+const isSaving = ref(false);
+const hasUnsavedChanges = ref(false);
+let saveTimeout = null;
+
+const autoSave = () => {
+    isSaving.value = true;
+    hasUnsavedChanges.value = false;
+    
     form.post('/settings', { 
         preserveScroll: true,
+        preserveState: true,
         forceFormData: true,
         onSuccess: () => {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Configuration saved successfully!',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-                customClass: {
-                    popup: 'colored-toast'
-                }
-            });
+            isSaving.value = false;
         },
         onError: (errors) => {
+            isSaving.value = false;
+            hasUnsavedChanges.value = true;
             const errorList = Object.values(errors).map(msg => `<li class="text-left text-xs mb-1">${msg}</li>`).join('');
             Swal.fire({
                 title: 'Validation Error',
@@ -104,6 +101,14 @@ const submit = () => {
         }
     });
 };
+
+watch(() => form.data(), () => {
+    hasUnsavedChanges.value = true;
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+        autoSave();
+    }, 1500);
+}, { deep: true });
 
 // Also catch session flash errors natively
 watch(() => usePage().props.flash, (flash) => {
@@ -132,7 +137,7 @@ watch(() => usePage().props.flash, (flash) => {
         </template>
 
         <div class="mt-6">
-            <form @submit.prevent="submit" class="space-y-6">
+            <form @submit.prevent class="space-y-6">
                 <!-- Tabs Navigation -->
                 <div class="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4 overflow-x-auto no-scrollbar">
                     <button 
@@ -253,16 +258,18 @@ watch(() => usePage().props.flash, (flash) => {
                     <FeatureSettings :form="form" />
                 </div>
 
-                <!-- Save Button (always shown) -->
-                <div class="flex justify-end pt-4">
-                    <button 
-                        type="submit" 
-                        :disabled="form.processing" 
-                        class="px-8 py-4 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-lg hover:shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
-                        :style="{ backgroundColor: form.branding_color }"
-                    >
-                        {{ form.processing ? 'Saving...' : 'Save Configuration' }}
-                    </button>
+                <!-- Auto-Save Status Indicator -->
+                <div class="fixed bottom-6 right-6 z-50 animate-fade-in-up">
+                    <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-4 py-3 rounded-2xl shadow-xl backdrop-blur-md transition-all duration-300" 
+                         :class="isSaving ? 'text-primary bg-primary/10 border border-primary/20' : (hasUnsavedChanges ? 'text-warning bg-warning/10 border border-warning/20' : 'text-success bg-success/10 border border-success/20')">
+                        <span v-if="isSaving" class="loading loading-spinner loading-xs"></span>
+                        <span v-else-if="hasUnsavedChanges" class="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
+                        <span v-else class="w-2 h-2 rounded-full bg-success"></span>
+                        
+                        <span v-if="isSaving">Saving changes...</span>
+                        <span v-else-if="hasUnsavedChanges">Unsaved changes</span>
+                        <span v-else>All changes saved</span>
+                    </div>
                 </div>
             </form>
         </div>

@@ -603,10 +603,12 @@ function getContrastColor(hex) {
                 </div>
 
                 <!-- Navigation Categories -->
-                <nav class="flex-1 px-4 py-4 space-y-4 overflow-y-auto custom-scrollbar">
-                    <div v-for="category in menuCategories" :key="category.title">
-                        <h3 class="px-5 mb-2 text-[10px] font-black text-base-content/20 uppercase tracking-[0.25em]">{{ category.title }}</h3>
-                        <div class="space-y-1.5">
+                <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+                    <template v-for="(category, catIdx) in menuCategories" :key="category.title">
+                        <!-- Add a subtle visual separation between logical groups, but much more compact than words -->
+                        <div v-if="catIdx > 0 && category.items.length > 0" class="h-3"></div>
+                        
+                        <div class="space-y-1">
                             <Link 
                                 v-for="item in category.items" 
                                 :key="item.name"
@@ -637,7 +639,7 @@ function getContrastColor(hex) {
                                 </div>
                             </Link>
                         </div>
-                    </div>
+                    </template>
                 </nav>
 
                 <!-- User Footer -->

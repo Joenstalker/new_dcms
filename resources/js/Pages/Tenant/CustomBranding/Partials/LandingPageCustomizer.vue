@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, reactive } from 'vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     form: {
@@ -14,6 +15,12 @@ const props = defineProps({
         type: Boolean,
         default: false
     }
+});
+
+const uploading = reactive({
+    services: false,
+    team: false,
+    contact: false,
 });
 
 // Multi-stage initialization to ensure deeply nested objects exist for v-model
@@ -44,24 +51,124 @@ const initConfig = () => {
 
 initConfig();
 
-const handleFileChange = (e, section) => {
-    const file = e.target.files[0];
-    if (file) {
-        // Convert to Base64 for dynamic saving as requested
+const resizeImage = (file, maxWidth = 1600, maxHeight = 1600) => {
+    return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = (event) => {
-            props.form.landing_page_config.sections[section].image = event.target.result;
+        reader.onerror = () => reject(new Error('Failed to read the file.'));
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onerror = () => reject(new Error('Cannot read image: the file may be corrupted or in an unsupported format.'));
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth || height > maxHeight) {
+                    if (width > height) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    } else {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        reject(new Error('Failed to process the image.'));
+                        return;
+                    }
+                    resolve(new File([blob], file.name, {
+                        type: file.type,
+                        lastModified: Date.now(),
+                    }));
+                }, file.type, 0.9);
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
+    });
+};
+
+const handleFileChange = async (e, section) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    uploading[section] = true;
+
+    try {
+        let uploadFile = file;
+        if (file.type.startsWith('image/')) {
+            try {
+                uploadFile = await resizeImage(file, 1600, 1600);
+            } catch (resizeErr) {
+                console.warn('Resize failed, uploading original:', resizeErr.message);
+            }
+        }
+
+        const formData = new FormData();
+        const fieldMap = {
+            services: 'landing_services',
+            team: 'landing_team',
+            contact: 'landing_contact'
+        };
+        formData.append('field', fieldMap[section]);
+        formData.append('image', uploadFile);
+
+        const response = await fetch('/settings/logo', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'Accept': 'application/json',
+            },
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Upload failed');
+        }
+
+        // Apply newly generated streaming route URL
+        props.form.landing_page_config.sections[section].image = result.url;
+
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: `Image uploaded successfully!`,
+            showConfirmButton: false,
+            timer: 2000,
+        });
+
+    } catch (error) {
+        console.error('Image upload error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Upload Failed',
+            text: error.message || 'Could not upload the image. Please try again.',
+        });
+    } finally {
+        uploading[section] = false;
+        e.target.value = '';
     }
 };
 
 const getPreviewUrl = (section) => {
     const imgData = props.form.landing_page_config?.sections?.[section]?.image;
-    if (imgData && typeof imgData === 'string' && imgData.startsWith('data:image')) {
+    if (!imgData) return null;
+    
+    // Support all variations of previously or newly saved imagery
+    if (imgData.startsWith('data:image/') || imgData.startsWith('http') || imgData.startsWith('/settings/')) {
         return imgData;
     }
-    return imgData ? '/tenant-storage/' + imgData : null;
+    return '/tenant-storage/' + imgData;
 };
 </script>
 
@@ -128,10 +235,13 @@ const getPreviewUrl = (section) => {
                     <div v-if="form.landing_page_config.sections.services.active" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                         <div class="form-control">
                             <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Feature Image</span></label>
-                            <div class="h-32 bg-base-200 rounded-2xl border border-dashed border-base-300 flex items-center justify-center relative group overflow-hidden">
+                            <div class="h-32 bg-base-200 rounded-2xl border border-dashed border-base-300 flex items-center justify-center relative group overflow-hidden" :class="{ 'pointer-events-none': uploading.services }">
+                                <div v-if="uploading.services" class="absolute inset-0 flex items-center justify-center bg-base-200/80 z-10">
+                                    <span class="loading loading-spinner text-primary"></span>
+                                </div>
                                 <img v-if="getPreviewUrl('services')" :src="getPreviewUrl('services')" class="w-full h-full object-cover">
                                 <span v-else class="text-[10px] opacity-40 font-black uppercase tracking-widest">Click to upload image</span>
-                                <input type="file" @change="handleFileChange($event, 'services')" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <input type="file" accept="image/*" @change="handleFileChange($event, 'services')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.services">
                             </div>
                         </div>
                         <div class="flex items-center">
@@ -153,10 +263,13 @@ const getPreviewUrl = (section) => {
                     <div v-if="form.landing_page_config.sections.team.active" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                          <div class="form-control">
                             <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Team Banner Image</span></label>
-                            <div class="h-32 bg-base-200 rounded-2xl border border-dashed border-base-300 flex items-center justify-center relative group overflow-hidden">
+                            <div class="h-32 bg-base-200 rounded-2xl border border-dashed border-base-300 flex items-center justify-center relative group overflow-hidden" :class="{ 'pointer-events-none': uploading.team }">
+                                <div v-if="uploading.team" class="absolute inset-0 flex items-center justify-center bg-base-200/80 z-10">
+                                    <span class="loading loading-spinner text-primary"></span>
+                                </div>
                                 <img v-if="getPreviewUrl('team')" :src="getPreviewUrl('team')" class="w-full h-full object-cover">
                                 <span v-else class="text-[10px] opacity-40 font-black uppercase tracking-widest">Click to upload image</span>
-                                <input type="file" @change="handleFileChange($event, 'team')" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <input type="file" accept="image/*" @change="handleFileChange($event, 'team')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.team">
                             </div>
                         </div>
                         <div class="flex items-center">
@@ -178,10 +291,13 @@ const getPreviewUrl = (section) => {
                     <div v-if="form.landing_page_config.sections.contact.active" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                          <div class="form-control">
                             <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Contact Support Image</span></label>
-                            <div class="h-32 bg-base-200 rounded-2xl border border-dashed border-base-300 flex items-center justify-center relative group overflow-hidden">
+                            <div class="h-32 bg-base-200 rounded-2xl border border-dashed border-base-300 flex items-center justify-center relative group overflow-hidden" :class="{ 'pointer-events-none': uploading.contact }">
+                                <div v-if="uploading.contact" class="absolute inset-0 flex items-center justify-center bg-base-200/80 z-10">
+                                    <span class="loading loading-spinner text-primary"></span>
+                                </div>
                                 <img v-if="getPreviewUrl('contact')" :src="getPreviewUrl('contact')" class="w-full h-full object-cover">
                                 <span v-else class="text-[10px] opacity-40 font-black uppercase tracking-widest">Click to upload image</span>
-                                <input type="file" @change="handleFileChange($event, 'contact')" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <input type="file" accept="image/*" @change="handleFileChange($event, 'contact')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.contact">
                             </div>
                         </div>
                         <div class="flex items-center">

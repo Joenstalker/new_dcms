@@ -505,6 +505,7 @@ class RegistrationController extends Controller
                     'city'       => $pendingRegistration->city,
                     'province'   => $pendingRegistration->province,
                     'status'     => 'pending',
+                    'enabled_features' => \App\Models\Tenant::getDefaultFeatures(),
                 ]);
             }
 

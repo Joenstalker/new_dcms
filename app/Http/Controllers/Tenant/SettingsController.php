@@ -41,7 +41,6 @@ class SettingsController extends Controller
             });
 
         return Inertia::render('Tenant/Settings/Index', [
-            'tenant' => $tenant,
             'days_remaining' => $subscription ? $subscription->days_remaining : null,
             'current_plan_id' => $subscription?->subscription_plan_id,
             'payment_method' => $subscription?->payment_method,
@@ -110,6 +109,8 @@ class SettingsController extends Controller
                 'branding_color' => $branding['primary_color'] ?? $tenant->branding_color,
                 'font_family' => $branding['font_family'] ?? $tenant->font_family,
                 'portal_config' => $branding['portal_config'] ?? $tenant->portal_config,
+                'enabled_features' => $branding['enabled_features'] ?? $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures(),
+                'landing_page_config' => $branding['landing_page_config'] ?? $tenant->landing_page_config ?? null,
                 'operating_hours' => $branding['operating_hours'] ?? $tenant->getOperatingHoursWithDefaults(),
                 'online_booking_enabled' => $branding['online_booking_enabled'] ?? $tenant->isOnlineBookingEnabled(),
                 'logo_path' => $branding['logo_base64'] ?? $tenant->logo_path,
@@ -317,7 +318,6 @@ class SettingsController extends Controller
         if (isset($validated['branding_color'])) $data['branding_color'] = $validated['branding_color'];
         if (isset($validated['font_family'])) $data['font_family'] = $validated['font_family'];
         if (isset($validated['portal_config'])) $data['portal_config'] = $validated['portal_config'];
-        if (isset($validated['landing_page_config'])) $data['landing_page_config'] = $validated['landing_page_config'];
         if (isset($validated['operating_hours'])) $data['operating_hours'] = $validated['operating_hours'];
         if (array_key_exists('online_booking_enabled', $validated)) $data['online_booking_enabled'] = $validated['online_booking_enabled'];
         
@@ -342,7 +342,7 @@ class SettingsController extends Controller
     public function uploadLogo(Request $request)
     {
         $request->validate([
-            'field' => 'required|in:logo,logo_login,logo_booking',
+            'field' => 'required|in:logo,logo_login,logo_booking,landing_services,landing_team,landing_contact',
             'image' => 'required|image|mimes:jpeg,png,gif,webp,svg|max:2048',
         ]);
 
@@ -368,7 +368,10 @@ class SettingsController extends Controller
         $keyMap = [
             'logo' => 'logo_base64',
             'logo_login' => 'logo_login_base64',
-            'logo_booking' => 'logo_booking_base64'
+            'logo_booking' => 'logo_booking_base64',
+            'landing_services' => 'landing_image_services',
+            'landing_team' => 'landing_image_team',
+            'landing_contact' => 'landing_image_contact',
         ];
 
         \App\Services\TenantBrandingService::setStreamed($keyMap[$field], $file->path());
@@ -385,7 +388,7 @@ class SettingsController extends Controller
     public function deleteLogo(Request $request)
     {
         $request->validate([
-            'field' => 'required|in:logo,logo_login,logo_booking',
+            'field' => 'required|in:logo,logo_login,logo_booking,landing_services,landing_team,landing_contact',
         ]);
 
         $tenant = tenant();
@@ -397,7 +400,10 @@ class SettingsController extends Controller
         $keyMap = [
             'logo' => 'logo_base64',
             'logo_login' => 'logo_login_base64',
-            'logo_booking' => 'logo_booking_base64'
+            'logo_booking' => 'logo_booking_base64',
+            'landing_services' => 'landing_image_services',
+            'landing_team' => 'landing_image_team',
+            'landing_contact' => 'landing_image_contact',
         ];
 
         try {
