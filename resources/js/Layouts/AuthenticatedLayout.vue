@@ -675,13 +675,6 @@ function getContrastColor(hex) {
                             </svg>
                         </button>
                     </div>
-
-                    <!-- System Version -->
-                    <div class="mt-4 pt-4 border-t border-base-300/10 flex justify-center">
-                        <span class="text-[9px] font-black tracking-[0.2em] opacity-10 hover:opacity-100 transition-opacity cursor-default uppercase">
-                            DCMS {{ $page.props.config?.version || 'v1.0.0' }}
-                        </span>
-                    </div>
                 </div>
             </aside>
         </div>
