@@ -46,6 +46,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'online_booking_enabled',
         'qr_code_path',
         'storage_used_bytes',
+        'bandwidth_used_bytes',
     ];
 
     /**
@@ -60,6 +61,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'operating_hours' => 'json',
         'online_booking_enabled' => 'boolean',
         'storage_used_bytes' => 'integer',
+        'bandwidth_used_bytes' => 'integer',
     ];
 
     /**

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
 import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const props = defineProps({
     show: {
@@ -30,13 +31,34 @@ const form = ref({
 
 const activeTab = ref('general');
 const isProcessing = ref(false);
+const isLoadingUsage = ref(false);
 
-const tabs = [
-    { id: 'general', label: 'General', icon: 'clipboard-list' },
-    { id: 'billing', label: 'Usage & Billing', icon: 'credit-card' },
-    { id: 'advanced', label: 'Technical Details', icon: 'cpu-chip' },
-    { id: 'contact', label: 'Contact Info', icon: 'phone' },
-];
+const usageData = ref({
+    storage_used_mb: props.tenant?.storage_used_mb || 0,
+    max_storage_mb: props.tenant?.max_storage_mb || 500,
+    bandwidth_used_mb: props.tenant?.bandwidth_used_mb || 0,
+    max_bandwidth_mb: props.tenant?.max_bandwidth_mb || 2048,
+});
+
+const fetchUsageStats = async () => {
+    if (!props.tenant?.id) return;
+    
+    try {
+        isLoadingUsage.value = true;
+        const response = await axios.get(route('admin.tenants.usage', props.tenant.id));
+        usageData.value = response.data;
+    } catch (error) {
+        console.error('Failed to fetch usage stats:', error);
+    } finally {
+        isLoadingUsage.value = false;
+    }
+};
+
+watch(activeTab, (newTab) => {
+    if (newTab === 'billing') { // 'billing' is the ID for 'Usage & Billing'
+        fetchUsageStats();
+    }
+});
 
 watch(() => props.tenant, (newTenant) => {
     if (newTenant) {
@@ -48,8 +70,23 @@ watch(() => props.tenant, (newTenant) => {
             reason: '',
             expiry_date: newTenant.ends_at || '',
         };
+
+        // Also update usage data baseline
+        usageData.value = {
+            storage_used_mb: newTenant.storage_used_mb || 0,
+            max_storage_mb: newTenant.max_storage_mb || 500,
+            bandwidth_used_mb: newTenant.bandwidth_used_bytes ? Math.round(newTenant.bandwidth_used_bytes / (1024 * 1024) * 100) / 100 : (newTenant.bandwidth_used_mb || 0),
+            max_bandwidth_mb: newTenant.max_bandwidth_mb || 2048,
+        };
     }
 }, { immediate: true });
+
+const tabs = [
+    { id: 'general', label: 'General', icon: 'clipboard-list' },
+    { id: 'billing', label: 'Usage & Billing', icon: 'credit-card' },
+    { id: 'advanced', label: 'Technical Details', icon: 'cpu-chip' },
+    { id: 'contact', label: 'Contact Info', icon: 'phone' },
+];
 
 const submit = () => {
     if (!form.value.reason || form.value.reason.length < 5) {
@@ -150,6 +187,12 @@ const getStorageColorClass = (percentage) => {
     if (percentage > 90) return 'bg-red-500';
     if (percentage > 70) return 'bg-yellow-500';
     return 'bg-teal-500';
+};
+
+const getBandwidthColorClass = (percentage) => {
+    if (percentage > 90) return 'bg-red-500';
+    if (percentage > 70) return 'bg-orange-500';
+    return 'bg-primary';
 };
 </script>
 
@@ -258,28 +301,70 @@ const getStorageColorClass = (percentage) => {
                                     </div>
 
                                     <!-- Storage Details -->
-                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50">
-                                        <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-4">Storage Metrics</h4>
+                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50 transition-all duration-300" :class="{ 'opacity-50 grayscale-[0.5]': isLoadingUsage }">
+                                        <div class="flex justify-between items-center mb-4">
+                                            <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em]">Storage Metrics</h4>
+                                            <div v-if="isLoadingUsage" class="flex items-center gap-1.5">
+                                                <div class="w-1 h-1 rounded-full bg-teal-500 animate-bounce"></div>
+                                                <div class="w-1 h-1 rounded-full bg-teal-500 animate-bounce [animation-delay:0.2s]"></div>
+                                                <span class="text-[9px] font-black text-teal-600 uppercase tracking-tighter">Syncing</span>
+                                            </div>
+                                        </div>
                                         <div class="space-y-5">
                                             <div class="flex items-end justify-between">
                                                 <div>
-                                                    <span class="text-3xl font-black text-base-content">{{ tenant.storage_used_mb || 0 }}</span>
+                                                    <span class="text-3xl font-black text-base-content">{{ usageData.storage_used_mb || 0 }}</span>
                                                     <span class="text-xs font-bold text-base-content/40 ml-1">MB</span>
                                                 </div>
                                                 <div class="text-[10px] font-black text-base-content/30 uppercase tracking-widest text-right">
-                                                    LIMIT: {{ tenant.max_storage_mb || 500 }} MB
+                                                    LIMIT: {{ usageData.max_storage_mb || 500 }} MB
                                                 </div>
                                             </div>
                                             <div class="space-y-2">
                                                 <div class="w-full bg-base-300 h-3 rounded-full overflow-hidden">
                                                     <div class="h-full transition-all duration-1000 rounded-full" 
-                                                        :class="getStorageColorClass(getStoragePercentage(tenant.storage_used_mb, tenant.max_storage_mb))"
-                                                        :style="{ width: getStoragePercentage(tenant.storage_used_mb, tenant.max_storage_mb) + '%' }"
+                                                        :class="getStorageColorClass(getStoragePercentage(usageData.storage_used_mb, usageData.max_storage_mb))"
+                                                        :style="{ width: getStoragePercentage(usageData.storage_used_mb, usageData.max_storage_mb) + '%' }"
                                                     ></div>
                                                 </div>
                                                 <div class="flex justify-between text-[10px] font-black tracking-tighter">
-                                                    <span class="text-base-content/50 uppercase">{{ getStoragePercentage(tenant.storage_used_mb, tenant.max_storage_mb) }}% UTILIZED</span>
-                                                    <span class="text-success uppercase">{{ Math.max(0, (tenant.max_storage_mb || 500) - (tenant.storage_used_mb || 0)).toFixed(1) }} MB FREE</span>
+                                                    <span class="text-base-content/50 uppercase">{{ getStoragePercentage(usageData.storage_used_mb, usageData.max_storage_mb) }}% UTILIZED</span>
+                                                    <span class="text-success uppercase">{{ Math.max(0, (usageData.max_storage_mb || 500) - (usageData.storage_used_mb || 0)).toFixed(1) }} MB FREE</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Bandwidth Details -->
+                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50 transition-all duration-300" :class="{ 'opacity-50 grayscale-[0.5]': isLoadingUsage }">
+                                        <div class="flex justify-between items-center mb-4">
+                                            <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em]">Monthly Bandwidth</h4>
+                                            <div v-if="isLoadingUsage" class="flex items-center gap-1.5">
+                                                <div class="w-1 h-1 rounded-full bg-primary animate-bounce"></div>
+                                                <div class="w-1 h-1 rounded-full bg-primary animate-bounce [animation-delay:0.2s]"></div>
+                                                <span class="text-[9px] font-black text-primary uppercase tracking-tighter">Syncing</span>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-5">
+                                            <div class="flex items-end justify-between">
+                                                <div>
+                                                    <span class="text-3xl font-black text-base-content">{{ (usageData.bandwidth_used_mb > 1024) ? (usageData.bandwidth_used_mb / 1024).toFixed(2) : (usageData.bandwidth_used_mb || 0) }}</span>
+                                                    <span class="text-xs font-bold text-base-content/40 ml-1">{{ (usageData.bandwidth_used_mb > 1024) ? 'GB' : 'MB' }}</span>
+                                                </div>
+                                                <div class="text-[10px] font-black text-base-content/30 uppercase tracking-widest text-right">
+                                                    CAP: {{ (usageData.max_bandwidth_mb / 1024).toFixed(1) }} GB
+                                                </div>
+                                            </div>
+                                            <div class="space-y-2">
+                                                <div class="w-full bg-base-300 h-3 rounded-full overflow-hidden">
+                                                    <div class="h-full transition-all duration-1000 rounded-full" 
+                                                        :class="getBandwidthColorClass(getStoragePercentage(usageData.bandwidth_used_mb, usageData.max_bandwidth_mb))"
+                                                        :style="{ width: getStoragePercentage(usageData.bandwidth_used_mb, usageData.max_bandwidth_mb) + '%' }"
+                                                    ></div>
+                                                </div>
+                                                <div class="flex justify-between text-[10px] font-black tracking-tighter">
+                                                    <span class="text-base-content/50 uppercase">{{ getStoragePercentage(usageData.bandwidth_used_mb, usageData.max_bandwidth_mb) }}% CONSUMED</span>
+                                                    <span class="text-primary uppercase">{{ Math.max(0, ((usageData.max_bandwidth_mb || 2048) - (usageData.bandwidth_used_mb || 0)) / 1024).toFixed(2) }} GB LEFT</span>
                                                 </div>
                                             </div>
                                         </div>

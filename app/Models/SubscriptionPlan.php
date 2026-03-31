@@ -30,6 +30,7 @@ class SubscriptionPlan extends Model
         'has_multi_branch',
         'report_level',
         'max_storage_mb',
+        'max_bandwidth_mb',
     ];
 
     /** @deprecated Use dynamic features pivot instead */
@@ -67,6 +68,7 @@ class SubscriptionPlan extends Model
         'has_priority_support' => 'boolean',
         'has_multi_branch' => 'boolean',
         'max_storage_mb' => 'integer',
+        'max_bandwidth_mb' => 'integer',
     ];
 
     public function subscriptions()

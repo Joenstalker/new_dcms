@@ -85,13 +85,17 @@ class TenantController extends Controller
                 $tenant->days_left = (int) max(0, ceil(Carbon::now()->diffInHours($expiry, false) / 24));
                 $tenant->ends_at = $expiry ? $expiry->toDateString() : null; // YYYY-MM-DD for frontend input
                 
-                // Storage
+                // Storage & Bandwidth
                 $tenant->max_storage_mb = $latestSubscription->plan->max_storage_mb ?? 500;
                 $tenant->storage_used_mb = round($tenant->storage_used_bytes / (1024 * 1024), 2);
+                $tenant->max_bandwidth_mb = $latestSubscription->plan->max_bandwidth_mb ?? 2048;
+                $tenant->bandwidth_used_mb = round($tenant->bandwidth_used_bytes / (1024 * 1024), 2);
             } else {
                 $tenant->days_left = 0;
                 $tenant->storage_used_mb = round($tenant->storage_used_bytes / (1024 * 1024), 2);
                 $tenant->max_storage_mb = 500;
+                $tenant->bandwidth_used_mb = round($tenant->bandwidth_used_bytes / (1024 * 1024), 2);
+                $tenant->max_bandwidth_mb = 2048;
                 $tenant->payment_method = 'N/A';
             }
 
@@ -320,6 +324,25 @@ class TenantController extends Controller
         $port = parse_url($appUrl, PHP_URL_PORT) ? ':' . parse_url($appUrl, PHP_URL_PORT) : '';
 
         return "{$scheme}://{$subdomain}.{$host}{$port}";
+    }
+
+    /**
+     * Get real-time usage stats for a specific tenant.
+     * Useful for auto-refreshing the dashboard or admin modals.
+     */
+    public function getUsageStats(Tenant $tenant): \Illuminate\Http\JsonResponse
+    {
+        $tenant->load(['subscriptions.plan']);
+        
+        $latestSubscription = $tenant->subscriptions->where('stripe_status', 'active')->last()
+            ?? $tenant->subscriptions->last();
+
+        return response()->json([
+            'storage_used_mb' => round($tenant->storage_used_bytes / (1024 * 1024), 2),
+            'max_storage_mb' => $latestSubscription->plan->max_storage_mb ?? 500,
+            'bandwidth_used_mb' => round($tenant->bandwidth_used_bytes / (1024 * 1024), 2),
+            'max_bandwidth_mb' => $latestSubscription->plan->max_bandwidth_mb ?? 2048,
+        ]);
     }
 
     /**

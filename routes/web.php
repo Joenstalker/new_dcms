@@ -93,6 +93,7 @@ $registerCentralRoutes = function ($withNames = false) {
                 $tenantsD->name('tenants.destroy');
                 $tenantsApprove->name('tenants.approve');
                 $tenantsReject->name('tenants.reject');
+                Route::get('/tenants/{tenant}/usage', [\App\Http\Controllers\Admin\TenantController::class, 'getUsageStats'])->name('tenants.usage');
             }
 
             // Pending Registrations Management
