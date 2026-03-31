@@ -13,7 +13,7 @@ class AppVersionService
      */
     public static function getVersion(): string
     {
-        $cacheFile = storage_path('framework/cache/app_version.json');
+        $cacheFile = base_path('storage/framework/cache/app_version.json');
         
         // Check if we have a valid cache file and it's less than 1 hour old
         if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 3600)) {
@@ -31,6 +31,12 @@ class AppVersionService
                 $data = $response->json();
                 if (!empty($data['tag_name'])) {
                     $version = $data['tag_name'];
+                    
+                    // Ensure the directory exists
+                    if (!is_dir(dirname($cacheFile))) {
+                        mkdir(dirname($cacheFile), 0755, true);
+                    }
+                    
                     // Save to local file cache
                     file_put_contents($cacheFile, json_encode(['version' => $version]));
                     return $version;
@@ -49,7 +55,7 @@ class AppVersionService
      */
     public static function clearCache(): void
     {
-        $cacheFile = storage_path('framework/cache/app_version.json');
+        $cacheFile = base_path('storage/framework/cache/app_version.json');
         if (file_exists($cacheFile)) {
             unlink($cacheFile);
         }
