@@ -55,6 +55,7 @@ class HandleInertiaRequests extends Middleware
                 'central_domain' => config('tenancy.central_domains.0', 'localhost'),
                 'app_url' => $request->getSchemeAndHttpHost(),
                 'recaptcha_site_key' => config('services.recaptcha.site_key', ''),
+                'version' => \App\Services\AppVersionService::getVersion(),
             ],
             'tenant' => function () {
                 $tenant = tenant();

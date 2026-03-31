@@ -672,6 +672,12 @@ function getContrastColor(hex) {
                             </svg>
                         </button>
                     </div>
+
+                    <div class="mt-4 pt-3 border-t border-base-300/50 flex justify-center">
+                        <span class="text-[10px] font-black tracking-widest text-base-content/30 hover:text-primary transition-colors cursor-default" :class="fonts.general">
+                            {{ page.props.tenant ? 'DCMS ' : 'App ' }}{{ page.props.config?.version || 'v1.0.0-dev' }}
+                        </span>
+                    </div>
                 </div>
             </aside>
         </div>
