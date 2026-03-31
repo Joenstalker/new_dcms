@@ -272,8 +272,11 @@ watch(() => page.props.flash, (flash) => {
             </main>
 
             <!-- Footer -->
-            <footer class="bg-base-100 border-t border-base-300 py-4 px-8">
-                <p class="text-[10px] text-center font-bold uppercase tracking-widest text-base-content/30">{{ footerText }}</p>
+            <footer class="bg-base-100 border-t border-base-300 py-4 px-8 flex items-center justify-between">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/30">{{ footerText }}</p>
+                <span class="text-[10px] font-black tracking-widest text-base-content/30 hover:text-primary transition-colors cursor-default">
+                    DCMS {{ page.props.config?.version || 'v1.0.0' }}
+                </span>
             </footer>
         </div>
 
@@ -393,12 +396,6 @@ watch(() => page.props.flash, (flash) => {
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
                             </svg>
                         </button>
-                    </div>
-
-                    <div class="mt-4 pt-3 border-t border-base-300/50 flex justify-center">
-                        <span class="text-[10px] font-black tracking-widest text-base-content/30 hover:text-primary transition-colors cursor-default">
-                            DCMS {{ page.props.config?.version || 'v1.0.0-dev' }}
-                        </span>
                     </div>
                 </div>
             </aside>
