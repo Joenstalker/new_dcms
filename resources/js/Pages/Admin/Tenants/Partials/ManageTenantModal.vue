@@ -54,7 +54,35 @@ const submit = () => {
         });
         return;
     }
-    emit('update', form.value);
+
+    Swal.fire({
+        title: 'Confirm Update',
+        text: 'Are you sure you want to save these changes? Whatever changes you did may affect or improve the tenant performance.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#0d9488',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, Update Changes',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            isProcessing.value = true;
+            
+            // Show Processing State
+            Swal.fire({
+                title: 'Processing...',
+                html: 'Updating clinic information, please wait.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            emit('update', form.value);
+        }
+    });
 };
 
 const confirmSuspend = () => {
@@ -100,21 +128,8 @@ const confirmSuspend = () => {
                 }
             });
 
-            // 3. Emit update (Mother component will handle the router.put)
-            try {
-                emit('update', form.value);
-                // Note: The modal usually closes via router.then/onSuccess in Index.vue
-                // but we keep the local status update just in case or for the brief moment before close.
-            } catch (error) {
-                // Revert on error
-                form.value.status = originalStatus;
-                isProcessing.value = false;
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Action Failed',
-                    text: 'An error occurred while updating the clinic status.'
-                });
-            }
+            // 3. Emit update
+            emit('update', form.value);
         }
     });
 };
