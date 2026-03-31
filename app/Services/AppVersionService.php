@@ -13,32 +13,45 @@ class AppVersionService
      */
     public static function getVersion(): string
     {
-        return Cache::remember('app_version', 3600, function () {
-            try {
-                // Fetch the latest release from the public repository
-                // We use a short timeout to ensure the app UI never hangs if GitHub is down
-                $response = Http::timeout(3)->get('https://api.github.com/repos/Joenstalker/new_dcms/releases/latest');
-                
-                if ($response->successful()) {
-                    $data = $response->json();
-                    if (!empty($data['tag_name'])) {
-                        return $data['tag_name'];
-                    }
-                }
-            } catch (\Exception $e) {
-                Log::error('Failed to get GitHub release version: ' . $e->getMessage());
+        $cacheFile = storage_path('framework/cache/app_version.json');
+        
+        // Check if we have a valid cache file and it's less than 1 hour old
+        if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 3600)) {
+            $data = json_decode(file_get_contents($cacheFile), true);
+            if (!empty($data['version'])) {
+                return $data['version'];
             }
+        }
 
-            // Graceful Degradation Fallback if the repo has 0 releases or GitHub is rate-limiting
-            return 'v1.0.0'; 
-        });
+        try {
+            // Fetch the latest release from the public repository
+            $response = Http::timeout(3)->get('https://api.github.com/repos/Joenstalker/new_dcms/releases/latest');
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                if (!empty($data['tag_name'])) {
+                    $version = $data['tag_name'];
+                    // Save to local file cache
+                    file_put_contents($cacheFile, json_encode(['version' => $version]));
+                    return $version;
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to get GitHub release version: ' . $e->getMessage());
+        }
+
+        // Graceful Degradation Fallback
+        return 'v1.0.0'; 
     }
 
     /**
-     * Clear the cached version. Call this during deployments or post-updates.
+     * Clear the cached version.
      */
     public static function clearCache(): void
     {
-        Cache::forget('app_version');
+        $cacheFile = storage_path('framework/cache/app_version.json');
+        if (file_exists($cacheFile)) {
+            unlink($cacheFile);
+        }
     }
 }
