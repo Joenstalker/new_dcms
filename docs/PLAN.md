@@ -1,22 +1,21 @@
-# Multi-Agent Orchestration Plan: App Versioning Display (API Edition)
+# Implementation Plan: SweetAlert on Admin Login
 
-**Context:**
-- **User Request:** Display the main application's current **GitHub Release Version** to all tenants in the sidebar.
-- **Decisions:** 
-  - **What:** The DCMS application's GitHub Release tag.
-  - **How:** Use Laravel's `Http` facade to GET `api.github.com/repos/Joenstalker/new_dcms/releases/latest`.
-  - **Fallback:** Graceful Degradation (`v1.0.0-dev`) if API limits are hit.
-  - **Cache:** 1 Hour cache to prevent rapid API consumption.
+**Goal:** Provide a visual SweetAlert success message when an administrator logs into the central domain.
 
-## Phase 1: Planning (Completed)
-- Transitioned from local `git rev-list` to professional Semantic Releases.
+## Current Architecture
+The application uses Laravel Inertia with Vue 3. 
+- **Backend:** `App\Http\Controllers\Auth\AuthenticatedSessionController` handles both tenant and central admin logins. Admin logins are redirected to `admin.dashboard`.
+- **Middleware:** `HandleInertiaRequests` automatically shares `$request->session()->get('success')` to Inertia frontend props (`page.props.flash.success`).
+- **Frontend:** `AdminLayout.vue` contains a global SweetAlert watcher that detects `page.props.flash.success` and fires a `Swal.fire` success toast automatically.
 
-## Phase 2: Implementation (Parallel Execution)
+## Proposed Changes
 
-### Agent 1: `backend-specialist` (Core Version Service)
-- Rewrite `AppVersionService.php` to use the GitHub API.
-- Catch HTTP exceptions gracefully to ensure the app never crashes.
+### `app/Http/Controllers/Auth/AuthenticatedSessionController.php`
+- Modify the admin redirect on successful login (lines 54-56).
+- Chain `->with('success', 'Admin login successful! Welcome back.')` to the `redirect()->intended(...)` response.
+- This will inject the flash message into the session, which is then picked up by `HandleInertiaRequests` and passed to `AdminLayout.vue`.
 
-### Agent 2: `test-engineer` (Verification)
-- Validate safety and performance.
-- Clear cache to execute tests.
+## Verification Details
+1. **Security:** No authentication logic is altered, only a flash message is added.
+2. **UX:** The SweetAlert will be a toast notification in the top-end, auto-dismissing after 3 seconds, matching existing platform styles.
+3. We will run `security_scan.py` and `lint_runner.py` after implementation as per the orchestration protocol.

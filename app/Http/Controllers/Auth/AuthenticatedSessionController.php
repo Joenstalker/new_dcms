@@ -52,7 +52,8 @@ class AuthenticatedSessionController extends Controller
         }
 
         Log::info('Redirecting to central dashboard');
-        return redirect()->intended(route('admin.dashboard', absolute: false));
+        return redirect()->intended(route('admin.dashboard', absolute: false))
+            ->with('success', 'Admin login successful! Welcome back.');
     }
 
     /**
