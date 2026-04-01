@@ -70,13 +70,16 @@ class TenantBrandingService
             $stmt->bindParam(2, $fp, \PDO::PARAM_LOB);
             $stmt->execute();
             
-            fclose($fp);
-            
-            // Clear cache for this key
-            unset(self::$cache[$key]);
-
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("TenantBrandingService setStreamed($key) Error: " . $e->getMessage());
+        } finally {
+            if (isset($fp) && is_resource($fp)) {
+                fclose($fp);
+            }
+            
+            // Clear cache for this key
+            self::$cache[$key] = null;
+            unset(self::$cache[$key]);
         }
     }
 

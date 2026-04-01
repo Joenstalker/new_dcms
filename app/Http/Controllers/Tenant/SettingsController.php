@@ -396,11 +396,13 @@ class SettingsController extends Controller
         
         $modelField = $modelMap[$storageKey] ?? null;
         if ($modelField) {
-            DB::connection('central')->table('tenants')
-                ->where('id', $tenant->id)
-                ->update([$modelField => $storageKey]); // Store the key name as the "path"
-            
-            // Refresh tenant model in session if needed
+            try {
+                DB::connection('central')->table('tenants')
+                    ->where('id', $tenant->id)
+                    ->update([$modelField => $storageKey]); // Store the key name as the "path"
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Clinic branding central sync error: " . $e->getMessage());
+            }
         }
 
         return response()->json([
