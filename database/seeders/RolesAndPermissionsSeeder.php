@@ -47,6 +47,9 @@ class RolesAndPermissionsSeeder extends Seeder
 
             // Custom Branding (delegatable to Assistant)
             'manage clinic branding',
+
+            // Activity Logs
+            'view activity logs',
         ];
 
         foreach ($permissions as $permission) {

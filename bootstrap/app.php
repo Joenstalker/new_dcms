@@ -53,4 +53,22 @@ return Application::configure(basePath: dirname(__DIR__))
             $port = parse_url($appUrl, PHP_URL_PORT) ? ':' . parse_url($appUrl, PHP_URL_PORT) : '';
             return redirect()->away("{$scheme}://{$host}{$port}/?error=clinic_not_found");
         });
+
+        $exceptions->reportable(function (\Spatie\Permission\Exceptions\UnauthorizedException $e) {
+            if (tenant() && auth()->check() && \Illuminate\Support\Facades\Schema::hasTable('activity_log')) {
+                activity()
+                    ->causedBy(auth()->user())
+                    ->event('unauthorized_access')
+                    ->log('User attempted to access an unauthorized route or action.');
+            }
+        });
+
+        $exceptions->reportable(function (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+            if (tenant() && auth()->check() && \Illuminate\Support\Facades\Schema::hasTable('activity_log')) {
+                activity()
+                    ->causedBy(auth()->user())
+                    ->event('unauthorized_access')
+                    ->log('User attempted to access an unauthorized resource.');
+            }
+        });
     })->create();

@@ -144,6 +144,10 @@ Route::middleware([
                         ->name('analytics.index')
                         ->middleware('check.subscription:advanced_analytics');
 
+                    // Activity Logs
+                    Route::get('activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index'])
+                        ->name('activity-logs.index');
+
                     // Branches (Ultimate only)
                     Route::middleware(['check.subscription:multi_branch'])->group(function () {
                         Route::get('branches', [\App\Http\Controllers\Tenant\BranchController::class, 'index'])->name('branches.index');
