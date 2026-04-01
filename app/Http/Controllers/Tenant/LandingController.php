@@ -22,7 +22,6 @@ class LandingController extends Controller
         $dentists = User::role('Dentist')->get(['id', 'name', 'email']);
 
         return Inertia::render('Tenant/Landing', [
-            'tenant' => $tenant,
             'services' => $services,
             'dentists' => $dentists,
             'recaptchaSiteKey' => config('services.recaptcha.site_key'),

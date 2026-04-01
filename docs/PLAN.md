@@ -1,35 +1,26 @@
-# Implementation Plan: Tenant Activity Logs
+# Plan: Public Branding Accessibility Fix
 
-**Goal:** Implement an Activity Logs module in the Tenant Sidebar that tracks logins (success/failed), actions by the clinic owner and staff, and unauthorized access attempts.
+## Goal
+Ensure custom branding logos (Header, Login Modal, Booking Modal) are visible to unauthenticated users on the tenant landing page.
 
-## Phase 2 Architecture
+## Proposed Changes
 
-### Backend: Packages & Database
-- **Install Package:** `composer require spatie/laravel-activitylog`
-- Publish and run migrations for `activity_log`.
+### 1. Research & Discovery (Explorer Agent) [DONE]
+- Audited `routes/tenant.php`: `settings.logo` is public.
+- Audited `HandleInertiaRequests.php`: Shares transformed `tenant` and `branding` props with guests.
+- Audited `Landing.vue`: Header is missing the logo.
+- Audited `LoginModal.vue` / `BookingModal.vue`: `logoUrl` logic incorrectly assumes `/tenant-storage/` for binary keys.
 
-### Backend: Event Listeners (Logging)
-- **Logins & Failures:** Create listeners for `Illuminate\Auth\Events\Login` and `Illuminate\Auth\Events\Failed`. Bind them in `EventServiceProvider`.
-  - Log `Login successful` or `Failed login attempt`.
-- **Model Actions:** Use `Spatie\Activitylog\Traits\LogsActivity` trait on key models (e.g., `Patient`, `Appointment`, `User`, `Treatment`) to automatically log create/update/delete actions by staff.
-- **Unauthorized Access:** Create a middleware or hook into Exception rendering to log `403 Forbidden` / `UnauthorizedException` events from Spatie permissions.
+### 2. Implementation (Frontend Specialist)
+- **Landing Header**: Add the logo element to the header in `Landing.vue`.
+- **Global Props**: Update `Landing.vue` to pass `$page.props.tenant` to sub-modals to ensure they receive the transformed branding URLs.
+- **Computed Logic**: Refine `logoUrl` in `LoginModal.vue` and `BookingModal.vue` to handle direct URLs (from global props) vs legacy paths.
 
-### Backend: Controllers & Routing
-- **Controller:** Create `App\Http\Controllers\ActivityLogController` with an `index` method to fetch logs from the `Spatie\Activitylog\Models\Activity` model, paginated, ordered by latest.
-- **Routes:** Add `activity-logs.index` to `routes/tenant.php` under the `auth` middleware. Ensure only users with `view activity logs` permission or Clinic Owners can access it.
-- **Seeder:** Add `view activity logs` permission to the database and assign it to the `Owner` role.
-
-### Frontend: UI & Sidebar
-- **Sidebar Link:** Update `resources/js/Layouts/AuthenticatedLayout.vue` to include an "Activity Logs" menu item under the "System" or "Management" category.
-- **Page Component:** Create `resources/js/Pages/ActivityLogs/Index.vue`
-  - Display a table/list of activities: `description`, `causer` (User), `subject` (Model), `created_at`.
-  - Add filtering by Causer / Event Type.
+### 3. Backend Verification (Backend Specialist)
+- Ensure the `settings.logo` route remains stable and serves data correctly to guests.
 
 ## Verification Plan
-1. **Tests / Automated:**
-   - Run `security_scan.py` and `lint_runner.py` after implementation.
-2. **Manual:**
-   - Log out and log in with wrong password -> Verify failed login log entry.
-   - Log in successfully -> Verify success log entry.
-   - Navigate to restricted module as Staff -> Verify unauthorized access attempt log.
-   - Navigate to Activity Logs as Clinic Owner -> Verify logs are visible.
+- Access the tenant landing page as a Guest (Incognito).
+- Verify Header logo is visible.
+- Open Login Modal and verify logo.
+- Open Booking Modal and verify logo.

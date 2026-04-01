@@ -44,7 +44,12 @@ const brandingColor = computed(() => props.tenant?.branding_color || '#3b82f6');
 const logoUrl = computed(() => {
     const logopath = props.tenant?.logo_booking_path || props.tenant?.logo_path;
     if (!logopath) return null;
-    if (logopath.startsWith('http://') || logopath.startsWith('https://')) return logopath;
+    
+    // If it's already a full URL or a relative path starting with / (like our branding route)
+    if (logopath.startsWith('http') || logopath.startsWith('/')) {
+        return logopath;
+    }
+    
     return `/tenant-storage/${logopath}`;
 });
 const fontFamily = computed(() => props.tenant?.font_family || 'font-sans');

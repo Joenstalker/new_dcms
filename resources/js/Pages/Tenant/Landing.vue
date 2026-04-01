@@ -5,7 +5,6 @@ import BookingModal from '@/Pages/Tenant/Booking/Partials/BookingModal.vue';
 import LoginModal from '@/Pages/Tenant/Auth/Partials/LoginModal.vue';
 
 const props = defineProps({
-    tenant: Object,
     services: Array,
     dentists: Array,
     recaptchaSiteKey: String,
@@ -18,6 +17,10 @@ const props = defineProps({
         default: () => ({})
     },
 });
+
+import { usePage } from '@inertiajs/vue3';
+const page = usePage();
+const tenant = computed(() => page.props.tenant);
 
 const showBookingModal = ref(false);
 const showLoginModal = ref(false);
@@ -37,7 +40,7 @@ const submit = () => {
     });
 };
 
-const brandingColor = computed(() => props.tenant.branding_color || '#3b82f6'); // Default blue-500
+const brandingColor = computed(() => tenant.value?.branding_color || '#3b82f6'); // Default blue-500
 
 // Typography: Use tenant's granular font_family if available
 const fonts = computed(() => {
@@ -48,7 +51,7 @@ const fonts = computed(() => {
         general: 'font-sans'
     };
     
-    const tenantFonts = props.tenant?.font_family;
+    const tenantFonts = tenant.value?.font_family;
     
     // Handle old string format or missing fonts
     if (typeof tenantFonts === 'string') {
@@ -59,20 +62,20 @@ const fonts = computed(() => {
 });
 
 const backgroundColor = computed(() => {
-    return props.tenant?.landing_page_config?.background_color || '#ffffff';
+    return tenant.value?.landing_page_config?.background_color || '#ffffff';
 });
 
-const heroTitle = computed(() => props.tenant.hero_title || `Welcome to ${props.tenant.name}`);
-const heroSubtitle = computed(() => props.tenant.hero_subtitle || 'Providing high-quality dental care with a gentle touch and modern technology.');
-const aboutDescription = computed(() => props.tenant.about_us_description || `${props.tenant.name} is dedicated to providing the best dental care in the region. Our team of experienced professionals is here to ensure your smile remains healthy and beautiful.`);
+const heroTitle = computed(() => tenant.value?.hero_title || `Welcome to ${tenant.value?.name}`);
+const heroSubtitle = computed(() => tenant.value?.hero_subtitle || 'Providing high-quality dental care with a gentle touch and modern technology.');
+const aboutDescription = computed(() => tenant.value?.about_us_description || `${tenant.value?.name} is dedicated to providing the best dental care in the region. Our team of experienced professionals is here to ensure your smile remains healthy and beautiful.`);
 
 const formattedAddress = computed(() => {
-    const parts = [props.tenant.street, props.tenant.barangay, props.tenant.city, props.tenant.province];
+    const parts = [tenant.value?.street, tenant.value?.barangay, tenant.value?.city, tenant.value?.province];
     return parts.filter(p => p).join(', ');
 });
 
 const landingConfig = computed(() => {
-    const config = props.tenant.landing_page_config || {};
+    const config = tenant.value?.landing_page_config || {};
     return {
         background_color: config.background_color || '#ffffff',
         sections: config.sections || {
@@ -114,16 +117,19 @@ const hasOperatingHours = computed(() => {
 </script>
 
 <template>
-    <Head :title="tenant.name" />
+    <Head :title="tenant?.name" />
 
     <div class="min-h-screen transition-colors duration-500" :class="fonts.general" :style="{ backgroundColor: backgroundColor }">
         <!-- Navigation -->
         <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-20 items-center">
-                    <div class="flex items-center">
+                    <div class="flex items-center gap-3">
+                        <div v-if="tenant?.logo_path" class="flex-shrink-0">
+                            <img :src="tenant.logo_path" :alt="tenant.name" class="h-10 w-auto object-contain">
+                        </div>
                         <div class="text-2xl font-black tracking-tight" :style="{ color: brandingColor }" :class="fonts.header">
-                            {{ tenant.name }}
+                            {{ tenant?.name }}
                         </div>
                     </div>
                     <div class="hidden md:flex items-center space-x-8">
@@ -411,7 +417,7 @@ const hasOperatingHours = computed(() => {
         <!-- Booking Modal -->
         <BookingModal 
             :show="showBookingModal" 
-            :tenant="tenant" 
+            :tenant="$page.props.tenant || tenant" 
             :services="services" 
             :dentists="dentists"
             @close="showBookingModal = false" 
@@ -420,7 +426,7 @@ const hasOperatingHours = computed(() => {
         <!-- Login Modal -->
         <LoginModal
             :show="showLoginModal"
-            :tenant="tenant"
+            :tenant="$page.props.tenant || tenant"
             :recaptchaSiteKey="recaptchaSiteKey"
             @close="showLoginModal = false"
         />
