@@ -82,14 +82,27 @@ const landingConfig = computed(() => {
             services: { active: true, image: null },
             team: { active: true, image: null },
             contact: { active: true, image: null }
-        }
+        },
+        text_primary: config.text_primary || '#111827',
+        text_secondary: config.text_secondary || '#4b5563',
     };
 });
 
 const isSectionActive = (name) => landingConfig.value.sections[name]?.active;
 const getSectionImage = (name) => {
     const img = landingConfig.value.sections[name]?.image;
-    if (img && typeof img === 'string' && img.startsWith('data:image')) {
+    
+    // Fallback to high-quality dental/medical defaults
+    if (!img) {
+        const defaults = {
+            services: '/images/branding/defaults/services.png',
+            team: '/images/branding/defaults/team.png',
+            contact: '/images/branding/defaults/contact.png'
+        };
+        return defaults[name];
+    }
+
+    if (img && typeof img === 'string' && (img.startsWith('data:image') || img.startsWith('http') || img.startsWith('/'))) {
         return img;
     }
     return img ? '/tenant-storage/' + img : null;
@@ -119,7 +132,7 @@ const hasOperatingHours = computed(() => {
 <template>
     <Head :title="tenant?.name" />
 
-    <div class="min-h-screen transition-colors duration-500" :class="fonts.general" :style="{ backgroundColor: backgroundColor }">
+    <div class="min-h-screen transition-colors duration-500" :class="fonts.general" :style="{ backgroundColor: backgroundColor, color: landingConfig.text_secondary }">
         <!-- Navigation -->
         <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -162,10 +175,10 @@ const hasOperatingHours = computed(() => {
                     <span class="inline-block px-4 py-1.5 mb-6 text-xs font-bold uppercase tracking-widest text-white rounded-full bg-blue-600/10" :style="{ color: brandingColor, backgroundColor: brandingColor + '15' }">
                         Expert Dental Care
                     </span>
-                    <h1 class="text-5xl lg:text-7xl font-black text-gray-900 leading-tight mb-8" :class="fonts.header">
+                    <h1 class="text-5xl lg:text-7xl font-black leading-tight mb-8" :class="fonts.header" :style="{ color: landingConfig.text_primary }">
                         {{ heroTitle }}
                     </h1>
-                    <p class="text-xl text-gray-600 mb-10 leading-relaxed max-w-2xl">
+                    <p class="text-xl mb-10 leading-relaxed max-w-2xl" :style="{ color: landingConfig.text_secondary }">
                         {{ heroSubtitle }}
                     </p>
                     <div class="flex flex-col sm:flex-row items-center gap-6">
@@ -200,8 +213,8 @@ const hasOperatingHours = computed(() => {
                         <img :src="getSectionImage('services')" class="w-full rounded-[3rem] shadow-2xl object-cover aspect-video lg:aspect-square" />
                     </div>
                     <div :class="getSectionImage('services') ? 'lg:w-1/2' : 'w-full text-center'">
-                        <h2 class="text-3xl lg:text-4xl font-black text-gray-900 mb-4" :class="fonts.header">Our Specialized Services</h2>
-                        <p class="text-gray-500 max-w-2xl" :class="getSectionImage('services') ? '' : 'mx-auto'">We offer a wide range of dental treatments to keep your clinic healthy and your smile glowing.</p>
+                        <h2 class="text-3xl lg:text-4xl font-black mb-4" :class="fonts.header" :style="{ color: landingConfig.text_primary }">Our Specialized Services</h2>
+                        <p class="max-w-2xl" :class="getSectionImage('services') ? '' : 'mx-auto'" :style="{ color: landingConfig.text_secondary }">We offer a wide range of dental treatments to keep your clinic healthy and your smile glowing.</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -209,8 +222,8 @@ const hasOperatingHours = computed(() => {
                         <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 text-2xl group-hover:scale-110 transition-transform" :style="{ backgroundColor: brandingColor + '15', color: brandingColor }">
                             🦷
                         </div>
-                        <h3 class="text-xl font-bold mb-3" :class="fonts.header">{{ service.name }}</h3>
-                        <p class="text-gray-600 text-sm leading-relaxed mb-6">
+                        <h3 class="text-xl font-bold mb-3" :class="fonts.header" :style="{ color: landingConfig.text_primary }">{{ service.name }}</h3>
+                        <p class="text-sm leading-relaxed mb-6" :style="{ color: landingConfig.text_secondary }">
                             {{ service.description || 'Professional dental care tailored to your needs.' }}
                         </p>
                         <p class="text-lg font-black" :style="{ color: brandingColor }">₱ {{ service.price }}</p>
@@ -235,8 +248,8 @@ const hasOperatingHours = computed(() => {
                     </div>
                 </div>
                 <div class="lg:w-1/2">
-                    <h2 class="text-3xl lg:text-4xl font-black mb-8" :class="fonts.header">Committed to Excellence in Dental Care</h2>
-                    <p class="text-gray-600 text-lg leading-relaxed mb-8">
+                    <h2 class="text-3xl lg:text-4xl font-black mb-8" :class="fonts.header" :style="{ color: landingConfig.text_primary }">Committed to Excellence in Dental Care</h2>
+                    <p class="text-lg leading-relaxed mb-8" :style="{ color: landingConfig.text_secondary }">
                         {{ aboutDescription }}
                     </p>
                     <ul class="space-y-4 mb-10">
@@ -265,8 +278,8 @@ const hasOperatingHours = computed(() => {
                         <img :src="getSectionImage('team')" class="w-full rounded-[3rem] shadow-2xl object-cover aspect-video lg:aspect-square" />
                     </div>
                     <div :class="getSectionImage('team') ? 'lg:w-1/2' : 'w-full text-center'">
-                        <h2 class="text-3xl lg:text-4xl font-black mb-4" :class="fonts.header">Meet Our Specialist Team</h2>
-                        <p class="text-gray-500 max-w-2xl mx-auto">Expert dentists dedicated to provide world-class dental treatments with care.</p>
+                        <h2 class="text-3xl lg:text-4xl font-black mb-4" :class="fonts.header" :style="{ color: landingConfig.text_primary }">Meet Our Specialist Team</h2>
+                        <p class="max-w-2xl mx-auto" :style="{ color: landingConfig.text_secondary }">Expert dentists dedicated to provide world-class dental treatments with care.</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -274,8 +287,8 @@ const hasOperatingHours = computed(() => {
                         <div class="w-full aspect-[4/5] bg-white rounded-3xl mb-6 overflow-hidden relative shadow-sm border border-base-200">
                              <div class="w-full h-full flex items-center justify-center text-7xl opacity-20 group-hover:scale-110 transition-transform">👨‍⚕️</div>
                         </div>
-                        <h3 class="text-xl font-bold" :class="fonts.names">{{ dentist.name }}</h3>
-                        <p class="text-gray-500 text-sm">Professional Dentist</p>
+                        <h3 class="text-xl font-bold" :class="fonts.names" :style="{ color: landingConfig.text_primary }">{{ dentist.name }}</h3>
+                        <p class="text-sm" :style="{ color: landingConfig.text_secondary }">Professional Dentist</p>
                     </div>
                 </div>
             </div>
@@ -290,8 +303,8 @@ const hasOperatingHours = computed(() => {
                             <img :src="getSectionImage('contact')" class="w-full rounded-[2rem] shadow-lg object-cover" />
                         </div>
                         <span class="text-xs font-bold uppercase tracking-widest" :style="{ color: brandingColor }">Get in touch</span>
-                        <h2 class="text-3xl lg:text-4xl font-black mb-6 mt-2" :class="fonts.header">Have a Concern? We're Here to Help.</h2>
-                        <p class="text-gray-600 text-lg mb-10 leading-relaxed">
+                        <h2 class="text-3xl lg:text-4xl font-black mb-6 mt-2" :class="fonts.header" :style="{ color: landingConfig.text_primary }">Have a Concern? We're Here to Help.</h2>
+                        <p class="text-lg mb-10 leading-relaxed" :style="{ color: landingConfig.text_secondary }">
                             Whether you're looking for an appointment or have a general inquiry, feel free to send us a message. Our team will respond as quickly as possible.
                         </p>
                         
@@ -299,22 +312,22 @@ const hasOperatingHours = computed(() => {
                             <div class="flex items-start gap-4">
                                 <span class="text-2xl">📞</span>
                                 <div>
-                                    <p class="font-bold">Call Us</p>
-                                    <p class="text-gray-500 text-sm">{{ tenant.phone || 'Phone not provided' }}</p>
+                                    <p class="font-bold" :style="{ color: landingConfig.text_primary }">Call Us</p>
+                                    <p class="text-sm" :style="{ color: landingConfig.text_secondary }">{{ tenant.phone || 'Phone not provided' }}</p>
                                 </div>
                             </div>
                             <div class="flex items-start gap-4">
                                 <span class="text-2xl">✉️</span>
                                 <div>
-                                    <p class="font-bold">Email Us</p>
-                                    <p class="text-gray-500 text-sm">{{ tenant.email || 'Email not provided' }}</p>
+                                    <p class="font-bold" :style="{ color: landingConfig.text_primary }">Email Us</p>
+                                    <p class="text-sm" :style="{ color: landingConfig.text_secondary }">{{ tenant.email || 'Email not provided' }}</p>
                                 </div>
                             </div>
                             <div class="flex items-start gap-4">
                                 <span class="text-2xl">📍</span>
                                 <div>
-                                    <p class="font-bold">Visit Us</p>
-                                    <p class="text-gray-500 text-sm">{{ formattedAddress || 'Address not provided' }}</p>
+                                    <p class="font-bold" :style="{ color: landingConfig.text_primary }">Visit Us</p>
+                                    <p class="text-sm" :style="{ color: landingConfig.text_secondary }">{{ formattedAddress || 'Address not provided' }}</p>
                                 </div>
                             </div>
                         </div>

@@ -62,8 +62,14 @@ Route::middleware([
     Route::middleware(['auth', 'check.subscription'])->group(function () {
             Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class , 'index'])->name('tenant.dashboard');
 
-            // Profile picture upload (all authenticated tenant users)
-            Route::post('profile/picture', [\App\Http\Controllers\ProfileController::class , 'updatePicture'])->name('profile.update-picture');
+            // Profile management (all authenticated tenant users)
+            Route::get('profile', [\App\Http\Controllers\ProfileController::class , 'edit'])->name('tenant.profile.edit');
+            Route::patch('profile', [\App\Http\Controllers\ProfileController::class , 'update'])->name('tenant.profile.update');
+            Route::post('profile/picture', [\App\Http\Controllers\ProfileController::class , 'updatePicture'])->name('tenant.profile.update-picture');
+            Route::delete('profile', [\App\Http\Controllers\ProfileController::class , 'destroy'])->name('tenant.profile.destroy');
+
+            // Password update (tenant-scoped)
+            Route::put('password', [\App\Http\Controllers\Auth\PasswordController::class, 'update'])->name('tenant.password.update');
 
             // Staff Settings (personal, permission-gated per section — NOT inside Owner block)
             Route::get('my-settings', [\App\Http\Controllers\Tenant\StaffSettingsController::class, 'index'])->name('staff-settings.index');

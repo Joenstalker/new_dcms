@@ -63,7 +63,11 @@ const form = useForm({
     hero_subtitle: props.tenant?.hero_subtitle || '',
     about_us_description: props.tenant?.about_us_description || '',
     enabled_features: initialEnabledFeatures,
-    landing_page_config: props.tenant?.landing_page_config || {},
+    landing_page_config: props.tenant?.landing_page_config || {
+        background_color: '#ffffff',
+        text_primary: '#111827',
+        text_secondary: '#4b5563',
+    },
     portal_config: props.tenant?.portal_config || {
         apply_to: 'all',
         selected_staff: []
@@ -202,7 +206,7 @@ watch(() => usePage().props.flash, (flash) => {
 
                 <!-- Clinic Details & Colors Tab -->
                 <div v-if="currentTab === 'branding'">
-                    <ClinicBranding :form="form" :tenant="tenant" :is_premium="is_premium" />
+                    <ClinicBranding :form="form" :tenant="tenant" :is_premium="true" />
                 </div>
 
                 <!-- Operating Hours Tab -->
@@ -221,46 +225,12 @@ watch(() => usePage().props.flash, (flash) => {
 
                 <!-- Portal Customization Tab -->
                 <div v-if="currentTab === 'portal'">
-                    <div v-if="hasBranding">
-                        <PortalCustomization :form="form" :staff="staff" :is_premium="is_premium" />
-                    </div>
-                    <div v-else class="flex flex-col items-center justify-center py-16 px-8 bg-base-200/50 rounded-3xl border-2 border-dashed border-base-300">
-                        <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-6 shadow-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-black text-base-content mb-2">Portal Customization</h3>
-                        <p class="text-sm text-base-content/50 text-center max-w-md mb-6">
-                            Customize the look and feel of your staff and patient portals.
-                            Upgrade to the <strong>Pro</strong> plan to unlock these settings.
-                        </p>
-                        <a :href="route('settings.features')" class="btn btn-sm bg-gradient-to-r from-amber-400 to-orange-500 text-white border-none shadow-lg hover:shadow-xl transition-all">
-                            Upgrade Plan
-                        </a>
-                    </div>
+                    <PortalCustomization :form="form" :staff="staff" :is_premium="true" />
                 </div>
 
                 <!-- Landing Designer Tab -->
                 <div v-if="currentTab === 'designer'">
-                    <div v-if="hasBranding">
-                        <LandingPageCustomizer :form="form" :tenant="tenant" :is_premium="is_premium" />
-                    </div>
-                    <div v-else class="flex flex-col items-center justify-center py-16 px-8 bg-base-200/50 rounded-3xl border-2 border-dashed border-base-300">
-                        <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-6 shadow-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-black text-base-content mb-2">Landing Page Designer</h3>
-                        <p class="text-sm text-base-content/50 text-center max-w-md mb-6">
-                            Design a custom landing page for your clinic.
-                            Upgrade to the <strong>Pro</strong> plan to unlock the designer.
-                        </p>
-                        <a :href="route('settings.features')" class="btn btn-sm bg-gradient-to-r from-amber-400 to-orange-500 text-white border-none shadow-lg hover:shadow-xl transition-all">
-                            Upgrade Plan
-                        </a>
-                    </div>
+                    <LandingPageCustomizer :form="form" :tenant="tenant" :is_premium="true" />
                 </div>
 
                 <!-- Feature Management Tab -->

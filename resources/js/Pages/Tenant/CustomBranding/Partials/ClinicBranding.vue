@@ -281,15 +281,12 @@ const getLogoUrl = (path, field) => {
         </section>
 
         <!-- Visual Branding -->
-        <section class="space-y-6 pt-6 border-t border-base-200" :class="{ 'opacity-50 pointer-events-none grayscale': !is_premium }">
+        <section class="space-y-6 pt-6 border-t border-base-200">
             <div class="flex items-center justify-between">
                 <h4 class="text-xs font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-primary"></span>
                     Visual Identity
                 </h4>
-                <div v-if="!is_premium" class="badge badge-warning font-black uppercase tracking-tighter text-[8px] p-2 flex gap-1">
-                    <span>👑</span> Upgrade to Pro for Custom Colors & Fonts
-                </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -341,7 +338,7 @@ const getLogoUrl = (path, field) => {
 
                 <!-- Preview Area -->
                 <div class="bg-base-200 rounded-3xl p-6 border border-base-300 flex flex-col justify-center items-center text-center">
-                    <div class="w-16 h-16 rounded-2xl mb-4 flex items-center justify-center text-white text-2xl font-black shadow-lg" :style="{ backgroundColor: is_premium ? form.branding_color : '#2563eb' }">
+                    <div class="w-16 h-16 rounded-2xl mb-4 flex items-center justify-center text-white text-2xl font-black shadow-lg" :style="{ backgroundColor: form.branding_color }">
                         Aa
                     </div>
                     <p class="text-xs font-black uppercase tracking-widest opacity-30 mb-2">Typography Preview</p>
@@ -387,12 +384,11 @@ const getLogoUrl = (path, field) => {
                     </div>
                 </div>
 
-                <!-- Login Modal Logo (PREMIUM) -->
-                <div class="form-control bg-base-200/50 p-5 rounded-3xl border border-dashed transition-colors relative group"
-                    :class="[is_premium ? 'border-base-300 hover:border-primary cursor-pointer' : 'border-base-200 opacity-40 grayscale pointer-events-none', { 'pointer-events-none': uploading.logo_login }]">
+                <!-- Login Modal Logo -->
+                <div class="form-control bg-base-200/50 p-5 rounded-3xl border border-dashed border-base-300 hover:border-primary transition-colors relative group cursor-pointer"
+                    :class="{ 'pointer-events-none': uploading.logo_login }">
                     <label class="label mb-2 font-bold text-[9px] uppercase tracking-widest opacity-50 space-x-2">
                         <span>Login Modal</span>
-                        <span v-if="!is_premium">🏆</span>
                     </label>
                     <div class="h-24 w-full flex flex-col items-center justify-center gap-2 relative">
                         <div v-if="uploading.logo_login" class="absolute inset-0 flex items-center justify-center bg-base-200/80 rounded-xl z-10">
@@ -400,9 +396,9 @@ const getLogoUrl = (path, field) => {
                         </div>
                         <img v-if="getLogoUrl(tenant.logo_login_path, 'logo_login')" :src="getLogoUrl(tenant.logo_login_path, 'logo_login')" class="h-full w-full object-contain" />
                         <div v-else class="text-2xl opacity-20">🔐</div>
-                        <input type="file" v-if="is_premium" accept="image/*" @change="handleFileChange($event, 'logo_login')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.logo_login">
+                        <input type="file" accept="image/*" @change="handleFileChange($event, 'logo_login')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.logo_login">
                     </div>
-                    <div v-if="is_premium" class="mt-3 text-center flex items-center justify-center gap-3">
+                    <div class="mt-3 text-center flex items-center justify-center gap-3">
                         <span class="text-[9px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                             {{ getLogoUrl(tenant.logo_login_path, 'logo_login') ? 'Replace' : 'Upload' }}
                         </span>
@@ -414,12 +410,11 @@ const getLogoUrl = (path, field) => {
                     </div>
                 </div>
 
-                <!-- Booking Modal Logo (PREMIUM) -->
-                <div class="form-control bg-base-200/50 p-5 rounded-3xl border border-dashed transition-colors relative group"
-                    :class="[is_premium ? 'border-base-300 hover:border-primary cursor-pointer' : 'border-base-200 opacity-40 grayscale pointer-events-none', { 'pointer-events-none': uploading.logo_booking }]">
+                <!-- Booking Modal Logo -->
+                <div class="form-control bg-base-200/50 p-5 rounded-3xl border border-dashed border-base-300 hover:border-primary transition-colors relative group cursor-pointer"
+                    :class="{ 'pointer-events-none': uploading.logo_booking }">
                     <label class="label mb-2 font-bold text-[9px] uppercase tracking-widest opacity-50 space-x-2">
                         <span>Booking Modal</span>
-                        <span v-if="!is_premium">🏆</span>
                     </label>
                     <div class="h-24 w-full flex flex-col items-center justify-center gap-2 relative">
                         <div v-if="uploading.logo_booking" class="absolute inset-0 flex items-center justify-center bg-base-200/80 rounded-xl z-10">
@@ -427,9 +422,9 @@ const getLogoUrl = (path, field) => {
                         </div>
                         <img v-if="getLogoUrl(tenant.logo_booking_path, 'logo_booking')" :src="getLogoUrl(tenant.logo_booking_path, 'logo_booking')" class="h-full w-full object-contain" />
                         <div v-else class="text-2xl opacity-20">📅</div>
-                        <input type="file" v-if="is_premium" accept="image/*" @change="handleFileChange($event, 'logo_booking')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.logo_booking">
+                        <input type="file" accept="image/*" @change="handleFileChange($event, 'logo_booking')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.logo_booking">
                     </div>
-                    <div v-if="is_premium" class="mt-3 text-center flex items-center justify-center gap-3">
+                    <div class="mt-3 text-center flex items-center justify-center gap-3">
                         <span class="text-[9px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                             {{ getLogoUrl(tenant.logo_booking_path, 'logo_booking') ? 'Replace' : 'Upload' }}
                         </span>
@@ -441,7 +436,6 @@ const getLogoUrl = (path, field) => {
                     </div>
                 </div>
             </div>
-            <p v-if="!is_premium" class="text-[9px] text-center font-black uppercase text-secondary">Upgrade to Pro to customize Login & Booking portals</p>
         </section>
     </div>
 </template>

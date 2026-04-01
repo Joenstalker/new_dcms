@@ -33,6 +33,14 @@ const initConfig = () => {
         props.form.landing_page_config.background_color = '#ffffff';
     }
     
+    if (!props.form.landing_page_config.text_primary) {
+        props.form.landing_page_config.text_primary = '#111827';
+    }
+    
+    if (!props.form.landing_page_config.text_secondary) {
+        props.form.landing_page_config.text_secondary = '#4b5563';
+    }
+    
     if (!props.form.landing_page_config.sections) {
         props.form.landing_page_config.sections = {
             services: { active: true, image: null },
@@ -162,7 +170,15 @@ const handleFileChange = async (e, section) => {
 
 const getPreviewUrl = (section) => {
     const imgData = props.form.landing_page_config?.sections?.[section]?.image;
-    if (!imgData) return null;
+    if (!imgData) {
+        // High-quality dental/medical defaults
+        const defaults = {
+            services: '/images/branding/defaults/services.png',
+            team: '/images/branding/defaults/team.png',
+            contact: '/images/branding/defaults/contact.png'
+        };
+        return defaults[section];
+    }
     
     // Support all variations of previously or newly saved imagery
     if (imgData.startsWith('data:image/') || imgData.startsWith('http') || imgData.startsWith('/settings/')) {
@@ -173,17 +189,7 @@ const getPreviewUrl = (section) => {
 </script>
 
 <template>
-    <div class="space-y-10 animate-fade-in" :class="{ 'opacity-60 pointer-events-none grayscale': !is_premium }">
-        <div v-if="!is_premium" class="bg-warning/10 p-6 rounded-[2rem] border border-warning/20 flex items-center justify-between pointer-events-auto grayscale-0 mb-6">
-            <div class="flex items-center gap-4">
-                 <span class="text-3xl">🚀</span>
-                 <div>
-                     <p class="font-black uppercase tracking-widest text-xs text-secondary">Premium Component</p>
-                     <p class="text-sm opacity-70">The Landing Page Designer is reserved for Pro & Ultimate clinics.</p>
-                 </div>
-            </div>
-            <button class="btn btn-secondary btn-sm rounded-xl font-black uppercase text-[9px] tracking-widest">Upgrade Now</button>
-        </div>
+    <div class="space-y-10 animate-fade-in">
         <!-- Global Styling -->
         <section class="space-y-6">
             <h4 class="text-xs font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
@@ -192,24 +198,47 @@ const getPreviewUrl = (section) => {
             </h4>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Landing Background Color</span></label>
-                    <div class="flex items-center gap-4 bg-base-200 p-3 rounded-2xl border border-base-300">
-                        <input type="color" v-model="form.landing_page_config.background_color" class="w-12 h-12 rounded-xl border-none cursor-pointer bg-transparent">
-                        <input type="text" v-model="form.landing_page_config.background_color" class="input input-sm border-none bg-transparent font-mono text-xs w-full focus:ring-0 uppercase">
+                <div class="space-y-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Landing Background Color</span></label>
+                        <div class="flex items-center gap-4 bg-base-200 p-3 rounded-2xl border border-base-300 hover:border-primary transition-colors">
+                            <input type="color" v-model="form.landing_page_config.background_color" class="w-10 h-10 rounded-xl border-none cursor-pointer bg-transparent">
+                            <input type="text" v-model="form.landing_page_config.background_color" class="input input-sm border-none bg-transparent font-mono text-xs w-full focus:ring-0 uppercase">
+                        </div>
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Heading Text Color</span></label>
+                        <div class="flex items-center gap-4 bg-base-200 p-3 rounded-2xl border border-base-300 hover:border-primary transition-colors">
+                            <input type="color" v-model="form.landing_page_config.text_primary" class="w-10 h-10 rounded-xl border-none cursor-pointer bg-transparent">
+                            <input type="text" v-model="form.landing_page_config.text_primary" class="input input-sm border-none bg-transparent font-mono text-xs w-full focus:ring-0 uppercase">
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Paragraph Text Color</span></label>
+                        <div class="flex items-center gap-4 bg-base-200 p-3 rounded-2xl border border-base-300 hover:border-primary transition-colors">
+                            <input type="color" v-model="form.landing_page_config.text_secondary" class="w-10 h-10 rounded-xl border-none cursor-pointer bg-transparent">
+                            <input type="text" v-model="form.landing_page_config.text_secondary" class="input input-sm border-none bg-transparent font-mono text-xs w-full focus:ring-0 uppercase">
+                        </div>
                     </div>
                 </div>
                 
-                <div class="bg-base-200 rounded-3xl p-6 border border-base-300 flex flex-col justify-center items-center">
-                    <div class="w-24 h-16 rounded-xl border border-base-300 shadow-inner overflow-hidden" :style="{ backgroundColor: form.landing_page_config.background_color }">
-                        <div class="w-full h-4 bg-base-100/50 mb-2"></div>
-                        <div class="flex gap-1 px-2">
-                            <div class="w-1/3 h-8 bg-base-100/30 rounded-sm"></div>
-                            <div class="w-1/3 h-8 bg-base-100/30 rounded-sm"></div>
-                            <div class="w-1/3 h-8 bg-base-100/30 rounded-sm"></div>
+                <div class="bg-base-200 rounded-3xl p-6 border border-base-300 flex flex-col justify-center items-center h-full">
+                    <div class="w-full max-w-[200px] rounded-xl border border-base-300 shadow-inner overflow-hidden p-4" :style="{ backgroundColor: form.landing_page_config.background_color }">
+                        <div class="w-2/3 h-5 mb-3 rounded-md font-black text-[10px] flex items-center shadow-sm" :style="{ color: form.landing_page_config.text_primary }">Hero Title</div>
+                        <div class="space-y-1.5 mb-4">
+                            <div class="w-full h-2 rounded-sm" :style="{ backgroundColor: form.landing_page_config.text_secondary, opacity: 0.8 }"></div>
+                            <div class="w-4/5 h-2 rounded-sm" :style="{ backgroundColor: form.landing_page_config.text_secondary, opacity: 0.8 }"></div>
+                            <div class="w-5/6 h-2 rounded-sm" :style="{ backgroundColor: form.landing_page_config.text_secondary, opacity: 0.8 }"></div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="w-1/3 h-8 rounded-lg opacity-20" :style="{ backgroundColor: form.landing_page_config.text_primary }"></div>
+                            <div class="w-1/3 h-8 rounded-lg opacity-20" :style="{ backgroundColor: form.landing_page_config.text_primary }"></div>
+                            <div class="w-1/3 h-8 rounded-lg opacity-20" :style="{ backgroundColor: form.landing_page_config.text_primary }"></div>
                         </div>
                     </div>
-                    <p class="mt-3 text-[9px] font-black uppercase tracking-widest opacity-30">Background Live Preview</p>
+                    <p class="mt-4 text-[9px] font-black uppercase tracking-widest opacity-30 text-center">Live Contrast Preview</p>
                 </div>
             </div>
         </section>
@@ -222,6 +251,31 @@ const getPreviewUrl = (section) => {
             </h4>
 
             <div class="space-y-4">
+                <!-- Hero & About Content Section -->
+                <div class="p-6 bg-base-100 rounded-3xl border border-base-300 space-y-4 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">✍️</span>
+                            <span class="text-xs font-black uppercase tracking-widest text-base-content">Hero & Content</span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                         <div class="form-control w-full">
+                            <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Main Hero Title</span></label>
+                            <input type="text" v-model="form.hero_title" placeholder="e.g. Expert Dental Care" class="input input-bordered w-full rounded-2xl bg-base-100 focus:border-primary border-base-300">
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Hero Subtitle</span></label>
+                            <textarea v-model="form.hero_subtitle" rows="2" placeholder="e.g. Providing high-quality care..." class="textarea textarea-bordered w-full rounded-2xl bg-base-100 focus:border-primary border-base-300"></textarea>
+                        </div>
+                        <div class="form-control w-full mt-4">
+                            <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">About Us Description</span></label>
+                            <textarea v-model="form.about_us_description" rows="3" placeholder="e.g. Our clinic is dedicated to..." class="textarea textarea-bordered w-full rounded-2xl bg-base-100 focus:border-primary border-base-300"></textarea>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Services Section -->
                 <div class="p-6 bg-base-100 rounded-3xl border border-base-300 space-y-4 shadow-sm">
                     <div class="flex items-center justify-between">

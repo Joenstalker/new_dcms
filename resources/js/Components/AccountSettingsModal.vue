@@ -7,6 +7,7 @@ import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     show: Boolean,
@@ -15,6 +16,9 @@ const props = defineProps({
 const emit = defineEmits(['close']);
 
 const user = computed(() => usePage().props.auth.user);
+
+// Detect tenant context for correct route resolution
+const isTenant = computed(() => !!usePage().props.tenant);
 
 const nameForm = useForm({
     name: user.value.name,
@@ -28,19 +32,46 @@ const passwordForm = useForm({
 });
 
 const updateName = () => {
-    nameForm.patch(route('profile.update'), {
+    nameForm.patch(route(isTenant.value ? 'tenant.profile.update' : 'profile.update'), {
         preserveScroll: true,
         onSuccess: () => {
-            // keep modal open or close? User usually wants to see success
+            Swal.fire({
+                icon: 'success',
+                title: 'Profile Updated',
+                text: 'Your name has been updated successfully.',
+                confirmButtonColor: '#2B7CB3',
+                timer: 2000,
+                timerProgressBar: true,
+            }).then(() => {
+                close();
+            });
+        },
+        onError: () => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Update Failed',
+                text: 'Could not update your profile. Please check the form for errors.',
+                confirmButtonColor: '#2B7CB3',
+            });
         },
     });
 };
 
 const updatePassword = () => {
-    passwordForm.put(route('password.update'), {
+    passwordForm.put(route(isTenant.value ? 'tenant.password.update' : 'password.update'), {
         preserveScroll: true,
         onSuccess: () => {
             passwordForm.reset();
+            Swal.fire({
+                icon: 'success',
+                title: 'Password Updated',
+                text: 'Your password has been updated successfully.',
+                confirmButtonColor: '#2B7CB3',
+                timer: 2000,
+                timerProgressBar: true,
+            }).then(() => {
+                close();
+            });
         },
         onError: () => {
             if (passwordForm.errors.password) {
@@ -49,6 +80,12 @@ const updatePassword = () => {
             if (passwordForm.errors.current_password) {
                 passwordForm.reset('current_password');
             }
+            Swal.fire({
+                icon: 'error',
+                title: 'Password Update Failed',
+                text: 'Could not update your password. Please check the form for errors.',
+                confirmButtonColor: '#2B7CB3',
+            });
         },
     });
 };

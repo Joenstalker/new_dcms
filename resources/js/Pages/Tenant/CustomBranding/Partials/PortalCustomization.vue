@@ -39,7 +39,7 @@ const clearAll = () => {
 </script>
 
 <template>
-    <div class="space-y-8 animate-fade-in" :class="{ 'opacity-60 pointer-events-none grayscale': !is_premium }">
+    <div class="space-y-8 animate-fade-in">
         <section class="space-y-6">
             <h4 class="text-xs font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-primary"></span>
@@ -126,16 +126,5 @@ const clearAll = () => {
                 <br><span class="text-[10px] uppercase font-black not-italic tracking-widest">Add staff members first in Staff Management</span>
             </p>
         </section>
-
-        <!-- Non-Premium Banner -->
-        <div v-if="!is_premium" class="bg-primary/5 p-10 rounded-[3rem] text-center border border-dashed border-primary/20 pointer-events-auto grayscale-0">
-            <span class="text-5xl block mb-4">👑</span>
-            <h3 class="text-lg font-black uppercase tracking-widest mb-2">Unlock Staff Portal Customization</h3>
-            <p class="text-sm opacity-60 mb-6 max-w-md mx-auto italic">
-                Impress your team with a portal that mirrors your clinic's luxury identity. 
-                Available exclusively on Pro & Ultimate plans.
-            </p>
-            <button type="button" class="btn btn-primary rounded-2xl font-black uppercase tracking-widest text-xs px-10">Compare Plans</button>
-        </div>
     </div>
 </template>

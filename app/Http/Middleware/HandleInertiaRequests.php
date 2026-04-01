@@ -58,24 +58,31 @@ class HandleInertiaRequests extends Middleware
                 'version' => \App\Services\AppVersionService::getVersion(),
             ],
             'tenant' => function () {
-                $tenant = tenant();
-                if (!$tenant) return null;
-                
-                // Optimized: Only fetch what's needed for the layout/gating
-                // Priority: TenantBrandingService (Binary/Custom) > Tenant Model (Legacy/Sync)
-                $branding = \App\Services\TenantBrandingService::getAll();
-                
-                return array_merge($tenant->toArray(), [
+            $tenant = tenant();
+            if (!$tenant)
+                return null;
+
+            // Optimized: Only fetch what's needed for the layout/gating
+            // Priority: TenantBrandingService (Binary/Custom) > Tenant Model (Legacy/Sync)
+            $branding = \App\Services\TenantBrandingService::getAll();
+
+            return array_merge($tenant->toArray(), [
                     'branding_color' => $branding['primary_color'] ?? $tenant->branding_color,
                     'font_family' => $branding['font_family'] ?? $tenant->font_family,
                     'portal_config' => $branding['portal_config'] ?? $tenant->portal_config,
+                    'landing_page_config' => $branding['landing_page_config'] ?? $tenant->landing_page_config,
+                    'hero_title' => $branding['hero_title'] ?? $tenant->hero_title,
+                    'hero_subtitle' => $branding['hero_subtitle'] ?? $tenant->hero_subtitle,
+                    'about_us_description' => $branding['about_us_description'] ?? $tenant->about_us_description,
+                    'operating_hours' => $branding['operating_hours'] ?? $tenant->operating_hours,
+                    'online_booking_enabled' => $branding['online_booking_enabled'] ?? $tenant->online_booking_enabled ?? true,
                     'enabled_features' => $branding['enabled_features'] ?? $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures(),
                     'logo_path' => $branding['logo_base64'] ?? $tenant->logo_path,
                     'logo_login_path' => $branding['logo_login_base64'] ?? $tenant->logo_login_path,
                     'logo_booking_path' => $branding['logo_booking_base64'] ?? $tenant->logo_booking_path,
                     'is_premium' => $tenant->canCustomizeBranding(),
                 ]);
-            },
+        },
             'tenant_plan' => tenant() ? [
                 'features' => [
                     'sms_notifications' => tenant()->hasPlanFeature('sms_notifications'),
@@ -104,70 +111,70 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
             ],
             'branding' => function () {
-                $tenant = tenant();
+            $tenant = tenant();
 
-                // Central Admin: use SystemSetting values only
-                if (!$tenant) {
-                    return [
+            // Central Admin: use SystemSetting values only
+            if (!$tenant) {
+                return [
                         'platform_name' => SystemSetting::get('platform_name', 'DCMS'),
                         'platform_logo' => SystemSetting::get('platform_logo'),
                         'primary_color' => SystemSetting::get('primary_color', '#0ea5e9'),
                         'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
                         'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
                     ];
-                }
+            }
 
-                // Tenant: use TenantBrandingService as absolute source for specific keys
-                $branding = \App\Services\TenantBrandingService::getAll();
+            // Tenant: use TenantBrandingService as absolute source for specific keys
+            $branding = \App\Services\TenantBrandingService::getAll();
 
-                return [
+            return [
                     'platform_name' => $branding['clinic_name'] ?? $tenant->name ?? SystemSetting::get('platform_name', 'DCMS'),
                     'platform_logo' => $branding['logo_base64'] ?? $tenant->logo_path ?? SystemSetting::get('platform_logo'),
                     'primary_color' => $branding['primary_color'] ?? $tenant->branding_color ?? SystemSetting::get('primary_color', '#0ea5e9'),
                     'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
                     'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
                 ];
-            },
+        },
             'branding_computed' => function () {
-                $tenant = tenant();
+            $tenant = tenant();
 
-                // Central Admin: compute from SystemSetting only
-                if (!$tenant) {
-                    $color = SystemSetting::get('primary_color', '#0ea5e9');
-                    $hex = ltrim($color, '#');
-                    $r = hexdec(substr($hex, 0, 2));
-                    $g = hexdec(substr($hex, 2, 2));
-                    $b = hexdec(substr($hex, 4, 2));
-                    $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
-                    return [
-                        'primary_color' => $color,
-                        'contrast_color' => $luminance > 0.5 ? '#1f2937' : '#ffffff',
-                        'source' => 'central',
-                    ];
-                }
-
-                // Tenant: compute from TenantBrandingService (untouched)
-                $branding = \App\Services\TenantBrandingService::findMany(['primary_color']);
-                
-                $centralColor = SystemSetting::get('primary_color', '#0ea5e9');
-                $tenantColor = $branding['primary_color'] ?? $tenant->branding_color ?? null;
-                
-                $activeColor = $tenantColor ?: $centralColor;
-                
-                // Server-side luminance calculation for contrast color
-                $hex = ltrim($activeColor, '#');
+            // Central Admin: compute from SystemSetting only
+            if (!$tenant) {
+                $color = SystemSetting::get('primary_color', '#0ea5e9');
+                $hex = ltrim($color, '#');
                 $r = hexdec(substr($hex, 0, 2));
                 $g = hexdec(substr($hex, 2, 2));
                 $b = hexdec(substr($hex, 4, 2));
                 $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
-                $contrastColor = $luminance > 0.5 ? '#1f2937' : '#ffffff';
-
                 return [
+                        'primary_color' => $color,
+                        'contrast_color' => $luminance > 0.5 ? '#1f2937' : '#ffffff',
+                        'source' => 'central',
+                    ];
+            }
+
+            // Tenant: compute from TenantBrandingService (untouched)
+            $branding = \App\Services\TenantBrandingService::findMany(['primary_color']);
+
+            $centralColor = SystemSetting::get('primary_color', '#0ea5e9');
+            $tenantColor = $branding['primary_color'] ?? $tenant->branding_color ?? null;
+
+            $activeColor = $tenantColor ?: $centralColor;
+
+            // Server-side luminance calculation for contrast color
+            $hex = ltrim($activeColor, '#');
+            $r = hexdec(substr($hex, 0, 2));
+            $g = hexdec(substr($hex, 2, 2));
+            $b = hexdec(substr($hex, 4, 2));
+            $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
+            $contrastColor = $luminance > 0.5 ? '#1f2937' : '#ffffff';
+
+            return [
                     'primary_color' => $activeColor,
                     'contrast_color' => $contrastColor,
                     'source' => $tenantColor ? 'tenant' : 'central',
                 ];
-            },
+        },
         ];
     }
 }

@@ -20,6 +20,9 @@ const emit = defineEmits(['success']);
 const page = usePage();
 const requiresPasswordChange = computed(() => page.props.auth?.user?.requires_password_change || false);
 
+// Detect tenant context for correct route resolution
+const isTenant = computed(() => !!page.props.tenant);
+
 const showModal = computed(() => props.show || requiresPasswordChange.value);
 
 const passwordForm = useForm({
@@ -68,7 +71,7 @@ const strengthText = computed(() => {
 });
 
 const updatePassword = () => {
-    passwordForm.put(route('password.update'), {
+    passwordForm.put(route(isTenant.value ? 'tenant.password.update' : 'password.update'), {
         preserveScroll: true,
         onSuccess: () => {
             passwordForm.reset();

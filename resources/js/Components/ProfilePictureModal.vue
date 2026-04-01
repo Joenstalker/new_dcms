@@ -1,17 +1,21 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { ref, onMounted, watch, nextTick, computed } from 'vue';
+import { useForm, usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Modal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import Croppie from 'croppie';
 import 'croppie/croppie.css';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     show: Boolean,
 });
 
 const emit = defineEmits(['close']);
+
+// Detect tenant context for correct route resolution
+const isTenant = computed(() => !!usePage().props.tenant);
 
 const croppieRef = ref(null);
 const croppieInstance = ref(null);
@@ -25,12 +29,45 @@ const form = useForm({
 const onFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid File',
+                text: 'Please select a valid image file.',
+                confirmButtonColor: '#2B7CB3',
+            });
+            e.target.value = '';
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            Swal.fire({
+                icon: 'error',
+                title: 'File Too Large',
+                text: 'Please select an image smaller than 5MB.',
+                confirmButtonColor: '#2B7CB3',
+            });
+            e.target.value = '';
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = (event) => {
             imageSelected.value = true;
             nextTick(() => {
                 initializeCroppie(event.target.result);
             });
+        };
+        reader.onerror = () => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Cannot Read Image',
+                text: 'Failed to read the selected image. Please try a different file.',
+                confirmButtonColor: '#2B7CB3',
+            });
+            e.target.value = '';
         };
         reader.readAsDataURL(file);
     }
@@ -41,16 +78,26 @@ const initializeCroppie = (url) => {
         croppieInstance.value.destroy();
     }
 
-    croppieInstance.value = new Croppie(croppieRef.value, {
-        viewport: { width: 200, height: 200, type: 'square' },
-        boundary: { width: 300, height: 300 },
-        showZoomer: true,
-        enableOrientation: true,
-    });
+    try {
+        croppieInstance.value = new Croppie(croppieRef.value, {
+            viewport: { width: 200, height: 200, type: 'square' },
+            boundary: { width: 300, height: 300 },
+            showZoomer: true,
+            enableOrientation: true,
+        });
 
-    croppieInstance.value.bind({
-        url: url,
-    });
+        croppieInstance.value.bind({
+            url: url,
+        });
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Cannot Read Image',
+            text: 'This image format is not supported. Please try a different image.',
+            confirmButtonColor: '#2B7CB3',
+        });
+        imageSelected.value = false;
+    }
 };
 
 const save = () => {
@@ -64,15 +111,37 @@ const save = () => {
         quality: 0.9,
     }).then((base64) => {
         form.image = base64;
-        form.post(route('profile.update-picture'), {
+        form.post(route(isTenant.value ? 'tenant.profile.update-picture' : 'profile.update-picture'), {
             preserveScroll: true,
             onSuccess: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Profile Picture Updated',
+                    text: 'Your profile picture has been updated successfully.',
+                    confirmButtonColor: '#2B7CB3',
+                    timer: 2000,
+                    timerProgressBar: true,
+                });
                 close();
                 processing.value = false;
             },
             onError: () => {
                 processing.value = false;
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Upload Failed',
+                    text: 'Could not update your profile picture. Please try again.',
+                    confirmButtonColor: '#2B7CB3',
+                });
             },
+        });
+    }).catch(() => {
+        processing.value = false;
+        Swal.fire({
+            icon: 'error',
+            title: 'Cannot Read Image',
+            text: 'Failed to process the image. This image format may not be supported.',
+            confirmButtonColor: '#2B7CB3',
         });
     });
 };
