@@ -197,9 +197,23 @@ class SettingsController extends Controller
         $tenant = tenant();
         if (!$tenant) abort(404);
 
+        // Normalize target key (handle both space and underscore versions)
+        $searchKey = $key;
         $row = \Illuminate\Support\Facades\DB::table('branding_settings')
-            ->where('key', $key)
+            ->where('key', $searchKey)
             ->first();
+            
+        if (!$row && str_contains($searchKey, '_')) {
+            // Try with space if underscore failed
+            $row = \Illuminate\Support\Facades\DB::table('branding_settings')
+                ->where('key', str_replace('_', ' ', $searchKey))
+                ->first();
+        } elseif (!$row && str_contains($searchKey, ' ')) {
+            // Try with underscore if space failed
+            $row = \Illuminate\Support\Facades\DB::table('branding_settings')
+                ->where('key', str_replace(' ', '_', $searchKey))
+                ->first();
+        }
 
         if (!$row || $row->binary_value === null) {
             // Fallback to tenant model path if available
@@ -370,11 +384,28 @@ class SettingsController extends Controller
             'landing_contact' => 'landing_image_contact',
         ];
 
-        \App\Services\TenantBrandingService::setStreamed($keyMap[$field], $file->path());
+        $storageKey = $keyMap[$field];
+        \App\Services\TenantBrandingService::setStreamed($storageKey, $file->path());
+
+        // Sync to central tenants table so system knows a binary logo exists
+        $modelMap = [
+            'logo_base64' => 'logo_path',
+            'logo_login_base64' => 'logo_login_path',
+            'logo_booking_base64' => 'logo_booking_path'
+        ];
+        
+        $modelField = $modelMap[$storageKey] ?? null;
+        if ($modelField) {
+            DB::connection('central')->table('tenants')
+                ->where('id', $tenant->id)
+                ->update([$modelField => $storageKey]); // Store the key name as the "path"
+            
+            // Refresh tenant model in session if needed
+        }
 
         return response()->json([
             'success' => true,
-            'url' => route('settings.logo', ['key' => $keyMap[$field]]) . '?v=' . time(),
+            'url' => route('settings.logo', ['key' => $storageKey]) . '?v=' . time(),
         ]);
     }
 
@@ -405,6 +436,19 @@ class SettingsController extends Controller
         try {
             DB::table('branding_settings')->where('key', $keyMap[$field])->delete();
             \App\Services\TenantBrandingService::forget($keyMap[$field]);
+            
+            // Also clear central tenants table column
+            $modelMap = [
+                'logo_base64' => 'logo_path',
+                'logo_login_base64' => 'logo_login_path',
+                'logo_booking_base64' => 'logo_booking_path'
+            ];
+            $modelField = $modelMap[$keyMap[$field]] ?? null;
+            if ($modelField) {
+                DB::connection('central')->table('tenants')
+                    ->where('id', $tenant->id)
+                    ->update([$modelField => null]);
+            }
         } catch (\Exception $e) {
             // Ignore if row doesn't exist
         }

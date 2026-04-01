@@ -18,6 +18,8 @@ class TenantBrandingService
         try {
             if (!Schema::hasTable('branding_settings')) return $default;
 
+            $key = str_replace(' ', '_', $key);
+
             if (array_key_exists($key, self::$cache)) {
                 return self::$cache[$key];
             }
@@ -151,13 +153,23 @@ class TenantBrandingService
             $rows = DB::table('branding_settings')->get();
             $settings = [];
             foreach ($rows as $row) {
+                // Normalize key: replace spaces with underscores to prevent URL encoding issues
+                $normalizedKey = str_replace(' ', '_', $row->key);
+                
                 // Priority 1: Binary value — return route URL
                 if ($row->binary_value !== null) {
-                    $settings[$row->key] = route('settings.logo', ['key' => $row->key]);
+                    $settings[$normalizedKey] = route('settings.logo', ['key' => $row->key]);
                 } else {
-                    $settings[$row->key] = self::castValue($row->value);
+                    $settings[$normalizedKey] = self::castValue($row->value);
                 }
-                self::$cache[$row->key] = $settings[$row->key];
+                
+                // Also cache with normalized key
+                self::$cache[$normalizedKey] = $settings[$normalizedKey];
+                
+                // If it was modified, also keep original for backward compatibility (if needed)
+                if ($normalizedKey !== $row->key) {
+                    self::$cache[$row->key] = $settings[$normalizedKey];
+                }
             }
             return $settings;
         } catch (\Exception $e) {
