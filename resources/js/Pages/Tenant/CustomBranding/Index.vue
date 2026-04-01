@@ -38,9 +38,19 @@ const initialFontFamily = (typeof props.tenant?.font_family === 'object' && prop
     ? props.tenant.font_family
     : { header: 'font-sans', sidebar: 'font-sans', names: 'font-sans', general: 'font-sans' };
 
-const initialEnabledFeatures = Array.isArray(props.tenant?.enabled_features)
-    ? props.tenant.enabled_features
-    : (props.tenant?.enabled_features ? JSON.parse(props.tenant?.enabled_features) : []);
+const initialEnabledFeatures = computed(() => {
+    const raw = props.tenant?.enabled_features;
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string' && raw.trim() !== '') {
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            console.error('Failed to parse enabled_features:', e);
+            return [];
+        }
+    }
+    return [];
+}).value;
 
 const form = useForm({
     clinic_name: props.tenant?.name || '',

@@ -94,7 +94,22 @@ class Tenant extends BaseTenant implements TenantWithDatabase
                 'close' => '17:00',
             ];
         }
-        return $this->operating_hours ?? $defaults;
+
+        $hours = $this->operating_hours;
+        
+        // Handle cases where the value might be a JSON string from the database/Inertia
+        if (is_string($hours) && !empty($hours)) {
+            try {
+                $decoded = json_decode($hours, true);
+                if (is_array($decoded)) {
+                    $hours = $decoded;
+                }
+            } catch (\Exception $e) {
+                // Fallback to defaults on parse error
+            }
+        }
+
+        return is_array($hours) ? $hours : $defaults;
     }
 
     /**
@@ -244,7 +259,19 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      */
     public function isFeatureEnabled(string $feature): bool
     {
-        $enabled = $this->enabled_features ?? self::getDefaultFeatures();
+        $enabled = $this->enabled_features;
+        
+        if (is_string($enabled) && !empty($enabled)) {
+            $decoded = json_decode($enabled, true);
+            if (is_array($decoded)) {
+                $enabled = $decoded;
+            }
+        }
+
+        if (!is_array($enabled)) {
+            $enabled = self::getDefaultFeatures();
+        }
+
         return in_array($feature, $enabled);
     }
 

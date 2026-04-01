@@ -275,7 +275,7 @@ class SettingsController extends Controller
             return redirect()->back()->with('error', 'Tenant not found.');
         }
 
-        // Store branding settings in tenant database
+        // Store branding settings in tenant database (Primary Source for Visuals)
         if (isset($validated['clinic_name'])) \App\Services\TenantBrandingService::set('clinic_name', $validated['clinic_name']);
         if (isset($validated['email'])) \App\Services\TenantBrandingService::set('clinic_email', $validated['email']);
         if (isset($validated['phone'])) \App\Services\TenantBrandingService::set('clinic_phone', $validated['phone']);
@@ -293,35 +293,31 @@ class SettingsController extends Controller
         if (isset($validated['hero_subtitle'])) \App\Services\TenantBrandingService::set('hero_subtitle', $validated['hero_subtitle']);
         if (isset($validated['about_us_description'])) \App\Services\TenantBrandingService::set('about_us_description', $validated['about_us_description']);
 
-        // Map clinic_name to 'name' and address to 'street' for database synchronization
-        if (isset($validated['clinic_name'])) {
-            $validated['name'] = $validated['clinic_name'];
-        }
-        if (isset($validated['address'])) {
-            $validated['street'] = $validated['address'];
-        }
-
-        // Apply Plan-Based Gating
+        // Sync to Tenants Table in Central DB (Secondary Source for Discovery/Admin)
+        if (isset($validated['clinic_name'])) $tenant->name = $validated['clinic_name'];
+        if (isset($validated['address'])) $tenant->street = $validated['address'];
+        if (isset($validated['email'])) $tenant->email = $validated['email'];
+        if (isset($validated['phone'])) $tenant->phone = $validated['phone'];
+        
+        // Apply Plan-Based Gating for premium visuals
         if (!$tenant->canCustomizeBranding()) {
-            // Basic plan: Only allow clinic_name, email, phone, address
-            // Reset other premium fields to standard defaults if provided
+            // Basic plan: Ignore premium fields for the model update
             unset(
                 $validated['branding_color'], 
                 $validated['font_family'], 
                 $validated['operating_hours']
             );
+        } else {
+            // Premium: Sync visual state to model for central accessibility
+            $data = $tenant->data ?? [];
+            if (isset($validated['branding_color'])) $data['branding_color'] = $validated['branding_color'];
+            if (isset($validated['font_family'])) $data['font_family'] = $validated['font_family'];
+            if (isset($validated['portal_config'])) $data['portal_config'] = $validated['portal_config'];
+            if (isset($validated['operating_hours'])) $data['operating_hours'] = $validated['operating_hours'];
+            if (array_key_exists('online_booking_enabled', $validated)) $data['online_booking_enabled'] = $validated['online_booking_enabled'];
+            $tenant->data = $data;
         }
 
-        // Explicitly set virtual attributes to ensure they are captured by Stancl's data sync
-        // Force save to the data column to ensure persistence
-        $data = $tenant->data ?? [];
-        if (isset($validated['branding_color'])) $data['branding_color'] = $validated['branding_color'];
-        if (isset($validated['font_family'])) $data['font_family'] = $validated['font_family'];
-        if (isset($validated['portal_config'])) $data['portal_config'] = $validated['portal_config'];
-        if (isset($validated['operating_hours'])) $data['operating_hours'] = $validated['operating_hours'];
-        if (array_key_exists('online_booking_enabled', $validated)) $data['online_booking_enabled'] = $validated['online_booking_enabled'];
-        
-        $tenant->data = $data;
         $tenant->save();
 
         // Clean up internal keys before update

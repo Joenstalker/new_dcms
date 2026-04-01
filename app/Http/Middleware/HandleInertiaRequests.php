@@ -62,15 +62,17 @@ class HandleInertiaRequests extends Middleware
                 if (!$tenant) return null;
                 
                 // Optimized: Only fetch what's needed for the layout/gating
-                $branding = \App\Services\TenantBrandingService::findMany([
-                    'primary_color', 'font_family', 'portal_config', 'enabled_features'
-                ]);
+                // Priority: TenantBrandingService (Binary/Custom) > Tenant Model (Legacy/Sync)
+                $branding = \App\Services\TenantBrandingService::getAll();
                 
                 return array_merge($tenant->toArray(), [
                     'branding_color' => $branding['primary_color'] ?? $tenant->branding_color,
                     'font_family' => $branding['font_family'] ?? $tenant->font_family,
                     'portal_config' => $branding['portal_config'] ?? $tenant->portal_config,
                     'enabled_features' => $branding['enabled_features'] ?? $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures(),
+                    'logo_path' => $branding['logo_base64'] ?? $tenant->logo_path,
+                    'logo_login_path' => $branding['logo_login_base64'] ?? $tenant->logo_login_path,
+                    'logo_booking_path' => $branding['logo_booking_base64'] ?? $tenant->logo_booking_path,
                     'is_premium' => $tenant->canCustomizeBranding(),
                 ]);
             },
@@ -115,10 +117,8 @@ class HandleInertiaRequests extends Middleware
                     ];
                 }
 
-                // Tenant: use TenantBrandingService (untouched)
-                $branding = \App\Services\TenantBrandingService::findMany([
-                    'clinic_name', 'logo_base64', 'primary_color'
-                ]);
+                // Tenant: use TenantBrandingService as absolute source for specific keys
+                $branding = \App\Services\TenantBrandingService::getAll();
 
                 return [
                     'platform_name' => $branding['clinic_name'] ?? $tenant->name ?? SystemSetting::get('platform_name', 'DCMS'),

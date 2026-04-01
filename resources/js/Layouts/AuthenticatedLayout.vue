@@ -108,20 +108,22 @@ const fonts = computed(() => {
 // Platform info
 const platformName = computed(() => page.props.tenant?.name || branding.value.platform_name || 'DCMS');
 const platformLogo = computed(() => {
-    const logoFile = page.props.tenant?.logo_path || branding.value.platform_logo;
+    // Priority: Binary URL from shared 'branding' prop (Server-resolved)
+    if (branding.value.platform_logo) return branding.value.platform_logo;
+    
+    // Fallback: Tenant model path
+    const logoFile = page.props.tenant?.logo_path;
     if (!logoFile) return null;
 
-    // Handle Base64 data URLs directly (Support for Database-Only Isolation)
+    // Handle Base64 data URLs directly
     if (logoFile.startsWith('data:image/')) return logoFile;
     
-    // If it's a full URL (from TenantBrandingService route), use as-is
+    // If it's a full URL (already resolved), use as-is
     if (logoFile.startsWith('http://') || logoFile.startsWith('https://')) return logoFile;
 
-    // Tenant filesystem paths — served through tenant-storage controller
-    if (logoFile.startsWith('branding/')) return '/tenant-storage/' + logoFile;
-    if (logoFile.startsWith('logos/')) return '/tenant-storage/' + logoFile;
+    // Local filesystem paths
+    if (logoFile.startsWith('branding/') || logoFile.startsWith('logos/')) return '/tenant-storage/' + logoFile;
     
-    // Fallback for legacy paths
     return '/tenant-storage/logos/' + logoFile;
 });
 const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');
