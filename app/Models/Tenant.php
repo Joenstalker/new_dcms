@@ -250,7 +250,12 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             'staff',
             'services',
             'reports',
-            'settings'
+            'analytics',
+            'notifications',
+            'logs',
+            'branches',
+            'settings',
+            'branding'
         ];
     }
 

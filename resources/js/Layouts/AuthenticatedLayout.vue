@@ -232,6 +232,7 @@ const menuCategories = computed(() => {
                 { 
                     name: 'Reports', 
                     icon: 'chart', 
+                    feature: 'reports',
                     permissions: ['view reports'],
                     subItems: [
                         { name: 'Revenue Report', route: 'reports.index', permissions: ['view reports'] },
@@ -239,8 +240,8 @@ const menuCategories = computed(() => {
                         { name: 'Appointments Report', route: 'reports.index', permissions: ['view reports'] },
                     ]
                 },
-                { name: 'Analytics', route: 'analytics.index', icon: 'analytics', permissions: ['view reports'], featureKey: 'advanced_analytics' },
-                { name: 'Notifications', route: 'notifications.index', icon: 'bell', permissions: ['view notifications'], featureKey: 'sms_notifications' },
+                { name: 'Analytics', route: 'analytics.index', icon: 'analytics', feature: 'analytics', permissions: ['view reports'], featureKey: 'advanced_analytics' },
+                { name: 'Notifications', route: 'notifications.index', icon: 'bell', feature: 'notifications', permissions: ['view notifications'], featureKey: 'sms_notifications' },
             ]
         },
         {
@@ -257,18 +258,21 @@ const menuCategories = computed(() => {
                     name: 'Activity Logs', 
                     icon: 'shield', 
                     route: 'activity-logs.index', 
+                    feature: 'logs',
                     permissions: ['view activity logs']
                 },
                 { 
                     name: 'Custom Branding', 
                     icon: 'paint', 
                     route: 'settings.branding', 
+                    feature: 'branding',
                     permissions: ['manage settings', 'manage clinic branding'],
                     featureKey: 'custom_branding'
                 },
                 { 
                     name: 'Settings', 
                     icon: 'cog', 
+                    feature: 'settings',
                     permissions: ['manage settings'],
                     subItems: [
                         { name: 'Billing & Plan', route: 'settings.index', permissions: ['manage settings'] },
@@ -276,7 +280,7 @@ const menuCategories = computed(() => {
                         { name: 'Updates', route: 'settings.updates', permissions: ['manage settings'], icon: 'refresh' },
                     ]
                 },
-                { name: 'Branches', route: 'branches.index', icon: 'branch', permissions: ['manage settings'], featureKey: 'multi_branch' },
+                { name: 'Branches', route: 'branches.index', icon: 'branch', feature: 'branches', permissions: ['manage settings'], featureKey: 'multi_branch' },
             ]
         }
     ];
@@ -300,9 +304,10 @@ const menuCategories = computed(() => {
                     if (item.staffOnly) return false;
                     
                     // Clinic Owner Toggle Logic (Hide/Show sidebar features)
-                    // Custom Branding is always allowed to remain visible for the Owner 
+                    // Dashboard, Custom Branding, and Settings are always mandatory for the Owner
                     if (item.feature && !page.props.tenant?.enabled_features?.includes(item.feature)) {
-                        if (item.featureKey !== 'custom_branding') return false;
+                        const mandatoryFeatures = ['dashboard', 'branding', 'settings'];
+                        if (!mandatoryFeatures.includes(item.feature)) return false;
                     }
                     
                     return hasRoute;

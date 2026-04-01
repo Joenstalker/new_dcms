@@ -7,7 +7,6 @@ const props = defineProps({
 });
 
 const featuresList = [
-    { id: 'dashboard', name: 'Dashboard & Analytics', icon: '📊', description: 'Core dashboard with business health overview.' },
     { id: 'appointments', name: 'Appointment Management', icon: '📅', description: 'Manage bookings, calendar, and walk-ins.' },
     { id: 'patients', name: 'Patient Records', icon: '👥', description: 'Database of patient profiles and medical history.' },
     { id: 'billing', name: 'Billing & POS', icon: '💳', description: 'Invoices, transactions, and payment management.' },
@@ -15,6 +14,10 @@ const featuresList = [
     { id: 'staff', name: 'Staff Management', icon: '👩‍⚕️', description: 'Employee profiles, schedules, and permissions.' },
     { id: 'services', name: 'Service & Pricing', icon: '🏷️', description: 'Manage your clinics offerings and price list.' },
     { id: 'reports', name: 'Revenue Reports', icon: '📈', description: 'Detailed financial and patient growth reports.' },
+    { id: 'analytics', name: 'Advanced Analytics', icon: '📊', description: 'Deep business metrics and performance tracking.' },
+    { id: 'notifications', name: 'SMS & Notifications', icon: '🔔', description: 'Manage patient communications and SMS logs.' },
+    { id: 'logs', name: 'Activity Logs', icon: '🛡️', description: 'Audit trail of staff actions and system events.' },
+    { id: 'branches', name: 'Multi-Branch Support', icon: '🏢', description: 'Manage and switch between different clinic branches.' },
 ];
 
 const toggleFeature = (id) => {
@@ -22,8 +25,9 @@ const toggleFeature = (id) => {
     if (index === -1) {
         props.form.enabled_features.push(id);
     } else {
-        // Prevent disabling 'settings' to avoid lockouts
-        if (id === 'settings') return;
+        // Prevent disabling mandatory features to avoid lockouts
+        const mandatory = ['dashboard', 'settings', 'branding'];
+        if (mandatory.includes(id)) return;
         props.form.enabled_features.splice(index, 1);
     }
 };
@@ -35,11 +39,11 @@ const isEnabled = (id) => props.form.enabled_features.includes(id);
     <div class="space-y-8 animate-fade-in">
         <section class="space-y-6">
             <div class="flex items-center justify-between">
-                <h4 class="text-xs font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                <h1 class="text-xs font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-primary"></span>
                     Module Management
-                </h4>
-                <div class="badge badge-primary badge-sm font-black uppercase tracking-widest text-[8px] p-2">Settings is always enabled</div>
+                </h1>
+                <div class="badge badge-primary badge-sm font-black uppercase tracking-widest text-[8px] p-2 text-white">Dashboard & Settings are always enabled</div>
             </div>
 
             <p class="text-sm text-gray-500 max-w-2xl">
