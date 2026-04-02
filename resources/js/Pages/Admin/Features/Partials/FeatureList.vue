@@ -49,6 +49,9 @@ const emit = defineEmits(['manage']);
                                     <span class="badge badge-outline badge-sm font-medium text-base-content/70">
                                         {{ feature.key }}
                                     </span>
+                                    <span class="badge badge-outline badge-sm font-mono text-base-content/50" title="Sort Order Sequence">
+                                        #{{ feature.sort_order }}
+                                    </span>
                                     <span 
                                         class="badge badge-sm font-bold"
                                         :class="{

@@ -37,6 +37,7 @@ class Feature extends Model
     public const STATUS_COMING_SOON = 'coming_soon';
     public const STATUS_IN_DEVELOPMENT = 'in_development';
     public const STATUS_ACTIVE = 'active';
+    public const STATUS_BETA = 'beta';
     public const STATUS_DEPRECATED = 'deprecated';
 
     /**
@@ -47,6 +48,7 @@ class Feature extends Model
         return match ($this->implementation_status) {
                 self::STATUS_COMING_SOON => 'Coming Soon',
                 self::STATUS_IN_DEVELOPMENT => 'In Development',
+                self::STATUS_BETA => 'Beta',
                 self::STATUS_ACTIVE => 'Active',
                 self::STATUS_DEPRECATED => 'Deprecated',
                 default => 'Unknown',
@@ -69,6 +71,7 @@ class Feature extends Model
         return in_array($this->implementation_status, [
             self::STATUS_COMING_SOON,
             self::STATUS_IN_DEVELOPMENT,
+            self::STATUS_BETA,
         ]);
     }
 
@@ -166,5 +169,13 @@ class Feature extends Model
                 'expansion' => 'Expansion',
                 default => 'Other',
             };
+    }
+
+    /**
+     * Get the tenant features (overrides).
+     */
+    public function tenantFeatures()
+    {
+        return $this->hasMany(TenantFeature::class);
     }
 }

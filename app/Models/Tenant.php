@@ -47,6 +47,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'qr_code_path',
         'storage_used_bytes',
         'bandwidth_used_bytes',
+        'version',
     ];
 
     /**
@@ -62,6 +63,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'online_booking_enabled' => 'boolean',
         'storage_used_bytes' => 'integer',
         'bandwidth_used_bytes' => 'integer',
+        'version' => 'string',
     ];
 
     /**
@@ -96,7 +98,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         }
 
         $hours = $this->operating_hours;
-        
+
         // Handle cases where the value might be a JSON string from the database/Inertia
         if (is_string($hours) && !empty($hours)) {
             try {
@@ -104,8 +106,9 @@ class Tenant extends BaseTenant implements TenantWithDatabase
                 if (is_array($decoded)) {
                     $hours = $decoded;
                 }
-            } catch (\Exception $e) {
-                // Fallback to defaults on parse error
+            }
+            catch (\Exception $e) {
+            // Fallback to defaults on parse error
             }
         }
 
@@ -167,6 +170,11 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             // Set default enabled features
             if (empty($tenant->enabled_features)) {
                 $tenant->enabled_features = self::getDefaultFeatures();
+            }
+
+            // Set default initial system version
+            if (empty($tenant->version)) {
+                $tenant->version = config('app_version.version', '1.0.0');
             }
         });
     }
@@ -265,7 +273,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function isFeatureEnabled(string $feature): bool
     {
         $enabled = $this->enabled_features;
-        
+
         if (is_string($enabled) && !empty($enabled)) {
             $decoded = json_decode($enabled, true);
             if (is_array($decoded)) {
@@ -310,7 +318,8 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function canAddMorePatients(): bool
     {
         $limit = $this->getPlanLimit('max_patients');
-        if ($limit === null || $limit === -1) return true; // Unlimited
+        if ($limit === null || $limit === -1)
+            return true; // Unlimited
 
         $currentCount = \DB::connection($this->getDatabaseConnectionName())
             ->table('patients')
@@ -325,7 +334,8 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function canAddMoreUsers(): bool
     {
         $limit = $this->getPlanLimit('max_users');
-        if ($limit === null || $limit === -1) return true; // Unlimited
+        if ($limit === null || $limit === -1)
+            return true; // Unlimited
 
         $currentCount = \DB::connection($this->getDatabaseConnectionName())
             ->table('users')
@@ -340,7 +350,8 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function canAddMoreAppointments(): bool
     {
         $limit = $this->getPlanLimit('max_appointments');
-        if ($limit === null || $limit === -1) return true; // Unlimited
+        if ($limit === null || $limit === -1)
+            return true; // Unlimited
 
         $currentCount = \DB::connection($this->getDatabaseConnectionName())
             ->table('appointments')
@@ -370,5 +381,13 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         }
 
         return true;
+    }
+
+    /**
+     * Get the tenant feature overrides.
+     */
+    public function tenantFeatures()
+    {
+        return $this->hasMany(TenantFeature::class);
     }
 }

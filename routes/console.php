@@ -16,11 +16,11 @@ Artisan::command('fix:tenant-domains', function () {
         if ($tenant->domains()->count() === 0) {
             $subdomain = $tenant->subdomain;
             $this->info("Creating domain '{$subdomain}' for tenant '{$tenant->id}'");
-            
+
             $tenant->domains()->create([
                 'domain' => $subdomain,
             ]);
-            
+
             $count++;
         }
     }
@@ -34,3 +34,6 @@ Schedule::command('registrations:send-reminders')->hourly();
 
 // Appointment reminders — run daily at 8 AM
 Schedule::command('appointments:send-reminders')->dailyAt('08:00');
+
+// Passive system updates checker
+Schedule::command('system:check-updates')->hourly();

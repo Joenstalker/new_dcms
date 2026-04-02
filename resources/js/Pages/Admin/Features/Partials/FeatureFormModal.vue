@@ -14,10 +14,26 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    featuresByCategory: {
+        type: Object,
+        default: () => ({}),
+    },
     primaryColor: {
         type: String,
         default: '#0ea5e9',
     },
+});
+
+import { computed } from 'vue';
+
+const categoryFeatures = computed(() => {
+    let feats = props.featuresByCategory[props.form.category] || [];
+    // If we're editing, don't show the feature itself in its own "Place After" list
+    if (props.editingFeature) {
+        feats = feats.filter(f => f.id !== props.editingFeature.id);
+    }
+    // Sort them exactly as they appear structurally
+    return [...feats].sort((a,b) => a.sort_order - b.sort_order);
 });
 
 const emit = defineEmits(['close', 'submit', 'delete', 'toggle']);
@@ -113,6 +129,23 @@ const submitForm = () => {
                     </div>
                 </div>
 
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-bold text-base-content/70">Implementation Status</span>
+                    </label>
+                    <select
+                        v-model="form.implementation_status"
+                        class="select select-bordered w-full"
+                    >
+                        <option value="coming_soon">Coming Soon</option>
+                        <option value="in_development">In Development</option>
+                        <option value="beta">Beta</option>
+                        <option value="active">Active</option>
+                        <option value="deprecated">Deprecated</option>
+                    </select>
+                    <p class="mt-1 text-xs text-base-content/50">Overrides system routing based on development stage.</p>
+                </div>
+
                 <div v-if="form.type === 'tiered'" class="form-control">
                     <label class="label">
                         <span class="label-text font-bold text-base-content/70">Tier Options</span>
@@ -128,25 +161,50 @@ const submitForm = () => {
 
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text font-bold text-base-content/70">Sort Order</span>
+                        <span class="label-text font-bold text-base-content/70">Placement (Sort Order)</span>
                     </label>
-                    <input
+                    <select
                         v-model.number="form.sort_order"
-                        type="number"
-                        min="0"
-                        class="input input-bordered w-full"
-                    />
+                        class="select select-bordered w-full"
+                    >
+                        <option v-if="editingFeature && !categoryFeatures.find(f => f.sort_order + 1 === form.sort_order) && form.sort_order !== 0 && form.sort_order !== 99" :value="form.sort_order">
+                            Current Position ({{ form.sort_order }})
+                        </option>
+                        <option :value="0">Top of list (First)</option>
+                        <option 
+                            v-for="feat in categoryFeatures" 
+                            :key="feat.id" 
+                            :value="feat.sort_order + 1"
+                        >
+                            After {{ feat.name }}
+                        </option>
+                        <option :value="99">Bottom of list (Last)</option>
+                    </select>
+                    <p class="mt-1 text-xs text-base-content/50">Select where this item belongs globally.</p>
                 </div>
 
-                <div class="form-control">
-                    <label class="label cursor-pointer justify-start gap-4">
-                        <input
-                            v-model="form.is_active"
-                            type="checkbox"
-                            class="checkbox checkbox-primary"
-                        />
-                        <span class="label-text font-bold text-base-content/70">Active</span>
-                    </label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label cursor-pointer justify-start gap-4">
+                            <input
+                                v-model="form.is_active"
+                                type="checkbox"
+                                class="checkbox checkbox-primary"
+                            />
+                            <span class="label-text font-bold text-base-content/70">System Active</span>
+                        </label>
+                    </div>
+
+                    <div class="form-control" v-if="!editingFeature">
+                        <label class="label cursor-pointer justify-start gap-4">
+                            <input
+                                v-model="form.notify_tenants"
+                                type="checkbox"
+                                class="checkbox checkbox-secondary"
+                            />
+                            <span class="label-text font-bold text-base-content/70">Show in Tenant Updates Page</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-between w-full mt-8 pt-4 border-t border-base-200">

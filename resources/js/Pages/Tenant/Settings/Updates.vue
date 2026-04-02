@@ -37,11 +37,15 @@ const pendingUpdates = computed(() => {
     })) || [];
 });
 
+const activeUpdates = computed(() => {
+    return pendingUpdates.value.filter(u => u.feature.implementation_status === 'active');
+});
+
 const selectAll = () => {
-    if (form.feature_ids.length === pendingUpdates.value.length) {
+    if (form.feature_ids.length === activeUpdates.value.length) {
         form.feature_ids = [];
     } else {
-        form.feature_ids = pendingUpdates.value.map(u => u.feature.id);
+        form.feature_ids = activeUpdates.value.map(u => u.feature.id);
     }
 };
 
@@ -120,13 +124,14 @@ const isApplyingFeature = (featureId) => {
                     <label class="flex items-center cursor-pointer">
                         <input 
                             type="checkbox" 
-                            :checked="form.feature_ids.length === pendingUpdates.length && pendingUpdates.length > 0"
+                            :checked="form.feature_ids.length === activeUpdates.length && activeUpdates.length > 0"
+                            :disabled="activeUpdates.length === 0"
                             @change="selectAll"
                             class="checkbox checkbox-primary"
                         />
                         <span class="ml-3 font-medium text-gray-700">Select All Updates</span>
                     </label>
-                    <span class="text-sm text-gray-500">{{ pendingUpdates.length }} update(s) available</span>
+                    <span class="text-sm text-gray-500">{{ activeUpdates.length }} ready to install ({{ pendingUpdates.length - activeUpdates.length }} coming soon)</span>
                 </div>
 
                 <!-- Update Cards -->

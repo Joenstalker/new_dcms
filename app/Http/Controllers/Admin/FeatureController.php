@@ -47,7 +47,7 @@ class FeatureController extends Controller
             'options' => 'nullable|array',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
-            'implementation_status' => 'nullable|in:coming_soon,in_development,active,deprecated',
+            'implementation_status' => 'nullable|in:coming_soon,in_development,beta,active,deprecated',
             'code_identifier' => 'nullable|string|max:255|regex:/^[a-z0-9-]+$/',
         ]);
 
@@ -128,7 +128,7 @@ class FeatureController extends Controller
             'options' => 'nullable|array',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
-            'implementation_status' => 'nullable|in:coming_soon,in_development,active,deprecated',
+            'implementation_status' => 'nullable|in:coming_soon,in_development,beta,active,deprecated',
             'code_identifier' => 'nullable|string|max:255|regex:/^[a-z0-9-]+$/',
         ]);
 
@@ -164,19 +164,19 @@ class FeatureController extends Controller
     /**
      * Notify tenants about a new feature update asynchronously.
      */
-    public function notifyTenants(Request $request, Feature $feature): array|RedirectResponse
+    public function notifyTenants(Request $request, Feature $feature): array |RedirectResponse
     {
         $otaService = app(FeatureOTAUpdateService::class);
-        
+
         try {
             $batch = $otaService->pushFeatureUpdates($feature)->dispatch();
-            
+
             \App\Models\AuditLog::record(
                 'feature_notified_async',
                 "Triggered async notification for feature '{$feature->name}'.",
                 'Feature',
                 $feature->id,
-                ['batch_id' => $batch->id]
+            ['batch_id' => $batch->id]
             );
 
             if ($request->wantsJson()) {
@@ -188,7 +188,8 @@ class FeatureController extends Controller
             }
 
             return back()->with('success', "Notification batch started (ID: {$batch->id}).");
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
@@ -196,36 +197,44 @@ class FeatureController extends Controller
     /**
      * Sync all active features to all eligible tenants (Bulk OTA Sync) asynchronously.
      */
-    public function syncAllUpdates(FeatureOTAUpdateService $otaService, Request $request): array|RedirectResponse
+    public function syncAllUpdates(FeatureOTAUpdateService $otaService, Request $request): array |RedirectResponse
     {
         $features = Feature::where('is_active', true)->get();
-        
+
         if ($features->isEmpty()) {
             return back()->with('error', 'No active features to sync.');
         }
 
         $jobs = [];
-        $allTenants = \App\Models\Tenant::all();
 
-        foreach ($features as $feature) {
-            // Get eligible regions/tenants logic here if needed, 
-            // but for simplicity we'll follow pushFeatureUpdates style
-            $subscriptions = \App\Models\Subscription::whereHas('plan.features', function ($query) use ($feature) {
-                $query->where('features.id', $feature->id);
-            })->where('stripe_status', 'active')
-              ->with(['tenant', 'plan'])
-              ->get();
-
+        // Chunk Subscriptions to definitively prevent 1GB memory exhaustion locks natively.
+        // We evaluate per-tenant instead of per-feature so we don't duplicate identical Jobs.
+        \App\Models\Subscription::where('stripe_status', 'active')
+            ->with(['tenant', 'plan.features'])
+            ->chunk(100, function ($subscriptions) use (&$jobs, $features) {
             foreach ($subscriptions as $subscription) {
-                $tenant = $subscription->tenant;
-                $jobs[] = new \App\Jobs\ProcessTenantFeatureUpdateJob(
-                    $tenant instanceof \App\Models\Tenant ? $tenant : \App\Models\Tenant::find($tenant->id),
-                    $subscription->plan,
-                    [$feature],
-                    false
-                );
-            }
-        }
+                if (!$subscription->tenant || !$subscription->plan) {
+                    continue;
+                }
+
+                // Extract what active features this explicit plan has access to
+                $planFeatureIds = $subscription->plan->features->pluck('id')->toArray();
+                $eligibleFeatures = $features->filter(function ($f) use ($planFeatureIds) {
+                            return in_array($f->id, $planFeatureIds);
+                        }
+                        )->values()->all();
+
+                        // Only construct one single job containing an array of features per tenant payload
+                        if (!empty($eligibleFeatures)) {
+                            $jobs[] = new \App\Jobs\ProcessTenantFeatureUpdateJob(
+                                $subscription->tenant,
+                                $subscription->plan,
+                                $eligibleFeatures,
+                                false
+                                );
+                        }
+                    }
+                });
 
         if (empty($jobs)) {
             return back()->with('error', 'No eligible subscriptions found for any active features.');
@@ -240,7 +249,7 @@ class FeatureController extends Controller
             "Triggered bulk OTA sync for {$features->count()} active features.",
             'Feature',
             null,
-            ['batch_id' => $batch->id, 'total_jobs' => count($jobs)]
+        ['batch_id' => $batch->id, 'total_jobs' => count($jobs)]
         );
 
         if ($request->wantsJson()) {
@@ -260,7 +269,7 @@ class FeatureController extends Controller
     public function getBatchStatus(string $batchId): array
     {
         $batch = \Illuminate\Support\Facades\Bus::findBatch($batchId);
-        
+
         if (!$batch) {
             return ['id' => $batchId, 'status' => 'not_found'];
         }

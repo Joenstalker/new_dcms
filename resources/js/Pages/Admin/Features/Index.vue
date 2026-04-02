@@ -45,6 +45,8 @@ const form = useForm({
     options: [],
     sort_order: 0,
     is_active: true,
+    implementation_status: 'coming_soon',
+    notify_tenants: false,
 });
 
 const openCreateModal = () => {
@@ -58,6 +60,8 @@ const openCreateModal = () => {
     form.options = [];
     form.sort_order = 0;
     form.is_active = true;
+    form.implementation_status = 'coming_soon';
+    form.notify_tenants = true; // Auto-checked on create to show in updates
     showModal.value = true;
 };
 
@@ -71,6 +75,8 @@ const openEditModal = (feature) => {
     form.options = feature.options || [];
     form.sort_order = feature.sort_order;
     form.is_active = feature.is_active;
+    form.implementation_status = feature.implementation_status || 'coming_soon';
+    form.notify_tenants = false; // By default don't re-notify on edit unless explicit
     showModal.value = true;
 };
 
@@ -327,6 +333,7 @@ const handleBatchFinished = () => {
             :show="showModal"
             :editing-feature="editingFeature"
             :form="form"
+            :features-by-category="featuresByCategory"
             :primary-color="primaryColor"
             @close="closeModal"
             @submit="submitForm"

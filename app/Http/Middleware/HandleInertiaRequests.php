@@ -66,6 +66,13 @@ class HandleInertiaRequests extends Middleware
             // Priority: TenantBrandingService (Binary/Custom) > Tenant Model (Legacy/Sync)
             $branding = \App\Services\TenantBrandingService::getAll();
 
+            // GRACEFUL DEGRADATION: 
+            // If the tenant currently has access to Custom Branding (Pro), respect their hidden/shown overrides.
+            // If they are downgraded to Basic, ignore their overrides and fallback to default immediately to prevent menu lockouts.
+            $enabledFeatures = $tenant->canCustomizeBranding()
+                ? ($branding['enabled_features'] ?? $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures())
+                : \App\Models\Tenant::getDefaultFeatures();
+
             return array_merge($tenant->toArray(), [
                     'branding_color' => $branding['primary_color'] ?? $tenant->branding_color,
                     'font_family' => $branding['font_family'] ?? $tenant->font_family,
@@ -76,7 +83,7 @@ class HandleInertiaRequests extends Middleware
                     'about_us_description' => $branding['about_us_description'] ?? $tenant->about_us_description,
                     'operating_hours' => $branding['operating_hours'] ?? $tenant->operating_hours,
                     'online_booking_enabled' => $branding['online_booking_enabled'] ?? $tenant->online_booking_enabled ?? true,
-                    'enabled_features' => $branding['enabled_features'] ?? $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures(),
+                    'enabled_features' => $enabledFeatures,
                     'logo_path' => $branding['logo_base64'] ?? $tenant->logo_path,
                     'logo_login_path' => $branding['logo_login_base64'] ?? $tenant->logo_login_path,
                     'logo_booking_path' => $branding['logo_booking_base64'] ?? $tenant->logo_booking_path,
