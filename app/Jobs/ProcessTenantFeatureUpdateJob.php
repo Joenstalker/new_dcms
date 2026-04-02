@@ -45,9 +45,6 @@ class ProcessTenantFeatureUpdateJob implements ShouldQueue
             if (!$this->isAdvertisement) {
                 foreach ($this->features as $feature) {
                     TenantFeatureUpdate::updateOrCreate(
-                        [
-                            'tenant_id' => $this->tenant->id,
-                            'feature_id' => $feature->id,
                         ],
                         [
                             'status' => TenantFeatureUpdate::STATUS_PENDING,
@@ -55,6 +52,7 @@ class ProcessTenantFeatureUpdateJob implements ShouldQueue
                         ]
                     );
                 }
+                \Illuminate\Support\Facades\Cache::forget("tenant_{$this->tenant->id}_pending_updates_count");
             }
 
             // 2. Create in-app notifications for tenant administrators (within tenant context)

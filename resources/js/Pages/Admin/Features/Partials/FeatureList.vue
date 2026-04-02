@@ -22,6 +22,10 @@ defineProps({
         type: String,
         default: '#0ea5e9'
     },
+    isArchive: {
+        type: Boolean,
+        default: false,
+    }
 });
 
 const emit = defineEmits(['manage']);
@@ -67,6 +71,17 @@ const emit = defineEmits(['manage']);
                                         class="badge badge-error badge-sm font-bold bg-error/10 text-error border-error/20"
                                     >
                                         Inactive
+                                    </span>
+                                    <span 
+                                        class="badge badge-sm font-bold"
+                                        :class="{
+                                            'badge-warning bg-warning/10 text-warning border-warning/20': feature.implementation_status === 'coming_soon',
+                                            'badge-info bg-info/10 text-info border-info/20': feature.implementation_status === 'in_development',
+                                            'badge-primary bg-primary/10 text-primary border-primary/20': feature.implementation_status === 'beta',
+                                            'badge-success bg-success/10 text-success border-success/20': feature.implementation_status === 'active',
+                                        }"
+                                    >
+                                        {{ feature.implementation_status?.replace('_', ' ') }}
                                     </span>
                                 </div>
                                 <div class="mt-1 flex items-center gap-x-2 text-sm leading-5 text-base-content/50">

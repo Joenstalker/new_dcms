@@ -14,6 +14,7 @@ const page = usePage();
 const user = computed(() => page.props.auth.user);
 const roles = computed(() => user.value?.roles || []);
 const branding = computed(() => page.props.branding || {});
+const pendingUpdatesCount = computed(() => page.props.pending_updates_count || 0);
 
 // 1. Initial State from Server-Side Computation (Robust)
 // Initialize immediately before first render to prevent flickering
@@ -157,6 +158,39 @@ const isSubItemActive = (sub) => {
     if (sub.routeParams?.tab) return currentTabParam.value === sub.routeParams.tab;
     return route().current(sub.route) && !currentTabParam.value;
 };
+
+// onMounted to check for updates and show toast
+onMounted(() => {
+    // Only show if user is Owner or Admin
+    const canManageUpdates = roles.value.includes('Owner') || user.value?.permissions.includes('manage settings');
+    
+    if (canManageUpdates && pendingUpdatesCount.value > 0) {
+        // Check session storage to avoid showing on every page navigation, just once per session
+        if (!sessionStorage.getItem('notified_updates')) {
+            setTimeout(() => {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'info',
+                    title: `System Updates`,
+                    text: `You have ${pendingUpdatesCount.value} new feature update(s) available.`,
+                    showConfirmButton: true,
+                    confirmButtonText: 'View',
+                    showCancelButton: true,
+                    cancelButtonText: 'Later',
+                    timer: 10000,
+                    timerProgressBar: true,
+                    confirmButtonColor: primaryColor.value,
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        router.visit(route('settings.updates'));
+                    }
+                });
+                sessionStorage.setItem('notified_updates', 'true');
+            }, 1000);
+        }
+    }
+});
 
 // Authorization Guard: Check if the current route is allowed for the user
 const currentRouteName = computed(() => route().current() || '');
@@ -325,7 +359,7 @@ const menuCategories = computed(() => {
                     subItems: [
                         { name: 'Billing & Plan', route: 'settings.index', permissions: ['manage settings'] },
                         { name: 'Premium Features', route: 'settings.features', permissions: ['manage settings'], featureKey: 'custom_system_features' },
-                        { name: 'Updates', route: 'settings.updates', permissions: ['manage settings'], icon: 'refresh' },
+                        { name: 'Updates', route: 'settings.updates', permissions: ['manage settings'], icon: 'refresh', badge: pendingUpdatesCount.value },
                     ]
                 },
                 { name: 'Branches', route: 'branches.index', icon: 'branch', feature: 'branches', permissions: ['manage settings'], featureKey: 'multi_branch' },
@@ -721,6 +755,9 @@ function getContrastColor(hex) {
                                 <div v-if="isItemActive(item) && !item.isLocked" class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm flex-shrink-0"></div>
                                 <div v-if="roles.includes('Owner') && item.isLocked" class="ml-auto inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-warning/20 text-warning flex-shrink-0">
                                     {{ page.props.tenant_plan?.feature_requirements?.[item.featureKey] || 'PREMIUM' }}
+                                </div>
+                                <div v-if="item.badge > 0 && !item.isLocked" class="ml-auto h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm flex-shrink-0">
+                                    {{ item.badge }}
                                 </div>
                             </Link>
                         </div>

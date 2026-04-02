@@ -8,6 +8,7 @@ use App\Models\TenantFeatureUpdate;
 use App\Mail\NewFeatureUpdateMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
 
 class FeatureOTAUpdateService
 {
@@ -17,6 +18,11 @@ class FeatureOTAUpdateService
      */
     public function createUpdateRecordsForEligibleTenants(Feature $feature): int
     {
+        // Safety Guard: Don't notify about archived features
+        if ($feature->archived_at) {
+            return 0;
+        }
+
         $createdCount = 0;
         $tenantIdsToNotify = [];
 
@@ -24,12 +30,12 @@ class FeatureOTAUpdateService
         $subscriptions = Subscription::whereHas('plan.features', function ($query) use ($feature) {
             $query->where('features.id', $feature->id);
         })->where('stripe_status', 'active')
-          ->with(['tenant'])
-          ->get();
+            ->with(['tenant'])
+            ->get();
 
         foreach ($subscriptions as $subscription) {
             $tenantId = $subscription->tenant_id;
-            
+
             // Check if record already exists
             $exists = TenantFeatureUpdate::where('tenant_id', $tenantId)
                 ->where('feature_id', $feature->id)
@@ -52,6 +58,12 @@ class FeatureOTAUpdateService
         }
 
         Log::info("Created {$createdCount} tenant update records for feature: {$feature->name}");
+
+        // Clear cache for all notified tenants
+        foreach ($tenantIdsToNotify as $tenantId) {
+            Cache::forget("tenant_{$tenantId}_pending_updates_count");
+        }
+
         return $createdCount;
     }
 
@@ -61,7 +73,7 @@ class FeatureOTAUpdateService
     public function applyUpdate(string $tenantId, array $featureIds): array
     {
         $applied = [];
-        
+
         foreach ($featureIds as $featureId) {
             $update = TenantFeatureUpdate::where('tenant_id', $tenantId)
                 ->where('feature_id', $featureId)
@@ -76,6 +88,7 @@ class FeatureOTAUpdateService
         // Synchronize the tenant's features after applying updates
         if (!empty($applied)) {
             $this->syncTenantFeatures($tenantId);
+            Cache::forget("tenant_{$tenantId}_pending_updates_count");
         }
 
         return $applied;
@@ -88,10 +101,11 @@ class FeatureOTAUpdateService
     public function syncTenantFeatures(string $tenantId): void
     {
         $tenant = \App\Models\Tenant::find($tenantId);
-        if (!$tenant) return;
+        if (!$tenant)
+            return;
 
         $defaultFeatures = \App\Models\Tenant::getDefaultFeatures();
-        
+
         $appliedFeatureKeys = TenantFeatureUpdate::where('tenant_id', $tenantId)
             ->where('status', TenantFeatureUpdate::STATUS_APPLIED)
             ->join('features', 'tenant_feature_updates.feature_id', '=', 'features.id')
@@ -100,9 +114,9 @@ class FeatureOTAUpdateService
 
         // Merge defaults with newly applied features
         $allEnabled = array_unique(array_merge($defaultFeatures, $appliedFeatureKeys));
-        
+
         $tenant->update(['enabled_features' => $allEnabled]);
-        
+
         Log::info("Synced enabled_features for tenant [{$tenantId}]: " . json_encode($allEnabled));
     }
 
@@ -114,6 +128,9 @@ class FeatureOTAUpdateService
     {
         return TenantFeatureUpdate::where('tenant_id', $tenantId)
             ->pending()
+            ->whereHas('feature', function ($query) {
+            $query->notArchived()->where('is_active', true);
+        })
             ->with('feature')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -126,13 +143,16 @@ class FeatureOTAUpdateService
     {
         foreach ($tenantIds as $tenantId) {
             $tenant = \App\Models\Tenant::find($tenantId);
-            if (!$tenant) continue;
+            if (!$tenant)
+                continue;
 
             $adminEmail = $tenant->email ?? null;
-            if (!$adminEmail) continue;
+            if (!$adminEmail)
+                continue;
 
             $admin = \App\Models\User::where('email', $adminEmail)->first();
-            if (!$admin) continue;
+            if (!$admin)
+                continue;
 
             Mail::to($admin->email)->queue(new NewFeatureUpdateMail($feature, $tenant, $admin));
         }
@@ -164,7 +184,7 @@ class FeatureOTAUpdateService
                 $plan,
                 $features->all(),
                 !$isSubscribedToPlan
-            );
+                );
         }
 
         // 2. Mark features as pushed immediately (so UI reflects "Live" status)
@@ -185,8 +205,8 @@ class FeatureOTAUpdateService
         $subscriptions = Subscription::whereHas('plan.features', function ($query) use ($feature) {
             $query->where('features.id', $feature->id);
         })->where('stripe_status', 'active')
-          ->with(['tenant', 'plan'])
-          ->get();
+            ->with(['tenant', 'plan'])
+            ->get();
 
         $jobs = [];
 
@@ -195,9 +215,9 @@ class FeatureOTAUpdateService
             $jobs[] = new \App\Jobs\ProcessTenantFeatureUpdateJob(
                 $tenant instanceof \App\Models\Tenant ? $tenant : \App\Models\Tenant::find($tenant->id),
                 $subscription->plan,
-                [$feature],
+            [$feature],
                 false // Not an advertisement
-            );
+                );
         }
 
         if (empty($jobs)) {

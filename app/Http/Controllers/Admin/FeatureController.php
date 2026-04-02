@@ -19,18 +19,65 @@ class FeatureController extends Controller
     public function index(): Response
     {
         $features = Feature::ordered()
-            ->with(['plans' => function ($query) {
-            $query->select('subscription_plans.id', 'subscription_plans.name', 'plan_features.value_boolean', 'plan_features.value_numeric', 'plan_features.value_tier');
-        }])
+            ->notArchived()
             ->get()
             ->groupBy('category');
+
+        $archivedFeatures = Feature::ordered()
+            ->archived()
+            ->get();
 
         $plans = SubscriptionPlan::orderBy('price_monthly')->get();
 
         return Inertia::render('Admin/Features/Index', [
             'features' => $features,
+            'archivedFeatures' => $archivedFeatures,
             'plans' => $plans,
         ]);
+    }
+
+    /**
+     * Archive the specified feature.
+     */
+    public function archive(Feature $feature): RedirectResponse
+    {
+        // Safety Guard: Check if attached to any paid subscription plan
+        $paidPlans = $feature->plans()
+            ->where('price_monthly', '>', 0)
+            ->get();
+
+        if ($paidPlans->isNotEmpty()) {
+            $planNames = $paidPlans->pluck('name')->implode(', ');
+            return back()->with('error', "Cannot archive feature assigned to paid plans: {$planNames}. Remove it from these plans first.");
+        }
+
+        $feature->update(['archived_at' => now(), 'is_active' => false]);
+
+        \App\Models\AuditLog::record(
+            'feature_archived',
+            "Archived system feature '{$feature->name}'.",
+            'Feature',
+            $feature->id
+        );
+
+        return back()->with('success', 'Feature archived successfully.');
+    }
+
+    /**
+     * Restore the specified feature from archive.
+     */
+    public function restore(Feature $feature): RedirectResponse
+    {
+        $feature->update(['archived_at' => null, 'is_active' => true]);
+
+        \App\Models\AuditLog::record(
+            'feature_restored',
+            "Restored system feature '{$feature->name}' from archive.",
+            'Feature',
+            $feature->id
+        );
+
+        return back()->with('success', 'Feature restored from archive.');
     }
 
     /**
@@ -194,74 +241,6 @@ class FeatureController extends Controller
         }
     }
 
-    /**
-     * Sync all active features to all eligible tenants (Bulk OTA Sync) asynchronously.
-     */
-    public function syncAllUpdates(FeatureOTAUpdateService $otaService, Request $request): array |RedirectResponse
-    {
-        $features = Feature::where('is_active', true)->get();
-
-        if ($features->isEmpty()) {
-            return back()->with('error', 'No active features to sync.');
-        }
-
-        $jobs = [];
-
-        // Chunk Subscriptions to definitively prevent 1GB memory exhaustion locks natively.
-        // We evaluate per-tenant instead of per-feature so we don't duplicate identical Jobs.
-        \App\Models\Subscription::where('stripe_status', 'active')
-            ->with(['tenant', 'plan.features'])
-            ->chunk(100, function ($subscriptions) use (&$jobs, $features) {
-            foreach ($subscriptions as $subscription) {
-                if (!$subscription->tenant || !$subscription->plan) {
-                    continue;
-                }
-
-                // Extract what active features this explicit plan has access to
-                $planFeatureIds = $subscription->plan->features->pluck('id')->toArray();
-                $eligibleFeatures = $features->filter(function ($f) use ($planFeatureIds) {
-                            return in_array($f->id, $planFeatureIds);
-                        }
-                        )->values()->all();
-
-                        // Only construct one single job containing an array of features per tenant payload
-                        if (!empty($eligibleFeatures)) {
-                            $jobs[] = new \App\Jobs\ProcessTenantFeatureUpdateJob(
-                                $subscription->tenant,
-                                $subscription->plan,
-                                $eligibleFeatures,
-                                false
-                                );
-                        }
-                    }
-                });
-
-        if (empty($jobs)) {
-            return back()->with('error', 'No eligible subscriptions found for any active features.');
-        }
-
-        $batch = \Illuminate\Support\Facades\Bus::batch($jobs)
-            ->name("Bulk Feature Sync (" . count($jobs) . " updates)")
-            ->dispatch();
-
-        \App\Models\AuditLog::record(
-            'features_bulk_synced_async',
-            "Triggered bulk OTA sync for {$features->count()} active features.",
-            'Feature',
-            null,
-        ['batch_id' => $batch->id, 'total_jobs' => count($jobs)]
-        );
-
-        if ($request->wantsJson()) {
-            return [
-                'success' => true,
-                'message' => 'Bulk sync started.',
-                'batch_id' => $batch->id
-            ];
-        }
-
-        return back()->with('success', "Bulk sync batch started (ID: {$batch->id}).");
-    }
 
     /**
      * Get the status of a specific job batch.
@@ -291,6 +270,11 @@ class FeatureController extends Controller
      */
     public function destroy(Feature $feature): RedirectResponse
     {
+        // Safety Guard: Must be archived first
+        if (!$feature->archived_at) {
+            return back()->with('error', 'Feature must be archived before it can be permanently deleted.');
+        }
+
         // Check if feature is assigned to any plans
         if ($feature->plans()->count() > 0) {
             return back()->with('error', 'Cannot delete feature that is assigned to plans. Please remove from all plans first.');

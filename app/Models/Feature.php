@@ -21,6 +21,7 @@ class Feature extends Model
         'code_identifier',
         'announced_at',
         'released_at',
+        'archived_at',
     ];
 
     protected $casts = [
@@ -29,6 +30,7 @@ class Feature extends Model
         'sort_order' => 'integer',
         'announced_at' => 'datetime',
         'released_at' => 'datetime',
+        'archived_at' => 'datetime',
     ];
 
     /**
@@ -143,7 +145,24 @@ class Feature extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('is_active', true)
+            ->whereNull('archived_at');
+    }
+
+    /**
+     * Scope to filter archived features.
+     */
+    public function scopeArchived($query)
+    {
+        return $query->whereNotNull('archived_at');
+    }
+
+    /**
+     * Scope to filter non-archived features.
+     */
+    public function scopeNotArchived($query)
+    {
+        return $query->whereNull('archived_at');
     }
 
     /**

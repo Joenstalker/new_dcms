@@ -16,6 +16,7 @@ const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
 
 const props = defineProps({
     features: Object,
+    archivedFeatures: Array,
     plans: Array,
 });
 
@@ -25,6 +26,7 @@ const editingFeature = ref(null);
 const viewingFeature = ref(null);
 const currentBatchId = ref(null);
 const isSyncing = ref(false);
+const activeTab = ref('live');
 
 const categoryLabels = {
     core: 'Core Features',
@@ -188,13 +190,68 @@ const toggleFeature = (feature) => {
         confirmButtonText: `Yes, ${action.toLowerCase()} it`,
     }).then((result) => {
         if (result.isConfirmed) {
-            form.put(`/admin/features/${feature.id}`, {
-                is_active: !feature.is_active,
+            form.put(`/admin/features/${feature.id}/toggle-active`, {
                 preserveScroll: true,
                 onSuccess: () => {
                     Swal.fire({
                         title: 'Updated!',
                         text: `Feature has been ${action.toLowerCase()}d.`,
+                        icon: 'success',
+                        timer: 2000,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                    });
+                }
+            });
+        }
+    });
+};
+
+const archiveFeature = (feature) => {
+    Swal.fire({
+        title: 'Archive Feature?',
+        text: `Archiving "${feature.name}" will hide it from all tenants and subscription plans. It can only be deleted from the archive.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b', // amber-500
+        confirmButtonText: 'Yes, archive it',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            form.post(route('admin.features.archive', feature.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        title: 'Archived!',
+                        text: 'Feature moved to archive.',
+                        icon: 'success',
+                        timer: 2000,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                    });
+                }
+            });
+        }
+    });
+};
+
+const restoreFeature = (feature) => {
+    Swal.fire({
+        title: 'Restore Feature?',
+        text: `Restore "${feature.name}" to live status? It will become available in relevant categories again.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0ea5e9', // primary
+        confirmButtonText: 'Yes, restore it',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            form.post(route('admin.features.restore', feature.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        title: 'Restored!',
+                        text: 'Feature is now live.',
                         icon: 'success',
                         timer: 2000,
                         toast: true,
@@ -225,41 +282,6 @@ const featuresByCategory = computed(() => {
     return grouped;
 });
 
-const syncAllUpdates = () => {
-    Swal.fire({
-        title: 'Push OTA Synchronization?',
-        text: 'This will trigger a bulk push for all active features to all eligible tenants. This process runs in the background.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#0ea5e9', // primary
-        confirmButtonText: 'Yes, start sync',
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            isSyncing.value = true;
-            try {
-                const response = await axios.post(route('admin.features.sync-all'));
-                if (response.data.batch_id) {
-                    currentBatchId.value = response.data.batch_id;
-                    Swal.fire({
-                        title: 'Sync Started',
-                        text: 'The background process is now running.',
-                        icon: 'info',
-                        timer: 2000,
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                    });
-                } else {
-                    window.location.reload();
-                }
-            } catch (error) {
-                console.error('Sync failed:', error);
-                Swal.fire('Error!', 'Failed to start bulk synchronization.', 'error');
-                isSyncing.value = false;
-            }
-        }
-    });
-};
 
 const handleBatchFinished = () => {
     isSyncing.value = false;
@@ -282,9 +304,33 @@ const handleBatchFinished = () => {
 
         <div class="py-6">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <!-- Tab Switching -->
+                <div class="tabs tabs-boxed mb-6 bg-base-200/50 p-1 w-fit border border-base-300">
+                    <button 
+                        @click="activeTab = 'live'"
+                        class="tab tab-sm md:tab-md"
+                        :class="{ 'tab-active !bg-white !text-primary shadow-sm': activeTab === 'live' }"
+                    >
+                        Live Categories
+                    </button>
+                    <button 
+                        @click="activeTab = 'archived'"
+                        class="tab tab-sm md:tab-md"
+                        :class="{ 'tab-active !bg-white !text-primary shadow-sm': activeTab === 'archived' }"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                        Archive
+                        <span v-if="archivedFeatures.length" class="ml-2 badge badge-sm">
+                            {{ archivedFeatures.length }}
+                        </span>
+                    </button>
+                </div>
+
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <p class="text-sm text-base-content/70">
-                        Manage subscription plan features dynamically. Add, edit, or remove features.
+                        {{ activeTab === 'live' ? 'Manage subscription plan features dynamically.' : 'View and manage archived features.' }}
                     </p>
                     <button
                         @click="openCreateModal"
@@ -295,16 +341,6 @@ const handleBatchFinished = () => {
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
                         Add Feature
-                    </button>
-                    <button
-                        @click="syncAllUpdates"
-                        :disabled="isSyncing"
-                        class="btn btn-secondary btn-sm shrink-0"
-                    >
-                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        {{ isSyncing ? 'Syncing...' : 'Sync All Updates' }}
                     </button>
                 </div>
 
@@ -317,14 +353,37 @@ const handleBatchFinished = () => {
                 />
 
                 <!-- Features by Category -->
-                <FeatureList 
-                    :features-by-category="featuresByCategory"
-                    :category-labels="categoryLabels"
-                    :plans="plans"
-                    :get-type-label="getTypeLabel"
-                    :primary-color="primaryColor"
-                    @manage="openEditModal"
-                />
+                <div v-if="activeTab === 'live'">
+                    <FeatureList 
+                        :features-by-category="featuresByCategory"
+                        :category-labels="categoryLabels"
+                        :plans="plans"
+                        :get-type-label="getTypeLabel"
+                        :primary-color="primaryColor"
+                        @manage="openEditModal"
+                    />
+                </div>
+
+                <!-- Archived Features List -->
+                <div v-else>
+                    <div v-if="archivedFeatures.length === 0" class="card bg-base-100 border border-base-300 p-12 text-center">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                        <h4 class="text-lg font-bold text-base-content/50">No archived features</h4>
+                        <p class="text-sm text-base-content/40">Archived features will appear here.</p>
+                    </div>
+                    <FeatureList 
+                        v-else
+                        :features-by-category="{ archived: archivedFeatures }"
+                        :category-labels="{ archived: 'Archived Features' }"
+                        :plans="plans"
+                        :get-type-label="getTypeLabel"
+                        :primary-color="primaryColor"
+                        :is-archive="true"
+                        @manage="openEditModal"
+                    />
+                </div>
             </div>
         </div>
 
@@ -339,6 +398,8 @@ const handleBatchFinished = () => {
             @submit="submitForm"
             @delete="deleteFeature"
             @toggle="toggleFeature"
+            @archive="archiveFeature"
+            @restore="restoreFeature"
         />
 
         <!-- View Modal -->

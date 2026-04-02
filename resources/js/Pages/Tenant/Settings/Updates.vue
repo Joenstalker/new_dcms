@@ -158,14 +158,25 @@ const isApplyingFeature = (featureId) => {
             <div v-else class="space-y-4">
                 <!-- Select All -->
                 <div class="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <label class="flex items-center cursor-pointer">
-                        <input 
-                            type="checkbox" 
-                            :checked="form.feature_ids.length === activeUpdates.length && activeUpdates.length > 0"
-                            :disabled="activeUpdates.length === 0"
-                            @change="selectAll"
-                            class="checkbox checkbox-primary"
-                        />
+                    <label class="flex items-center cursor-pointer group">
+                        <div class="relative flex items-center">
+                            <input 
+                                type="checkbox" 
+                                :checked="form.feature_ids.length === activeUpdates.length && activeUpdates.length > 0"
+                                :disabled="activeUpdates.length === 0"
+                                @change="selectAll"
+                                class="sr-only"
+                            />
+                            <div 
+                                @click="selectAll"
+                                class="w-6 h-6 border-2 rounded-md transition-all duration-200 flex items-center justify-center cursor-pointer"
+                                :class="form.feature_ids.length === activeUpdates.length && activeUpdates.length > 0 ? 'bg-primary border-primary' : 'bg-white border-gray-300 group-hover:border-primary'"
+                            >
+                                <svg v-if="form.feature_ids.length === activeUpdates.length && activeUpdates.length > 0" class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
                         <span class="ml-3 font-medium text-gray-700">Select All Updates</span>
                     </label>
                     <span class="text-sm text-gray-500">{{ activeUpdates.length }} ready to install ({{ pendingUpdates.length - activeUpdates.length }} coming soon)</span>
@@ -175,17 +186,31 @@ const isApplyingFeature = (featureId) => {
                 <div 
                     v-for="update in pendingUpdates" 
                     :key="update.id"
-                    class="border-2 rounded-lg p-5 hover:shadow-md transition-all duration-200"
+                    class="border-2 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer"
                     :class="form.feature_ids.includes(update.feature.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'"
+                    @click="update.feature.implementation_status === 'active' && !isApplying ? (form.feature_ids.includes(update.feature.id) ? form.feature_ids = form.feature_ids.filter(id => id !== update.feature.id) : form.feature_ids.push(update.feature.id)) : null"
                 >
                     <div class="flex items-start gap-4">
-                        <input 
-                            type="checkbox" 
-                            v-model="form.feature_ids"
-                            :value="update.feature.id"
-                            class="checkbox checkbox-primary mt-1"
-                            :disabled="isApplying || update.feature.implementation_status !== 'active'"
-                        />
+                        <div class="relative flex items-center mt-1">
+                            <input 
+                                type="checkbox" 
+                                :checked="form.feature_ids.includes(update.feature.id)"
+                                :value="update.feature.id"
+                                class="sr-only"
+                                :disabled="isApplying || update.feature.implementation_status !== 'active'"
+                            />
+                            <div 
+                                class="w-6 h-6 border-2 rounded-md transition-all duration-200 flex items-center justify-center"
+                                :class="[
+                                    form.feature_ids.includes(update.feature.id) ? 'bg-primary border-primary' : 'bg-white border-gray-300 hover:border-primary',
+                                    (isApplying || update.feature.implementation_status !== 'active') ? 'opacity-50 cursor-not-allowed' : ''
+                                ]"
+                            >
+                                <svg v-if="form.feature_ids.includes(update.feature.id)" class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
                         
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-2 flex-wrap">

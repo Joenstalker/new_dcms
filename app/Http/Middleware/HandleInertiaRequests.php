@@ -115,6 +115,25 @@ class HandleInertiaRequests extends Middleware
                 // Global mapping of all feature keys to their implementation statuses
                 'global_feature_statuses' => \App\Models\Feature::pluck('implementation_status', 'key'),
             ] : null,
+            'pending_updates_count' => function () use ($request) {
+            if (!$request->user() || !tenant())
+                return 0;
+
+            // Only notify those who can manage settings (Owners/Admins)
+            // This prevents spamming doctors/staff who can't apply updates anyway
+            if (!$request->user()->can('manage settings') && !$request->user()->hasRole('Owner')) {
+                return 0;
+            }
+
+            $cacheKey = "tenant_" . tenant()->id . "_pending_updates_count";
+
+            return \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addHour(), function () {
+                    return \App\Models\TenantFeatureUpdate::where('tenant_id', tenant()->id)
+                        ->pending()
+                        ->count();
+                }
+                );
+            },
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
