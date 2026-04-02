@@ -47,10 +47,10 @@ class CheckSubscription
         $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
             ->where('stripe_status', 'active')
             ->where(function ($query) {
-                // If billing_cycle_end is set, it must be in the future
-                $query->whereNull('billing_cycle_end')
-                      ->orWhere('billing_cycle_end', '>', now());
-            })
+            // If billing_cycle_end is set, it must be in the future
+            $query->whereNull('billing_cycle_end')
+                ->orWhere('billing_cycle_end', '>', now());
+        })
             ->with('plan')
             ->latest()
             ->first();
@@ -97,7 +97,10 @@ class CheckSubscription
             // 2. Check for boolean feature (qr_booking, has_sms, etc.)
             else {
                 if (!$plan->hasFeature($feature)) {
-                    return $this->featureNotAvailable($request, $feature, $plan->name);
+                    $featureModel = $plan->getFeature($feature);
+                    if (!$featureModel || $featureModel->implementation_status !== \App\Models\Feature::STATUS_MAINTENANCE) {
+                        return $this->featureNotAvailable($request, $feature, $plan->name);
+                    }
                 }
 
                 // Acknowledgment logic for OTA updates (only for dynamic features)

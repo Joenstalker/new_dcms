@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     pending_updates: {
@@ -49,20 +50,56 @@ const selectAll = () => {
     }
 };
 
+const loadingProgress = ref(0);
+let loadingInterval = null;
+
 const applyUpdates = () => {
     if (form.feature_ids.length === 0) return;
     
     isApplying.value = true;
+    loadingProgress.value = 0;
     applyingIds.value = [...form.feature_ids];
+    
+    // Simulate robust progress feeling
+    loadingInterval = setInterval(() => {
+        if (loadingProgress.value < 99) {
+            loadingProgress.value += Math.floor(Math.random() * 10) + 2;
+            if (loadingProgress.value > 99) loadingProgress.value = 99;
+        }
+    }, 150);
     
     form.post(route('settings.updates.apply'), {
         onSuccess: () => {
-            isApplying.value = false;
-            applyingIds.value = [];
+            clearInterval(loadingInterval);
+            loadingProgress.value = 100;
+            setTimeout(() => {
+                isApplying.value = false;
+                applyingIds.value = [];
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Updates successfully applied!',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            }, 300);
         },
         onError: () => {
+            clearInterval(loadingInterval);
             isApplying.value = false;
             applyingIds.value = [];
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: 'Operation Failed',
+                text: 'Something went wrong during the update procedure.',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
         }
     });
 };
@@ -177,23 +214,24 @@ const isApplyingFeature = (featureId) => {
                 </div>
 
                 <!-- Apply Button -->
-                <div class="sticky bottom-4 bg-white border-t-2 border-gray-200 pt-4 mt-6 shadow-lg rounded-lg p-4">
+                <div class="mt-8 flex items-center justify-start gap-4 pb-8">
                     <button 
                         @click="applyUpdates"
                         :disabled="form.feature_ids.length === 0 || isApplying"
-                        class="btn btn-primary w-full text-lg"
-                        :class="{ 'loading': isApplying }"
+                        class="btn btn-primary px-6"
+                        :class="[isApplying ? 'cursor-wait' : 'hover:-translate-y-0.5 transition-transform']"
                     >
-                        <svg v-if="!isApplying" class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <span v-if="isApplying" class="loading loading-spinner loading-sm"></span>
+                        <svg v-else class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        {{ isApplying ? 'Applying Updates...' : `Apply Selected Updates (${form.feature_ids.length})` }}
+                        {{ isApplying ? `Applying Updates... ${loadingProgress}%` : 'Apply Selected Updates' }}
                     </button>
                     
-                    <p v-if="form.feature_ids.length === 0" class="text-center text-sm text-gray-500 mt-2">
+                    <p v-if="form.feature_ids.length === 0" class="text-sm text-gray-400">
                         {{ pendingUpdates.every(u => u.feature.implementation_status !== 'active') 
-                            ? 'These roadmap features will be available soon.' 
-                            : 'Select at least one active update to apply' 
+                            ? 'Roadmap items are not yet installable.' 
+                            : 'Select at least one active update to proceed.' 
                         }}
                     </p>
                 </div>

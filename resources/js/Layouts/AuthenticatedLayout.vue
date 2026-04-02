@@ -5,6 +5,7 @@ import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import ProfileDropdown from '@/Components/ProfileDropdown.vue';
 import MandatoryPasswordChangeModal from '@/Components/MandatoryPasswordChangeModal.vue';
+import MaintenanceDisplay from '@/Components/MaintenanceDisplay.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import { brandingState } from '@/States/brandingState';
@@ -187,6 +188,53 @@ const isRouteAuthorized = computed(() => {
     return allAuthorizedRoutes.includes(currentRouteName.value);
 });
 
+// Maintenance Check: Determine if the current active feature is under maintenance
+const currentFeatureStatus = computed(() => {
+    // 1. Get the current route name
+    const routeName = currentRouteName.value;
+    if (!routeName) return { status: 'active', name: '' };
+
+    // 2. Find the feature key from menuCategories
+    let featureKey = null;
+    let featureName = '';
+
+    for (const category of menuCategories.value) {
+        for (const item of category.items) {
+            // Check top level item
+            const isActive = item.route === routeName || (item.subItems && item.subItems.some(si => si.route === routeName));
+            if (isActive) {
+                featureKey = item.feature;
+                featureName = item.name;
+                break;
+            }
+        }
+        if (featureKey) break;
+    }
+
+    if (!featureKey) return { status: 'active', name: '' };
+
+    // 3. Map sidebar feature identifiers to actual database feature keys
+    const sidebarToDbKeyMap = {
+        'appointments': 'appointment_scheduling',
+        'patients': 'patient_records',
+        'billing': 'billing_pos',
+        'branding': 'custom_branding',
+        'settings': 'clinic_setup',
+        'staff': 'max_users',
+        'services': 'qr_booking', // partially related
+        'logs' : 'role_based_access'
+    };
+
+    const dbKey = sidebarToDbKeyMap[featureKey] || featureKey;
+    const globalStatus = page.props.tenant_plan?.global_feature_statuses?.[dbKey];
+    
+    // 4. Return the status (Prefer global status from DB over filtered subscription props)
+    return {
+        status: globalStatus || 'active',
+        name: featureName
+    };
+});
+
 const menuCategories = computed(() => {
     const categories = [
         {
@@ -314,14 +362,23 @@ const menuCategories = computed(() => {
                 }
                 
                 // For Staff: MUST have explicit Role or Permission AND must NOT be locked.
-                // Removing noAuthDefined fallback for staff to achieve "Zero-Trust" (hidden by default).
-                return (hasRole || hasPermission) && !isLocked && hasRoute;
+                // Maintenance Override: Features under maintenance are NOT considered locked for navigation.
+                const featureStatus = item.featureKey ? page.props.subscription?.features?.[item.featureKey]?.implementation_status : null;
+                const finalLocked = isLocked && featureStatus !== 'maintenance';
+
+                return (hasRole || hasPermission) && !finalLocked && hasRoute;
             }).map(item => {
                 const isOwner = roles.value.includes('Owner');
                 const isLocked = item.featureKey ? !page.props.tenant_plan?.features?.[item.featureKey] : false;
+                
+                // Maintenance Override: If the feature is under maintenance, do not lock it.
+                // This allows the user to click the item and see the MaintenanceDisplay component.
+                const featureStatus = item.featureKey ? page.props.subscription?.features?.[item.featureKey]?.implementation_status : null;
+                const finalLocked = isLocked && featureStatus !== 'maintenance';
+
                 return {
                     ...item,
-                    isLocked,
+                    isLocked: finalLocked,
                     subItems: item.subItems?.filter(si => {
                         const hasRole = si.roles ? si.roles.some(role => roles.value.includes(role)) : false;
                         const hasPermission = si.permissions ? si.permissions.some(p => user.value.permissions.includes(p)) : false;
@@ -335,10 +392,15 @@ const menuCategories = computed(() => {
                         }
                         
                         // For Staff: MUST have explicit Role or Permission.
-                        return (hasRole || hasPermission) && !isSubLocked && hasRoute;
+                        const siStatus = si.featureKey ? page.props.subscription?.features?.[si.featureKey]?.implementation_status : null;
+                        const finalSiLocked = isSubLocked && siStatus !== 'maintenance';
+
+                        return (hasRole || hasPermission) && !finalSiLocked && hasRoute;
                     }).map(si => {
-                        const isSubLocked = si.featureKey ? !page.props.tenant_plan?.features?.[si.featureKey] : false;
-                        return { ...si, isLocked: isSubLocked };
+                        const siLocked = si.featureKey ? !page.props.tenant_plan?.features?.[si.featureKey] : false;
+                        const siStatus = si.featureKey ? page.props.subscription?.features?.[si.featureKey]?.implementation_status : null;
+                        const finalSiLocked = siLocked && siStatus !== 'maintenance';
+                        return { ...si, isLocked: finalSiLocked };
                     })
                 };
             }).filter(item => item.subItems ? item.subItems.length > 0 : true)
@@ -566,7 +628,13 @@ function getContrastColor(hex) {
                 <div class="max-w-[1600px] mx-auto">
                     <!-- Authorization Guard -->
                     <template v-if="isRouteAuthorized">
-                        <slot />
+                        <!-- Maintenance Guard -->
+                        <template v-if="currentFeatureStatus.status === 'maintenance'">
+                            <MaintenanceDisplay :feature-name="currentFeatureStatus.name" />
+                        </template>
+                        <template v-else>
+                            <slot />
+                        </template>
                     </template>
                     <template v-else>
                         <div class="flex flex-col items-center justify-center h-[60vh] text-center px-4 animate-fade-in">

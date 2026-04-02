@@ -39,6 +39,7 @@ class Feature extends Model
     public const STATUS_ACTIVE = 'active';
     public const STATUS_BETA = 'beta';
     public const STATUS_DEPRECATED = 'deprecated';
+    public const STATUS_MAINTENANCE = 'maintenance';
 
     /**
      * Get the display label for implementation status.
@@ -51,6 +52,7 @@ class Feature extends Model
                 self::STATUS_BETA => 'Beta',
                 self::STATUS_ACTIVE => 'Active',
                 self::STATUS_DEPRECATED => 'Deprecated',
+                self::STATUS_MAINTENANCE => 'Under Maintenance',
                 default => 'Unknown',
             };
     }
@@ -61,6 +63,15 @@ class Feature extends Model
     public function isReadyForUse(): bool
     {
         return $this->implementation_status === self::STATUS_ACTIVE && $this->is_active;
+    }
+
+    /**
+     * New: Check if the feature is accessible to tenants (active or under maintenance).
+     * This allows maintenance mode to be non-blocking.
+     */
+    public function isAccessible(): bool
+    {
+        return in_array($this->implementation_status, [self::STATUS_ACTIVE, self::STATUS_MAINTENANCE]) && $this->is_active;
     }
 
     /**

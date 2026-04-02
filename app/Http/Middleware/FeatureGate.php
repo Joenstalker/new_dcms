@@ -35,6 +35,11 @@ class FeatureGate
             abort(403, 'This feature is coming soon and is currently unusable.');
         }
 
+        // Maintenance status is handled by the layout, so we allow it to proceed
+        if ($feature->implementation_status === Feature::STATUS_MAINTENANCE) {
+            return $next($request);
+        }
+
         // 2. Beta Closed Testing Override Check
         $tenantOverride = $tenant->tenantFeatures()->where('feature_id', $feature->id)->first();
 

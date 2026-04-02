@@ -47,7 +47,7 @@ class FeatureController extends Controller
             'options' => 'nullable|array',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
-            'implementation_status' => 'nullable|in:coming_soon,in_development,beta,active,deprecated',
+            'implementation_status' => 'nullable|in:coming_soon,in_development,beta,active,deprecated,maintenance',
             'code_identifier' => 'nullable|string|max:255|regex:/^[a-z0-9-]+$/',
         ]);
 
@@ -128,7 +128,7 @@ class FeatureController extends Controller
             'options' => 'nullable|array',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
-            'implementation_status' => 'nullable|in:coming_soon,in_development,beta,active,deprecated',
+            'implementation_status' => 'nullable|in:coming_soon,in_development,beta,active,deprecated,maintenance',
             'code_identifier' => 'nullable|string|max:255|regex:/^[a-z0-9-]+$/',
         ]);
 

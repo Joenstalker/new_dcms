@@ -142,6 +142,7 @@ const submitForm = () => {
                         <option value="beta">Beta</option>
                         <option value="active">Active</option>
                         <option value="deprecated">Deprecated</option>
+                        <option value="maintenance">Under Maintenance</option>
                     </select>
                     <p class="mt-1 text-xs text-base-content/50">Overrides system routing based on development stage.</p>
                 </div>

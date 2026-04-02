@@ -111,7 +111,9 @@ class HandleInertiaRequests extends Middleware
                     'users' => \App\Models\User::count(),
                     'patients' => \App\Models\Patient::count(),
                     'appointments' => \App\Models\Appointment::count(),
-                ]
+                ],
+                // Global mapping of all feature keys to their implementation statuses
+                'global_feature_statuses' => \App\Models\Feature::pluck('implementation_status', 'key'),
             ] : null,
             'flash' => [
                 'success' => $request->session()->get('success'),
