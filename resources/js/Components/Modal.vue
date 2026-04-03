@@ -21,8 +21,8 @@ const showSlot = ref(props.show);
 
 watch(
     () => props.show,
-    () => {
-        if (props.show) {
+    (show) => {
+        if (show) {
             document.body.style.overflow = 'hidden';
             showSlot.value = true;
         } else {
@@ -33,6 +33,7 @@ watch(
             }, 200);
         }
     },
+    { immediate: true },
 );
 
 const close = () => {
@@ -66,6 +67,8 @@ const maxWidthClass = computed(() => {
         lg: 'sm:max-w-lg',
         xl: 'sm:max-w-xl',
         '2xl': 'sm:max-w-2xl',
+        '3xl': 'sm:max-w-3xl',
+        '4xl': 'sm:max-w-4xl',
     }[props.maxWidth];
 });
 </script>
