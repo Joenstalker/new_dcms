@@ -248,17 +248,55 @@ class RegistrationController extends Controller
                 'months' => $months,
             ];
 
-            // Create Stripe Embedded Checkout session (stays on page, no redirect)
+            // Build line items and subscription data
+            $lineItems = [];
+            $subscriptionData = [];
+
+            if ($validated['billing_cycle'] === 'monthly' && $months > 1) {
+                // Scenario: Prepaid multi-month (e.g. 3 months)
+                // 1. One-time payment for the ENTIRE duration upfront
+                $lineItems[] = [
+                    'price_data' => [
+                        'currency' => 'php',
+                        'unit_amount' => (int)($unitPrice * $months * 100), // Total upfront price in cents
+                        'product_data' => [
+                            'name' => "{$plan->name} Subscription ({$months} Months)",
+                            'description' => "Initial payment for {$months} months of {$plan->name} plan.",
+                        ],
+                    ],
+                    'quantity' => 1,
+                ];
+
+                // 2. The recurring subscription (starts AFTER the prepaid months)
+                $lineItems[] = [
+                    'price' => $stripePriceId,
+                    'quantity' => 1,
+                ];
+
+                // Set trial end so the first recurring charge happens AFTER the prepaid duration
+                $subscriptionData = [
+                    'trial_end' => now()->addMonths($months)->timestamp,
+                    'metadata' => $metadata,
+                ];
+            }
+            else {
+                // Scenario: Standard monthly (1 month) or Yearly (1 year)
+                $lineItems[] = [
+                    'price' => $stripePriceId,
+                    'quantity' => 1,
+                ];
+                $subscriptionData = [
+                    'metadata' => $metadata,
+                ];
+            }
+
+            // Create Stripe Embedded Checkout session
             $session = $stripe->checkout->sessions->create([
                 'payment_method_types' => ['card'],
-                'line_items' => [
-                    [
-                        'price' => $stripePriceId,
-                        'quantity' => $months, // Use months as quantity to calculate total
-                    ],
-                ],
+                'line_items' => $lineItems,
                 'mode' => 'subscription',
                 'ui_mode' => 'embedded',
+                'subscription_data' => $subscriptionData,
                 'return_url' => config('app.url') . '/?payment=success&session_id={CHECKOUT_SESSION_ID}',
                 'customer_email' => $validated['email'],
                 'metadata' => $metadata,
@@ -477,11 +515,6 @@ class RegistrationController extends Controller
         $metadata = $session->metadata;
         $pendingRegistrationId = $metadata->pending_registration_id ?? null;
 
-        if (!$pendingRegistrationId) {
-            Log::error('No pending_registration_id found in Stripe metadata');
-            return ['success' => false, 'error' => 'not_found', 'message' => 'Registration record not found. Please contact support.'];
-        }
-
         $pendingRegistration = PendingRegistration::find($pendingRegistrationId);
 
         if (!$pendingRegistration) {
@@ -489,7 +522,9 @@ class RegistrationController extends Controller
             return ['success' => false, 'error' => 'not_found', 'message' => 'Your registration record could not be found.'];
         }
 
-        if ($pendingRegistration->status !== PendingRegistration::STATUS_PENDING) {
+        // Check if tenant already exists for this subdomain — more reliable than just status check
+        $tenantId = strtolower(trim($pendingRegistration->subdomain));
+        if ($pendingRegistration->stripe_payment_intent_id && Tenant::where('id', $tenantId)->exists()) {
             return ['success' => true, 'already_processed' => true, 'registration' => $pendingRegistration];
         }
 
@@ -534,9 +569,11 @@ class RegistrationController extends Controller
                 ? now()->addYear()
                 : now()->addMonths($monthsPaid);
 
-            $tenant->subscriptions()->create([
+            $tenant->subscriptions()->updateOrCreate(
+            ['stripe_id' => $stripeSubscriptionId],
+            [
+                'tenant_id' => $tenantId, // Ensure tenant_id is set
                 'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
-                'stripe_id' => $stripeSubscriptionId,
                 'stripe_status' => 'active',
                 'stripe_price' => $session->amount_total / 100,
                 'billing_cycle' => $pendingRegistration->billing_cycle,
@@ -544,7 +581,8 @@ class RegistrationController extends Controller
                 'payment_status' => 'paid',
                 'billing_cycle_end' => $billingCycleEnd,
                 'ends_at' => $billingCycleEnd,
-            ]);
+            ]
+            );
 
             $paymentIntentId = is_string($session->payment_intent) ? $session->payment_intent : ($session->payment_intent->id ?? null);
             if (!$paymentIntentId && $stripeSubscription && !is_string($stripeSubscription)) {
@@ -564,31 +602,37 @@ class RegistrationController extends Controller
 
             DB::commit();
 
-            // Notify admins
-            $notificationService = app(NotificationService::class);
-            $notificationService->notifyAdmins(
-                'new_pending_tenant',
-                'New Tenant Pending Review',
-                "A new clinic '{$pendingRegistration->clinic_name}' has registered and payment received. Please review.",
-            [
-                'tenant_id' => $tenantId,
-                'clinic_name' => $pendingRegistration->clinic_name,
-                'subdomain' => $pendingRegistration->subdomain,
-                'admin_email' => $pendingRegistration->email,
-                'amount_paid' => $session->amount_total / 100,
-            ],
-                'both'
-            );
+            // Notify admins (moved outside transaction)
+            try {
+                $notificationService = app(NotificationService::class);
+                $notificationService->notifyAdmins(
+                    'new_pending_tenant',
+                    'New Tenant Pending Review',
+                    "A new clinic '{$pendingRegistration->clinic_name}' has registered and payment received. Please review.",
+                [
+                    'tenant_id' => $tenantId,
+                    'clinic_name' => $pendingRegistration->clinic_name,
+                    'subdomain' => $pendingRegistration->subdomain,
+                    'admin_email' => $pendingRegistration->email,
+                    'amount_paid' => $session->amount_total / 100,
+                ],
+                    'both'
+                );
 
-            // Send pending registration email
-            Mail::to($pendingRegistration->email)->send(new RegistrationPending($pendingRegistration));
+                // Send pending registration email
+                Mail::to($pendingRegistration->email)->send(new RegistrationPending($pendingRegistration));
+            }
+            catch (\Exception $e) {
+                Log::warning('Post-registration notification failed: ' . $e->getMessage());
+            // Don't fail the whole request just because an email failed
+            }
 
             return ['success' => true, 'already_processed' => false, 'registration' => $pendingRegistration];
         }
         catch (\Exception $e) {
             DB::rollBack();
             Log::error('Tenant creation failed in processSuccessfulRegistration: ' . $e->getMessage());
-            return ['success' => false, 'error' => 'server_error', 'message' => 'Failed to create your clinic. Please contact support.'];
+            return ['success' => false, 'error' => 'server_error', 'message' => 'Failed to finalize your setup: ' . $e->getMessage()];
         }
     }
 

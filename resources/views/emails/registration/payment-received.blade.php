@@ -128,6 +128,7 @@
                 <div class="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse">
                     <a
                         href="{{ config('app.url') }}/?payment-success=true"
+                        target="_top"
                         class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#2B7CB3] text-base font-medium text-white hover:bg-[#236491] focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
                     >
                         Back to Home
