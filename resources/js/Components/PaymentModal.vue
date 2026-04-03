@@ -28,6 +28,7 @@ const screen = ref('review');
 const isLoading = ref(false);
 const selectedPlanId = ref(null);
 const billingCycle = ref('monthly');
+const monthsToSubscribe = ref(1);
 
 // Success data
 const paymentResult = ref(null);
@@ -57,9 +58,13 @@ const selectedPlan = computed(() => {
 
 const currentPrice = computed(() => {
     if (!selectedPlan.value) return 0;
-    return billingCycle.value === 'yearly'
-        ? selectedPlan.value.price_yearly
-        : selectedPlan.value.price_monthly;
+    
+    if (billingCycle.value === 'yearly') {
+        return selectedPlan.value.price_yearly;
+    }
+    
+    // Custom months calculation
+    return selectedPlan.value.price_monthly * monthsToSubscribe.value;
 });
 
 const savings = computed(() => {
@@ -78,6 +83,8 @@ watch(() => props.show, (newVal) => {
             handlePaymentComplete();
         } else if (props.plans.length > 0) {
             selectedPlanId.value = props.registrationData?.plan?.id ?? props.plans[0].id;
+            monthsToSubscribe.value = 1;
+            billingCycle.value = 'monthly';
             screen.value = 'review';
         }
     }
@@ -115,6 +122,7 @@ const proceedToCheckout = async () => {
                 subdomain:     props.registrationData.subdomain,
                 plan_id:       selectedPlan.value.id,
                 billing_cycle: billingCycle.value,
+                months:        billingCycle.value === 'monthly' ? monthsToSubscribe.value : 12,
             }),
         });
 
@@ -190,7 +198,10 @@ const handlePaymentComplete = async () => {
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
             },
-            body: JSON.stringify({ session_id: sessionId }),
+            body: JSON.stringify({ 
+                session_id: sessionId,
+                months: billingCycle.value === 'monthly' ? monthsToSubscribe.value : 12
+            }),
         });
 
         const data = await response.json();
@@ -303,17 +314,17 @@ const tenantUrl = computed(() => {
 </script>
 
 <template>
-    <!-- maxWidth 2xl to give Stripe embed room -->
-    <Modal :show="show" @close="closeModal" maxWidth="2xl">
+    <!-- maxWidth 3xl to facilitate side-by-side layout -->
+    <Modal :show="show" @close="closeModal" maxWidth="3xl">
         <div class="relative min-h-[400px]">
 
             <!-- ── REVIEW SCREEN ─────────────────────────────────── -->
-            <div v-if="screen === 'review'" class="p-6">
+            <div v-if="screen === 'review'" class="p-5">
                 <!-- Header -->
-                <div class="flex justify-between items-start mb-6">
+                <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h2 class="text-2xl font-bold text-gray-900">Complete Your Subscription</h2>
-                        <p class="text-sm text-gray-500 mt-1">Review and confirm your plan before payment</p>
+                        <h2 class="text-xl font-bold text-gray-900">Finalize Subscription</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">Please review your registration and select your preferred billing period.</p>
                     </div>
                     <button @click="closeModal" class="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -322,103 +333,124 @@ const tenantUrl = computed(() => {
                     </button>
                 </div>
 
-                <!-- Registration summary -->
-                <div v-if="registrationData" class="bg-gray-50 rounded-lg p-4 mb-6">
-                    <h3 class="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wide">Registration Details</h3>
-                    <div class="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                            <span class="text-gray-500">Clinic:</span>
-                            <span class="ml-2 font-medium">{{ registrationData.clinic_name }}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-500">URL:</span>
-                            <span class="ml-2 font-medium text-[#2B7CB3]">{{ registrationData.subdomain }}.{{ clinicDomain }}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-500">Admin:</span>
-                            <span class="ml-2 font-medium">{{ registrationData.admin_name }}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-500">Email:</span>
-                            <span class="ml-2 font-medium">{{ registrationData.email }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Plan Selection -->
-                <div class="mb-5">
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Select Plan</label>
-                    <select
-                        v-model="selectedPlanId"
-                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-[#2B7CB3] focus:border-[#2B7CB3]"
-                    >
-                        <option v-for="plan in plans" :key="plan.id" :value="plan.id">
-                            {{ plan.name }} — ₱{{ Number(plan.price_monthly).toLocaleString() }}/mo
-                        </option>
-                    </select>
-                </div>
-
-                <!-- Plan Details -->
-                <div v-if="selectedPlan" class="border border-gray-200 rounded-lg p-4 mb-5">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">{{ selectedPlan.name }} Plan</h3>
-                            <p class="text-sm text-gray-500">
-                                {{ selectedPlan.max_users }} users ·
-                                {{ selectedPlan.max_patients ? selectedPlan.max_patients.toLocaleString() : 'Unlimited' }} patients
-                            </p>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-2xl font-bold text-[#2B7CB3]">{{ formatCurrency(currentPrice) }}</div>
-                            <div class="text-xs text-gray-500">/{{ billingCycle === 'yearly' ? 'year' : 'month' }}</div>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+                    <!-- Left: Registration Summary (4 cols) -->
+                    <div class="md:col-span-5 space-y-4">
+                        <div v-if="registrationData" class="bg-gray-50 rounded-xl p-4 border border-gray-100 h-full">
+                            <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Registration Summary</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <span class="block text-[10px] text-gray-400 uppercase">Clinic Name</span>
+                                    <span class="font-semibold text-gray-900">{{ registrationData.clinic_name }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] text-gray-400 uppercase">Clinic Web Address</span>
+                                    <span class="font-semibold text-[#2B7CB3]">{{ registrationData.subdomain }}.{{ clinicDomain }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] text-gray-400 uppercase">Administrator</span>
+                                    <span class="font-semibold text-gray-900">{{ registrationData.admin_name }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] text-gray-400 uppercase">Billing Email</span>
+                                    <span class="font-semibold text-gray-900 break-all">{{ registrationData.email }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Billing Cycle Toggle -->
-                    <div class="flex items-center justify-center gap-6 mt-4 p-3 bg-gray-50 rounded-lg">
-                        <label class="flex items-center cursor-pointer gap-2">
-                            <input type="radio" v-model="billingCycle" value="monthly" class="text-[#2B7CB3] focus:ring-[#2B7CB3]" />
-                            <span class="text-sm font-medium" :class="billingCycle === 'monthly' ? 'text-gray-900' : 'text-gray-500'">Monthly</span>
-                        </label>
-                        <label class="flex items-center cursor-pointer gap-2">
-                            <input type="radio" v-model="billingCycle" value="yearly" class="text-[#2B7CB3] focus:ring-[#2B7CB3]" />
-                            <span class="text-sm font-medium" :class="billingCycle === 'yearly' ? 'text-gray-900' : 'text-gray-500'">Yearly</span>
-                        </label>
-                        <span v-if="billingCycle === 'yearly' && savings > 0" class="text-xs text-emerald-600 font-semibold">
-                            Save {{ formatCurrency(savings) }}!
-                        </span>
+                    <!-- Right: Plan & Billing (7 cols) -->
+                    <div class="md:col-span-7 space-y-4">
+                        <!-- Plan Selector -->
+                        <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                            <div class="flex justify-between items-center mb-4">
+                                <label class="text-sm font-bold text-gray-900">Choose Plan</label>
+                                <select
+                                    v-model="selectedPlanId"
+                                    class="text-xs border-gray-200 rounded-lg focus:ring-[#2B7CB3] focus:border-[#2B7CB3] py-1.5"
+                                >
+                                    <option v-for="plan in plans" :key="plan.id" :value="plan.id">{{ plan.name }}</option>
+                                </select>
+                            </div>
+
+                            <!-- Billing Cycle Options -->
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <button 
+                                    @click="billingCycle = 'monthly'"
+                                    :class="[
+                                        'px-4 py-2 text-xs font-bold rounded-lg border transition-all',
+                                        billingCycle === 'monthly' ? 'bg-blue-50 border-[#2B7CB3] text-[#2B7CB3]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                                    ]"
+                                >
+                                    Flexible Monthly
+                                </button>
+                                <button 
+                                    @click="billingCycle = 'yearly'"
+                                    :class="[
+                                        'px-4 py-2 text-xs font-bold rounded-lg border transition-all',
+                                        billingCycle === 'yearly' ? 'bg-blue-50 border-[#2B7CB3] text-[#2B7CB3]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                                    ]"
+                                >
+                                    Annual (Best Value)
+                                </button>
+                            </div>
+
+                            <!-- Multi-Month Selector (only for monthly) -->
+                            <div v-if="billingCycle === 'monthly'" class="mb-4">
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Duration (Months)</label>
+                                <div class="grid grid-cols-6 gap-1.5">
+                                    <button 
+                                        v-for="m in 12" 
+                                        :key="m"
+                                        @click="monthsToSubscribe = m"
+                                        :class="[
+                                            'h-8 text-xs font-bold rounded flex items-center justify-center border transition-all',
+                                            monthsToSubscribe === m ? 'bg-[#2B7CB3] border-[#2B7CB3] text-white shadow-sm' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                                        ]"
+                                    >
+                                        {{ m }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Total Preview -->
+                            <div class="bg-gray-900 rounded-xl p-4 text-white">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-[10px] text-gray-400 uppercase font-bold">Total Due Today</p>
+                                        <p class="text-2xl font-black">{{ formatCurrency(currentPrice) }}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-[10px] text-gray-400 uppercase font-bold">Subscription Period</p>
+                                        <p class="text-xs font-medium">
+                                            {{ billingCycle === 'yearly' ? '12 Months (Yearly Saver)' : `${monthsToSubscribe} Month${monthsToSubscribe > 1 ? 's' : ''}` }}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div v-if="billingCycle === 'yearly' && savings > 0" class="mt-2 pt-2 border-t border-gray-800 text-[10px] text-green-400 flex items-center">
+                                    <span class="mr-1">🎉</span> You are saving {{ formatCurrency(savings) }} with the Annual Plan!
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            @click="proceedToCheckout"
+                            :disabled="isLoading || !selectedPlan"
+                            class="w-full py-4 rounded-xl font-black text-white bg-[#FF6B53] hover:bg-[#E05A44] transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            <svg v-if="isLoading" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                            <span>{{ isLoading ? 'Initializing Secure Payment...' : 'Secure Checkout & Payment' }}</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Info notice -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-5">
-                    <p class="text-xs text-blue-700">
-                        💡 A secure Stripe payment form will open right here — you won't leave this page.
-                    </p>
-                </div>
-
-                <!-- Total & CTA -->
-                <div class="border-t border-gray-200 pt-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="text-lg font-medium text-gray-900">Total Due Today</span>
-                        <span class="text-2xl font-bold text-[#2B7CB3]">{{ formatCurrency(currentPrice) }}</span>
-                    </div>
-
-                    <button
-                        @click="proceedToCheckout"
-                        :disabled="isLoading || !selectedPlan"
-                        class="w-full py-3 rounded-md font-bold text-white bg-[#FF6B53] hover:bg-[#E05A44] transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                        <svg v-if="isLoading" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                        <span>{{ isLoading ? 'Loading Secure Payment...' : 'Pay with Card & Subscribe' }}</span>
-                    </button>
-
-                    <p class="text-xs text-center text-gray-500 mt-3">
-                        🔒 Payments processed securely via Stripe. No card details stored on our servers.
-                    </p>
+                <div class="mt-4 flex items-center justify-center gap-4 text-[10px] text-gray-400">
+                    <span class="flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg> SSL Secured</span>
+                    <span class="flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"></path><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"></path></svg> PCI Compliant</span>
+                    <span class="flex items-center gap-1">💳 Powered by Stripe</span>
                 </div>
             </div>
 

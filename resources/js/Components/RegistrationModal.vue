@@ -666,72 +666,80 @@ const paymentMethods = [
             </div>
 
             <!-- Step 3: Confirmation -->
-            <div v-if="currentStep === 3" class="space-y-5">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Review & Confirm</h3>
+            <div v-if="currentStep === 3" class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Review & Confirm</h3>
 
-                <div class="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Clinic Name:</span>
-                        <span class="font-medium text-gray-900">{{ form.clinic_name }}</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Clinic Info -->
+                    <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Clinic Details</p>
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">Name:</span>
+                                <span class="font-medium text-gray-900">{{ form.clinic_name }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">Admin:</span>
+                                <span class="font-medium text-gray-900 text-right">{{ fullAdminName }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">URL:</span>
+                                <span class="font-medium text-[#2B7CB3] text-right">{{ form.subdomain }}.{{ clinicDomain }}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Admin Name:</span>
-                        <span class="font-medium text-gray-900">{{ form.admin_name }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Email:</span>
-                        <span class="font-medium text-gray-900">{{ form.email }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Your URL:</span>
-                        <span class="font-medium text-[#2B7CB3]">{{ form.subdomain }}.{{ clinicDomain }}</span>
-                    </div>
-                    <div v-if="selectedPlan" class="flex justify-between pt-3 border-t border-gray-200">
-                        <span class="text-gray-500">Selected Plan:</span>
-                        <span class="font-medium text-gray-900">{{ selectedPlan.name }}</span>
-                    </div>
-                    <div v-if="selectedPlan" class="flex justify-between">
-                        <span class="text-gray-500">Monthly Price:</span>
-                        <span class="font-bold text-[#2B7CB3]">₱{{ Number(selectedPlan.price_monthly).toLocaleString() }}</span>
+
+                    <!-- Subscription Details -->
+                    <div class="bg-blue-50/50 rounded-xl p-3 border border-blue-100">
+                        <p class="text-[10px] font-bold text-[#2B7CB3] uppercase tracking-wider mb-2">Subscription</p>
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between text-sm" v-if="selectedPlan">
+                                <span class="text-gray-500">Plan:</span>
+                                <span class="font-bold text-gray-900">{{ selectedPlan.name }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm" v-if="selectedPlan">
+                                <span class="text-gray-500">Monthly:</span>
+                                <span class="font-black text-[#2B7CB3]">₱{{ Number(selectedPlan.price_monthly).toLocaleString() }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">Cycle:</span>
+                                <span class="font-medium text-gray-900">Billed monthly</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Payment Method Selection -->
-                <div class="mt-6">
-                    <h4 class="text-sm font-medium text-gray-900 mb-3">Select Payment Method</h4>
-                    <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-900 mb-3">Select Payment Method</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div
                             v-for="method in paymentMethods"
                             :key="method.id"
                             :class="[
-                                'relative rounded-lg border p-4 cursor-pointer transition-all',
+                                'relative rounded-xl border p-3 cursor-pointer transition-all flex flex-col items-center justify-center text-center',
                                 method.available 
-                                    ? 'border-[#2B7CB3] bg-blue-50 hover:border-[#246999]' 
-                                    : 'border-gray-200 bg-gray-50 opacity-60'
+                                    ? 'border-[#2B7CB3] bg-white shadow-sm ring-1 ring-[#2B7CB3]/10 hover:shadow-md' 
+                                    : 'border-gray-200 bg-gray-50 opacity-40 grayscale pointer-events-none'
                             ]"
                         >
-                            <div class="flex items-center justify-between">
-                                <span class="text-2xl">{{ method.icon }}</span>
-                                <span class="font-medium text-gray-900">{{ method.name }}</span>
-                            </div>
-                            <div v-if="method.coming" class="absolute -top-2 -right-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                                    Coming Soon
-                                </span>
-                            </div>
-                            <div v-if="method.stripe" class="absolute -top-2 -right-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-[#2B7CB3]">
-                                    Active
+                            <span class="text-2xl mb-1">{{ method.icon }}</span>
+                            <span class="text-[10px] font-bold text-gray-900 leading-tight">{{ method.name }}</span>
+                            
+                            <div v-if="method.stripe" class="absolute -top-1.5 -right-1.5">
+                                <span class="flex h-3 w-3 relative">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                                 </span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
-                    <p class="text-xs text-blue-700">
-                        🔒 By proceeding, you agree to our Terms of Service and Privacy Policy.
-                        You'll be redirected to Stripe for secure payment.
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-start">
+                    <span class="mr-2 mt-0.5 text-lg">🛡️</span>
+                    <p class="text-[10px] text-gray-500 leading-relaxed">
+                        By clicking "Proceed to Payment", you agree to our <a href="#" class="text-[#2B7CB3] hover:underline">Terms</a> and <a href="#" class="text-[#2B7CB3] hover:underline">Privacy Policy</a>. Transactions are strictly secured via Stripe.
                     </p>
                 </div>
             </div>
