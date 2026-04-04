@@ -89,7 +89,18 @@ class FeatureOTAUpdateService
                     if ($release) {
                         $tenant = \App\Models\Tenant::find($tenantId);
                         if ($tenant) {
-                            $tenant->update(['version' => $release->version]);
+                            $currentVersion = $tenant->version ?: 'v1.0.0';
+                            $newVersion = $release->version;
+
+                            // Use version_compare to ensure we only upgrade, never downgrade
+                            // Stripping 'v' prefix for comparison if present
+                            $cleanCurrent = ltrim($currentVersion, 'v');
+                            $cleanNew = ltrim($newVersion, 'v');
+
+                            if (version_compare($cleanNew, $cleanCurrent, '>')) {
+                                $tenant->update(['version' => $newVersion]);
+                                Log::info("Tenant {$tenantId} upgraded from {$currentVersion} to {$newVersion}");
+                            }
 
                             // Trigger per-tenant migration if required
                             if ($release->requires_db_update) {
