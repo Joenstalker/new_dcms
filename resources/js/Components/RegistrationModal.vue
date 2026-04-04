@@ -9,6 +9,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { regions, provinces, cities, barangays } from 'phil-address';
 import { onMounted } from 'vue';
+import { debounce } from 'lodash';
 
 const props = defineProps({
     show: Boolean,
@@ -203,8 +204,34 @@ const isStep3Valid = computed(() => {
 
 // Watch for clinic name changes to auto-suggest subdomain
 watch(() => form.clinic_name, (newVal) => {
-    if (newVal.length >= 3 && currentStep.value === 2) {
+    if (newVal.length >= 3 && currentStep.value === 2 && !form.subdomain) {
         fetchSubdomainSuggestions();
+    }
+});
+
+// Debounced check for subdomain availability
+const debouncedCheck = debounce(() => {
+    checkSubdomainAvailability();
+}, 500);
+
+// Sanitize and check subdomain on change
+watch(() => form.subdomain, (newVal) => {
+    if (!newVal) return;
+    
+    // Sanitize: Allow only lowercase letters, numbers, and hyphens
+    const sanitized = newVal.toLowerCase()
+        .replace(/[^a-z0-9-]/g, '') // Remove invalid chars
+        .replace(/-{2,}/g, '-');    // Remove double hyphens
+        
+    if (sanitized !== newVal) {
+        form.subdomain = sanitized;
+    }
+
+    if (sanitized.length >= 3) {
+        subdomainAvailable.value = null;
+        debouncedCheck();
+    } else {
+        subdomainAvailable.value = null;
     }
 });
 
@@ -353,10 +380,10 @@ const paymentMethods = [
 </script>
 
 <template>
-    <Modal :show="show" @close="closeModal" maxWidth="lg">
-        <div class="p-6">
+    <Modal :show="show" @close="closeModal" maxWidth="3xl">
+        <div class="p-5">
             <!-- Header -->
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex justify-between items-center mb-4">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900">Register Your Clinic</h2>
                     <p class="text-sm text-gray-500 mt-1">Step {{ currentStep }} of 3</p>
@@ -369,8 +396,8 @@ const paymentMethods = [
             </div>
 
             <!-- Progress Bar -->
-            <div class="mb-8">
-                <div class="flex items-center justify-between">
+            <div class="mb-5">
+                <div class="flex items-center justify-between px-2">
                     <div v-for="step in 3" :key="step" class="flex items-center">
                         <div :class="[
                             'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors',
@@ -392,11 +419,11 @@ const paymentMethods = [
             </div>
 
             <!-- Step 1: Account Setup -->
-            <div v-if="currentStep === 1" class="space-y-5">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+            <div v-if="currentStep === 1" class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Account Information</h3>
                 
-                <!-- Name Fields -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Name and Phone Fields -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                         <InputLabel for="first_name" value="First Name *" />
                         <TextInput
@@ -422,22 +449,6 @@ const paymentMethods = [
                         />
                         <InputError class="mt-1" :message="form.errors.last_name" />
                     </div>
-                </div>
-
-                <!-- Email and Phone -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <InputLabel for="email" value="Email Address *" />
-                        <TextInput
-                            id="email"
-                            type="email"
-                            class="mt-1 block w-full"
-                            v-model="form.email"
-                            placeholder="juan@clinic.com"
-                            required
-                        />
-                        <InputError class="mt-1" :message="form.errors.email" />
-                    </div>
                     <div>
                         <InputLabel for="phone" value="Phone Number *" />
                         <TextInput
@@ -452,22 +463,37 @@ const paymentMethods = [
                     </div>
                 </div>
 
-                <!-- Address Fields -->
-                <div class="space-y-4">
+                <!-- Email and Clinic Name -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <InputLabel for="street" value="Street Address *" />
+                        <InputLabel for="email" value="Email Address *" />
                         <TextInput
-                            id="street"
-                            type="text"
+                            id="email"
+                            type="email"
                             class="mt-1 block w-full"
-                            v-model="form.street"
-                            placeholder="123 Main Street, Unit/Floor"
+                            v-model="form.email"
+                            placeholder="juan@clinic.com"
                             required
                         />
-                        <InputError class="mt-1" :message="form.errors.street" />
+                        <InputError class="mt-1" :message="form.errors.email" />
                     </div>
+                    <div>
+                        <InputLabel for="clinic_name" value="Clinic Name *" />
+                        <TextInput
+                            id="clinic_name"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.clinic_name"
+                            placeholder="e.g., Smile Dental Clinic"
+                            required
+                        />
+                        <InputError class="mt-1" :message="form.errors.clinic_name" />
+                    </div>
+                </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Address Fields -->
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <InputLabel for="region" value="Region *" />
                             <select
@@ -501,9 +527,6 @@ const paymentMethods = [
                             </select>
                             <InputError class="mt-1" :message="form.errors.province" />
                         </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <InputLabel for="city" value="City / Municipality *" />
                             <select
@@ -521,6 +544,9 @@ const paymentMethods = [
                             </select>
                             <InputError class="mt-1" :message="form.errors.city" />
                         </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <InputLabel for="barangay" value="Barangay *" />
                             <select
@@ -538,80 +564,92 @@ const paymentMethods = [
                             </select>
                             <InputError class="mt-1" :message="form.errors.barangay" />
                         </div>
+                        <div class="sm:col-span-2">
+                            <InputLabel for="street" value="Street Address *" />
+                            <TextInput
+                                id="street"
+                                type="text"
+                                class="mt-1 block w-full"
+                                v-model="form.street"
+                                placeholder="123 Main Street, Unit/Floor"
+                                required
+                            />
+                            <InputError class="mt-1" :message="form.errors.street" />
+                        </div>
                     </div>
-                </div>
-
-                <!-- Clinic Name -->
-                <div>
-                    <InputLabel for="clinic_name" value="Clinic Name *" />
-                    <TextInput
-                        id="clinic_name"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.clinic_name"
-                        placeholder="e.g., Smile Dental Clinic"
-                        required
-                    />
-                    <InputError class="mt-1" :message="form.errors.clinic_name" />
                 </div>
             </div>
 
-            <!-- Step 2: Subdomain Selection -->
-            <div v-if="currentStep === 2" class="space-y-5">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Choose Your Subdomain</h3>
+            <!-- Step 2: Web Identity -->
+            <div v-if="currentStep === 2" class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Create Your Clinic's Web Identity</h3>
+                    <p class="text-xs text-gray-500 mt-1">This is the unique address patients will use to book appointments online.</p>
+                </div>
                 
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <p class="text-sm text-blue-800">
-                        <strong>🌐 Your clinic URL:</strong> 
-                        <span class="font-mono">{{ form.subdomain || 'yourclinic' }}.{{ clinicDomain }}</span>
+                <div class="bg-gray-900 rounded-xl p-4 shadow-inner border border-gray-800">
+                    <div class="flex items-center space-x-2 mb-2">
+                        <div class="flex space-x-1">
+                            <div class="w-2 h-2 rounded-full bg-red-400"></div>
+                            <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
+                            <div class="w-2 h-2 rounded-full bg-green-400"></div>
+                        </div>
+                        <div class="flex-1 bg-gray-800 rounded px-2 py-0.5 text-[10px] text-gray-400 flex items-center">
+                            <svg class="w-3 h-3 mr-1 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            https://{{ form.subdomain || 'your-clinic' }}.{{ clinicDomain }}
+                        </div>
+                    </div>
+                    <p class="text-center text-sm font-medium text-white py-2">
+                        {{ form.subdomain || 'your-clinic' }}<span class="text-gray-500">.{{ clinicDomain }}</span>
                     </p>
                 </div>
 
                 <div>
-                    <InputLabel for="subdomain" value="Subdomain *" />
-                    <div class="mt-1 flex rounded-md shadow-sm">
-                        <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                            {{ clinicDomain }}/
-                        </span>
+                    <InputLabel for="subdomain" value="Your Personalized Web Name *" />
+                    <div class="mt-2">
                         <input
                             id="subdomain"
                             type="text"
-                            class="flex-1 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:ring-[#2B7CB3] focus:border-[#2B7CB3] sm:text-sm"
+                            class="block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-[#2B7CB3] focus:border-[#2B7CB3] sm:text-sm transition-all shadow-sm"
                             v-model="form.subdomain"
-                            @blur="checkSubdomainAvailability"
-                            @input="subdomainAvailable = null"
-                            placeholder="yourclinic"
+                            placeholder="e.g., smile-dental"
                         />
                     </div>
                     
-                    <!-- Subdomain Status -->
-                    <div class="mt-2 flex items-center">
-                        <span v-if="subdomainChecking" class="text-sm text-gray-500">
+                    <!-- Status Indicators -->
+                    <div class="mt-2 h-5">
+                        <span v-if="subdomainChecking" class="text-xs text-gray-500 flex items-center">
+                            <svg class="animate-spin h-3 w-3 mr-1" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
                             Checking availability...
                         </span>
-                        <span v-else-if="subdomainAvailable === true" class="text-sm text-green-600 flex items-center">
+                        <span v-else-if="subdomainAvailable === true" class="text-xs text-green-600 font-medium flex items-center">
                             <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                             </svg>
-                            Subdomain is available!
+                            Great choice! This name is available.
                         </span>
-                        <span v-else-if="subdomainAvailable === false" class="text-sm text-red-600 flex items-center">
+                        <span v-else-if="subdomainAvailable === false" class="text-xs text-red-600 font-medium flex items-center">
                             <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
-                            Subdomain is already taken
+                            This name is already taken. Try another?
                         </span>
                     </div>
 
                     <!-- Suggestions -->
-                    <div v-if="subdomainSuggestions.length > 0 && !form.subdomain" class="mt-3">
-                        <p class="text-xs text-gray-500 mb-2">Suggestions:</p>
+                    <div v-if="subdomainSuggestions.length > 0 && !form.subdomain" class="mt-4">
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Recommended for you:</p>
                         <div class="flex flex-wrap gap-2">
                             <button
                                 v-for="suggestion in subdomainSuggestions"
                                 :key="suggestion"
                                 @click="selectSuggestion(suggestion)"
-                                class="px-3 py-1 text-sm bg-gray-100 hover:bg-blue-50 hover:text-[#2B7CB3] rounded-full border border-gray-200 transition-colors"
+                                class="px-3 py-1.5 text-xs font-medium bg-white hover:bg-blue-50 text-gray-700 hover:text-[#2B7CB3] rounded-lg border border-gray-200 hover:border-[#2B7CB3] transition-all shadow-sm"
                             >
                                 {{ suggestion }}
                             </button>
@@ -619,80 +657,89 @@ const paymentMethods = [
                     </div>
                 </div>
 
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <p class="text-xs text-yellow-700">
-                        💡 <strong>Tip:</strong> Choose a short, memorable subdomain that matches your clinic name.
+                <div class="bg-amber-50 border border-amber-100 rounded-lg p-3 flex items-start">
+                    <span class="text-amber-500 mr-2 text-lg">✨</span>
+                    <p class="text-xs text-amber-800 leading-relaxed">
+                        <strong>Pro Tip:</strong> Use a name that's easy to say and remember. Short names look best on business cards and social media!
                     </p>
                 </div>
             </div>
 
             <!-- Step 3: Confirmation -->
-            <div v-if="currentStep === 3" class="space-y-5">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Review & Confirm</h3>
+            <div v-if="currentStep === 3" class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Review & Confirm</h3>
 
-                <div class="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Clinic Name:</span>
-                        <span class="font-medium text-gray-900">{{ form.clinic_name }}</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Clinic Info -->
+                    <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Clinic Details</p>
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">Name:</span>
+                                <span class="font-medium text-gray-900">{{ form.clinic_name }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">Admin:</span>
+                                <span class="font-medium text-gray-900 text-right">{{ fullAdminName }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">URL:</span>
+                                <span class="font-medium text-[#2B7CB3] text-right">{{ form.subdomain }}.{{ clinicDomain }}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Admin Name:</span>
-                        <span class="font-medium text-gray-900">{{ form.admin_name }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Email:</span>
-                        <span class="font-medium text-gray-900">{{ form.email }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Your URL:</span>
-                        <span class="font-medium text-[#2B7CB3]">{{ form.subdomain }}.{{ clinicDomain }}</span>
-                    </div>
-                    <div v-if="selectedPlan" class="flex justify-between pt-3 border-t border-gray-200">
-                        <span class="text-gray-500">Selected Plan:</span>
-                        <span class="font-medium text-gray-900">{{ selectedPlan.name }}</span>
-                    </div>
-                    <div v-if="selectedPlan" class="flex justify-between">
-                        <span class="text-gray-500">Monthly Price:</span>
-                        <span class="font-bold text-[#2B7CB3]">₱{{ Number(selectedPlan.price_monthly).toLocaleString() }}</span>
+
+                    <!-- Subscription Details -->
+                    <div class="bg-blue-50/50 rounded-xl p-3 border border-blue-100">
+                        <p class="text-[10px] font-bold text-[#2B7CB3] uppercase tracking-wider mb-2">Subscription</p>
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between text-sm" v-if="selectedPlan">
+                                <span class="text-gray-500">Plan:</span>
+                                <span class="font-bold text-gray-900">{{ selectedPlan.name }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm" v-if="selectedPlan">
+                                <span class="text-gray-500">Monthly:</span>
+                                <span class="font-black text-[#2B7CB3]">₱{{ Number(selectedPlan.price_monthly).toLocaleString() }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">Cycle:</span>
+                                <span class="font-medium text-gray-900">Billed monthly</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Payment Method Selection -->
-                <div class="mt-6">
-                    <h4 class="text-sm font-medium text-gray-900 mb-3">Select Payment Method</h4>
-                    <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-900 mb-3">Select Payment Method</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div
                             v-for="method in paymentMethods"
                             :key="method.id"
                             :class="[
-                                'relative rounded-lg border p-4 cursor-pointer transition-all',
+                                'relative rounded-xl border p-3 cursor-pointer transition-all flex flex-col items-center justify-center text-center',
                                 method.available 
-                                    ? 'border-[#2B7CB3] bg-blue-50 hover:border-[#246999]' 
-                                    : 'border-gray-200 bg-gray-50 opacity-60'
+                                    ? 'border-[#2B7CB3] bg-white shadow-sm ring-1 ring-[#2B7CB3]/10 hover:shadow-md' 
+                                    : 'border-gray-200 bg-gray-50 opacity-40 grayscale pointer-events-none'
                             ]"
                         >
-                            <div class="flex items-center justify-between">
-                                <span class="text-2xl">{{ method.icon }}</span>
-                                <span class="font-medium text-gray-900">{{ method.name }}</span>
-                            </div>
-                            <div v-if="method.coming" class="absolute -top-2 -right-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                                    Coming Soon
-                                </span>
-                            </div>
-                            <div v-if="method.stripe" class="absolute -top-2 -right-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-[#2B7CB3]">
-                                    Active
+                            <span class="text-2xl mb-1">{{ method.icon }}</span>
+                            <span class="text-[10px] font-bold text-gray-900 leading-tight">{{ method.name }}</span>
+                            
+                            <div v-if="method.stripe" class="absolute -top-1.5 -right-1.5">
+                                <span class="flex h-3 w-3 relative">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                                 </span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
-                    <p class="text-xs text-blue-700">
-                        🔒 By proceeding, you agree to our Terms of Service and Privacy Policy.
-                        You'll be redirected to Stripe for secure payment.
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-start">
+                    <span class="mr-2 mt-0.5 text-lg">🛡️</span>
+                    <p class="text-[10px] text-gray-500 leading-relaxed">
+                        By clicking "Proceed to Payment", you agree to our <a href="#" class="text-[#2B7CB3] hover:underline">Terms</a> and <a href="#" class="text-[#2B7CB3] hover:underline">Privacy Policy</a>. Transactions are strictly secured via Stripe.
                     </p>
                 </div>
             </div>

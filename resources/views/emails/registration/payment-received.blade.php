@@ -8,15 +8,25 @@
     <script src="https://unpkg.com/laravel-echo@1.15.0/dist/laravel-echo.min.js"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
-        /* Prevent scrolling on body */
-        body { overflow: hidden; }
+        body { overflow: hidden; margin: 0; padding: 0; }
+        .bg-landing iframe {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            border: none;
+            z-index: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="font-sans bg-landing">
+    <!-- Landing page as background -->
+    <iframe src="/" title="background" tabindex="-1" aria-hidden="true"></iframe>
+
     <div class="fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center">
-            <!-- Backdrop -->
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
+            <!-- Backdrop blur overlay -->
+            <div class="fixed inset-0 bg-black/50 backdrop-blur-sm"></div>
             
             <!-- Modal Panel -->
             <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
@@ -127,7 +137,8 @@
                 <!-- Footer -->
                 <div class="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse">
                     <a
-                        href="{{ config('app.url') }}/?payment-success=true"
+                        href="{{ config('app.url') }}"
+                        target="_top"
                         class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#2B7CB3] text-base font-medium text-white hover:bg-[#236491] focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
                     >
                         Back to Home
