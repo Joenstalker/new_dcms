@@ -77,9 +77,31 @@ class FeatureOTAUpdateService
         foreach ($featureIds as $featureId) {
             $update = TenantFeatureUpdate::where('tenant_id', $tenantId)
                 ->where('feature_id', $featureId)
+                ->with('feature.systemRelease')
                 ->first();
 
             if ($update && $update->status === TenantFeatureUpdate::STATUS_PENDING) {
+                $feature = $update->feature;
+
+                // 1. Manually Sync Version & Migration if it's a system_version
+                if ($feature->type === 'system_version' && $feature->system_release_id) {
+                    $release = $feature->systemRelease;
+                    if ($release) {
+                        $tenant = \App\Models\Tenant::find($tenantId);
+                        if ($tenant) {
+                            $tenant->update(['version' => $release->version]);
+
+                            // Trigger per-tenant migration if required
+                            if ($release->requires_db_update) {
+                                \Illuminate\Support\Facades\Artisan::call('tenants:migrate', [
+                                    '--tenants' => [$tenantId]
+                                ]);
+                                Log::info("Executed per-tenant migration for tenant [{$tenantId}] as part of version [{$release->version}] update.");
+                            }
+                        }
+                    }
+                }
+
                 $update->markAsApplied();
                 $applied[] = $featureId;
             }
@@ -131,7 +153,7 @@ class FeatureOTAUpdateService
             ->whereHas('feature', function ($query) {
             $query->notArchived()->where('is_active', true);
         })
-            ->with('feature')
+            ->with('feature.systemRelease')
             ->orderBy('created_at', 'desc')
             ->get();
     }

@@ -22,6 +22,7 @@ class Feature extends Model
         'announced_at',
         'released_at',
         'archived_at',
+        'system_release_id',
     ];
 
     protected $casts = [
@@ -207,5 +208,13 @@ class Feature extends Model
     public function tenantFeatures()
     {
         return $this->hasMany(TenantFeature::class);
+    }
+
+    /**
+     * Get the associated system release.
+     */
+    public function systemRelease(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(SystemRelease::class);
     }
 }
