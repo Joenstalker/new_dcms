@@ -257,15 +257,30 @@ class SettingsController extends Controller
 
     public function update(Request $request)
     {
-        // Decode JSON strings if sent via multipart/form-data
+        // Decode JSON strings and gracefully force arrays from Inertia FormData
         foreach (['font_family', 'enabled_features', 'landing_page_config', 'portal_config', 'operating_hours'] as $field) {
-            if (is_string($request->input($field)) && (str_starts_with($request->input($field), '[') || str_starts_with($request->input($field), '{'))) {
-                $decoded = json_decode($request->input($field), true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $request->merge([$field => $decoded]);
+            $value = $request->input($field);
+            if (is_array($value) || is_null($value)) {
+                continue;
+            }
+            if (is_string($value)) {
+                $trimmed = trim($value);
+                if (in_array($trimmed, ['', 'null', 'undefined', '[]', '{}'])) {
+                    $request->merge([$field => []]);
+                } elseif (str_starts_with($trimmed, '[') || str_starts_with($trimmed, '{')) {
+                    $decoded = json_decode($trimmed, true);
+                    $request->merge([$field => (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : []]);
+                } else {
+                    $request->merge([$field => array_filter(array_map('trim', explode(',', $trimmed)))]);
                 }
+            } else {
+                $request->merge([$field => [$value]]);
             }
         }
+        \Illuminate\Support\Facades\Log::info("BRANDING PAYLOAD [" . $request->method() . "]", [
+            'enabled_features' => $request->input('enabled_features'),
+            'type' => gettype($request->input('enabled_features'))
+        ]);
 
         $validated = $request->validate([
             'clinic_name' => 'required|string|max:255',
