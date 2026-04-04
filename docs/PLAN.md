@@ -1,46 +1,60 @@
-# Plan: Multi-Tenancy SaaS Lifecycle Enhancements
+# Admin Earnings Management Plan
 
-## Goal
-Implement a robust SaaS version releases system, tenant upgrade lifecycle, feature management integration with subscription plan control, and "Coming Soon" feature lifecycle alongside safe multi-database migrations.
+## Overview
+This plan outlines the steps to investigate and properly manage Admin Earnings from approved tenant applications. Currently, the Admin Revenue is calculated via mathematical estimates (`count * avgPrice`) in `RevenueController`. To properly manage earnings, the system needs to accurately track actual Stripe payouts, application registration fees, and subscriptions via a dedicated `AdminEarning` tracking mechanism.
 
-## Methodology & Rules
-Following strict guidelines:
-1. DO NOT rewrite working tenancy logic.
-2. DO NOT change database connections unless required.
-3. DO NOT modify existing migrations (only use incremental migrations).
-4. ADD new systems incrementally.
-5. All implementations must be backward compatible.
-6. Follow the phased implementation plan strictly.
+## Project Type
+BACKEND & WEB
 
-## Phased Implementation Plan
+## Success Criteria
+- Actual payments from Stripe embedded checkout are recorded precisely.
+- Revenue Dashboard displays real collected earnings instead of estimates.
+- `PendingRegistration` approvals cleanly mark earnings as realized.
+- Refunded registrations deduct from realized earnings properly.
 
-### Phase 1: Foundation – SaaS Version Releases & Safe Migrations
-- **Objective:** Establish the concept of a DCMS (SaaS) version globally and implement scaffolding for safer multi-database schema operations.
-- **Tasks:**
-  - Create architecture for referencing app-wide "DCMS Versions".
-  - Establish a non-destructive way to track tenant db versions vs global versions.
-- **Deliverables:** Architectural structures for tracking releases, migration guidelines.
+## Tech Stack
+- Laravel (Backend)
+- Inertia.js + Vue 3 (Frontend)
+- Stripe PHP (Payments)
 
-### Phase 2: Feature Management & Coming Soon Lifecycle
-- **Objective:** Implement a centralized Feature Management service.
-- **Tasks:**
-  - Build feature registry tracking state (Active, Beta, Coming Soon, Deprecated).
-  - Define "Coming Soon" component UI lifecycles for both global and tenant specific views.
-- **Deliverables:** Feature management integration files, UI stubs/helpers for lifecycle states.
+## File Structure
+- `app/Models/AdminEarning.php`
+- `database/migrations/xxxx_create_admin_earnings_table.php`
+- `app/Http/Controllers/Admin/RevenueController.php` (Update)
+- `app/Http/Controllers/RegistrationController.php` (Update)
+- `resources/js/Pages/Admin/Revenue/Index.vue` (Update)
 
-### Phase 3: Subscription Plan Feature Control
-- **Objective:** Enforce features by subscription tiers.
-- **Tasks:**
-  - Map available features strictly to the user's subscription plans.
-  - Implement middleware/frontend guards to dynamically lock/unlock feature states based on plan vs feature lifecycle.
-- **Deliverables:** Subscription logic mapped to the Feature Management service.
+## Task Breakdown
 
-### Phase 4: Tenant Upgrade Lifecycle Execution
-- **Objective:** Handle transitioning individual tenants to newer versions.
-- **Tasks:**
-  - Build the tenant upgrade orchestration lifecycle (pre-flight checks, schema updates, data hydration, post-flight validation).
-  - Ensure any new multi-db migrations successfully apply incrementally.
-- **Deliverables:** Upgrade job logic, dashboard indicators for tenant version vs global version.
+### Task 1: Create AdminEarning Model and Migration
+- **Agent**: `backend-specialist`
+- **Skills**: `database-design`, `backend-specialist`
+- **Priority**: P0
+- **Dependencies**: None
+- **INPUT→OUTPUT→VERIFY**: Input: Create schema -> Output: `AdminEarning` model and migration (fields: tenant_id, amount, source: 'registration'/'subscription', stripe_payment_id, status) -> Verify: `php artisan migrate` passes.
 
-## Verification
-*After each Phase, an analysis summary will be generated including: files created, files modified, risks detected, and a readiness check for the next phase.*
+### Task 2: Implement Stripe Sync in RegistrationController
+- **Agent**: `backend-specialist`
+- **Skills**: `api-patterns`
+- **Priority**: P1
+- **Dependencies**: Task 1
+- **INPUT→OUTPUT→VERIFY**: Input: Handle checkout success -> Output: Create `AdminEarning` record when tenant pays in `processSuccessfulRegistration`. -> Verify: Run local registration test.
+
+### Task 3: Update RevenueController to Use Actual Earnings
+- **Agent**: `backend-specialist`
+- **Skills**: `clean-code`
+- **Priority**: P1
+- **Dependencies**: Task 1
+- **INPUT→OUTPUT→VERIFY**: Input: Replace `count * avgPrice` logic -> Output: `RevenueController` sums actual `AdminEarning` records -> Verify: JSON response shows correct sums.
+
+### Task 4: Update Revenue Dashboard UI
+- **Agent**: `frontend-specialist`
+- **Skills**: `frontend-design`
+- **Priority**: P2
+- **Dependencies**: Task 3
+- **INPUT→OUTPUT→VERIFY**: Input: Render exact amounts -> Output: Vue component `Admin/Revenue/Index.vue` displays accurate historical and current earnings. -> Verify: Run `npm run lint` and view UI.
+
+## Phase X: Verification
+- [ ] Run Security Scan: `python .agent/skills/vulnerability-scanner/scripts/security_scan.py .`
+- [ ] Linting & Types: `npm run lint && npx tsc --noEmit`
+- [ ] UX Audit: `python .agent/skills/frontend-design/scripts/ux_audit.py .`

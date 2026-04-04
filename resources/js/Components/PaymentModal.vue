@@ -86,7 +86,7 @@ watch(() => props.show, (newVal) => {
     }
 });
 
-// ─── Proceed from review → launch Stripe embedded checkout ──────────────────
+// ─── Proceed from review → redirect to full-page Secure Payment ──────────────
 const proceedToCheckout = async () => {
     if (!selectedPlan.value) return;
     isLoading.value = true;
@@ -120,42 +120,22 @@ const proceedToCheckout = async () => {
 
         const data = await response.json();
 
-        if (!data.success || !data.clientSecret) {
+        if (!data.success || !data.redirect_url) {
             throw new Error(data.message || 'Failed to create payment session.');
         }
 
-        // Store session ID in reactive ref so it's accessible even if the closure context changes
-        currentSessionId.value = data.sessionId;
-        console.log('[PaymentModal] clientSecret received, sessionId:', data.sessionId);
-
-        // Switch to checkout screen first, then mount
-        screen.value = 'checkout';
-
-        // Wait for Vue to render the #stripe-embedded-checkout div
-        await new Promise(resolve => setTimeout(resolve, 200));
-
-        const stripe = await loadStripe(import.meta.env.VITE_STRIPE_KEY);
-        stripeCheckout = await stripe.initEmbeddedCheckout({
-            clientSecret: data.clientSecret,
-            onComplete: () => {
-                console.log('[PaymentModal] Stripe onComplete fired! sessionId:', currentSessionId.value);
-                handlePaymentComplete();
-            },
-        });
-        stripeCheckout.mount('#stripe-embedded-checkout');
-        console.log('[PaymentModal] Stripe embed mounted');
+        // Redirect the whole page to the full-page Secure Payment view
+        window.location.href = data.redirect_url;
 
     } catch (error) {
         console.error('Checkout error:', error);
-        screen.value = 'review';
+        isLoading.value = false;
         Swal.fire({
             icon: 'error',
             title: 'Payment Error',
             text: error.message || 'An error occurred. Please try again.',
             confirmButtonColor: '#2B7CB3',
         });
-    } finally {
-        isLoading.value = false;
     }
 };
 

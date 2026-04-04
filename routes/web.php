@@ -46,6 +46,8 @@ $registerCentralRoutes = function ($withNames = false) {
             $succ = Route::get('/success', [RegistrationController::class , 'handleSuccess']);
             $webh = Route::post('/webhook', [RegistrationController::class , 'handleWebhook']);
             $complete = Route::post('/complete', [RegistrationController::class , 'completeRegistration']);
+            $pay = Route::get('/pay', [RegistrationController::class , 'showPaymentPage']);
+            $receipt = Route::get('/receipt/{session_id}', [RegistrationController::class , 'downloadReceipt']);
 
             if ($withNames) {
                 $v->name('validate');
@@ -56,6 +58,8 @@ $registerCentralRoutes = function ($withNames = false) {
                 $succ->name('success');
                 $webh->name('webhook');
                 $complete->name('complete');
+                $pay->name('pay');
+                $receipt->name('receipt');
             }
         }
         );
@@ -93,7 +97,7 @@ $registerCentralRoutes = function ($withNames = false) {
                 $tenantsD->name('tenants.destroy');
                 $tenantsApprove->name('tenants.approve');
                 $tenantsReject->name('tenants.reject');
-                Route::get('/tenants/{tenant}/usage', [\App\Http\Controllers\Admin\TenantController::class, 'getUsageStats'])->name('tenants.usage');
+                Route::get('/tenants/{tenant}/usage', [\App\Http\Controllers\Admin\TenantController::class , 'getUsageStats'])->name('tenants.usage');
             }
 
             // Pending Registrations Management
@@ -101,11 +105,11 @@ $registerCentralRoutes = function ($withNames = false) {
             $pendingS = Route::get('/pending-registrations/{pendingRegistration}', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'show']);
             $pendingA = Route::post('/pending-registrations/{pendingRegistration}/approve', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'approve']);
             $pendingR = Route::post('/pending-registrations/{pendingRegistration}/reject', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'reject']);
-            $pendingExtend = Route::post('/pending-registrations/{pendingRegistration}/extend', [\App\Http\Controllers\Admin\PendingRegistrationController::class, 'extendTime']);
-            $pendingSetTime = Route::post('/pending-registrations/{pendingRegistration}/set-time', [\App\Http\Controllers\Admin\PendingRegistrationController::class, 'setTime']);
-            $pendingToggleReminder = Route::post('/pending-registrations/{pendingRegistration}/toggle-reminder', [\App\Http\Controllers\Admin\PendingRegistrationController::class, 'toggleReminder']);
-            $pendingToggleAutoApprove = Route::post('/pending-registrations/{pendingRegistration}/toggle-auto-approve', [\App\Http\Controllers\Admin\PendingRegistrationController::class, 'toggleAutoApprove']);
-            
+            $pendingExtend = Route::post('/pending-registrations/{pendingRegistration}/extend', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'extendTime']);
+            $pendingSetTime = Route::post('/pending-registrations/{pendingRegistration}/set-time', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'setTime']);
+            $pendingToggleReminder = Route::post('/pending-registrations/{pendingRegistration}/toggle-reminder', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'toggleReminder']);
+            $pendingToggleAutoApprove = Route::post('/pending-registrations/{pendingRegistration}/toggle-auto-approve', [\App\Http\Controllers\Admin\PendingRegistrationController::class , 'toggleAutoApprove']);
+
             if ($withNames) {
                 $pendingI->name('pending-registrations.index');
                 $pendingS->name('pending-registrations.show');
@@ -156,7 +160,7 @@ $registerCentralRoutes = function ($withNames = false) {
                     $plansD->name('plans.destroy');
                     $plansF->name('plans.force-sync');
                     $plansP->name('plans.push-updates');
-                    Route::post('/plans/batch-push-updates', [\App\Http\Controllers\Admin\PlanController::class, 'batchPushUpdates'])->name('plans.batch-push-updates');
+                    Route::post('/plans/batch-push-updates', [\App\Http\Controllers\Admin\PlanController::class , 'batchPushUpdates'])->name('plans.batch-push-updates');
                 }
 
                 // Subscriptions
@@ -195,8 +199,8 @@ $registerCentralRoutes = function ($withNames = false) {
                     $featuresT->name('features.toggle');
                     $featuresA->name('features.assign');
                     $featuresR->name('features.remove');
-                    Route::post('/features/sync-all', [FeatureController::class, 'syncAllUpdates'])->name('features.sync-all');
-                    Route::get('/features/batch/{batchId}', [FeatureController::class, 'getBatchStatus'])->name('features.batch-status');
+                    Route::post('/features/sync-all', [FeatureController::class , 'syncAllUpdates'])->name('features.sync-all');
+                    Route::get('/features/batch/{batchId}', [FeatureController::class , 'getBatchStatus'])->name('features.batch-status');
                 }
 
                 // Support & Tickets (Contact Messages)
@@ -258,22 +262,22 @@ $registerCentralRoutes = function ($withNames = false) {
             $updatePict = Route::post('/profile/picture', [ProfileController::class , 'updatePicture']);
             $dest = Route::delete('/profile', [ProfileController::class , 'destroy']);
 
-                if ($withNames) {
-                    $edit->name('profile.edit');
-                    $update->name('profile.update');
-                    $updatePict->name('profile.update-picture');
-                    $dest->name('profile.destroy');
-                }
-            }
-            );
-
-            // Auth Routes
-            // For central domain, we only want POST routes for the login modal
-            // and we don't want the GET routes (login, register, etc.) to avoid clashing or appearing.
             if ($withNames) {
-                Route::middleware('guest')->group(function () {
+                $edit->name('profile.edit');
+                $update->name('profile.update');
+                $updatePict->name('profile.update-picture');
+                $dest->name('profile.destroy');
+            }
+        }
+        );
+
+        // Auth Routes
+        // For central domain, we only want POST routes for the login modal
+        // and we don't want the GET routes (login, register, etc.) to avoid clashing or appearing.
+        if ($withNames) {
+            Route::middleware('guest')->group(function () {
                     Route::post('login', [AuthenticatedSessionController::class , 'store'])->name('login');
-                    Route::post('login/google', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'handleGoogleLogin'])->name('admin.login.google');
+                    Route::post('login/google', [\App\Http\Controllers\Auth\GoogleAuthController::class , 'handleGoogleLogin'])->name('admin.login.google');
                     Route::post('register', [RegisteredUserController::class , 'store'])->name('register');
                 }
                 );

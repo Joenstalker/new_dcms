@@ -19,14 +19,14 @@ class EnsurePasswordIsChanged
             // Allow access to password update endpoint, logout, and frontend asset requests.
             // Inertia apps typically load the whole layout, so we don't want to block GET requests to Inertia routes.
             // We only block non-GET requests that carry out actions (excluding auth/logout and password updates).
-            
+
             $route = $request->route() ? $request->route()->getName() : null;
-            
+
             if ($request->isMethod('GET')) {
                 return $next($request);
             }
 
-            if (in_array($route, ['password.update', 'logout'])) {
+            if (in_array($route, ['password.update', 'tenant.password.update', 'logout', 'tenant.logout'])) {
                 return $next($request);
             }
 

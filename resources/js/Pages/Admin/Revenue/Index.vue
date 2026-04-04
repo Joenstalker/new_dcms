@@ -9,6 +9,7 @@ const props = defineProps({
     monthly_revenue: Array,
     status_breakdown: Object,
     recent_subscriptions: Array,
+    recent_payments: Array,
 });
 
 // Compute bar chart max for scaling
@@ -187,6 +188,36 @@ const statusLabel = {
                     <Link :href="route('admin.subscriptions.index')" class="text-sm text-primary hover:text-primary-focus font-medium">
                         View all subscriptions →
                     </Link>
+                </div>
+            </div>
+
+            <!-- Actual Stripe Payments Table -->
+            <div class="bg-base-100 rounded-2xl border border-base-300 shadow-sm overflow-hidden mt-6">
+                <div class="px-6 py-4 border-b border-base-300">
+                    <h3 class="text-base font-semibold text-base-content">Actual Stripe Payments</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-base-300">
+                        <thead class="bg-base-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">Tenant</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">Description</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">Amount</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">Date paid</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-base-100 divide-y divide-base-300">
+                            <tr v-for="payment in recent_payments" :key="payment.id" class="hover:bg-base-200 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-base-content">{{ payment.tenant_id }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-base-content/80">{{ payment.description }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-success">{{ formatCurrency(payment.amount) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-base-content/50">{{ payment.paid_at }}</td>
+                            </tr>
+                            <tr v-if="!recent_payments?.length">
+                                <td colspan="4" class="px-6 py-12 text-center text-base-content/30 text-sm">No recorded payments yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

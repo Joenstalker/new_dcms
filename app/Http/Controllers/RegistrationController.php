@@ -261,10 +261,24 @@ class RegistrationController extends Controller
                 'stripe_session_id' => $session->id,
             ]);
 
+            // Store in server session so /registration/pay can access without exposing secrets in URL
+            session([
+                'checkout_client_secret' => $session->client_secret,
+                'checkout_session_id' => $session->id,
+                'checkout_order_summary' => [
+                    'clinic_name' => $validated['clinic_name'],
+                    'plan_name' => $plan->name,
+                    'billing_cycle' => $validated['billing_cycle'],
+                    'months' => $months,
+                    'amount' => $totalPrice,
+                ],
+            ]);
+
             return response()->json([
                 'success' => true,
                 'clientSecret' => $session->client_secret,
                 'sessionId' => $session->id,
+                'redirect_url' => route('registration.pay'),
             ]);
         }
         catch (\Exception $e) {
@@ -273,6 +287,73 @@ class RegistrationController extends Controller
                 'success' => false,
                 'message' => 'Failed to create payment session. Please try again.',
             ], 500);
+        }
+    }
+
+    /**
+     * Show the full-page Secure Payment page (Stripe embedded checkout).
+     * Session data passed via Laravel session, set during createCheckoutSession.
+     */
+    public function showPaymentPage(Request $request)
+    {
+        $clientSecret = session('checkout_client_secret');
+        $sessionId = session('checkout_session_id');
+        $orderSummary = session('checkout_order_summary');
+
+        if (!$clientSecret || !$sessionId) {
+            return redirect('/')->with('error', 'Invalid payment session. Please try again.');
+        }
+
+        return view('registration.secure-payment', [
+            'clientSecret' => $clientSecret,
+            'sessionId' => $sessionId,
+            'order' => $orderSummary,
+            'stripeKey' => config('services.stripe.key'),
+            'successUrl' => route('registration.success'),
+        ]);
+    }
+
+    /**
+     * Render the professional printable receipt page.
+     */
+    public function downloadReceipt(Request $request, string $session_id)
+    {
+        try {
+            $stripe = $this->getStripeClient();
+            $session = $stripe->checkout->sessions->retrieve($session_id, [
+                'expand' => ['subscription.latest_invoice', 'line_items'],
+            ]);
+
+            $pendingId = $session->metadata->pending_registration_id ?? null;
+            $pending = $pendingId ?PendingRegistration::find($pendingId) : null;
+
+            if (!$pending) {
+                abort(404, 'Registration not found.');
+            }
+
+            // Load plan features from the plan model
+            $plan = SubscriptionPlan::find($pending->plan_id);
+            $features = $plan ? (is_string($plan->features) ? json_decode($plan->features, true) : $plan->features) : [];
+
+            // Build 12-digit digital signature: YEAR(4) + MMDD(4) + padded ms(4)
+            $now = now();
+            $ms = (int)($now->getPreciseTimestamp(3) % 10000); // last 4 digits of ms
+            $signature = $now->format('Y') . $now->format('md') . str_pad($ms, 4, '0', STR_PAD_LEFT);
+
+            return view('registration.receipt', [
+                'registration' => $pending,
+                'plan' => $plan,
+                'features' => $features,
+                'sessionId' => $session_id,
+                'signature' => $signature,
+                'amountPaid' => $pending->amount_paid ?? ($session->amount_total / 100),
+                'paidAt' => now()->format('F d, Y \a\t h:i A'),
+            ]);
+
+        }
+        catch (\Exception $e) {
+            Log::error('Receipt generation failed: ' . $e->getMessage());
+            abort(500, 'Could not generate receipt. Please contact support.');
         }
     }
 
@@ -327,6 +408,7 @@ class RegistrationController extends Controller
 
             return view('emails.registration.payment-received', [
                 'registration' => $result['registration'],
+                'sessionId' => $sessionId,
             ]);
         } catch (\Exception $e) {
             Log::error('Payment success handling failed: ' . $e->getMessage());
@@ -542,6 +624,16 @@ class RegistrationController extends Controller
                 'amount_paid'              => $session->amount_total / 100,
                 'status'                   => PendingRegistration::STATUS_PENDING,
                 'expires_at'               => now('UTC')->addMinutes($timeoutMinutes),
+            ]);
+
+            \App\Models\SystemEarning::create([
+                'tenant_id' => $tenantId,
+                'amount' => $session->amount_total / 100,
+                'currency' => strtoupper($session->currency ?? 'PHP'),
+                'stripe_payment_intent_id' => $paymentIntentId,
+                'stripe_session_id' => $session->id,
+                'description' => 'Tenant Registration Payment',
+                'paid_at' => now('UTC'),
             ]);
 
             DB::commit();
