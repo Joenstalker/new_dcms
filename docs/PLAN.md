@@ -1,60 +1,24 @@
-# Admin Earnings Management Plan
+# PLAN.md: Resolving Dynamic Sidebar Reactivity
 
-## Overview
-This plan outlines the steps to investigate and properly manage Admin Earnings from approved tenant applications. Currently, the Admin Revenue is calculated via mathematical estimates (`count * avgPrice`) in `RevenueController`. To properly manage earnings, the system needs to accurately track actual Stripe payouts, application registration fees, and subscriptions via a dedicated `AdminEarning` tracking mechanism.
+## Objective
+Fix the critical bug where disabling a feature in `Tenant / Custom Branding / Module Management` successfully triggers a "Saved" notification but fails to reflect the removal of the feature in the sidebar.
 
-## Project Type
-BACKEND & WEB
+## Domain Analysis
+- **Frontend/UI (`frontend-specialist`)**: The Vue implementation correctly splices the `enabled_features` array using `toggleFeature(id)` and Inertia posts the Form. In `AuthenticatedLayout.vue` the sidebar correctly filters nodes based on `!page.props.tenant.enabled_features.includes(item.feature)`.
+- **Backend/API (`backend-specialist`)**: The updated array validation intercepts correctly, returning HTTP 200/302. However, the database persistence step (specifically `TenantBrandingService::set` or `$tenant->update`) appears to gracefully silently fail or omit the array when writing to the database, leading Inertia to refresh the page with the stale database state.
+- **Database/Storage (`database-architect`)**: Investigating the exact data-casting pipeline inside the `branding_settings` table vs the `tenants` table to ensure arrays are validly encoded as JSON.
 
-## Success Criteria
-- Actual payments from Stripe embedded checkout are recorded precisely.
-- Revenue Dashboard displays real collected earnings instead of estimates.
-- `PendingRegistration` approvals cleanly mark earnings as realized.
-- Refunded registrations deduct from realized earnings properly.
+## Phase 1: Deep Diagnosis (Sequential)
+1. Inject detailed raw telemetry into `SettingsController` and `TenantBrandingService` to verify the precise shape of `enabled_features` when it reaches the database.
+2. Confirm if `$tenant->update($validated)` is quietly stripping `enabled_features` because it might not be listed in `$fillable` on the `Tenant` model.
 
-## Tech Stack
-- Laravel (Backend)
-- Inertia.js + Vue 3 (Frontend)
-- Stripe PHP (Payments)
+## Phase 2: Implementation (Parallel Agents)
+1. **[backend-specialist]**: Permanently secure the backend database sink so that `enabled_features` updates are unconditionally synchronized between `branding_settings` and the Core `Tenant` model.
+2. **[frontend-specialist]**: Audit the `AuthenticatedLayout` sidebar reactivity to guarantee `page.props.tenant.enabled_features` is correctly read over `page.props.subscription.features` for locally disabled modules.
+3. **[test-engineer]**: Run verification to ensure toggling modules strictly hides their respective routes without leaking permissions.
 
-## File Structure
-- `app/Models/AdminEarning.php`
-- `database/migrations/xxxx_create_admin_earnings_table.php`
-- `app/Http/Controllers/Admin/RevenueController.php` (Update)
-- `app/Http/Controllers/RegistrationController.php` (Update)
-- `resources/js/Pages/Admin/Revenue/Index.vue` (Update)
-
-## Task Breakdown
-
-### Task 1: Create AdminEarning Model and Migration
-- **Agent**: `backend-specialist`
-- **Skills**: `database-design`, `backend-specialist`
-- **Priority**: P0
-- **Dependencies**: None
-- **INPUT→OUTPUT→VERIFY**: Input: Create schema -> Output: `AdminEarning` model and migration (fields: tenant_id, amount, source: 'registration'/'subscription', stripe_payment_id, status) -> Verify: `php artisan migrate` passes.
-
-### Task 2: Implement Stripe Sync in RegistrationController
-- **Agent**: `backend-specialist`
-- **Skills**: `api-patterns`
-- **Priority**: P1
-- **Dependencies**: Task 1
-- **INPUT→OUTPUT→VERIFY**: Input: Handle checkout success -> Output: Create `AdminEarning` record when tenant pays in `processSuccessfulRegistration`. -> Verify: Run local registration test.
-
-### Task 3: Update RevenueController to Use Actual Earnings
-- **Agent**: `backend-specialist`
-- **Skills**: `clean-code`
-- **Priority**: P1
-- **Dependencies**: Task 1
-- **INPUT→OUTPUT→VERIFY**: Input: Replace `count * avgPrice` logic -> Output: `RevenueController` sums actual `AdminEarning` records -> Verify: JSON response shows correct sums.
-
-### Task 4: Update Revenue Dashboard UI
-- **Agent**: `frontend-specialist`
-- **Skills**: `frontend-design`
-- **Priority**: P2
-- **Dependencies**: Task 3
-- **INPUT→OUTPUT→VERIFY**: Input: Render exact amounts -> Output: Vue component `Admin/Revenue/Index.vue` displays accurate historical and current earnings. -> Verify: Run `npm run lint` and view UI.
-
-## Phase X: Verification
-- [ ] Run Security Scan: `python .agent/skills/vulnerability-scanner/scripts/security_scan.py .`
-- [ ] Linting & Types: `npm run lint && npx tsc --noEmit`
-- [ ] UX Audit: `python .agent/skills/frontend-design/scripts/ux_audit.py .`
+## Verification Protocol
+1. Open the UI, toggle off "Appointment Management" and "Staff Management".
+2. Ensure the "ALL CHANGES SAVED" toast triggers.
+3. Confirm the sidebar instantaneously removes those elements upon the Inertia page reload.
+4. Refresh the page to verify the changes persist across sessions.

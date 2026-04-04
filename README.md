@@ -97,7 +97,6 @@ Open a terminal and run the following command to forward Stripe events to the lo
 ```bash
 .\stripe listen --forward-to http://localhost:8080/registration/webhook
 ```
-*(If you are on Windows, use `.\stripe.exe listen ...`)*
 
 ### 4. Update your Webhook Secret
 When you run the `listen` command, the terminal will output a webhook signing secret:

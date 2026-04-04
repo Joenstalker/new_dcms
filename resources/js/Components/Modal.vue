@@ -76,24 +76,38 @@ const maxWidthClass = computed(() => {
 <template>
     <Teleport to="body">
         <Transition
-            enter-active-class="transition ease-out duration-200"
+            enter-active-class="ease-out duration-300"
             enter-from-class="opacity-0"
             enter-to-class="opacity-100"
-            leave-active-class="transition ease-in duration-100"
+            leave-active-class="ease-in duration-200"
             leave-from-class="opacity-100"
             leave-to-class="opacity-0"
         >
-            <div v-if="show" class="fixed inset-0 z-[150] overflow-y-auto bg-neutral/60 backdrop-blur-sm flex items-center justify-center p-4">
-                <div class="fixed inset-0" @click="close"></div>
-                
+            <div
+                v-if="show"
+                class="fixed inset-0 z-[150] overflow-y-auto px-4 py-6 sm:px-0"
+                scroll-region
+            >
+                <div
+                    class="fixed inset-0 transform transition-all"
+                    @click="close"
+                >
+                    <div
+                        class="absolute inset-0 bg-neutral/40 backdrop-blur-sm"
+                    />
+                </div>
+
                 <Transition
-                    enter-active-class="transition ease-out duration-300"
-                    enter-from-class="opacity-0 translate-y-4 scale-95"
-                    enter-to-class="opacity-100 translate-y-0 scale-100"
+                    enter-active-class="ease-out duration-300"
+                    enter-from-class="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    enter-to-class="opacity-100 translate-y-0 sm:scale-100"
+                    leave-active-class="ease-in duration-200"
+                    leave-from-class="opacity-100 translate-y-0 sm:scale-100"
+                    leave-to-class="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                 >
                     <div
                         v-if="show"
-                        class="relative z-[160] w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200"
+                        class="mb-6 transform overflow-hidden rounded-lg bg-base-100 shadow-xl transition-all sm:mx-auto sm:w-full border border-base-300"
                         :class="maxWidthClass"
                     >
                         <slot v-if="showSlot" />
