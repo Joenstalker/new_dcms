@@ -34,6 +34,7 @@ const pendingUpdates = computed(() => {
             description: update.feature?.description || '',
             implementation_status: update.feature?.implementation_status || 'coming_soon',
             code_identifier: update.feature?.code_identifier || null,
+            system_release: update.feature?.system_release || null,
         }
     })) || [];
 });
