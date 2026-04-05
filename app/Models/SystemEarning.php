@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class SystemEarning extends Model
 {
+    protected $connection = 'mysql';
+
     protected $fillable = [
         'tenant_id',
         'amount',
