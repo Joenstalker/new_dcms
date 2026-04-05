@@ -121,3 +121,20 @@ Tenant access is routed dynamically via subdomains (e.g., `http://rhodsmile.loca
 
 ## 🛡️ Support
 If you encounter any issues during setup, feel free to open an issue or consult the Laravel and Stancl/Tenancy documentation.
+
+---
+
+## 📦 System Updates (GitHub Releases)
+
+When a new version is released on GitHub, the system can automatically check for, register, and broadcast the update to your tenant databases. To run the check manually, use the following `artisan` command:
+
+```bash
+php artisan system:check-updates
+```
+
+This command will:
+1. Fetch the release history from the GitHub API.
+2. Synchronize new global system updates into your database.
+3. Automatically broadcast the updates as pending features to all active tenants.
+
+*Make sure to update your `APP_VERSION` in the `.env` file to match the latest tag release if you want it to reflect correctly for any new tenants that register.*

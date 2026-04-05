@@ -53,10 +53,10 @@ const initialEnabledFeatures = computed(() => {
 }).value;
 
 const form = useForm({
-    clinic_name: props.tenant?.name || '',
-    email: props.tenant?.email || '',
-    phone: props.tenant?.phone || '',
-    address: props.tenant?.street || '',
+    clinic_name: props.tenant?.clinic_name || props.tenant?.name || '',
+    email: props.tenant?.clinic_email || props.tenant?.email || '',
+    phone: props.tenant?.clinic_phone || props.tenant?.phone || '',
+    address: props.tenant?.clinic_address || props.tenant?.street || '',
     branding_color: props.tenant?.branding_color || page.props.branding?.primary_color || '#0ea5e9',
     font_family: initialFontFamily,
     hero_title: props.tenant?.hero_title || '',
@@ -238,19 +238,8 @@ watch(() => usePage().props.flash, (flash) => {
                     <FeatureSettings :form="form" />
                 </div>
 
-                <!-- Auto-Save Status Indicator -->
-                <div class="fixed bottom-6 right-6 z-50 animate-fade-in-up">
-                    <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-4 py-3 rounded-2xl shadow-xl backdrop-blur-md transition-all duration-300" 
-                         :class="isSaving ? 'text-primary bg-primary/10 border border-primary/20' : (hasUnsavedChanges ? 'text-warning bg-warning/10 border border-warning/20' : 'text-success bg-success/10 border border-success/20')">
-                        <span v-if="isSaving" class="loading loading-spinner loading-xs"></span>
-                        <span v-else-if="hasUnsavedChanges" class="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
-                        <span v-else class="w-2 h-2 rounded-full bg-success"></span>
-                        
-                        <span v-if="isSaving">Saving changes...</span>
-                        <span v-else-if="hasUnsavedChanges">Unsaved changes</span>
-                        <span v-else>All changes saved</span>
-                    </div>
-                </div>
+                
+
             </form>
         </div>
     </AuthenticatedLayout>
