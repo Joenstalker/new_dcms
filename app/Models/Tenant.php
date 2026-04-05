@@ -148,13 +148,17 @@ class Tenant extends BaseTenant implements TenantWithDatabase
                     $domain = $tenant->domains->first()->domain ?? null;
                 }
 
-                // If no domain, use the tenant name as fallback
+                // If no domain, use the tenant ID (subdomain) as source, then name as fallback
                 if (!$domain) {
-                    $domain = $tenant->name;
+                    $domain = $tenant->id ?? $tenant->name;
                 }
 
-                $tenant->database_name = $namingService->generateHashedDatabaseName($domain);
-                $tenant->database = $tenant->database_name; // Set standard Stancl key
+                $hashedDbName = $namingService->generateHashedDatabaseName($domain);
+                $tenant->database_name = $hashedDbName;
+
+                // Set the stancl internal key so DatabaseConfig::getName() uses the hashed name
+                // for physical database creation instead of falling back to prefix+id+suffix
+                $tenant->setInternal('db_name', $hashedDbName);
             }
 
             // Generate database connection name
