@@ -18,10 +18,26 @@ const roles = computed(() => user.value?.roles || []);
 const isOwnerOrDentist = computed(() => roles.value.includes('Owner') || roles.value.includes('Dentist'));
 
 const activeTab = ref('all');
+const searchQuery = ref('');
 
 const filteredServices = computed(() => {
-    if (activeTab.value === 'all') return props.services;
-    return props.services.filter(s => s.status === activeTab.value);
+    let result = props.services;
+    
+    // Status filter
+    if (activeTab.value !== 'all') {
+        result = result.filter(s => s.status === activeTab.value);
+    }
+    
+    // Search filter
+    if (searchQuery.value.trim() !== '') {
+        const query = searchQuery.value.toLowerCase();
+        result = result.filter(s => 
+            s.name.toLowerCase().includes(query) || 
+            (s.description && s.description.toLowerCase().includes(query))
+        );
+    }
+    
+    return result;
 });
 
 // Create/Edit Modal State
@@ -45,16 +61,18 @@ const openModal = (service = null) => {
     isModalOpen.value = true;
 };
 
-const submit = () => {
+const submit = (payload) => {
+    const { form: childForm } = payload;
+    
     if (editingService.value) {
-        form.put(route('services.update', editingService.value.id), {
+        childForm.put(route('services.update', editingService.value.id), {
             onSuccess: () => {
                 isModalOpen.value = false;
                 Swal.fire('Updated!', 'Service has been updated.', 'success');
             }
         });
     } else {
-        form.post(route('services.store'), {
+        childForm.post(route('services.store'), {
             onSuccess: () => {
                 isModalOpen.value = false;
                 const msg = isOwnerOrDentist.value ? 'Service added successfully!' : 'Service submitted for approval.';
@@ -126,18 +144,37 @@ const closeModal = () => {
         <template #header>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 class="text-2xl font-bold text-gray-800">Service & Pricing</h2>
-                <button v-if="can('create services')" @click="openModal()" class="btn btn-primary shadow-lg border-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    New Service
-                </button>
             </div>
         </template>
 
         <div class="py-6">
-            <!-- Tabs Navigation -->
-            <ServicesTabs v-model:activeTab="activeTab" />
+            <!-- Tabs & Search Navigation -->
+            <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-6">
+                <ServicesTabs v-model:activeTab="activeTab" />
+                
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative w-full sm:w-64">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </span>
+                        <input 
+                            v-model="searchQuery"
+                            type="text" 
+                            placeholder="Search services..." 
+                            class="input input-bordered w-full pl-10 rounded-xl focus:ring-2 focus:ring-primary shadow-sm"
+                        />
+                    </div>
+                    
+                    <button v-if="can('create services') || isOwnerOrDentist" @click="openModal()" class="btn btn-primary shadow-lg border-none px-6 rounded-xl">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        New Service
+                    </button>
+                </div>
+            </div>
 
             <!-- Services Table -->
             <ServicesTable 
