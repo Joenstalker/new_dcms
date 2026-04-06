@@ -79,45 +79,67 @@ Route::middleware([
             Route::put('my-settings/working-hours', [\App\Http\Controllers\Tenant\StaffSettingsController::class , 'updateWorkingHours'])->name('staff-settings.working-hours');
 
             // Patient management — enforces max_patients limit on create
-            Route::middleware(['permission:view patients'])->group(function () {
-                    Route::get('patients', [\App\Http\Controllers\PatientController::class , 'index'])->name('patients.index');
-                    Route::get('patients/create', [\App\Http\Controllers\PatientController::class , 'create'])->name('patients.create');
-                    Route::post('patients', [\App\Http\Controllers\PatientController::class , 'store'])
-                        ->middleware('check.subscription:max_patients')
-                        ->name('patients.store');
-                    Route::get('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'show'])->name('patients.show');
-                    Route::get('patients/{patient}/pdf', [\App\Http\Controllers\PatientController::class , 'downloadPdf'])->name('patients.pdf');
-                    Route::get('patients/{patient}/edit', [\App\Http\Controllers\PatientController::class , 'edit'])->name('patients.edit');
-                    Route::get('patients/{patient}/delete', [\App\Http\Controllers\PatientController::class , 'delete'])->name('patients.delete');
-                    Route::put('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'update'])->name('patients.update');
-                    Route::delete('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'destroy'])->name('patients.destroy');
-                }
-                );
+            // Patient management
+            Route::get('patients', [\App\Http\Controllers\PatientController::class , 'index'])
+                ->middleware('permission:view patients')
+                ->name('patients.index');
 
-                // Appointment management — enforces max_appointments limit on create
-                // Appointment management
-                Route::get('appointments', [\App\Http\Controllers\AppointmentController::class , 'index'])
-                    ->middleware('permission:view appointments')
-                    ->name('appointments.index');
+            Route::get('patients/create', [\App\Http\Controllers\PatientController::class , 'create'])
+                ->middleware('permission:create patients')
+                ->name('patients.create');
 
-                Route::post('appointments', [\App\Http\Controllers\AppointmentController::class , 'store'])
-                    ->middleware(['permission:create appointments', 'check.subscription:max_appointments'])
-                    ->name('appointments.store');
+            Route::post('patients', [\App\Http\Controllers\PatientController::class , 'store'])
+                ->middleware(['permission:create patients', 'check.subscription:max_patients'])
+                ->name('patients.store');
 
-                Route::put('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class , 'update'])
-                    ->middleware('permission:edit appointments')
-                    ->name('appointments.update');
+            Route::get('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'show'])
+                ->middleware('permission:view patients')
+                ->name('patients.show');
 
-                Route::post('appointments/{appointment}/approve', [\App\Http\Controllers\AppointmentController::class , 'approve'])
-                    ->middleware('permission:edit appointments')
-                    ->name('appointments.approve');
+            Route::get('patients/{patient}/pdf', [\App\Http\Controllers\PatientController::class , 'downloadPdf'])
+                ->middleware('permission:view patients')
+                ->name('patients.pdf');
 
-                Route::delete('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class , 'destroy'])
-                    ->middleware('permission:delete appointments')
-                    ->name('appointments.destroy');
+            Route::get('patients/{patient}/edit', [\App\Http\Controllers\PatientController::class , 'edit'])
+                ->middleware('permission:edit patients')
+                ->name('patients.edit');
 
-                // Treatment records
-                Route::middleware(['permission:view treatments'])->group(function () {
+            Route::get('patients/{patient}/delete', [\App\Http\Controllers\PatientController::class , 'delete'])
+                ->middleware('permission:delete patients')
+                ->name('patients.delete');
+
+            Route::put('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'update'])
+                ->middleware('permission:edit patients')
+                ->name('patients.update');
+
+            Route::delete('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'destroy'])
+                ->middleware('permission:delete patients')
+                ->name('patients.destroy');
+
+            // Appointment management — enforces max_appointments limit on create
+            // Appointment management
+            Route::get('appointments', [\App\Http\Controllers\AppointmentController::class , 'index'])
+                ->middleware('permission:view appointments')
+                ->name('appointments.index');
+
+            Route::post('appointments', [\App\Http\Controllers\AppointmentController::class , 'store'])
+                ->middleware(['permission:create appointments', 'check.subscription:max_appointments'])
+                ->name('appointments.store');
+
+            Route::put('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class , 'update'])
+                ->middleware('permission:edit appointments')
+                ->name('appointments.update');
+
+            Route::post('appointments/{appointment}/approve', [\App\Http\Controllers\AppointmentController::class , 'approve'])
+                ->middleware('permission:edit appointments')
+                ->name('appointments.approve');
+
+            Route::delete('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class , 'destroy'])
+                ->middleware('permission:delete appointments')
+                ->name('appointments.destroy');
+
+            // Treatment records
+            Route::middleware(['permission:view treatments'])->group(function () {
                     Route::get('treatments', [\App\Http\Controllers\TreatmentController::class , 'index'])->name('treatments.index');
                     Route::post('treatments', [\App\Http\Controllers\TreatmentController::class , 'store'])->middleware('permission:create treatments')->name('treatments.store');
                     Route::get('treatments/{treatment}', [\App\Http\Controllers\TreatmentController::class , 'show'])->name('treatments.show');
@@ -202,11 +224,26 @@ Route::middleware([
                 }
                 );
 
-                // Services — accessible by Owner, Dentist, and Assistant
-                Route::middleware(['role:Owner|Dentist|Assistant', 'permission:view services'])->group(function () {
-                    Route::resource('services', \App\Http\Controllers\ServiceController::class);
-                }
-                );
+                // Services — accessible by Owner, Dentist, and Assistant based on granular permissions
+                Route::get('services', [\App\Http\Controllers\ServiceController::class , 'index'])
+                    ->middleware(['role:Owner|Dentist|Assistant', 'permission:view services'])
+                    ->name('services.index');
+
+                Route::post('services', [\App\Http\Controllers\ServiceController::class , 'store'])
+                    ->middleware(['role:Owner|Dentist|Assistant', 'permission:create services'])
+                    ->name('services.store');
+
+                Route::get('services/{service}', [\App\Http\Controllers\ServiceController::class , 'show'])
+                    ->middleware(['role:Owner|Dentist|Assistant', 'permission:view services'])
+                    ->name('services.show');
+
+                Route::put('services/{service}', [\App\Http\Controllers\ServiceController::class , 'update'])
+                    ->middleware(['role:Owner|Dentist|Assistant', 'permission:edit services'])
+                    ->name('services.update');
+
+                Route::delete('services/{service}', [\App\Http\Controllers\ServiceController::class , 'destroy'])
+                    ->middleware(['role:Owner|Dentist|Assistant', 'permission:delete services'])
+                    ->name('services.destroy');
 
                 // Service approval — Owner and Dentist only
                 Route::middleware(['role:Owner|Dentist'])->group(function () {

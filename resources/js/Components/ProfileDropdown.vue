@@ -45,15 +45,15 @@ const openSettingsModal = () => {
                         :style="{ backgroundColor: primaryColor, color: primaryTextColor }"
                     >
                         <img 
-                            v-if="user.profile_picture_url && !user.profile_picture_url.includes('ui-avatars')" 
+                            v-if="user?.profile_picture_url && !user.profile_picture_url.includes('ui-avatars')" 
                             :src="user.profile_picture_url" 
                             class="h-full w-full object-cover"
-                            :alt="user.name"
+                            :alt="user?.name"
                         />
-                        <span v-else>{{ user.name.charAt(0) }}</span>
+                        <span v-else>{{ user?.name?.charAt(0) || '?' }}</span>
                     </div>
                     <span class="hidden sm:inline text-sm font-bold text-base-content/70 group-hover:text-base-content transition-colors">
-                        {{ user.name }}
+                        {{ user?.name || 'User' }}
                     </span>
                     <svg
                         class="ms-1 h-4 w-4 fill-current text-base-content/30 group-hover:text-base-content/70 transition-colors"

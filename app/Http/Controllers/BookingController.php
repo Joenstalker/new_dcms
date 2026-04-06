@@ -29,7 +29,7 @@ class BookingController extends Controller
 
         $dentists = User::role('Dentist')->get(['id', 'name', 'email', 'profile_picture']);
         $services = Service::approved()->get(['id', 'name', 'description', 'price']);
-        
+
         return Inertia::render('Tenant/Booking/PublicBooking', [
             'dentists' => $dentists,
             'services' => $services
@@ -52,22 +52,22 @@ class BookingController extends Controller
             'service' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'dentist_id' => 'nullable|exists:users,id',
-            'photo' => 'required|image|max:2048', // 2MB max
+            'photo' => 'nullable|image|max:2048', // 2MB max
         ]);
 
         // Generate a unique booking reference
         $validated['booking_reference'] = 'BK-' . strtoupper(Str::random(8));
-        
+
         // Find existing patient by email or phone (returning patient logic)
         $existingPatient = null;
         if (!empty($validated['guest_email'])) {
             $existingPatient = Patient::where('email', $validated['guest_email'])->first();
         }
-        
+
         if (!$existingPatient && !empty($validated['guest_phone'])) {
             $existingPatient = Patient::where('phone', $validated['guest_phone'])->first();
         }
-        
+
         if ($existingPatient) {
             $validated['patient_id'] = $existingPatient->id;
         }

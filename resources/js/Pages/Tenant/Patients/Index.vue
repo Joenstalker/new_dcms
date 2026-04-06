@@ -154,6 +154,7 @@ const checkLimitAndOpenAddModal = () => {
                     >
                 </div>
                 <button 
+                    v-if="can('create patients')"
                     @click="checkLimitAndOpenAddModal"
                     class="btn rounded-xl border-0 text-white shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl transition-all w-full sm:w-auto text-xs font-black uppercase tracking-widest"
                     :style="{ backgroundColor: primaryColor }"

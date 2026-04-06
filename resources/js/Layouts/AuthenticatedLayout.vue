@@ -60,7 +60,7 @@ const shouldApplyBranding = computed(() => {
     if (config.apply_to === 'all') return true;
     
     if (config.apply_to === 'specific') {
-        return config.selected_staff.includes(user.value.id);
+        return (config.selected_staff || []).includes(user.value?.id);
     }
     
     return true; // Default to true if config is missing
@@ -162,7 +162,7 @@ const isSubItemActive = (sub) => {
 // onMounted to check for updates and show toast
 onMounted(() => {
     // Only show if user is Owner or Admin
-    const canManageUpdates = roles.value.includes('Owner') || user.value?.permissions.includes('manage settings');
+    const canManageUpdates = roles.value.includes('Owner') || user.value?.permissions?.includes('manage settings');
     
     if (canManageUpdates && pendingUpdatesCount.value > 0) {
         // Check session storage to avoid showing on every page navigation, just once per session
@@ -373,7 +373,7 @@ const menuCategories = computed(() => {
             items: cat.items.filter(item => {
                 const isOwner = roles.value.includes('Owner');
                 const hasRole = item.roles ? item.roles.some(role => roles.value.includes(role)) : false;
-                const hasPermission = item.permissions ? item.permissions.some(p => user.value.permissions.includes(p)) : false;
+                const hasPermission = item.permissions ? item.permissions.some(p => user.value?.permissions?.includes(p)) : false;
                 const hasRoute = item.route ? route().has(item.route) : true;
                 const noAuthDefined = !item.roles && !item.permissions;
                 
@@ -415,7 +415,7 @@ const menuCategories = computed(() => {
                     isLocked: finalLocked,
                     subItems: item.subItems?.filter(si => {
                         const hasRole = si.roles ? si.roles.some(role => roles.value.includes(role)) : false;
-                        const hasPermission = si.permissions ? si.permissions.some(p => user.value.permissions.includes(p)) : false;
+                        const hasPermission = si.permissions ? si.permissions.some(p => user.value?.permissions?.includes(p)) : false;
                         const hasRoute = si.route ? route().has(si.route) : true;
                         const noAuthDefined = !si.roles && !si.permissions;
                         

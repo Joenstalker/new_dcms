@@ -202,16 +202,18 @@ const permissionGroups = computed(() => {
         'manage own notifications': 'Staff Settings',
         'manage own working hours': 'Staff Settings',
 
-        // Clinical Module
-        'patients': 'Clinical Module',
-        'services': 'Clinical Module',
+        // Patient Module
+        'patients': 'Patient Module',
+
+        // Services Module
+        'services': 'Services Module',
         
         // Treatment Module
         'treatments': 'Treatment Module',
         
-        // Scheduling Module
-        'appointments': 'Scheduling Module',
-        'booking': 'Scheduling Module',
+        // Schedule Module
+        'appointments': 'Schedule Module',
+        'booking': 'Schedule Module',
         
         // Financial Module
         'billing': 'Financial Module',

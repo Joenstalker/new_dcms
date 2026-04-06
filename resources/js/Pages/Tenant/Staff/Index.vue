@@ -182,15 +182,15 @@
 
         <!-- Manage Staff Modal (Profile) -->
         <Modal :show="showingStaffModal" @close="showingStaffModal = false" maxWidth="md">
-            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 h-32 relative">
-                <button @click="showingStaffModal = false" class="absolute top-4 right-4 h-8 w-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white transition-colors">
+            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 h-24 relative">
+                <button @click="showingStaffModal = false" class="absolute top-3 right-3 h-8 w-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white transition-colors">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
             
-            <div class="px-8 pb-8 -mt-16">
+            <div class="px-8 pb-8 -mt-12">
                 <div class="flex flex-col items-center text-center">
                     <div class="h-32 w-32 rounded-[2rem] bg-white p-2 shadow-2xl relative group mb-6">
                         <div class="h-full w-full rounded-[1.5rem] bg-gray-50 flex items-center justify-center border-4 border-gray-100 overflow-hidden relative group-hover:border-blue-400 transition-colors">
@@ -210,9 +210,9 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 w-full gap-4 mb-8">
-                        <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-left group hover:bg-blue-50/30 transition-colors">
-                            <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Email Address</span>
+                    <div class="grid grid-cols-1 w-full gap-3 mb-6">
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 text-left group hover:bg-blue-50/30 transition-colors">
+                            <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Email Address</span>
                             <span class="text-sm font-black text-gray-900 truncate">{{ selectedStaff?.email }}</span>
                         </div>
                     </div>
@@ -220,16 +220,16 @@
                     <div class="flex items-center space-x-3 w-full">
                         <button 
                             @click="editStaff(selectedStaff)"
-                            class="flex-1 py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-gray-200 transition-all active:scale-95 flex items-center justify-center"
+                            class="flex-1 py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-gray-200 transition-all active:scale-95 flex items-center justify-center"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                             Edit Profile
                         </button>
                         <button 
                             @click="confirmDelete(selectedStaff)"
-                            class="p-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl transition-colors active:scale-95"
+                            class="p-3.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors active:scale-95"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -242,31 +242,31 @@
 
         <!-- Edit Staff Modal -->
         <Modal :show="showingEditModal" @close="showingEditModal = false" maxWidth="md">
-            <div class="bg-gradient-to-br from-amber-500 to-orange-600 h-28 relative">
-                <div class="absolute -bottom-8 left-10 h-16 w-16 rounded-2xl bg-white p-2 shadow-2xl border border-white/50 flex items-center justify-center font-black text-amber-600 uppercase tracking-tighter text-lg shadow-amber-200/40 overflow-hidden">
-                    <img v-if="editForm.profile_picture_url" :src="editForm.profile_picture_url" class="h-full w-full object-cover rounded-xl" />
+            <div class="bg-gradient-to-br from-amber-500 to-orange-600 h-24 relative">
+                <div class="absolute -bottom-6 left-8 h-14 w-14 rounded-xl bg-white p-1.5 shadow-2xl border border-white/50 flex items-center justify-center font-black text-amber-600 uppercase tracking-tighter text-lg shadow-amber-200/40 overflow-hidden">
+                    <img v-if="editForm.profile_picture_url" :src="editForm.profile_picture_url" class="h-full w-full object-cover rounded-lg" />
                     <span v-else>{{ editForm.name ? editForm.name.substring(0, 2) : 'ST' }}</span>
                 </div>
-                <button @click="showingEditModal = false" class="absolute top-4 right-4 h-9 w-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center text-white transition-all hover:rotate-90">
+                <button @click="showingEditModal = false" class="absolute top-3 right-3 h-8 w-8 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center text-white transition-all hover:rotate-90">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
 
-            <div class="p-10 pt-12">
-                <div class="mb-10 border-b border-gray-50 pb-8">
+            <div class="p-8 pt-10">
+                <div class="mb-8 border-b border-gray-50 pb-6">
                     <h3 class="text-2xl font-black text-gray-900 tracking-tight uppercase">Update Profile</h3>
-                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-2">Modify team member credentials and roles</p>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1.5">Modify team member credentials and roles</p>
                 </div>
                 
-                <form @submit.prevent="updateStaff" class="space-y-8">
+                <form @submit.prevent="updateStaff" class="space-y-6">
                     <div class="space-y-3">
                         <InputLabel for="edit_name" value="Full Name" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1" />
                         <TextInput
                             id="edit_name"
                             type="text"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-2xl p-5 font-black text-sm bg-gray-50/50 shadow-inner"
+                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner"
                             v-model="editForm.name"
                             required
                         />
@@ -278,7 +278,7 @@
                         <TextInput
                             id="edit_email"
                             type="email"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-2xl p-5 font-black text-sm bg-gray-50/50 shadow-inner"
+                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner"
                             v-model="editForm.email"
                             required
                         />
@@ -290,7 +290,7 @@
                         <select 
                             id="edit_role"
                             v-model="editForm.role"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-2xl p-5 font-black text-sm bg-gray-50/50 shadow-inner appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E')] bg-[length:1.5em_1.5em] bg-[right_1.5em_center] bg-no-repeat"
+                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E')] bg-[length:1.25em_1.25em] bg-[right_1.25em_center] bg-no-repeat"
                             required
                         >
                             <option value="Dentist">Dentist</option>
@@ -300,15 +300,19 @@
                     </div>
 
                     <div class="pt-8 flex items-center space-x-4">
-                        <SecondaryButton @click="showingEditModal = false" class="flex-[0.4] py-5 justify-center border-gray-200 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
+                        <SecondaryButton @click="showingEditModal = false" class="flex-[0.4] py-4 justify-center border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
                             Cancel
                         </SecondaryButton>
                         <PrimaryButton 
-                            class="flex-1 py-5 justify-center bg-gray-900 border-none rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl shadow-gray-300 transition-all hover:bg-black active:scale-95" 
+                            class="flex-1 py-4 justify-center bg-gray-900 border-none rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl shadow-gray-300 transition-all hover:bg-black active:scale-95" 
                             :class="{ 'opacity-25': editForm.processing }" 
                             :disabled="editForm.processing"
                         >
-                            Save Changes
+                            <svg v-if="editForm.processing" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            {{ editForm.processing ? 'Updating...' : 'Save Changes' }}
                         </PrimaryButton>
                     </div>
                 </form>
@@ -317,32 +321,32 @@
 
         <!-- Add Staff Modal -->
         <Modal :show="showingAddModal" @close="showingAddModal = false" maxWidth="md">
-            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 h-28 relative">
-                <div class="absolute -bottom-8 left-10 h-16 w-16 rounded-2xl bg-white p-2 shadow-2xl border border-white/50 flex items-center justify-center font-black text-blue-600 uppercase tracking-tighter text-lg shadow-blue-200/40">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 h-24 relative">
+                <div class="absolute -bottom-6 left-8 h-14 w-14 rounded-xl bg-white p-1.5 shadow-2xl border border-white/50 flex items-center justify-center font-black text-blue-600 uppercase tracking-tighter text-lg shadow-blue-200/40">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                     </svg>
                 </div>
-                <button @click="showingAddModal = false" class="absolute top-4 right-4 h-9 w-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center text-white transition-all hover:rotate-90">
+                <button @click="showingAddModal = false" class="absolute top-3 right-3 h-8 w-8 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center text-white transition-all hover:rotate-90">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
 
-            <div class="p-10 pt-12">
-                <div class="mb-10 border-b border-gray-50 pb-8">
+            <div class="p-8 pt-10">
+                <div class="mb-8 border-b border-gray-50 pb-6">
                     <h3 class="text-2xl font-black text-gray-900 tracking-tight uppercase">New Staff Member</h3>
-                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-2">Send an invitation to join your clinic</p>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1.5">Send an invitation to join your clinic</p>
                 </div>
                 
-                <form @submit.prevent="handleAddStaff" class="space-y-8">
+                <form @submit.prevent="handleAddStaff" class="space-y-6">
                     <div class="space-y-3">
                         <InputLabel for="name" value="Full Name" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1" />
                         <TextInput
                             id="name"
                             type="text"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-2xl p-5 font-black text-sm bg-gray-50/50 shadow-inner"
+                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner"
                             v-model="addForm.name"
                             required
                             placeholder="e.g. Dr. John Doe"
@@ -355,7 +359,7 @@
                         <TextInput
                             id="email"
                             type="email"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-2xl p-5 font-black text-sm bg-gray-50/50 shadow-inner"
+                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner"
                             v-model="addForm.email"
                             required
                             placeholder="john@example.com"
@@ -368,7 +372,7 @@
                         <select 
                             id="role"
                             v-model="addForm.role"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-2xl p-5 font-black text-sm bg-gray-50/50 shadow-inner appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E')] bg-[length:1.5em_1.5em] bg-[right_1.5em_center] bg-no-repeat"
+                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E')] bg-[length:1.25em_1.25em] bg-[right_1.25em_center] bg-no-repeat"
                             required
                         >
                             <option v-for="role in roles" :key="role.id" :value="role.name">{{ role.name }}</option>
@@ -377,15 +381,19 @@
                     </div>
 
                     <div class="pt-8 flex items-center space-x-4">
-                        <SecondaryButton @click="showingAddModal = false" class="flex-[0.4] py-5 justify-center border-gray-200 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
+                        <SecondaryButton @click="showingAddModal = false" class="flex-[0.4] py-4 justify-center border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
                             Cancel
                         </SecondaryButton>
                         <PrimaryButton 
-                            class="flex-1 py-5 justify-center bg-gray-900 border-none rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl shadow-gray-400 transition-all hover:bg-black active:scale-95" 
+                            class="flex-1 py-4 justify-center bg-gray-900 border-none rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl shadow-gray-400 transition-all hover:bg-black active:scale-95" 
                             :class="{ 'opacity-25': addForm.processing }" 
                             :disabled="addForm.processing"
                         >
-                            Send Invitation
+                            <svg v-if="addForm.processing" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            {{ addForm.processing ? 'Sending...' : 'Send Invitation' }}
                         </PrimaryButton>
                     </div>
                 </form>

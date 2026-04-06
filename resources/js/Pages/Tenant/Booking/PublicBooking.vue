@@ -6,6 +6,10 @@ const props = defineProps({
     dentists: {
         type: Array,
         default: () => []
+    },
+    services: {
+        type: Array,
+        default: () => []
     }
 });
 
@@ -102,11 +106,16 @@ const submit = () => {
                     <label for="service" class="block text-sm font-medium text-gray-700">Service Needed</label>
                     <select id="service" v-model="form.service" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         <option value="">-- Select Service --</option>
-                        <option value="Checkup">General Checkup</option>
-                        <option value="Cleaning">Teeth Cleaning</option>
-                        <option value="Extraction">Extraction</option>
-                        <option value="Whitening">Whitening</option>
-                        <option value="Other">Other / Not Sure</option>
+                        <option v-if="services.length" v-for="svc in services" :key="svc.id" :value="svc.name">
+                            {{ svc.name }} — ₱{{ Number(svc.price).toLocaleString() }}
+                        </option>
+                        <template v-else>
+                            <option value="Checkup">General Checkup</option>
+                            <option value="Cleaning">Teeth Cleaning</option>
+                            <option value="Extraction">Extraction</option>
+                            <option value="Whitening">Whitening</option>
+                            <option value="Other">Other / Not Sure</option>
+                        </template>
                     </select>
                 </div>
 

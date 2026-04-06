@@ -17,10 +17,10 @@ class PatientController extends Controller
 
         if ($request->has('search')) {
             $search = $request->input('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
-                  ->orWhere('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%");
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%");
             });
         }
 
@@ -49,7 +49,7 @@ class PatientController extends Controller
             'operation_history' => 'nullable|string',
             'balance' => 'nullable|numeric',
             'last_visit_time' => 'nullable|date',
-            'photo' => 'required|image|max:2048',
+            'photo' => 'nullable|image|max:2048',
         ]);
 
         if ($request->hasFile('photo')) {
@@ -75,7 +75,7 @@ class PatientController extends Controller
     public function show(Request $request, Patient $patient)
     {
         $patient->load('appointments', 'treatments', 'invoices');
-        
+
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json($patient);
         }
@@ -140,7 +140,7 @@ class PatientController extends Controller
     {
         $patient->load('appointments', 'treatments', 'invoices');
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('tenant.patients.pdf', compact('patient'));
-        
+
         return $pdf->download('Patient-Record-' . str_pad((string)$patient->id, 6, '0', STR_PAD_LEFT) . '.pdf');
     }
 }

@@ -3,23 +3,37 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\Tenant;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class StaffPermissionsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
+
+    protected $tenant;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
-        // Setup Roles and Permissions
-        Role::create(['name' => 'Owner']);
-        Role::create(['name' => 'Dentist']);
-        Permission::create(['name' => 'view dashboard']);
+
+        // 1. Setup Tenant
+        $this->tenant = Tenant::create(['id' => 'test-clinic']);
+        $this->tenant->domains()->create(['domain' => 'localhost']);
+        tenancy()->initialize($this->tenant);
+
+        // 2. Run Tenant Migrations
+        $this->artisan('migrate', [
+            '--path' => 'database/migrations/tenant',
+            '--realpath' => true
+        ]);
+
+        $this->artisan('db:seed', ['--class' => 'RolesAndPermissionsSeeder']);
+
+        // Ensure cache is clear
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
     }
 
     /** @test */
@@ -38,30 +52,50 @@ class StaffPermissionsTest extends TestCase
 
         // 3. Assert: Verify the user exists and has the base permission
         $staff = User::where('email', 'drtest@example.com')->first();
-        
+
         $this->assertNotNull($staff);
         $this->assertTrue($staff->hasRole('Dentist'));
         $this->assertTrue($staff->hasPermissionTo('view dashboard'));
     }
 
     /** @test */
-    public function staff_without_clinical_permissions_see_onboarding_state()
+    public function staff_with_only_view_patients_permission_cannot_create_patients()
     {
-        // 1. Setup Staff with ONLY base access
+        // 1. Setup Staff with ONLY view permission
         $staff = User::factory()->create();
         $staff->assignRole('Dentist');
-        $staff->syncPermissions(['view dashboard']);
+        Permission::firstOrCreate(['name' => 'view patients']);
+        Permission::firstOrCreate(['name' => 'create patients']);
+        $staff->syncPermissions(['view patients']);
 
-        // 2. Act: Access Dashboard as Staff
-        $response = $this->actingAs($staff)->get(route('tenant.dashboard'));
+        // 2. Act: Attempt to access create page and store patient
+        $response = $this->actingAs($staff)->get(route('patients.create'));
+        $response->assertStatus(403);
 
-        // 3. Assert: Verify Inertia data contains the onboarding flag
-        $response->assertStatus(200);
-        
-        // We can't easily test the 'computed' property from PHP, 
-        // but we can verify the permissions are passed correctly
-        $response->assertInertia(fn ($page) => $page
-            ->where('auth.user.permissions', ['view dashboard'])
-        );
+        $storeResponse = $this->actingAs($staff)->post(route('patients.store'), [
+            'first_name' => 'Should',
+            'last_name' => 'Fail',
+        ]);
+        $storeResponse->assertStatus(403);
+    }
+
+    /** @test */
+    public function staff_with_create_services_can_access_service_store()
+    {
+        // 1. Setup Staff with create services permission
+        $staff = User::factory()->create();
+        Role::firstOrCreate(['name' => 'Assistant']);
+        $staff->assignRole('Assistant');
+        Permission::firstOrCreate(['name' => 'create services']);
+        $staff->syncPermissions(['create services']);
+
+        // 2. Act: Access store service
+        $response = $this->actingAs($staff)->post(route('services.store'), [
+            'name' => 'Test Service',
+            'price' => 100,
+        ]);
+
+        // 3. Assert: Should not be 403 (it might fail other validation but not authorization)
+        $this->assertNotEquals(403, $response->getStatusCode());
     }
 }

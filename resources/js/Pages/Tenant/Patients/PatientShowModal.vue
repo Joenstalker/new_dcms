@@ -130,9 +130,9 @@ import PlaceholderTab from './partials/PlaceholderTab.vue';
                             </div>
 
                             <div class="mt-6 flex gap-2 w-full">
-                                <button @click="deletePatient" class="flex-1 btn btn-sm btn-error btn-outline text-xs">Delete</button>
-                                <button @click="$emit('edit', patient)" class="flex-1 btn btn-sm btn-outline text-xs" :style="{ borderColor: primaryColor, color: primaryColor }">Edit</button>
-                                <a :href="`/patients/${patient.id}/pdf`" target="_blank" class="btn btn-sm btn-outline btn-info text-xs" title="Download Printable Record">
+                                <button v-if="can('delete patients')" @click="deletePatient" class="flex-1 btn btn-sm btn-error btn-outline text-xs">Delete</button>
+                                <button v-if="can('edit patients')" @click="$emit('edit', patient)" class="flex-1 btn btn-sm btn-outline text-xs" :style="{ borderColor: primaryColor, color: primaryColor }">Edit</button>
+                                <a v-if="can('view patients')" :href="`/patients/${patient.id}/pdf`" target="_blank" class="btn btn-sm btn-outline btn-info text-xs" title="Download Printable Record">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                 </a>
                             </div>
