@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\Patient;
 use App\Models\Service;
 use App\Models\Subscription;
@@ -21,9 +22,10 @@ class ReportController extends Controller
 
         // === BASIC TIER (All plans) ===
         $dailyAppointments = Appointment::whereDate('appointment_date', $today)->count();
-        $monthlyRevenue = Invoice::where('status', 'paid')
-            ->whereBetween('created_at', [$startOfMonth, Carbon::now()])
-            ->sum('amount_paid');
+
+        // Sum all payments received this month across all invoices (handles partial payments)
+        $monthlyRevenue = Payment::whereBetween('created_at', [$startOfMonth, Carbon::now()])
+            ->sum('amount');
         $totalPatients = Patient::count();
 
         $recentAppointments = Appointment::with('patient')
@@ -75,8 +77,8 @@ class ReportController extends Controller
         if ($format === 'csv') {
             $csv = "Date,Patient,Amount,Status\n";
             foreach ($invoices as $invoice) {
-                $patientName = $invoice->patient 
-                    ? $invoice->patient->first_name . ' ' . $invoice->patient->last_name 
+                $patientName = $invoice->patient
+                    ? $invoice->patient->first_name . ' ' . $invoice->patient->last_name
                     : 'N/A';
                 $csv .= "{$invoice->created_at->format('Y-m-d')},{$patientName},{$invoice->amount_paid},{$invoice->status}\n";
             }
@@ -95,7 +97,8 @@ class ReportController extends Controller
     private function getReportLevel(): string
     {
         $tenant = tenant();
-        if (!$tenant) return 'basic';
+        if (!$tenant)
+            return 'basic';
 
         $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
             ->where('stripe_status', 'active')
@@ -103,7 +106,8 @@ class ReportController extends Controller
             ->latest()
             ->first();
 
-        if (!$subscription || !$subscription->plan) return 'basic';
+        if (!$subscription || !$subscription->plan)
+            return 'basic';
 
         return $subscription->plan->getFeatureValue('report_level') ?? 'basic';
     }
@@ -120,9 +124,8 @@ class ReportController extends Controller
             $start = $month->copy()->startOfMonth();
             $end = $month->copy()->endOfMonth();
 
-            $revenue = Invoice::where('status', 'paid')
-                ->whereBetween('created_at', [$start, $end])
-                ->sum('amount_paid');
+            $revenue = Payment::whereBetween('created_at', [$start, $end])
+                ->sum('amount');
 
             $appointments = Appointment::whereBetween('appointment_date', [$start, $end])->count();
             $completed = Appointment::whereBetween('appointment_date', [$start, $end])
@@ -149,13 +152,13 @@ class ReportController extends Controller
 
         return [
             'scheduled' => Appointment::where('status', 'scheduled')
-                ->where('appointment_date', '>=', $startOfMonth)->count(),
+            ->where('appointment_date', '>=', $startOfMonth)->count(),
             'completed' => Appointment::where('status', 'completed')
-                ->where('appointment_date', '>=', $startOfMonth)->count(),
+            ->where('appointment_date', '>=', $startOfMonth)->count(),
             'cancelled' => Appointment::where('status', 'cancelled')
-                ->where('appointment_date', '>=', $startOfMonth)->count(),
+            ->where('appointment_date', '>=', $startOfMonth)->count(),
             'walk_in' => Appointment::where('status', 'walk-in')
-                ->where('appointment_date', '>=', $startOfMonth)->count(),
+            ->where('appointment_date', '>=', $startOfMonth)->count(),
         ];
     }
 
@@ -175,9 +178,9 @@ class ReportController extends Controller
             ->limit(10)
             ->get()
             ->map(fn($row) => [
-                'service' => $row->service,
-                'count' => $row->count,
-            ])
+        'service' => $row->service,
+        'count' => $row->count,
+        ])
             ->toArray();
     }
 

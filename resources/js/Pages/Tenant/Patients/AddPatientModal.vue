@@ -170,6 +170,8 @@ const submit = () => {
                                         format="yyyy-MM-dd"
                                         value-format="yyyy-MM-dd"
                                         placeholder="Select Date" 
+                                        teleport="body"
+                                        position="bottom"
                                         input-class-name="input input-bordered w-full rounded-xl bg-base-100 placeholder:text-base-content/50"
                                     />
                                 </div>

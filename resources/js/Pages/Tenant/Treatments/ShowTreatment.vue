@@ -86,7 +86,7 @@ const formatDate = (dateString) => {
                     <div class="text-right">
                         <p class="text-[10px] font-black uppercase tracking-widest text-base-content/40 mb-1">Total Cost</p>
                         <p class="text-2xl font-black text-primary">
-                            ${{ Number(treatment.cost).toFixed(2) }}
+                            ₱{{ Number(treatment.cost).toFixed(2) }}
                         </p>
                     </div>
                 </div>

@@ -115,7 +115,7 @@ const openDeleteModal = (treatment) => {
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <span class="text-sm font-black text-primary">
-                                    ${{ Number(treatment.cost).toFixed(2) }}
+                                    ₱{{ Number(treatment.cost).toFixed(2) }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-center">

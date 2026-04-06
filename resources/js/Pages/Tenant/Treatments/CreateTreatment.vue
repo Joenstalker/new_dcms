@@ -115,7 +115,7 @@ watch(() => props.show, (value) => {
                 <div>
                     <InputLabel for="cost" value="Cost" />
                     <div class="relative mt-1">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/40 font-bold">$</span>
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/40 font-bold">₱</span>
                         <TextInput
                             id="cost"
                             v-model="form.cost"
