@@ -48,6 +48,7 @@ class PatientController extends Controller
             'medical_history' => 'nullable|string',
             'operation_history' => 'nullable|string',
             'balance' => 'nullable|numeric',
+            'initial_balance' => 'nullable|numeric',
             'last_visit_time' => 'nullable|date',
             'photo' => 'nullable|image|max:2048',
         ]);
@@ -68,6 +69,8 @@ class PatientController extends Controller
             'name' => $patient->first_name . ' ' . $patient->last_name,
         ]
         );
+
+        $patient->recalculateBalance();
 
         return redirect()->route('patients.index')->with('success', 'Patient created successfully.');
     }
@@ -112,6 +115,7 @@ class PatientController extends Controller
             'medical_history' => 'nullable|string',
             'operation_history' => 'nullable|string',
             'balance' => 'nullable|numeric',
+            'initial_balance' => 'nullable|numeric',
             'last_visit_time' => 'nullable|date',
             'photo' => 'nullable|image|max:2048',
         ]);
@@ -126,6 +130,7 @@ class PatientController extends Controller
         }
 
         $patient->update($validated);
+        $patient->recalculateBalance();
 
         return redirect()->back()->with('success', 'Patient updated successfully.');
     }

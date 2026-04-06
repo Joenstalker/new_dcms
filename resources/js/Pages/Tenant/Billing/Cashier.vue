@@ -1,12 +1,13 @@
 <script setup>
 import { brandingState } from '@/States/brandingState';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
     patients: { type: Array, default: () => [] },
     invoices: { type: Array, default: () => [] },
+    services: { type: Array, default: () => [] },
 });
 
 const primaryColor = computed(() => brandingState.primary_color);
@@ -25,6 +26,14 @@ const addToCart = () => {
     cartItems.value.push({ ...newItem.value, id: Date.now() });
     newItem.value = { description: '', quantity: 1, unit_price: 0 };
 };
+
+// Auto-fill price when matches seen in datalist or typed
+watch(() => newItem.value.description, (newVal) => {
+    const service = props.services.find(s => s.name.toLowerCase() === newVal.toLowerCase());
+    if (service) {
+        newItem.value.unit_price = Number(service.price);
+    }
+});
 
 const removeFromCart = (id) => {
     cartItems.value = cartItems.value.filter(item => item.id !== id);
@@ -79,8 +88,16 @@ const handleCreateInvoice = () => {
             <div class="bg-base-100 rounded-2xl border border-base-300 p-5 space-y-4">
                 <h3 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-1">Add Item / Service</h3>
                 <div class="flex gap-3">
-                    <input v-model="newItem.description" type="text" placeholder="Description (e.g., Cleaning)" 
-                        class="input input-bordered flex-1 rounded-xl bg-base-200/50 text-sm" />
+                    <div class="flex-1 relative">
+                        <input v-model="newItem.description" type="text" placeholder="Description (e.g., Cleaning)" 
+                            list="services-list"
+                            class="input input-bordered w-full rounded-xl bg-base-200/50 text-sm" />
+                        <datalist id="services-list">
+                            <option v-for="service in services" :key="service.id" :value="service.name">
+                                ₱{{ Number(service.price).toLocaleString() }}
+                            </option>
+                        </datalist>
+                    </div>
                     <input v-model.number="newItem.quantity" type="number" min="1" placeholder="Qty" 
                         class="input input-bordered w-20 rounded-xl bg-base-200/50 text-sm text-center" />
                     <input v-model.number="newItem.unit_price" type="number" min="0" step="0.01" placeholder="Price" 

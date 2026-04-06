@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\AppointmentConfirmation;
+use App\Mail\BookingRejected;
 use App\Mail\AppointmentReminder;
 use App\Models\Appointment;
 use App\Models\Subscription;
@@ -32,7 +33,8 @@ class NotificationTriggerService
     public function isEnabled(): bool
     {
         $tenant = tenant();
-        if (!$tenant) return false;
+        if (!$tenant)
+            return false;
 
         $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
             ->where('stripe_status', 'active')
@@ -40,9 +42,10 @@ class NotificationTriggerService
             ->latest()
             ->first();
 
-        if (!$subscription || !$subscription->plan) return false;
+        if (!$subscription || !$subscription->plan)
+            return false;
 
-        return $subscription->plan->hasFeature('sms_notifications');
+        return true;
     }
 
     /**
@@ -50,7 +53,8 @@ class NotificationTriggerService
      */
     public function onBookingCreated(Appointment $appointment): void
     {
-        if (!$this->isEnabled()) return;
+        if (!$this->isEnabled())
+            return;
 
         $email = $this->getPatientEmail($appointment);
         $tenant = tenant();
@@ -58,7 +62,8 @@ class NotificationTriggerService
         if ($email) {
             try {
                 Mail::to($email)->queue(new AppointmentConfirmation($appointment, $tenant));
-            } catch (\Exception $e) {
+            }
+            catch (\Exception $e) {
                 Log::warning('Failed to send appointment confirmation email', [
                     'appointment_id' => $appointment->id,
                     'email' => $email,
@@ -73,7 +78,8 @@ class NotificationTriggerService
      */
     public function onBookingApproved(Appointment $appointment): void
     {
-        if (!$this->isEnabled()) return;
+        if (!$this->isEnabled())
+            return;
 
         $email = $this->getPatientEmail($appointment);
         $tenant = tenant();
@@ -81,8 +87,33 @@ class NotificationTriggerService
         if ($email) {
             try {
                 Mail::to($email)->queue(new AppointmentConfirmation($appointment, $tenant, true));
-            } catch (\Exception $e) {
+            }
+            catch (\Exception $e) {
                 Log::warning('Failed to send appointment approval email', [
+                    'appointment_id' => $appointment->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Send notification when an appointment is rejected.
+     */
+    public function onBookingRejected(Appointment $appointment): void
+    {
+        if (!$this->isEnabled())
+            return;
+
+        $email = $this->getPatientEmail($appointment);
+        $tenant = tenant();
+
+        if ($email) {
+            try {
+                Mail::to($email)->queue(new BookingRejected($appointment, $tenant));
+            }
+            catch (\Exception $e) {
+                Log::warning('Failed to send appointment rejection email', [
                     'appointment_id' => $appointment->id,
                     'error' => $e->getMessage(),
                 ]);
@@ -95,7 +126,8 @@ class NotificationTriggerService
      */
     public function onAppointmentReminder(Appointment $appointment): void
     {
-        if (!$this->isEnabled()) return;
+        if (!$this->isEnabled())
+            return;
 
         $email = $this->getPatientEmail($appointment);
         $tenant = tenant();
@@ -103,7 +135,8 @@ class NotificationTriggerService
         if ($email) {
             try {
                 Mail::to($email)->queue(new AppointmentReminder($appointment, $tenant));
-            } catch (\Exception $e) {
+            }
+            catch (\Exception $e) {
                 Log::warning('Failed to send appointment reminder email', [
                     'appointment_id' => $appointment->id,
                     'error' => $e->getMessage(),

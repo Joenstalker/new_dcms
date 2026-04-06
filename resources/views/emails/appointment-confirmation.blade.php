@@ -1,10 +1,10 @@
 @component('mail::message')
-# {{ $isApproval ? 'Your Appointment is Confirmed!' : 'Booking Confirmation' }}
+# {{ $isApproval ? 'Your Appointment is Acknowledged!' : 'Booking Confirmation' }}
 
 Hello {{ $appointment->patient ? $appointment->patient->first_name : $appointment->guest_first_name }},
 
 @if($isApproval)
-Great news! Your appointment at **{{ $tenant->name ?? 'our clinic' }}** has been confirmed by our team.
+Great news! Your upcoming appointment at **{{ $tenant->name ?? 'our clinic' }}** has been acknowledged by our team.
 @else
 Thank you for booking an appointment at **{{ $tenant->name ?? 'our clinic' }}**. Here are your appointment details:
 @endif

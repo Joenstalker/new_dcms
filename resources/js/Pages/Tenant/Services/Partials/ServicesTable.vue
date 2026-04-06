@@ -7,6 +7,10 @@ defineProps({
     isOwnerOrDentist: {
         type: Boolean,
         default: false
+    },
+    isOwner: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -79,7 +83,7 @@ const handleReject = (id) => {
                         </td>
                         <td class="text-right space-x-2">
                             <!-- Approval Actions -->
-                            <template v-if="isOwnerOrDentist && service.status === 'pending'">
+                            <template v-if="isOwner && service.status === 'pending'">
                                 <button @click="handleApprove(service.id)" class="btn btn-sm btn-success text-white">Approve</button>
                                 <button @click="handleReject(service.id)" class="btn btn-sm btn-outline btn-error">Reject</button>
                             </template>

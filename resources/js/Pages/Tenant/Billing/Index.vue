@@ -9,6 +9,7 @@ import Receipts from './Receipts.vue';
 defineProps({
     invoices: { type: Array, default: () => [] },
     patients: { type: Array, default: () => [] },
+    services: { type: Array, default: () => [] },
 });
 
 // Active tab from URL query
@@ -29,7 +30,7 @@ onMounted(() => {
         </template>
 
         <!-- Cashier / New Invoice Tab -->
-        <Cashier v-if="activeTab === 'cashier'" :patients="patients" :invoices="invoices" />
+        <Cashier v-if="activeTab === 'cashier'" :patients="patients" :invoices="invoices" :services="services" />
 
         <!-- Transactions Tab -->
         <Transactions v-else-if="activeTab === 'transactions'" :invoices="invoices" />

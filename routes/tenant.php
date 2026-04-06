@@ -134,6 +134,10 @@ Route::middleware([
                 ->middleware('permission:edit appointments')
                 ->name('appointments.approve');
 
+            Route::post('appointments/{appointment}/reject', [\App\Http\Controllers\AppointmentController::class , 'reject'])
+                ->middleware('permission:edit appointments')
+                ->name('appointments.reject');
+
             Route::delete('appointments/{appointment}', [\App\Http\Controllers\AppointmentController::class , 'destroy'])
                 ->middleware('permission:delete appointments')
                 ->name('appointments.destroy');

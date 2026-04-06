@@ -15,7 +15,11 @@ const props = defineProps({
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const roles = computed(() => user.value?.roles || []);
-const isOwnerOrDentist = computed(() => roles.value.includes('Owner') || roles.value.includes('Dentist'));
+const isOwner = computed(() => roles.value.includes('Owner'));
+const isDentist = computed(() => roles.value.includes('Dentist'));
+const isAssistant = computed(() => roles.value.includes('Assistant'));
+const isStaff = computed(() => isDentist.value || isAssistant.value);
+const isOwnerOrDentist = computed(() => isOwner.value || isDentist.value);
 
 const activeTab = ref('all');
 const searchQuery = ref('');
@@ -75,7 +79,7 @@ const submit = (payload) => {
         childForm.post(route('services.store'), {
             onSuccess: () => {
                 isModalOpen.value = false;
-                const msg = isOwnerOrDentist.value ? 'Service added successfully!' : 'Service submitted for approval.';
+                const msg = isOwner.value ? 'Service added successfully!' : 'Service submitted for approval.';
                 Swal.fire('Success!', msg, 'success');
             }
         });
@@ -167,7 +171,7 @@ const closeModal = () => {
                         />
                     </div>
                     
-                    <button v-if="can('create services') || isOwnerOrDentist" @click="openModal()" class="btn btn-primary shadow-lg border-none px-6 rounded-xl">
+                    <button v-if="can('create services') || isOwner || isStaff" @click="openModal()" class="btn btn-primary shadow-lg border-none px-6 rounded-xl">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
@@ -179,6 +183,7 @@ const closeModal = () => {
             <!-- Services Table -->
             <ServicesTable 
                 :services="filteredServices"
+                :is-owner="isOwner"
                 :is-owner-or-dentist="isOwnerOrDentist"
                 @edit="openModal"
                 @delete="deleteService"

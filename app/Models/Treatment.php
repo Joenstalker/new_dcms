@@ -9,6 +9,20 @@ class Treatment extends Model
 {
     use HasFactory;
 
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted()
+    {
+        static::saved(function ($treatment) {
+            $treatment->patient->recalculateBalance();
+        });
+
+        static::deleted(function ($treatment) {
+            $treatment->patient->recalculateBalance();
+        });
+    }
+
     protected $fillable = [
         'patient_id',
         'dentist_id',
@@ -26,7 +40,7 @@ class Treatment extends Model
 
     public function dentist()
     {
-        return $this->belongsTo(User::class, 'dentist_id');
+        return $this->belongsTo(User::class , 'dentist_id');
     }
 
     public function appointment()

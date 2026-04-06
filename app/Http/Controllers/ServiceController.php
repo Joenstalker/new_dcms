@@ -25,19 +25,19 @@ class ServiceController extends Controller
         ]);
 
         $authenticatedUser = auth()->user();
-        $isOwnerOrDentist = $authenticatedUser->hasRole(['Owner', 'Dentist']);
+        $isOwner = $authenticatedUser->hasRole('Owner');
 
         $validated['created_by'] = $authenticatedUser->id;
-        $validated['status'] = $isOwnerOrDentist ? 'approved' : 'pending';
-        
-        if ($isOwnerOrDentist) {
+        $validated['status'] = $isOwner ? 'approved' : 'pending';
+
+        if ($isOwner) {
             $validated['approved_by'] = $authenticatedUser->id;
         }
 
         Service::create($validated);
 
-        $message = $validated['status'] === 'approved' 
-            ? 'Service added and approved successfully.' 
+        $message = $validated['status'] === 'approved'
+            ? 'Service added and approved successfully.'
             : 'Service submitted for approval.';
 
         return redirect()->back()->with('success', $message);
@@ -52,18 +52,18 @@ class ServiceController extends Controller
         ]);
 
         $authenticatedUser = auth()->user();
-        $isOwnerOrDentist = $authenticatedUser->hasRole(['Owner', 'Dentist']);
+        $isOwner = $authenticatedUser->hasRole('Owner');
 
-        // If assistant updates, it goes back to pending
-        if (!$isOwnerOrDentist) {
+        // If staff (Dentist/Assistant) updates, it goes back to pending
+        if (!$isOwner) {
             $validated['status'] = 'pending';
             $validated['approved_by'] = null;
         }
 
         $service->update($validated);
 
-        $message = $service->status === 'approved' 
-            ? 'Service updated successfully.' 
+        $message = $service->status === 'approved'
+            ? 'Service updated successfully.'
             : 'Service updated and resubmitted for approval.';
 
         return redirect()->back()->with('success', $message);
@@ -71,7 +71,7 @@ class ServiceController extends Controller
 
     public function approve(Service $service)
     {
-        if (!auth()->user()->hasRole(['Owner', 'Dentist'])) {
+        if (!auth()->user()->hasRole('Owner')) {
             abort(403);
         }
 
@@ -85,7 +85,7 @@ class ServiceController extends Controller
 
     public function reject(Service $service)
     {
-        if (!auth()->user()->hasRole(['Owner', 'Dentist'])) {
+        if (!auth()->user()->hasRole('Owner')) {
             abort(403);
         }
 

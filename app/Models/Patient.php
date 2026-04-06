@@ -35,9 +35,10 @@ class Patient extends Model
         'medical_history',
         'allergies',
         'notes',
-        'emergency_contact',
         'emergency_phone',
         'photo_path',
+        'balance',
+        'initial_balance',
     ];
 
     /**
@@ -47,6 +48,7 @@ class Patient extends Model
         'date_of_birth' => 'date',
         'last_visit_time' => 'datetime',
         'balance' => 'decimal:2',
+        'initial_balance' => 'decimal:2',
     ];
 
     /**
@@ -103,7 +105,7 @@ class Patient extends Model
                     $fragment = substr($microPart, 0, 4);
                     $id = (int)($datePrefix . $fragment);
                 } while (self::where('id', $id)->exists());
-                
+
                 $patient->id = $id;
             }
 
@@ -113,8 +115,9 @@ class Patient extends Model
                     if ($tenant) {
                         $patient->tenant_id = $tenant->getTenantKey();
                     }
-                } catch (\Exception $e) {
-                    // Tenancy not initialized, skip
+                }
+                catch (\Exception $e) {
+                // Tenancy not initialized, skip
                 }
             }
         });
@@ -255,7 +258,20 @@ class Patient extends Model
      */
     public function tenant()
     {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
+        return $this->belongsTo(Tenant::class , 'tenant_id');
+    }
+
+    /**
+     * Recalculate and save the patient's balance.
+     * Balance = Total Treatment Costs - Total Amount Paid in Invoices.
+     */
+    public function recalculateBalance(): void
+    {
+        $totalCharges = $this->treatments()->sum('cost');
+        $totalPaid = $this->invoices()->sum('amount_paid');
+
+        $this->balance = $this->initial_balance + $totalCharges - $totalPaid;
+        $this->saveQuietly();
     }
 
     /**
@@ -268,8 +284,9 @@ class Patient extends Model
             if ($tenant) {
                 return $query->where('tenant_id', $tenant->id);
             }
-        } catch (\Exception $e) {
-            // Tenancy not initialized, skip
+        }
+        catch (\Exception $e) {
+        // Tenancy not initialized, skip
         }
 
         return $query;

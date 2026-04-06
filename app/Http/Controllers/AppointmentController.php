@@ -16,7 +16,7 @@ class AppointmentController extends Controller
     {
         $appointments = Appointment::with(['patient', 'dentist'])->latest('appointment_date')->get();
         $dentists = User::role('Dentist')->get(['id', 'name', 'calendar_color']);
-        
+
         return Inertia::render('Tenant/Appointments/Index', [
             'appointments' => $appointments,
             'patients' => Patient::select('id', 'first_name', 'last_name')->get(),
@@ -111,8 +111,8 @@ class AppointmentController extends Controller
     public function approve(Appointment $appointment)
     {
         if (!$appointment->patient_id) {
-            $medicalHistoryString = is_array($appointment->guest_medical_history) 
-                ? implode(', ', $appointment->guest_medical_history) 
+            $medicalHistoryString = is_array($appointment->guest_medical_history)
+                ? implode(', ', $appointment->guest_medical_history)
                 : $appointment->guest_medical_history;
 
             // Create a new patient from guest details
@@ -129,26 +129,35 @@ class AppointmentController extends Controller
 
             $appointment->update([
                 'patient_id' => $patient->id,
-                'status' => 'scheduled', // Keep status as scheduled, or change to 'approved' if that's a valid status
+                'status' => 'scheduled',
                 'guest_first_name' => null,
                 'guest_last_name' => null,
                 'guest_phone' => null,
                 'guest_email' => null,
                 'guest_address' => null,
                 'guest_medical_history' => null,
-                'photo_path' => null, // Clear from appointment as it's now in patient
+                'photo_path' => null,
             ]);
-        } else {
-            // If patient_id already exists, just update the status
+        }
+        else {
             $appointment->status = 'scheduled';
             $appointment->save();
         }
 
-        // Send email notification for approval (gated by subscription feature)
         $appointment->load(['patient', 'dentist']);
         app(NotificationTriggerService::class)->onBookingApproved($appointment);
 
         return redirect()->back()->with('success', 'Appointment approved and patient registered.');
+    }
+
+    public function reject(Appointment $appointment)
+    {
+        $appointment->update(['status' => 'cancelled']);
+
+        $appointment->load(['patient', 'dentist']);
+        app(NotificationTriggerService::class)->onBookingRejected($appointment);
+
+        return redirect()->back()->with('success', 'Appointment rejected.');
     }
 
     public function destroy(Appointment $appointment)

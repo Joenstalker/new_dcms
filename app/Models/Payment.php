@@ -9,6 +9,17 @@ class Payment extends Model
 {
     use HasFactory;
 
+    protected static function booted()
+    {
+        static::saved(function ($payment) {
+            $payment->invoice->updateAmountPaid();
+        });
+
+        static::deleted(function ($payment) {
+            $payment->invoice->updateAmountPaid();
+        });
+    }
+
     protected $fillable = [
         'invoice_id',
         'amount',
