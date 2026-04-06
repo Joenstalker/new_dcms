@@ -67,6 +67,47 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     ];
 
     /**
+     * Define the custom columns that shouldn't be serialized into the data JSON blob.
+     */
+    public static function getCustomColumns(): array
+    {
+        return [
+            'id',
+            'name',
+            'owner_name',
+            'email',
+            'phone',
+            'street',
+            'region',
+            'barangay',
+            'city',
+            'province',
+            'status',
+            'domain_id',
+            'database_name',
+            'database',
+            'database_connection',
+            'branding_color',
+            'hero_title',
+            'hero_subtitle',
+            'about_us_description',
+            'logo_path',
+            'logo_login_path',
+            'logo_booking_path',
+            'font_family',
+            'enabled_features',
+            'landing_page_config',
+            'operating_hours',
+            'online_booking_enabled',
+            'qr_code_path',
+            'storage_used_bytes',
+            'bandwidth_used_bytes',
+            'version',
+        ];
+    }
+
+
+    /**
      * Check if the tenant can use advanced branding customizations
      */
     public function canCustomizeBranding(): bool
@@ -229,7 +270,43 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      */
     public function getDatabaseName(): string
     {
-        return $this->database_name ?? config('tenancy.database.prefix') . $this->id . config('tenancy.database.suffix');
+        return $this->database ?? $this->database_name ?? config('tenancy.database.prefix') . $this->id . config('tenancy.database.suffix');
+    }
+
+    /**
+     * Eloquent accessor that guarantees the `database_name` property serialized to the frontend
+     * perfectly matches the securely hashed backend database.
+     */
+    public function getDatabaseNameAttribute($value): string
+    {
+        return $value ?: $this->getInternal('db_name');
+    }
+
+    /**
+     * Override Stancl Tenancy's internal configuration to map securely to our hashed database
+     */
+    public function getInternal(string $key)
+    {
+        $value = parent::getInternal($key);
+
+        if ($key === 'db_name' && empty($value)) {
+            // Fetch directly from attributes to prevent infinite recursion with getDatabaseNameAttribute
+            $dbName = $this->attributes['database'] ?? $this->attributes['database_name'] ?? null;
+            if (empty($dbName)) {
+                $namingService = app(TenantDatabaseNamingService::class);
+                $domain = $this->id ?? $this->name;
+
+                // Get the domain securely without invoking n+1 exceptions during boot 
+                if ($this->relationLoaded('domains') && $this->domains->isNotEmpty()) {
+                    $domain = $this->domains->first()->domain ?? $domain;
+                }
+
+                $dbName = $namingService->generateHashedDatabaseName($domain);
+            }
+            return $dbName;
+        }
+
+        return $value;
     }
 
     /**

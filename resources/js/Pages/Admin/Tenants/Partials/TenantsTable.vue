@@ -26,8 +26,8 @@ const openReviewModal = (tenant) => {
 <template>
     <div class="bg-base-100 rounded-xl shadow-sm border border-base-300 overflow-hidden">
         <div>
-            <table class="min-w-full block lg:table divide-y divide-base-300">
-                <thead class="bg-base-200 hidden lg:table-header-group">
+            <table class="min-w-full block lg:table border-collapse">
+                <thead class="bg-base-200 hidden lg:table-header-group border-b border-base-300">
                     <tr>
                         <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-base-content/70 uppercase tracking-wider">
                             Name
@@ -52,10 +52,10 @@ const openReviewModal = (tenant) => {
                         </th>
                     </tr>
                 </thead>
-                <tbody class="bg-base-100 block lg:table-row-group divide-y lg:divide-y-[1px] divide-base-200">
-                    <tr v-for="tenant in tenants.data" :key="tenant.id" class="block lg:table-row hover:bg-base-200/50 transition-colors border-b-8 border-base-200 lg:border-none mb-4 lg:mb-0 rounded-lg lg:rounded-none shadow-sm lg:shadow-none overflow-hidden">
+                <tbody class="bg-base-100 block lg:table-row-group">
+                    <tr v-for="tenant in tenants.data" :key="tenant.id" class="block lg:table-row hover:bg-base-200/50 transition-colors mb-4 lg:mb-0 rounded-lg lg:rounded-none overflow-hidden">
                         <!-- Name Column -->
-                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-300">
                             <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Owner Name</span>
                             <div class="font-medium text-base-content text-right lg:text-left">
                                 {{ tenant.owner_name || tenant.name }}
@@ -63,13 +63,13 @@ const openReviewModal = (tenant) => {
                         </td>
                         
                         <!-- Clinic Name Column -->
-                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-300">
                             <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Clinic Name</span>
                             <div class="text-base-content text-right lg:text-left">{{ tenant.name }}</div>
                         </td>
                         
                         <!-- Clinic Domain (URL) Column -->
-                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-300">
                             <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Domain</span>
                             <a v-if="tenant.tenant_url" :href="tenant.tenant_url" target="_blank" class="text-teal-600 hover:underline font-medium text-right lg:text-left bg-teal-50 lg:bg-transparent px-2 py-0.5 rounded-md lg:px-0 lg:py-0">
                                 {{ tenant.tenant_url.replace(/(^\w+:|^)\/\//, '') }}
@@ -78,9 +78,9 @@ const openReviewModal = (tenant) => {
                         </td>
 
                         <!-- Status Column -->
-                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-300">
                             <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Status</span>
-                            <div class="flex items-center justify-end lg:justify-start bg-base-100 lg:bg-transparent px-2 py-1 rounded-full lg:px-0 lg:py-0 border lg:border-none border-base-200">
+                            <div class="flex items-center justify-end lg:justify-start bg-base-100 lg:bg-transparent px-2 py-1 rounded-full lg:px-0 lg:py-0">
                                 <span class="flex-shrink-0 w-2 h-2 rounded-full mr-2"
                                     :class="{
                                         'bg-success animate-pulse': tenant.status === 'active',
@@ -96,7 +96,7 @@ const openReviewModal = (tenant) => {
                         </td>
 
                         <!-- Plan Column -->
-                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-300">
                             <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Plan</span>
                             <div class="text-base-content/70 font-semibold text-right lg:text-left">
                                 {{ tenant.plan || 'Free / Manual' }}
@@ -104,7 +104,7 @@ const openReviewModal = (tenant) => {
                         </td>
 
                         <!-- Created Column -->
-                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-200 lg:border-none">
+                        <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-300">
                             <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Created</span>
                             <div class="text-base-content/50 text-right lg:text-left font-mono text-xs">
                                 {{ new Date(tenant.created_at).toLocaleDateString() }}
@@ -112,7 +112,7 @@ const openReviewModal = (tenant) => {
                         </td>
 
                         <!-- Action Column -->
-                        <td class="px-4 lg:px-6 py-4 flex lg:table-cell align-middle text-sm font-medium bg-base-200/30 lg:bg-transparent w-full lg:w-auto">
+                        <td class="px-4 lg:px-6 py-4 flex lg:table-cell align-middle text-sm font-medium border-b border-base-300 bg-base-200/30 lg:bg-transparent w-full lg:w-auto">
                             <div class="flex justify-center lg:justify-end w-full">
                                 <button v-if="tenant.status === 'pending'" @click="openReviewModal(tenant)" class="w-full lg:w-auto justify-center text-yellow-700 hover:text-yellow-900 bg-yellow-100/50 lg:bg-yellow-50 px-4 py-2 lg:px-3 lg:py-1.5 rounded-lg hover:bg-yellow-100 transition-colors outline flex items-center gap-2 outline-1 outline-yellow-400/30 font-bold">
                                     Review Application

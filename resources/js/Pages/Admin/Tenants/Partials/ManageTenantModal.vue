@@ -383,7 +383,7 @@ const getBandwidthColorClass = (percentage) => {
                                         </a>
                                     </div>
                                     <div class="p-4 flex items-center justify-between">
-                                        <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest">Database ID</span>
+                                        <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest">Database Name</span>
                                         <span class="font-mono text-xs text-base-content/80 bg-base-300/50 px-2 py-1 rounded">{{ tenant.database_name || 'N/A' }}</span>
                                     </div>
                                     <div class="p-4 flex items-center justify-between">

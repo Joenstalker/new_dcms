@@ -5,17 +5,13 @@
 [CENTRAL DATABASE]
 --------------------
  - admin@dcms.com                 | Admin: YES
+ - dcmsapps@gmail.com             | Admin: YES
+ - devmarkgabertan@gmail.com      | Admin: YES
 
 [TENANT DATABASES]
 --------------------
-TENANT: cudal (cudal)
-   - joenilpanal@gmail.com          | Roles: Owner
-
-TENANT: devsmile (devsmile)
-   No users found.
-
-TENANT: levy (levy)
-   No users found.
+TENANT: joensmile (joensmile)
+   - joenilpanal+tenant10@gmail.com | Roles: Owner
 
 ==================================================
 Audit Complete.

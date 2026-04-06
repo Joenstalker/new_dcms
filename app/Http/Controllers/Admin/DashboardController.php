@@ -16,21 +16,16 @@ class DashboardController extends Controller
     public function index(Request $request): Response
     {
         $totalTenants = Tenant::count();
-        $activeTenants = Tenant::all()->filter(fn ($t) => ($t->subscription_status ?? 'active') === 'active')->count();
-        $suspendedTenants = Tenant::all()->filter(fn ($t) => ($t->subscription_status ?? '') === 'suspended')->count();
-        $pendingTenants = Tenant::all()->filter(fn ($t) => ($t->subscription_status ?? '') === 'pending_payment')->count();
+        $activeTenants = Tenant::all()->filter(fn($t) => ($t->subscription_status ?? 'active') === 'active')->count();
+        $suspendedTenants = Tenant::all()->filter(fn($t) => ($t->subscription_status ?? '') === 'suspended')->count();
+        $pendingTenants = Tenant::all()->filter(fn($t) => ($t->subscription_status ?? '') === 'pending_payment')->count();
 
         // New clinics this month
         $newThisMonth = Tenant::where('created_at', '>=', now()->startOfMonth())->count();
 
         // Calculated Subscription Data
         $activeSubsCount = Subscription::where('stripe_status', 'active')->count();
-        $monthlyRevenue = Subscription::where('stripe_status', 'active')
-            ->with('plan')
-            ->get()
-            ->sum(function ($sub) {
-                return $sub->plan ? $sub->plan->price_monthly : 0;
-            });
+        $totalRevenue = \App\Models\SystemEarning::sum('amount');
 
         // 1. Recent Activity (Audit logs)
         $recentActivity = AuditLog::with('admin')
@@ -38,27 +33,27 @@ class DashboardController extends Controller
             ->limit(10)
             ->get()
             ->map(function ($log) {
-                return [
-                    'id' => $log->id,
-                    'action' => $log->action,
-                    'description' => $log->description,
-                    'admin_name' => $log->admin ? $log->admin->name : 'System',
-                    'date' => $log->created_at->diffForHumans(),
-                    'type' => $log->target_type,
-                ];
-            });
+            return [
+            'id' => $log->id,
+            'action' => $log->action,
+            'description' => $log->description,
+            'admin_name' => $log->admin ? $log->admin->name : 'System',
+            'date' => $log->created_at->diffForHumans(),
+            'type' => $log->target_type,
+            ];
+        });
 
         // 2. Subscription Distribution (for Chart.js)
         $distribution = SubscriptionPlan::withCount(['subscriptions' => function ($query) {
-                $query->where('stripe_status', 'active');
-            }])
+            $query->where('stripe_status', 'active');
+        }])
             ->get()
             ->map(function ($plan) {
-                return [
-                    'name' => $plan->name,
-                    'count' => $plan->subscriptions_count,
-                ];
-            })
+            return [
+            'name' => $plan->name,
+            'count' => $plan->subscriptions_count,
+            ];
+        })
             ->filter(fn($p) => $p['count'] > 0)
             ->values();
 
@@ -69,7 +64,7 @@ class DashboardController extends Controller
                 'suspended_clinics' => $suspendedTenants,
                 'pending_clinics' => $pendingTenants,
                 'new_this_month' => $newThisMonth,
-                'monthly_revenue' => $monthlyRevenue,
+                'total_revenue' => $totalRevenue,
             ],
             'recentActivity' => $recentActivity,
             'subscriptionDistribution' => $distribution,

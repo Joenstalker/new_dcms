@@ -72,7 +72,7 @@ const statCards = [
     { key: 'new_this_month', label: 'New This Month', icon: 'sparkle', textColor: 'text-info', bgLight: 'bg-info/10' },
     { key: 'suspended_clinics', label: 'Suspended', icon: 'pause', textColor: 'text-warning', bgLight: 'bg-warning/10' },
     { key: 'pending_clinics', label: 'Pending Payment', icon: 'clock', textColor: 'text-secondary', bgLight: 'bg-secondary/10' },
-    { key: 'monthly_revenue', label: 'Monthly Revenue', icon: 'cash', textColor: 'text-success', bgLight: 'bg-success/10', prefix: '₱' },
+    { key: 'total_revenue', label: 'Total Revenue', icon: 'cash', textColor: 'text-success', bgLight: 'bg-success/10', prefix: '₱' },
 ];
 </script>
 
@@ -105,7 +105,11 @@ const statCards = [
                         <div>
                             <p class="text-sm font-bold text-base-content/50 uppercase tracking-tight">{{ card.label }}</p>
                             <p class="mt-2 text-3xl font-black text-base-content tracking-tighter">
-                                {{ card.prefix || '' }}{{ stats[card.key]?.toLocaleString() || '0' }}
+                                {{ card.prefix || '' }}{{ 
+                                    card.key === 'total_revenue' 
+                                        ? Number(stats[card.key] || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
+                                        : Number(stats[card.key] || 0).toLocaleString() 
+                                }}
                             </p>
                         </div>
                         <div :class="[card.bgLight]" class="p-4 rounded-2xl group-hover:scale-110 transition-all duration-500 ease-out">
