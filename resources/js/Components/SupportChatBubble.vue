@@ -18,6 +18,58 @@ const chatContainer = ref(null);
 const fileInput = ref(null);
 const unreadCount = ref(0);
 let pollInterval = null;
+let currentEchoChannel = null;
+
+watch(activeTicket, (newTicket, oldTicket) => {
+    if (window.Echo) {
+        // Only leave if the TICKET ID actually changed or we are closing
+        if (oldTicket && (!newTicket || oldTicket.id !== newTicket.id) && currentEchoChannel) {
+            window.Echo.leave('support.ticket.' + oldTicket.id);
+            currentEchoChannel = null;
+        }
+        
+        // Only join if we don't have a channel for THIS ticket yet
+        if (newTicket && !currentEchoChannel) {
+            currentEchoChannel = window.Echo.private('support.ticket.' + newTicket.id)
+                .listen('.SupportTicketUpdated', (e) => {
+                    console.log('Tenant Received Support Event:', e);
+                    // Silently refresh the messages
+                    fetchTicketMessages(newTicket.id);
+                    fetchTickets(true); // update list implicitly
+                });
+        }
+    }
+});
+
+const fetchTicketMessages = async (ticketId) => {
+    try {
+        const { data } = await axios.get(route('tenant.support.show', ticketId));
+        if (data.success && activeTicket.value && activeTicket.value.id === ticketId) {
+            activeTicket.value.messages = data.ticket.messages;
+            activeTicket.value.status = data.ticket.status;
+        }
+    } catch (e) {
+        console.error('Failed to refresh messages', e);
+    }
+};
+
+watch(() => activeTicket.value?.messages?.length, (newLen, oldLen) => {
+    if (newLen > oldLen) {
+        scrollToBottom();
+    }
+});
+
+watch(activeView, (newView) => {
+    if (newView === 'chat') {
+        scrollToBottom();
+    }
+});
+
+watch(isOpen, (newVal) => {
+    if (newVal && activeView.value === 'chat') {
+        scrollToBottom();
+    }
+});
 
 // New ticket form
 const newTicket = ref({
@@ -57,8 +109,8 @@ const toggle = () => {
     }
 };
 
-const fetchTickets = async () => {
-    loading.value = true;
+const fetchTickets = async (silent = false) => {
+    if (!silent) loading.value = true;
     try {
         const { data } = await axios.get(route('tenant.support.index'));
         tickets.value = data.tickets || [];
@@ -66,21 +118,23 @@ const fetchTickets = async () => {
     } catch (e) {
         console.error('Failed to fetch tickets', e);
     } finally {
-        loading.value = false;
+        if (!silent) loading.value = false;
     }
 };
 
-const openTicket = async (ticket) => {
-    activeTicket.value = ticket;
+const openTicket = async (ticket, silent = false) => {
+    if (activeTicket.value && activeTicket.value.id !== ticket.id) {
+        activeTicket.value = ticket;
+    }
     activeView.value = 'chat';
-    loading.value = true;
+    if (!silent) loading.value = true;
     try {
         const { data } = await axios.get(route('tenant.support.show', ticket.id));
         activeTicket.value = data.ticket;
     } catch (e) {
         console.error('Failed to load ticket', e);
     } finally {
-        loading.value = false;
+        if (!silent) loading.value = false;
         scrollToBottom();
     }
 };
@@ -155,6 +209,12 @@ const scrollToBottom = () => {
     nextTick(() => {
         if (chatContainer.value) {
             chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+            // Fallback for slower rendering/images
+            setTimeout(() => {
+                if (chatContainer.value) {
+                    chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+                }
+            }, 100);
         }
     });
 };
@@ -190,17 +250,11 @@ const getFileIcon = (type) => {
 };
 
 onMounted(() => {
-    pollInterval = setInterval(() => {
-        if (isOpen.value && activeView.value === 'chat' && activeTicket.value) {
-            openTicket(activeTicket.value);
-        } else if (isOpen.value && activeView.value === 'list') {
-            fetchTickets();
-        }
-    }, 15000);
+    // Polling removed in favor of real-time WebSockets (Echo)
 });
 
 onUnmounted(() => {
-    if (pollInterval) clearInterval(pollInterval);
+    // Cleanup Echo listeners is handled by the activeTicket watcher
 });
 </script>
 

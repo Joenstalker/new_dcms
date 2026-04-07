@@ -52,7 +52,7 @@ php artisan migrate:fresh --seed
 ```
 
 ### 4. Start the Application
-You will need two terminals running simultaneously for local development.
+You will need three terminals running simultaneously for local development.
 
 **Terminal 1 (Laravel Server):**
 ```bash
@@ -64,7 +64,13 @@ php artisan serve --port=8080
 npm run dev
 ```
 
+**Terminal 3 (Reverb WebSocket Server):**
+```bash
+php artisan reverb:start
+```
+
 You can now access the central landing page at `http://localhost:8080`.
+The websocket server will independently run via Reverb gracefully on port `8081`.
 
 ---
 

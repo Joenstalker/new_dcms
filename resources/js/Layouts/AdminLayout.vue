@@ -4,6 +4,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import ProfileDropdown from '@/Components/ProfileDropdown.vue';
+import AdminSupportDrawer from '@/Components/AdminSupportDrawer.vue';
 import { brandingState } from '@/States/brandingState';
 
 const page = usePage();
@@ -270,7 +271,6 @@ watch(() => page.props.flash, (flash) => {
                     <slot />
                 </div>
             </main>
-
             <!-- Footer -->
             <footer class="bg-base-100 border-t border-base-300 py-4 px-8 flex items-center justify-between">
                 <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/30">{{ footerText }}</p>
@@ -278,6 +278,9 @@ watch(() => page.props.flash, (flash) => {
                     DCMS {{ page.props.config?.version || 'v1.0.0' }}
                 </span>
             </footer>
+
+            <!-- Global Support Drawer -->
+            <AdminSupportDrawer />
         </div>
 
         <!-- Sidebar -->

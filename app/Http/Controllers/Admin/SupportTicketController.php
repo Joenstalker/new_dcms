@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use App\Events\SupportTicketUpdated;
 
 class SupportTicketController extends Controller
 {
@@ -73,6 +74,8 @@ class SupportTicketController extends Controller
         ['new_status' => $validated['status']]
         );
 
+        broadcast(new SupportTicketUpdated($ticket, 'status_updated'));
+
         return back()->with('success', 'Ticket status updated.');
     }
 
@@ -110,6 +113,8 @@ class SupportTicketController extends Controller
             'SupportTicket',
             $ticket->id
         );
+
+        broadcast(new SupportTicketUpdated($ticket, 'reply_added'));
 
         return back()->with('success', 'Reply sent to tenant.');
     }

@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Stancl\Tenancy\Facades\Tenancy;
+use App\Events\SupportTicketUpdated;
 
 class SupportController extends Controller
 {
@@ -57,6 +58,8 @@ class SupportController extends Controller
 
         $this->handleAttachments($request, $message);
 
+        broadcast(new SupportTicketUpdated($ticket, 'created'));
+
         return response()->json([
             'success' => true,
             'ticket' => $ticket->load('messages.attachments')
@@ -96,6 +99,8 @@ class SupportController extends Controller
 
         // Update ticket's last activity
         $ticket->touch();
+
+        broadcast(new SupportTicketUpdated($ticket, 'reply_added'));
 
         return response()->json([
             'success' => true,
