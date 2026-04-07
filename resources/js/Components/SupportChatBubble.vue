@@ -398,11 +398,12 @@ onUnmounted(() => {
                                 <div class="flex items-end gap-2" :class="msg.sender_type === 'tenant' ? 'flex-row-reverse' : ''">
                                     <!-- Avatar -->
                                     <div 
-                                        class="h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0"
-                                        :class="msg.sender_type === 'admin' ? 'bg-base-300 text-base-content/60' : ''"
+                                        class="h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 overflow-hidden"
+                                        :class="msg.sender_type === 'admin' ? 'bg-base-300 text-base-content/60 tracking-tight' : ''"
                                         :style="msg.sender_type === 'tenant' ? { backgroundColor: primaryColor, color: 'white' } : {}"
                                     >
-                                        {{ msg.sender_type === 'admin' ? '🛡️' : (msg.sender?.name?.charAt(0) || 'U') }}
+                                        <img v-if="msg.sender?.profile_photo_url" :src="msg.sender.profile_photo_url" class="h-full w-full object-cover" />
+                                        <span v-else>{{ msg.sender_type === 'admin' ? '🛡️' : (msg.sender?.name?.charAt(0) || 'U') }}</span>
                                     </div>
 
                                     <!-- Bubble -->

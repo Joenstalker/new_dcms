@@ -91,7 +91,7 @@ class SupportTicketController extends Controller
 
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                $path = $file->store('support/attachments', 'public');
+                $path = $file->store('support/attachments', 'support');
                 $message->attachments()->create([
                     'file_path' => $path,
                     'file_name' => $file->getClientOriginalName(),

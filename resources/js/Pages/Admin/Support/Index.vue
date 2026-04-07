@@ -278,10 +278,11 @@ const isImage = (type) => type?.startsWith('image/');
                             >
                                 <div class="flex items-end gap-2" :class="msg.sender_type === 'admin' ? 'flex-row-reverse' : ''">
                                     <div 
-                                        class="h-8 w-8 rounded-full flex items-center justify-center text-xs font-black shrink-0"
-                                        :class="msg.sender_type === 'admin' ? 'bg-primary text-primary-content' : 'bg-base-300 text-base-content/50'"
+                                        class="h-8 w-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 overflow-hidden"
+                                        :class="msg.sender_type === 'admin' ? 'bg-primary text-primary-content tracking-tight' : 'bg-base-300 text-base-content/50'"
                                     >
-                                        {{ msg.sender_type === 'admin' ? '🛡️' : (msg.sender?.name?.charAt(0) || 'T') }}
+                                        <img v-if="msg.sender?.profile_photo_url" :src="msg.sender.profile_photo_url" class="h-full w-full object-cover" />
+                                        <span v-else>{{ msg.sender_type === 'admin' ? '🛡️' : ((selectedTicket?.tenant?.name?.charAt(0)) || (msg.sender?.name?.charAt(0)) || 'T') }}</span>
                                     </div>
                                     <div 
                                         class="max-w-[320px] px-4 py-2.5 text-sm rounded-2xl"
@@ -289,7 +290,9 @@ const isImage = (type) => type?.startsWith('image/');
                                             ? 'bg-primary text-primary-content rounded-br-md' 
                                             : 'bg-base-200 text-base-content rounded-bl-md'"
                                     >
-                                        <p class="text-xs font-bold mb-0.5 opacity-60">{{ msg.sender_type === 'admin' ? 'Admin' : (msg.sender?.name || 'Tenant') }}</p>
+                                        <p class="text-xs font-bold mb-0.5 opacity-60 flex items-center gap-1">
+                                            {{ msg.sender_type === 'admin' ? 'Admin' : (selectedTicket?.tenant?.name || msg.sender?.name || 'Tenant') }}
+                                        </p>
                                         <p class="whitespace-pre-wrap break-words">{{ msg.content }}</p>
 
                                         <div v-if="msg.attachments?.length" class="mt-2 space-y-1">
