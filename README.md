@@ -138,3 +138,27 @@ This command will:
 3. Automatically broadcast the updates as pending features to all active tenants.
 
 *Make sure to update your `APP_VERSION` in the `.env` file to match the latest tag release if you want it to reflect correctly for any new tenants that register.*
+
+---
+
+## ⚓ GitHub Webhook Configuration (Real-time Updates)
+
+To enable real-time detection of new releases and notify tenants immediately, you must configure a GitHub Webhook.
+
+### 1. Set the Webhook Secret
+In your `.env` file, set a unique secret:
+```env
+GITHUB_WEBHOOK_SECRET=f999685c-41e5-4072-adbc-4eb5b5c58185
+```
+
+### 2. Configure GitHub Settings
+1.  Navigate to your repository **Settings** > **Webhooks** > **Add webhook**.
+2.  **Payload URL**: `https://your-domain.com/github/webhook`
+    - *For local testing, use ngrok: `https://abcd-123.ngrok-free.app/github/webhook`*
+3.  **Content type**: Select `application/json`.
+4.  **Secret**: Paste your `GITHUB_WEBHOOK_SECRET`.
+5.  **Events**: Select **"Let me select individual events"** and check **Releases**.
+6.  Click **Add webhook**.
+
+### 3. Verification
+Check the **Audit Logs** in the Admin Dashboard to verify successful incoming deliveries (`github_webhook_success`) or validation failures (`github_webhook_failed`).
