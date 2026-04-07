@@ -12,6 +12,9 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+Route::post('/github/webhook', [\App\Http\Controllers\GitHubWebhookController::class , 'handle'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+
 /* |-------------------------------------------------------------------------- | Central Routes Definition Helper |-------------------------------------------------------------------------- */
 $registerCentralRoutes = function ($withNames = false) {
     // Landing Page
