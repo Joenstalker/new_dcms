@@ -269,6 +269,15 @@ Route::middleware([
                     Route::post('notifications/send-message', [\App\Http\Controllers\Tenant\NotificationController::class , 'sendMessage'])->name('notifications.send-message');
                 }
                 );
+
+                // Support Tickets
+                Route::prefix('support')->group(function () {
+                    Route::get('/', [\App\Http\Controllers\Tenant\Support\SupportController::class , 'index'])->name('tenant.support.index');
+                    Route::post('/', [\App\Http\Controllers\Tenant\Support\SupportController::class , 'store'])->name('tenant.support.store');
+                    Route::get('/{ticket}', [\App\Http\Controllers\Tenant\Support\SupportController::class , 'show'])->name('tenant.support.show');
+                    Route::post('/{ticket}/messages', [\App\Http\Controllers\Tenant\Support\SupportController::class , 'sendMessage'])->name('tenant.support.message');
+                }
+                );
             }
             );
         });

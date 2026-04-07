@@ -206,12 +206,12 @@ $registerCentralRoutes = function ($withNames = false) {
                     Route::get('/features/batch/{batchId}', [FeatureController::class , 'getBatchStatus'])->name('features.batch-status');
                 }
 
-                // Support & Tickets (Contact Messages)
+                // Support & Tickets
                 $supportI = Route::get('/support', [\App\Http\Controllers\Admin\SupportTicketController::class , 'index']);
-                $supportS = Route::get('/support/{message}', [\App\Http\Controllers\Admin\SupportTicketController::class , 'show']);
-                $supportR = Route::post('/support/{message}/reply', [\App\Http\Controllers\Admin\SupportTicketController::class , 'reply']);
-                $supportU = Route::put('/support/{message}/status', [\App\Http\Controllers\Admin\SupportTicketController::class , 'updateStatus']);
-                $supportD = Route::delete('/support/{message}', [\App\Http\Controllers\Admin\SupportTicketController::class , 'destroy']);
+                $supportS = Route::get('/support/{ticket}', [\App\Http\Controllers\Admin\SupportTicketController::class , 'show']);
+                $supportR = Route::post('/support/{ticket}/reply', [\App\Http\Controllers\Admin\SupportTicketController::class , 'reply']);
+                $supportU = Route::put('/support/{ticket}/status', [\App\Http\Controllers\Admin\SupportTicketController::class , 'updateStatus']);
+                $supportD = Route::delete('/support/{ticket}', [\App\Http\Controllers\Admin\SupportTicketController::class , 'destroy']);
                 if ($withNames) {
                     $supportI->name('support.index');
                     $supportS->name('support.show');

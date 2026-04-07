@@ -3,129 +3,129 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ContactMessage;
+use App\Models\SupportTicket;
+use App\Models\SupportMessage;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class SupportTicketController extends Controller
 {
     public function index(Request $request)
     {
-        $filter = $request->get('filter', 'all');
+        $status = $request->get('status', 'all');
+        $category = $request->get('category', 'all');
 
-        $query = ContactMessage::query()->latest();
+        $query = SupportTicket::with(['latestMessage', 'tenant'])->latest('updated_at');
 
-        if ($filter === 'unread') {
-            $query->where('status', 'unread');
-        } elseif ($filter === 'read') {
-            $query->where('status', 'read');
-        } elseif ($filter === 'replied') {
-            $query->where('status', 'replied');
-        } elseif ($filter === 'archived') {
-            $query->where('status', 'archived');
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+        if ($category !== 'all') {
+            $query->where('category', $category);
         }
 
-        $messages = $query->paginate(15)->withQueryString();
-        $unreadCount = ContactMessage::unread()->count();
+        $tickets = $query->paginate(15)->withQueryString();
 
         $stats = [
-            'total' => ContactMessage::count(),
-            'unread' => $unreadCount,
-            'replied' => ContactMessage::where('status', 'replied')->count(),
-            'archived' => ContactMessage::where('status', 'archived')->count(),
-        ];
-
-        $counts = [
-            'all' => $stats['total'],
-            'unread' => $stats['unread'],
-            'read' => ContactMessage::where('status', 'read')->count(),
-            'replied' => $stats['replied'],
-            'archived' => $stats['archived'],
+            'total' => SupportTicket::count(),
+            'open' => SupportTicket::where('status', 'open')->count(),
+            'in_progress' => SupportTicket::where('status', 'in_progress')->count(),
+            'resolved' => SupportTicket::where('status', 'resolved')->count(),
         ];
 
         return Inertia::render('Admin/Support/Index', [
-            'messages' => $messages,
-            'unreadCount' => $unreadCount,
-            'currentFilter' => $filter,
+            'tickets' => $tickets,
+            'currentStatus' => $status,
+            'currentCategory' => $category,
             'stats' => $stats,
-            'counts' => $counts,
         ]);
     }
 
-    public function show(ContactMessage $message)
+    public function show(SupportTicket $ticket)
     {
-        // Auto-mark as read
-        if ($message->status === 'unread') {
-            $message->update(['status' => 'read']);
-        }
+        $ticket->load(['messages.sender', 'messages.attachments', 'tenant']);
 
-        return response()->json(['success' => true, 'message' => $message]);
+        return response()->json([
+            'success' => true,
+            'ticket' => $ticket
+        ]);
     }
 
-    public function updateStatus(Request $request, ContactMessage $message)
+    public function updateStatus(Request $request, SupportTicket $ticket)
     {
         $validated = $request->validate([
-            'status' => 'required|in:unread,read,replied,archived',
-            'admin_notes' => 'nullable|string|max:2000',
+            'status' => 'required|in:open,in_progress,pending,resolved,closed',
         ]);
 
-        $message->update($validated);
+        $ticket->update($validated);
+
+        if ($validated['status'] === 'resolved') {
+            $ticket->update(['resolved_at' => now()]);
+        }
 
         AuditLog::record(
-            'support_message_updated',
-            "Updated status of message from {$message->email} to {$validated['status']}.",
-            'ContactMessage',
-            $message->id,
-            ['new_status' => $validated['status']]
+            'support_ticket_status_updated',
+            "Updated status of ticket #{$ticket->id} to {$validated['status']}.",
+            'SupportTicket',
+            $ticket->id,
+        ['new_status' => $validated['status']]
         );
 
-        return back()->with('success', 'Message status updated.');
+        return back()->with('success', 'Ticket status updated.');
     }
 
-    public function reply(Request $request, ContactMessage $message)
+    public function reply(Request $request, SupportTicket $ticket)
     {
         $validated = $request->validate([
-            'reply' => 'required|string|min:5|max:5000',
-            'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:5120|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif', // Max 5MB per file
+            'content' => 'required|string|min:2|max:5000',
+            'attachments.*' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,pdf,doc,docx,zip',
         ]);
 
-        try {
-            $attachments = $request->file('attachments') ?? [];
+        $message = $ticket->messages()->create([
+            'sender_id' => Auth::id(),
+            'sender_type' => 'admin',
+            'content' => $validated['content'],
+        ]);
 
-            \Illuminate\Support\Facades\Mail::to($message->email)
-                ->send(new \App\Mail\ReplyToContactMessage($message, $validated['reply'], $attachments));
-
-            $message->update(['status' => 'replied']);
-
-            AuditLog::record(
-                'support_message_replied',
-                "Sent reply to support message from {$message->email}.",
-                'ContactMessage',
-                $message->id
-            );
-
-            return back()->with('success', 'Reply sent to ' . $message->email);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to send contact reply email: ' . $e->getMessage());
-            return back()->with('error', 'Failed to send email. Check SMTP configuration.');
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $path = $file->store('support/attachments', 'public');
+                $message->attachments()->create([
+                    'file_path' => $path,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getClientMimeType(),
+                    'file_size' => $file->getSize(),
+                ]);
+            }
         }
-    }
 
-    public function destroy(ContactMessage $message)
-    {
-        $messageId = $message->id;
-        $fromEmail = $message->email;
-        $message->delete();
+        $ticket->update(['status' => 'in_progress']);
+        $ticket->touch();
 
         AuditLog::record(
-            'support_message_deleted',
-            "Deleted support message from {$fromEmail}.",
-            'ContactMessage',
-            $messageId
+            'support_ticket_replied',
+            "Admin replied to ticket #{$ticket->id}.",
+            'SupportTicket',
+            $ticket->id
         );
 
-        return back()->with('success', 'Message deleted.');
+        return back()->with('success', 'Reply sent to tenant.');
+    }
+
+    public function destroy(SupportTicket $ticket)
+    {
+        $ticketId = $ticket->id;
+        $ticket->delete();
+
+        AuditLog::record(
+            'support_ticket_deleted',
+            "Deleted support ticket #{$ticketId}.",
+            'SupportTicket',
+            $ticketId
+        );
+
+        return back()->with('success', 'Ticket deleted.');
     }
 }

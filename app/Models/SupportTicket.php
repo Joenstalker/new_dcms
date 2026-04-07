@@ -37,4 +37,24 @@ class SupportTicket extends Model
     {
         return $query->whereIn('status', ['resolved', 'closed']);
     }
+
+    public function messages()
+    {
+        return $this->hasMany(SupportMessage::class , 'support_ticket_id');
+    }
+
+    public function latestMessage()
+    {
+        return $this->hasOne(SupportMessage::class , 'support_ticket_id')->latestOfMany();
+    }
+
+    public function tenant()
+    {
+        return $this->belongsTo(\Stancl\Tenancy\Database\Models\Tenant::class , 'tenant_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class , 'user_id');
+    }
 }

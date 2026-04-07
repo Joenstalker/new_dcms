@@ -6,6 +6,7 @@ import NotificationBell from '@/Components/NotificationBell.vue';
 import ProfileDropdown from '@/Components/ProfileDropdown.vue';
 import MandatoryPasswordChangeModal from '@/Components/MandatoryPasswordChangeModal.vue';
 import MaintenanceDisplay from '@/Components/MaintenanceDisplay.vue';
+import SupportChatBubble from '@/Components/SupportChatBubble.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import { brandingState } from '@/States/brandingState';
@@ -798,6 +799,7 @@ function getContrastColor(hex) {
             </aside>
         </div>
         
+        <SupportChatBubble />
         <MandatoryPasswordChangeModal />
     </div>
 </template>
