@@ -6,6 +6,10 @@ defineProps({
         type: Object,
         required: true,
     },
+    previewTenantId: {
+        type: String,
+        default: 'preview-sandbox',
+    },
     primaryColor: {
         type: String,
         default: '#0ea5e9'
@@ -59,6 +63,12 @@ const openReviewModal = (tenant) => {
                             <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Owner Name</span>
                             <div class="font-medium text-base-content text-right lg:text-left">
                                 {{ tenant.owner_name || tenant.name }}
+                                <span
+                                    v-if="tenant.id === previewTenantId"
+                                    class="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700"
+                                >
+                                    Preview
+                                </span>
                             </div>
                         </td>
                         
@@ -99,7 +109,7 @@ const openReviewModal = (tenant) => {
                         <td class="px-4 lg:px-6 py-3 lg:py-4 flex lg:table-cell justify-between items-center text-sm border-b border-base-300">
                             <span class="lg:hidden font-bold text-xs text-base-content/50 uppercase tracking-wide">Plan</span>
                             <div class="text-base-content/70 font-semibold text-right lg:text-left">
-                                {{ tenant.plan || 'Free / Manual' }}
+                                {{ tenant.id === previewTenantId ? 'Preview Sandbox' : (tenant.plan || 'Free / Manual') }}
                             </div>
                         </td>
 

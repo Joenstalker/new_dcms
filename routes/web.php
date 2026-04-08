@@ -70,9 +70,11 @@ $registerCentralRoutes = function ($withNames = false) {
         // Fallback routes
         $access = Route::get('/tenant/{subdomain}', [RegistrationController::class , 'accessTenant']);
         $accessFromSession = Route::get('/tenant-access', [RegistrationController::class , 'accessTenantFromSession']);
+        $previewExit = Route::post('/tenant-preview/exit', [RegistrationController::class , 'exitPreview']);
         if ($withNames) {
             $access->name('central.access-tenant');
             $accessFromSession->name('central.tenant-access');
+            $previewExit->name('central.preview-exit');
         }
 
         // Admin Routes
@@ -90,6 +92,10 @@ $registerCentralRoutes = function ($withNames = false) {
             $tenantsU = Route::put('/tenants/{tenant}/status', [\App\Http\Controllers\Admin\TenantController::class , 'updateStatus']);
             $tenantsUpd = Route::put('/tenants/{tenant}', [\App\Http\Controllers\Admin\TenantController::class , 'update']);
             $tenantsD = Route::delete('/tenants/{tenant}', [\App\Http\Controllers\Admin\TenantController::class , 'destroy']);
+            $tenantsPreview = Route::post('/tenants/{tenant}/preview', [\App\Http\Controllers\Admin\TenantController::class , 'startPreview']);
+            $tenantPreviewOpen = Route::get('/tenant-preview/open', [\App\Http\Controllers\Admin\TenantController::class , 'openIsolatedPreview']);
+            $tenantPreviewStart = Route::post('/tenant-preview/start', [\App\Http\Controllers\Admin\TenantController::class , 'startIsolatedPreview']);
+            $tenantPreviewReset = Route::post('/tenant-preview/reset', [\App\Http\Controllers\Admin\TenantController::class , 'resetIsolatedPreview']);
             $tenantsApprove = Route::post('/tenants/{tenant}/approve', [\App\Http\Controllers\Admin\TenantController::class , 'approveTenant']);
             $tenantsReject = Route::post('/tenants/{tenant}/reject', [\App\Http\Controllers\Admin\TenantController::class , 'rejectTenant']);
             if ($withNames) {
@@ -98,6 +104,10 @@ $registerCentralRoutes = function ($withNames = false) {
                 $tenantsU->name('tenants.updateStatus');
                 $tenantsUpd->name('tenants.update');
                 $tenantsD->name('tenants.destroy');
+                $tenantsPreview->name('tenants.preview');
+                $tenantPreviewOpen->name('tenant-preview.open');
+                $tenantPreviewStart->name('tenant-preview.start');
+                $tenantPreviewReset->name('tenant-preview.reset');
                 $tenantsApprove->name('tenants.approve');
                 $tenantsReject->name('tenants.reject');
                 Route::get('/tenants/{tenant}/usage', [\App\Http\Controllers\Admin\TenantController::class , 'getUsageStats'])->name('tenants.usage');

@@ -16,6 +16,10 @@ const props = defineProps({
     tenants: Object,
     filters: Object,
     plans: Array,
+    preview_tenant_id: {
+        type: String,
+        default: 'preview-sandbox',
+    },
 });
 
 const search = ref(props.filters.search || '');
@@ -332,6 +336,7 @@ const isFormValid = computed(() => {
             <TenantsTable 
                 :tenants="tenants" 
                 :primary-color="primaryColor"
+                :preview-tenant-id="preview_tenant_id"
                 @manage="openManageModal"
                 @review="openReviewModal"
             />

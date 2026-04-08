@@ -4,12 +4,14 @@ import { Link, usePage } from '@inertiajs/vue3';
 import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import ProfileDropdown from '@/Components/ProfileDropdown.vue';
-import AdminSupportDrawer from '@/Components/AdminSupportDrawer.vue';
+import Dropdown from '@/Components/Dropdown.vue';
 import { brandingState } from '@/States/brandingState';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const branding = computed(() => page.props.branding || {});
+const adminPreviewMode = computed(() => page.props.admin_preview_mode || { active: false });
+const previewCredentials = computed(() => page.props.preview_credentials || null);
 
 // Initialize brandingState for admin context so ProfileDropdown uses admin system color
 brandingState.initialize(page.props);
@@ -132,6 +134,16 @@ const isCurrentRoute = (routeName) => {
         return route().current(routeName);
     } catch {
         return false;
+    }
+};
+
+const copyToClipboard = async (value) => {
+    if (!value) return;
+
+    try {
+        await navigator.clipboard.writeText(value);
+    } catch {
+        // No-op fallback: keep UX quiet if clipboard API is unavailable.
     }
 };
 
@@ -259,6 +271,73 @@ watch(() => page.props.flash, (flash) => {
 
                 <div class="flex items-center space-x-3 ml-4">
                     <span class="text-[10px] uppercase font-bold tracking-widest text-base-content/30 hidden sm:inline">Admin System</span>
+
+                    <Dropdown align="right" width="64" content-classes="py-1 bg-base-100">
+                        <template #trigger>
+                            <button
+                                type="button"
+                                class="inline-flex items-center px-3 py-1.5 rounded-lg border border-base-300 text-xs font-semibold text-base-content/70 hover:text-base-content hover:bg-base-200 transition-colors"
+                            >
+                                Preview Tools
+                                <svg class="w-3.5 h-3.5 ml-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </template>
+
+                        <template #content>
+                            <div class="p-2 space-y-1 text-sm">
+                                <Link
+                                    :href="route('admin.dashboard')"
+                                    class="flex w-full items-center rounded-md px-3 py-2 font-medium hover:bg-base-200"
+                                >
+                                    Admin System
+                                </Link>
+
+                                <a
+                                    :href="route('admin.tenant-preview.open')"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="flex w-full items-center rounded-md px-3 py-2 font-medium text-emerald-700 hover:bg-emerald-50"
+                                >
+                                    Open Preview Sandbox
+                                </a>
+
+                                <Link
+                                    v-if="adminPreviewMode.active && adminPreviewMode.is_isolated"
+                                    :href="route('admin.tenant-preview.reset')"
+                                    method="post"
+                                    as="button"
+                                    class="flex w-full items-center rounded-md px-3 py-2 font-medium text-amber-700 hover:bg-amber-50"
+                                >
+                                    Reset Preview Sandbox
+                                </Link>
+
+                                <Link
+                                    v-if="adminPreviewMode.active"
+                                    :href="route('central.preview-exit')"
+                                    method="post"
+                                    as="button"
+                                    class="flex w-full items-center rounded-md px-3 py-2 font-medium text-red-600 hover:bg-red-50"
+                                >
+                                    Clear Preview State
+                                </Link>
+
+                                <div v-if="previewCredentials" class="mt-2 border-t border-base-300 pt-2">
+                                    <p class="px-3 pb-1 text-[10px] uppercase tracking-wider text-base-content/50 font-semibold">Preview Credentials</p>
+                                    <div class="flex items-center justify-between gap-2 px-3 py-1 text-xs">
+                                        <span class="text-base-content/70 truncate">Email: {{ previewCredentials.email }}</span>
+                                        <button type="button" @click="copyToClipboard(previewCredentials.email)" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">Copy</button>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2 px-3 py-1 text-xs">
+                                        <span class="text-base-content/70 truncate">Pass: {{ previewCredentials.password }}</span>
+                                        <button type="button" @click="copyToClipboard(previewCredentials.password)" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">Copy</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </Dropdown>
+
                     <ThemeSwitcher />
                     <NotificationBell type="admin" />
                     <ProfileDropdown />
@@ -271,16 +350,11 @@ watch(() => page.props.flash, (flash) => {
                     <slot />
                 </div>
             </main>
-            <!-- Footer -->
-            <footer class="bg-base-100 border-t border-base-300 py-4 px-8 flex items-center justify-between">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/30">{{ footerText }}</p>
-                <span class="text-[10px] font-black tracking-widest text-base-content/30 hover:text-primary transition-colors cursor-default">
-                    DCMS {{ page.props.config?.version || 'v1.0.0' }}
-                </span>
-            </footer>
 
-            <!-- Global Support Drawer -->
-            <AdminSupportDrawer />
+            <!-- Footer -->
+            <footer class="bg-base-100 border-t border-base-300 py-4 px-8">
+                <p class="text-[10px] text-center font-bold uppercase tracking-widest text-base-content/30">{{ footerText }}</p>
+            </footer>
         </div>
 
         <!-- Sidebar -->

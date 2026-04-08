@@ -51,6 +51,10 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('tenant.dashboard', absolute: false));
         }
 
+        // Admin logins should always start in Admin System mode.
+        $request->session()->forget('tenant_preview_bootstrap');
+        $request->session()->forget('tenant_preview_active');
+
         Log::info('Redirecting to central dashboard');
         return redirect()->intended(route('admin.dashboard', absolute: false))
             ->with('success', 'Admin login successful! Welcome back.');

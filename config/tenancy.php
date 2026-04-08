@@ -214,6 +214,18 @@ return [
     'routes' => true,
 
     /**
+     * Central admin same-domain tenant preview sandbox settings.
+     */
+    'preview' => [
+        'tenant_id' => env('TENANT_PREVIEW_ID', 'preview-sandbox'),
+        'subdomain' => env('TENANT_PREVIEW_SUBDOMAIN', 'tenantpreview'),
+        'login_name' => env('TENANT_PREVIEW_LOGIN_NAME', 'Preview Owner'),
+        'login_email' => env('TENANT_PREVIEW_LOGIN_EMAIL', 'preview-owner@local.test'),
+        'login_password' => env('TENANT_PREVIEW_LOGIN_PASSWORD', 'preview-owner-password'),
+        'enabled_setting_key' => 'admin_tenant_preview_enabled',
+    ],
+
+    /**
      * Parameters used by the tenants:migrate command.
      */
     'migration_parameters' => [

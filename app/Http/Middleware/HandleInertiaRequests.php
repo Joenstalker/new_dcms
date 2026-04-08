@@ -90,31 +90,41 @@ class HandleInertiaRequests extends Middleware
                     'is_premium' => $tenant->canCustomizeBranding(),
                 ]);
         },
-            'tenant_plan' => tenant() ? [
-                'features' => [
-                    'sms_notifications' => tenant()->hasPlanFeature('sms_notifications'),
-                    'custom_branding' => tenant()->hasPlanFeature('custom_branding'),
-                    'advanced_analytics' => tenant()->hasPlanFeature('advanced_analytics'),
-                    'priority_support' => tenant()->hasPlanFeature('priority_support'),
-                    'qr_booking' => tenant()->hasPlanFeature('qr_booking'),
-                    'multi_branch' => tenant()->hasPlanFeature('multi_branch'),
-                    'enhanced_reports' => tenant()->hasPlanFeature('enhanced_reports'),
-                    'custom_system_features' => tenant()->hasPlanFeature('custom_system_features'),
-                ],
-                'feature_requirements' => \App\Models\SubscriptionPlan::getFeatureRequirementMap(),
-                'limits' => [
-                    'max_users' => tenant()->getPlanLimit('max_users'),
-                    'max_patients' => tenant()->getPlanLimit('max_patients'),
-                    'max_appointments' => tenant()->getPlanLimit('max_appointments'),
-                ],
-                'current_usage' => [
-                    'users' => \App\Models\User::count(),
-                    'patients' => \App\Models\Patient::count(),
-                    'appointments' => \App\Models\Appointment::count(),
-                ],
-                // Global mapping of all feature keys to their implementation statuses
-                'global_feature_statuses' => \App\Models\Feature::pluck('implementation_status', 'key'),
-            ] : null,
+            'tenant_plan' => function () {
+            $tenant = tenant();
+            if (!$tenant) {
+                return null;
+            }
+
+            $previewTenantId = (string)config('tenancy.preview.tenant_id', 'preview-sandbox');
+            $isPreviewTenant = (string)$tenant->getTenantKey() === $previewTenantId;
+
+            return [
+                    'features' => [
+                        'sms_notifications' => $isPreviewTenant ? true : $tenant->hasPlanFeature('sms_notifications'),
+                        'custom_branding' => $isPreviewTenant ? true : $tenant->hasPlanFeature('custom_branding'),
+                        'advanced_analytics' => $isPreviewTenant ? true : $tenant->hasPlanFeature('advanced_analytics'),
+                        'priority_support' => $isPreviewTenant ? true : $tenant->hasPlanFeature('priority_support'),
+                        'qr_booking' => $isPreviewTenant ? true : $tenant->hasPlanFeature('qr_booking'),
+                        'multi_branch' => $isPreviewTenant ? true : $tenant->hasPlanFeature('multi_branch'),
+                        'enhanced_reports' => $isPreviewTenant ? true : $tenant->hasPlanFeature('enhanced_reports'),
+                        'custom_system_features' => $isPreviewTenant ? true : $tenant->hasPlanFeature('custom_system_features'),
+                    ],
+                    'feature_requirements' => \App\Models\SubscriptionPlan::getFeatureRequirementMap(),
+                    'limits' => [
+                        'max_users' => $isPreviewTenant ? null : $tenant->getPlanLimit('max_users'),
+                        'max_patients' => $isPreviewTenant ? null : $tenant->getPlanLimit('max_patients'),
+                        'max_appointments' => $isPreviewTenant ? null : $tenant->getPlanLimit('max_appointments'),
+                    ],
+                    'current_usage' => [
+                        'users' => \App\Models\User::count(),
+                        'patients' => \App\Models\Patient::count(),
+                        'appointments' => \App\Models\Appointment::count(),
+                    ],
+                    // Global mapping of all feature keys to their implementation statuses
+                    'global_feature_statuses' => \App\Models\Feature::pluck('implementation_status', 'key'),
+                ];
+        },
             'pending_updates_count' => function () use ($request) {
             if (!$request->user() || !tenant())
                 return 0;
@@ -138,6 +148,75 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
+            'preview_mode' => function () use ($request) {
+            $tenant = tenant();
+            $preview = $request->session()->get('tenant_preview_active');
+
+            if (!$tenant) {
+                return [
+                        'active' => false,
+                    ];
+            }
+
+            $previewTenantId = (string)config('tenancy.preview.tenant_id', 'preview-sandbox');
+            if ((string)$tenant->getTenantKey() === $previewTenantId) {
+                return [
+                        'active' => true,
+                        'started_at' => $preview['started_at'] ?? null,
+                        'subdomain' => (string)config('tenancy.preview.subdomain', 'tenantpreview'),
+                    ];
+            }
+
+            if (!is_array($preview)) {
+                return [
+                        'active' => false,
+                    ];
+            }
+
+            $matchesTenant = (string)($preview['tenant_id'] ?? '') === (string)$tenant->getTenantKey();
+
+            return [
+                    'active' => $matchesTenant && (($preview['active'] ?? false) === true),
+                    'started_at' => $preview['started_at'] ?? null,
+                    'subdomain' => $preview['subdomain'] ?? null,
+                ];
+        },
+            'admin_preview_mode' => function () use ($request) {
+            $preview = $request->session()->get('tenant_preview_active');
+
+            if (!is_array($preview)) {
+                return [
+                        'active' => false,
+                    ];
+            }
+
+            return [
+                    'active' => (($preview['active'] ?? false) === true),
+                    'tenant_id' => $preview['tenant_id'] ?? null,
+                    'subdomain' => $preview['subdomain'] ?? null,
+                    'is_isolated' => (($preview['is_isolated'] ?? false) === true),
+                    'started_at' => $preview['started_at'] ?? null,
+                ];
+        },
+            'preview_credentials' => function () use ($request) {
+            if (tenant() || !$request->user()) {
+                return null;
+            }
+
+            $user = $request->user();
+            $isAdmin = (bool)($user->getAttribute('is_admin') ?? false)
+                || (method_exists($user, 'hasRole') && ($user->hasRole('Admin') || $user->hasRole('System Root')));
+
+            if (!$isAdmin) {
+                return null;
+            }
+
+            return [
+                    'email' => (string)config('tenancy.preview.login_email', 'preview-owner@local.test'),
+                    'password' => (string)config('tenancy.preview.login_password', 'preview-owner-password'),
+                    'subdomain' => (string)config('tenancy.preview.subdomain', 'tenantpreview'),
+                ];
+        },
             'branding' => function () {
             $tenant = tenant();
 

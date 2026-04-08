@@ -14,12 +14,15 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Models\SubscriptionPlan;
+use App\Models\SystemSetting;
 use App\Services\TenantNotificationService;
+use Spatie\Permission\Models\Role;
 use Stancl\Tenancy\Database\Models\Domain;
 use Carbon\Carbon;
 
@@ -118,6 +121,7 @@ class TenantController extends Controller
             'tenants' => $paginatedTenants,
             'plans' => $plans,
             'filters' => ['status' => $status, 'search' => $search],
+            'preview_tenant_id' => (string) config('tenancy.preview.tenant_id', 'preview-sandbox'),
         ]);
     }
 
@@ -138,6 +142,229 @@ class TenantController extends Controller
             'tenant' => $tenant,
             // You can fetch more specific stats here later (users, patients) by connecting to the tenant DB briefly
         ]);
+    }
+
+    /**
+     * Start admin preview mode for a tenant.
+     */
+    public function startPreview(Request $request, Tenant $tenant): RedirectResponse
+    {
+        return $this->startIsolatedPreview($request);
+    }
+
+    /**
+     * Start preview using the dedicated isolated sandbox tenant.
+     */
+    public function startIsolatedPreview(Request $request): RedirectResponse
+    {
+        $enabledKey = (string)config('tenancy.preview.enabled_setting_key', 'admin_tenant_preview_enabled');
+        $previewEnabled = (bool)SystemSetting::get($enabledKey, true);
+
+        if (!$previewEnabled) {
+            return back()->with('error', 'Tenant preview is currently disabled by system settings.');
+        }
+
+        $previewTenantId = (string)config('tenancy.preview.tenant_id', 'preview-sandbox');
+        $previewTenant = Tenant::find($previewTenantId) ?? $this->bootstrapIsolatedPreviewTenant($previewTenantId);
+
+        if (!$previewTenant) {
+            return back()->with('error', "Preview tenant '{$previewTenantId}' is not configured.");
+        }
+
+        $this->ensurePreviewDomain($previewTenant);
+        $this->ensurePreviewCredentials($previewTenant);
+
+        tenancy()->initialize($previewTenant);
+        $previewUser = User::role('Owner')->first()
+            ?? User::role('Admin')->first()
+            ?? User::query()->orderBy('id')->first();
+        tenancy()->end();
+
+        if (!$previewUser) {
+            return back()->with('error', 'Preview tenant has no users for impersonation.');
+        }
+
+        $request->session()->forget('tenant_preview_bootstrap');
+        $request->session()->put('tenant_preview_active', [
+            'active' => true,
+            'tenant_id' => (string)$previewTenant->getTenantKey(),
+            'subdomain' => (string)optional($previewTenant->domains()->first())->domain,
+            'admin_user_id' => (int)$request->user()->id,
+            'tenant_user_id' => (int)$previewUser->id,
+            'is_isolated' => true,
+            'started_at' => now()->toIso8601String(),
+        ]);
+
+        return redirect()->route('tenant.dashboard');
+    }
+
+    /**
+     * Open isolated preview in a new tab flow, redirecting to preview subdomain URL.
+     */
+    public function openIsolatedPreview(Request $request): RedirectResponse
+    {
+        $enabledKey = (string)config('tenancy.preview.enabled_setting_key', 'admin_tenant_preview_enabled');
+        $previewEnabled = (bool)SystemSetting::get($enabledKey, true);
+
+        if (!$previewEnabled) {
+            return redirect()->route('admin.dashboard')
+                ->with('error', 'Tenant preview is currently disabled by system settings.');
+        }
+
+        $previewTenantId = (string)config('tenancy.preview.tenant_id', 'preview-sandbox');
+        $previewTenant = Tenant::find($previewTenantId) ?? $this->bootstrapIsolatedPreviewTenant($previewTenantId);
+
+        if (!$previewTenant) {
+            return redirect()->route('admin.dashboard')
+                ->with('error', "Preview tenant '{$previewTenantId}' is not configured.");
+        }
+
+        $previewSubdomain = $this->ensurePreviewDomain($previewTenant);
+        $this->ensurePreviewCredentials($previewTenant);
+
+        return redirect()->away($this->getTenantUrl($previewSubdomain));
+    }
+
+    /**
+     * Create a dedicated sandbox tenant for admin preview when missing.
+     */
+    private function bootstrapIsolatedPreviewTenant(string $previewTenantId): ?Tenant
+    {
+        try {
+            $plan = SubscriptionPlan::orderBy('id')->first();
+            if (!$plan) {
+                Log::warning('Cannot bootstrap preview tenant: no subscription plan exists.');
+                return null;
+            }
+
+            $tenant = Tenant::create([
+                'id' => $previewTenantId,
+                'name' => 'Preview Sandbox Tenant',
+                'owner_name' => 'Preview Admin',
+                'email' => (string)config('tenancy.preview.login_email', 'preview-owner@local.test'),
+                'status' => 'active',
+                'enabled_features' => \App\Models\Tenant::getDefaultFeatures(),
+            ]);
+
+            $previewSubdomain = $this->ensurePreviewDomain($tenant);
+            $domain = $tenant->domains()->where('domain', $previewSubdomain)->first();
+
+            if (!$tenant->domain_id) {
+                $tenant->update(['domain_id' => $domain->id]);
+            }
+
+            $this->ensurePreviewCredentials($tenant);
+
+            if (!$tenant->subscriptions()->exists()) {
+                $tenant->subscriptions()->create([
+                    'subscription_plan_id' => $plan->id,
+                    'stripe_status' => 'active',
+                    'stripe_price' => (string)$plan->price_monthly,
+                ]);
+            }
+
+            tenancy()->end();
+
+            Log::info('Auto-bootstrapped isolated preview tenant.', [
+                'tenant_id' => $tenant->getTenantKey(),
+                'domain' => $previewSubdomain,
+            ]);
+
+            return $tenant->fresh();
+        } catch (\Throwable $e) {
+            if (tenancy()->initialized) {
+                tenancy()->end();
+            }
+
+            Log::error('Failed to auto-bootstrap isolated preview tenant.', [
+                'tenant_id' => $previewTenantId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    private function ensurePreviewDomain(Tenant $tenant): string
+    {
+        $previewSubdomain = (string)config('tenancy.preview.subdomain', 'tenantpreview');
+
+        $domain = $tenant->domains()->firstOrCreate([
+            'domain' => $previewSubdomain,
+        ]);
+
+        if (!$tenant->domain_id || $tenant->domain_id !== $domain->id) {
+            $tenant->update(['domain_id' => $domain->id]);
+        }
+
+        return $previewSubdomain;
+    }
+
+    private function ensurePreviewCredentials(Tenant $tenant): void
+    {
+        $previewName = (string)config('tenancy.preview.login_name', 'Preview Owner');
+        $previewEmail = (string)config('tenancy.preview.login_email', 'preview-owner@local.test');
+        $previewPassword = (string)config('tenancy.preview.login_password', 'preview-owner-password');
+
+        tenancy()->initialize($tenant);
+
+        Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
+
+        $previewOwner = User::where('email', $previewEmail)->first();
+        if (!$previewOwner) {
+            $previewOwner = User::create([
+                'name' => $previewName,
+                'email' => $previewEmail,
+                'password' => Hash::make($previewPassword),
+                'requires_password_change' => false,
+            ]);
+        } else {
+            $previewOwner->forceFill([
+                'name' => $previewName,
+                'password' => Hash::make($previewPassword),
+                'requires_password_change' => false,
+            ])->save();
+        }
+
+        if (!$previewOwner->hasRole('Owner')) {
+            $previewOwner->assignRole('Owner');
+        }
+
+        tenancy()->end();
+    }
+
+    /**
+     * Reset the isolated preview tenant so admins can safely retest features.
+     */
+    public function resetIsolatedPreview(Request $request): RedirectResponse
+    {
+        $previewTenantId = (string)config('tenancy.preview.tenant_id', 'preview-sandbox');
+        $previewTenant = Tenant::find($previewTenantId);
+
+        if (!$previewTenant) {
+            return back()->with('error', "Preview tenant '{$previewTenantId}' is not configured.");
+        }
+
+        try {
+            Artisan::call('tenants:run', [
+                'commandname' => 'migrate:fresh --seed --force',
+                '--tenants' => [(string)$previewTenant->getTenantKey()],
+            ]);
+
+            Log::info('Admin reset isolated preview tenant environment.', [
+                'tenant_id' => $previewTenant->getTenantKey(),
+                'admin_user_id' => optional($request->user())->id,
+            ]);
+
+            return back()->with('success', 'Preview tenant reset completed.');
+        } catch (\Throwable $e) {
+            Log::error('Failed to reset isolated preview tenant.', [
+                'tenant_id' => $previewTenant->getTenantKey(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Preview reset failed. Check logs for details.');
+        }
     }
 
     /**

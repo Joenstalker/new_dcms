@@ -43,6 +43,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.subscription' => \App\Http\Middleware\CheckSubscription::class,
             'tenant.feature' => \App\Http\Middleware\CheckTenantFeature::class,
             'tenant.limit' => \App\Http\Middleware\CheckTenantLimit::class,
+            'tenant.preview.impersonate' => \App\Http\Middleware\ImpersonateTenantPreviewUser::class,
+            'tenant.init.preview_or_subdomain' => \App\Http\Middleware\InitializeTenancyBySubdomainOrPreview::class,
+            'tenant.prevent.central_or_preview' => \App\Http\Middleware\PreventAccessFromCentralDomainsOrPreview::class,
         ]);
 
         $middleware->redirectGuestsTo(function ($request) {

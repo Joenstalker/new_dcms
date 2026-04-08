@@ -123,29 +123,56 @@ This application uses database-separated multi-tenancy.
 - **Central Database (`new_dcms_db`)**: Stores overarching data like the tenant list, domains, users (admins), and subscription plans.
 - **Tenant Databases (`tenant_{id}_db`)**: Automatically created when a clinic registers. Each clinic gets its own isolated database for maximum security and data privacy.
 
-Tenant access is routed dynamically via subdomains (e.g., `http://rhodsmile.localhost:8080`).
+Tenant access is routed dynamically via subdomains (e.g., `http://smile.localhost:8080`).
+
+---
+
+## 🧪 Preview Sandbox Tenant (Development Staging for Tenant Features)
+
+This project includes a dedicated **Preview Sandbox Tenant** used to validate tenant-facing features before rolling them out to live clinics.
+
+### Why this exists
+1. Safely test tenant UI/flows without using production tenant accounts.
+2. Validate feature behavior end-to-end before release.
+3. Keep rollout controlled: live tenants receive changes only when updates are released and applied.
+
+### How it is different from live tenants
+1. It is identified by a dedicated tenant id/subdomain from environment variables.
+2. It is treated as a development sandbox and can be reset.
+3. It is intended for preview/testing, not day-to-day clinic operations.
+
+### Required `.env` settings
+```env
+TENANT_PREVIEW_ID=preview-sandbox
+TENANT_PREVIEW_SUBDOMAIN=tenantpreview
+TENANT_PREVIEW_LOGIN_NAME="Preview Owner"
+TENANT_PREVIEW_LOGIN_EMAIL=preview-owner@local.test
+TENANT_PREVIEW_LOGIN_PASSWORD=preview-owner-password
+```
+
+After changes, clear caches:
+```bash
+php artisan optimize:clear
+```
+
+### Preview Tools dropdown (Admin top bar)
+The **Preview Tools** dropdown is the control center for sandbox operations:
+1. **Open Preview Sandbox**: Opens the preview tenant in a new tab (`tenantpreview.localhost:8080`).
+2. **Reset Preview Sandbox**: Rebuilds sandbox data for clean re-testing.
+3. **Clear Preview State**: Clears preview session flags in the current admin context.
+4. **Preview Credentials**: Quick copy for preview login email/password.
+
+### Recommended release flow (Preview -> Live)
+1. Build and verify tenant changes in the Preview Sandbox Tenant.
+2. Commit and push changes to GitHub.
+3. Deploy updated code.
+4. Register/publish the feature update in Central Admin.
+5. Tenants apply the update per your OTA/update workflow.
+
+This preserves safe validation in preview while keeping live tenant rollout explicit and controlled.
 
 ## 🛡️ Support
 If you encounter any issues during setup, feel free to open an issue or consult the Laravel and Stancl/Tenancy documentation.
-
----
-
-## 📦 System Updates (GitHub Releases)
-
-When a new version is released on GitHub, the system can automatically check for, register, and broadcast the update to your tenant databases. To run the check manually, use the following `artisan` command:
-
-```bash
-php artisan system:check-updates
-```
-
-This command will:
-1. Fetch the release history from the GitHub API.
-2. Synchronize new global system updates into your database.
-3. Automatically broadcast the updates as pending features to all active tenants.
-
-*Make sure to update your `APP_VERSION` in the `.env` file to match the latest tag release if you want it to reflect correctly for any new tenants that register.*
-
----
 
 ## ⚓ GitHub Webhook Configuration (Real-time Updates)
 

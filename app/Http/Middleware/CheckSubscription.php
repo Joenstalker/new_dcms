@@ -43,6 +43,14 @@ class CheckSubscription
             return $next($request);
         }
 
+        if ($this->isDedicatedPreviewTenant((string)$tenant->getTenantKey())) {
+            return $next($request);
+        }
+
+        if ($this->isTenantPreviewActive($request, (string)$tenant->getTenantKey())) {
+            return $next($request);
+        }
+
         // Load the active subscription with its plan
         $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
             ->where('stripe_status', 'active')
@@ -76,6 +84,8 @@ class CheckSubscription
 
         // If a specific feature or limit was requested, check it
         if ($feature) {
+            $featureCandidates = $this->resolveFeatureCandidates($feature);
+
             // 1. Check for numeric limit first (e.g. max_users)
             $limitChecks = [
                 'max_patients' => fn() => \App\Models\Patient::count(),
@@ -96,15 +106,23 @@ class CheckSubscription
             }
             // 2. Check for boolean feature (qr_booking, has_sms, etc.)
             else {
-                if (!$plan->hasFeature($feature)) {
-                    $featureModel = $plan->getFeature($feature);
+                $enabledFeatureKey = collect($featureCandidates)->first(fn(string $candidate) => $plan->hasFeature($candidate));
+
+                if (!$enabledFeatureKey) {
+                    $featureModel = collect($featureCandidates)
+                        ->map(fn(string $candidate) => $plan->getFeature($candidate))
+                        ->first();
+
                     if (!$featureModel || $featureModel->implementation_status !== \App\Models\Feature::STATUS_MAINTENANCE) {
                         return $this->featureNotAvailable($request, $feature, $plan->name);
                     }
                 }
 
                 // Acknowledgment logic for OTA updates (only for dynamic features)
-                $dynamicFeature = $plan->getFeature($feature);
+                $dynamicFeature = collect($featureCandidates)
+                    ->map(fn(string $candidate) => $plan->getFeature($candidate))
+                    ->first();
+
                 if ($dynamicFeature && $dynamicFeature->requiresAcknowledgment()) {
                     $tenantUpdate = TenantFeatureUpdate::where('tenant_id', $tenantId)
                         ->where('feature_id', $dynamicFeature->id)
@@ -204,5 +222,42 @@ class CheckSubscription
         }
 
         return back()->with('error', "You have reached the maximum number of {$label} ({$max}) allowed on your current plan ({$planName}). Please upgrade to add more.");
+    }
+
+    /**
+     * Return true only when a valid preview session is active for this tenant.
+     */
+    private function isTenantPreviewActive(Request $request, string $tenantId): bool
+    {
+        $preview = $request->session()->get('tenant_preview_active');
+
+        return is_array($preview)
+            && ($preview['active'] ?? false) === true
+            && (string)($preview['tenant_id'] ?? '') === $tenantId;
+    }
+
+    /**
+     * Keep compatibility while transitioning feature keys.
+     */
+    private function resolveFeatureCandidates(string $feature): array
+    {
+        if ($feature === 'configuration_settings') {
+            return ['security_settings', 'configuration_settings'];
+        }
+
+        if ($feature === 'security_settings') {
+            return ['security_settings', 'configuration_settings'];
+        }
+
+        return [$feature];
+    }
+
+    /**
+     * Dedicated preview tenant should never be plan-gated.
+     */
+    private function isDedicatedPreviewTenant(string $tenantId): bool
+    {
+        $previewTenantId = (string)config('tenancy.preview.tenant_id', 'preview-sandbox');
+        return $tenantId === $previewTenantId;
     }
 }

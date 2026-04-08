@@ -776,6 +776,41 @@ class RegistrationController extends Controller
         // Initialize tenancy for this tenant
         $tenant = $domain->tenant;
 
+        if ($request->boolean('preview')) {
+            $bootstrap = $request->session()->get('tenant_preview_bootstrap');
+
+            $isAuthorizedPreview = is_array($bootstrap)
+                && ($bootstrap['tenant_id'] ?? null) === (string)$tenant->getTenantKey()
+                && ($bootstrap['subdomain'] ?? null) === (string)$subdomain
+                && (int)($bootstrap['admin_user_id'] ?? 0) === (int)optional($request->user())->id;
+
+            if (!$isAuthorizedPreview) {
+                abort(403, 'Invalid tenant preview session.');
+            }
+
+            tenancy()->initialize($tenant);
+
+            $previewUser = User::role('Owner')->first()
+                ?? User::role('Admin')->first()
+                ?? User::query()->orderBy('id')->first();
+
+            tenancy()->end();
+
+            if (!$previewUser) {
+                abort(422, 'Cannot start preview because this tenant has no users to impersonate.');
+            }
+
+            $request->session()->put('tenant_preview_active', [
+                'active' => true,
+                'tenant_id' => (string)$tenant->getTenantKey(),
+                'subdomain' => (string)$subdomain,
+                'admin_user_id' => (int)optional($request->user())->id,
+                'tenant_user_id' => (int)$previewUser->id,
+                'started_at' => now()->toIso8601String(),
+            ]);
+            $request->session()->forget('tenant_preview_bootstrap');
+        }
+
         // Check if tenant is pending verification
         if ($tenant->status === 'pending') {
             // Find associated pending registration to get correct expiry time
@@ -810,6 +845,21 @@ class RegistrationController extends Controller
         }
 
         return $this->accessTenant($request, $subdomain);
+    }
+
+    /**
+     * Exit admin tenant preview mode.
+     */
+    public function exitPreview(Request $request)
+    {
+        $request->session()->forget('tenant_preview_bootstrap');
+        $request->session()->forget('tenant_preview_active');
+
+        if ($request->user() && method_exists($request->user(), 'hasRole') && $request->user()->hasRole('Admin')) {
+            return redirect()->route('admin.tenants.index')->with('success', 'Tenant preview mode ended.');
+        }
+
+        return redirect('/');
     }
     /**
      * Handle Stripe customer.subscription.updated webhook
