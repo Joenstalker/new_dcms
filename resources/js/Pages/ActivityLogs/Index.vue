@@ -15,6 +15,7 @@ const getEventColor = (event) => {
     switch (event) {
         case 'login': return 'badge-success';
         case 'failed_login': return 'badge-error';
+        case 'login_throttled': return 'badge-warning';
         case 'unauthorized_access': return 'badge-warning';
         case 'deleted': return 'badge-error';
         case 'updated': return 'badge-info';

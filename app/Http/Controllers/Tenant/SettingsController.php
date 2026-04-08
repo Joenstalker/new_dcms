@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Models\Feature;
 use App\Models\Subscription;
+use App\Models\TenantFeatureUpdate;
 use App\Services\FeatureOTAUpdateService;
+use App\Services\TenantSecuritySettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -47,6 +50,73 @@ class SettingsController extends Controller
             'stripe_id' => $subscription?->stripe_id,
             'plans' => $plans,
         ]);
+    }
+
+    /**
+     * Display tenant security configuration page.
+     */
+    public function configuration()
+    {
+        $tenant = tenant();
+        $featureKeys = ['security_settings', 'configuration_settings'];
+
+        $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
+            ->where('stripe_status', 'active')
+            ->with('plan.features')
+            ->latest()
+            ->first();
+
+        $hasEntitlement = $subscription && $subscription->plan && (
+            $subscription->plan->hasFeature('security_settings')
+            || $subscription->plan->hasFeature('configuration_settings')
+        );
+
+        if (!$hasEntitlement) {
+            return redirect()->route('settings.features')
+                ->with('error', 'Security settings are not available for your current plan.');
+        }
+
+        $featureIds = Feature::whereIn('key', $featureKeys)->pluck('id');
+
+        // Feature missing or not yet staged to this tenant.
+        if ($featureIds->isEmpty()) {
+            return redirect()->route('settings.features')
+                ->with('error', 'Security settings feature is not available yet for your plan.');
+        }
+
+        $featureUpdate = TenantFeatureUpdate::where('tenant_id', $tenant->getTenantKey())
+            ->whereIn('feature_id', $featureIds)
+            ->where('status', TenantFeatureUpdate::STATUS_APPLIED)
+            ->first();
+
+        // Require tenant to apply the OTA update first.
+        if (!$featureUpdate) {
+            return redirect()->route('settings.updates')
+                ->with('error', 'Security settings are locked. Please apply the security settings update first.');
+        }
+
+        return Inertia::render('Tenant/Settings/SecuritySettings', [
+            'login_lock' => [
+                'max_attempts' => TenantSecuritySettingsService::getLoginMaxAttempts(5),
+                'lockout_minutes' => TenantSecuritySettingsService::getLoginLockoutMinutes(15),
+            ],
+        ]);
+    }
+
+    /**
+     * Update tenant login lock settings.
+     */
+    public function updateLoginLockSettings(Request $request)
+    {
+        $validated = $request->validate([
+            'login_max_attempts' => ['required', 'integer', 'min:1', 'max:100'],
+            'login_lockout_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
+        ]);
+
+        TenantSecuritySettingsService::setLoginMaxAttempts((int)$validated['login_max_attempts']);
+        TenantSecuritySettingsService::setLoginLockoutMinutes((int)$validated['login_lockout_minutes']);
+
+        return redirect()->back()->with('success', 'Login lock settings updated successfully.');
     }
 
     /**

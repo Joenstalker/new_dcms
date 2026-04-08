@@ -4,7 +4,6 @@ import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
-import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 import RegistrationModal from '@/Components/RegistrationModal.vue';
@@ -59,6 +58,59 @@ const form = useForm({
 // reCAPTCHA state for login modal
 const loginRecaptchaToken = ref('');
 const loginRecaptchaWidgetId = ref(null);
+const lockoutCountdownInterval = ref(null);
+
+const clearLockoutCountdown = () => {
+    if (lockoutCountdownInterval.value) {
+        clearInterval(lockoutCountdownInterval.value);
+        lockoutCountdownInterval.value = null;
+    }
+};
+
+const formatCountdown = (totalSeconds) => {
+    const seconds = Math.max(Number(totalSeconds) || 0, 0);
+    const minutesPart = Math.floor(seconds / 60);
+    const secondsPart = seconds % 60;
+
+    return `${minutesPart}:${String(secondsPart).padStart(2, '0')}`;
+};
+
+const showLockoutAlert = (seconds) => {
+    clearLockoutCountdown();
+
+    let remaining = Math.max(Number(seconds) || 0, 0);
+
+    Swal.fire({
+        icon: 'warning',
+        title: '429 Too Many Requests',
+        html: `
+            <div style="text-align:center;line-height:1.7;">
+                <div>Try again in:</div>
+                <div id="lockout-countdown" style="font-size:1.8rem;font-weight:700;color:#dc2626;">${formatCountdown(remaining)}</div>
+            </div>
+        `,
+        confirmButtonColor: '#2B7CB3',
+        confirmButtonText: 'OK',
+        allowOutsideClick: false,
+        didOpen: () => {
+            const el = document.getElementById('lockout-countdown');
+
+            lockoutCountdownInterval.value = setInterval(() => {
+                remaining = Math.max(remaining - 1, 0);
+                if (el) {
+                    el.textContent = formatCountdown(remaining);
+                }
+
+                if (remaining <= 0) {
+                    clearLockoutCountdown();
+                }
+            }, 1000);
+        },
+        willClose: () => {
+            clearLockoutCountdown();
+        },
+    });
+};
 
 const submitLogin = () => {
     // Check if reCAPTCHA verification is required
@@ -74,6 +126,22 @@ const submitLogin = () => {
 
     form.recaptcha_token = loginRecaptchaToken.value;
     form.post(route('login'), {
+        onError: (errors) => {
+            const lockoutSeconds = Number(errors?.lockout_seconds || 0);
+            const message = errors?.email || 'Unable to login. Please try again.';
+
+            if (lockoutSeconds > 0) {
+                showLockoutAlert(lockoutSeconds);
+                return;
+            }
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Login Failed',
+                text: message,
+                confirmButtonColor: '#2B7CB3',
+            });
+        },
         onFinish: () => form.reset('password'),
     });
 };
@@ -437,6 +505,7 @@ onMounted(() => {
 
 onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll);
+    clearLockoutCountdown();
 });
 </script>
 
@@ -672,10 +741,6 @@ onUnmounted(() => {
                     </button>
                 </div>
 
-                <div v-if="$page.props.flash?.error" class="mb-4 text-sm font-medium text-red-600 bg-red-50 p-3 rounded-md">
-                    {{ $page.props.flash.error }}
-                </div>
-
                 <form @submit.prevent="submitLogin" class="space-y-5">
                     <div>
                         <InputLabel for="email" value="Email Address" />
@@ -688,7 +753,6 @@ onUnmounted(() => {
                             autofocus
                             autocomplete="username"
                         />
-                        <InputError class="mt-1.5" :message="form.errors.email" />
                     </div>
 
                     <div>
@@ -701,7 +765,6 @@ onUnmounted(() => {
                             required
                             autocomplete="current-password"
                         />
-                        <InputError class="mt-1.5" :message="form.errors.password" />
                     </div>
 
                     <div class="flex items-center justify-between">
@@ -726,7 +789,7 @@ onUnmounted(() => {
 
                     <div class="pt-2 flex justify-center">
                         <PrimaryButton
-                            class="w-full max-w-[320px] justify-center py-3 text-sm font-bold bg-[#2B7CB3] hover:bg-[#24699A] focus:bg-[#24699A] active:bg-[#1e5a82] transition-all duration-300 flex items-center justify-center gap-2"
+                            class="w-full max-w-[320px] py-3 text-sm font-bold bg-[#2B7CB3] hover:bg-[#24699A] focus:bg-[#24699A] active:bg-[#1e5a82] transition-all duration-300 flex items-center justify-center gap-2"
                             :class="{ 'opacity-75 cursor-wait': form.processing || isGoogleLoading }"
                             :disabled="form.processing || isGoogleLoading"
                         >

@@ -196,6 +196,11 @@ Route::middleware([
 
                         // Settings
                         Route::get('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'index'])->name('settings.index');
+                        Route::get('settings/configuration', [\App\Http\Controllers\Tenant\SettingsController::class , 'configuration'])
+                            ->middleware('check.subscription:configuration_settings')
+                            ->name('settings.configuration');
+                        Route::post('settings/login-lock', [\App\Http\Controllers\Tenant\SettingsController::class , 'updateLoginLockSettings'])
+                            ->name('settings.login-lock.update');
                         // Settings - Features
                         Route::get('settings/features', [\App\Http\Controllers\Tenant\SettingsController::class , 'features'])
                             ->name('settings.features')

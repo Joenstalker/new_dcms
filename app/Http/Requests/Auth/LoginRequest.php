@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\SystemSetting;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -101,11 +102,28 @@ class LoginRequest extends FormRequest
         $this->verifyRecaptcha();
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            $lockoutDuration = (int) \App\Models\SystemSetting::get('lockout_duration', 1) * 60;
-            RateLimiter::hit($this->throttleKey(), $lockoutDuration);
+            RateLimiter::hit($this->throttleKey(), $this->lockoutDecaySeconds());
+
+            $maxAttempts = $this->maxLoginAttempts();
+            $attempts = RateLimiter::attempts($this->throttleKey());
+            $remaining = max($maxAttempts - $attempts, 0);
+
+            if (RateLimiter::tooManyAttempts($this->throttleKey(), $maxAttempts)) {
+                event(new Lockout($this));
+
+                $seconds = RateLimiter::availableIn($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'email' => trans('auth.throttle', [
+                        'seconds' => $seconds,
+                        'minutes' => ceil($seconds / 60),
+                    ]),
+                    'lockout_seconds' => (string) $seconds,
+                ]);
+            }
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => $this->failedAttemptMessage($remaining),
             ]);
         }
 
@@ -140,9 +158,7 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        $maxAttempts = (int) \App\Models\SystemSetting::get('max_login_attempts', 5);
-
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), $maxAttempts)) {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), $this->maxLoginAttempts())) {
             return;
         }
 
@@ -155,6 +171,7 @@ class LoginRequest extends FormRequest
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
+            'lockout_seconds' => (string) $seconds,
         ]);
     }
 
@@ -164,5 +181,41 @@ class LoginRequest extends FormRequest
     public function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+    }
+
+    /**
+     * Get the max failed login attempts before lockout.
+     */
+    private function maxLoginAttempts(): int
+    {
+        $value = (int) SystemSetting::get('max_login_attempts', 5);
+
+        // Guardrails to avoid invalid runtime values.
+        return max(1, min($value, 100));
+    }
+
+    /**
+     * Get lockout duration in seconds.
+     */
+    private function lockoutDecaySeconds(): int
+    {
+        $minutes = (int) SystemSetting::get('lockout_duration', 15);
+        $minutes = max(1, min($minutes, 1440));
+
+        return $minutes * 60;
+    }
+
+    /**
+     * Build a failed login message with dynamic remaining attempts.
+     */
+    private function failedAttemptMessage(int $remaining): string
+    {
+        if ($remaining <= 0) {
+            return trans('auth.failed');
+        }
+
+        $attemptWord = $remaining === 1 ? 'attempt' : 'attempts';
+
+        return trans('auth.failed') . " You have {$remaining} {$attemptWord} remaining before lockout.";
     }
 }

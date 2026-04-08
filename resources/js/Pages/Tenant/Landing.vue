@@ -95,9 +95,9 @@ const getSectionImage = (name) => {
     // Fallback to high-quality dental/medical defaults
     if (!img) {
         const defaults = {
-            services: '/images/branding/defaults/services.png',
-            team: '/images/branding/defaults/team.png',
-            contact: '/images/branding/defaults/contact.png'
+            services: '/images/dental-smile-for-landingpage.png',
+            team: '/images/dentist-model.png',
+            contact: '/images/OneTop.png'
         };
         return defaults[name];
     }

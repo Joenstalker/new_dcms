@@ -34,6 +34,64 @@ const recaptchaTokenForgot = ref('');
 const recaptchaLoginRef = ref(null);
 const recaptchaForgotRef = ref(null);
 const recaptchaError = ref(false);
+const lockoutCountdownInterval = ref(null);
+
+const csrfHeaders = () => ({
+    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+});
+
+const clearLockoutCountdown = () => {
+    if (lockoutCountdownInterval.value) {
+        clearInterval(lockoutCountdownInterval.value);
+        lockoutCountdownInterval.value = null;
+    }
+};
+
+const formatCountdown = (totalSeconds) => {
+    const seconds = Math.max(Number(totalSeconds) || 0, 0);
+    const minutesPart = Math.floor(seconds / 60);
+    const secondsPart = seconds % 60;
+
+    return `${minutesPart}:${String(secondsPart).padStart(2, '0')}`;
+};
+
+const showLockoutAlert = (seconds) => {
+    clearLockoutCountdown();
+
+    let remaining = Math.max(Number(seconds) || 0, 0);
+
+    Swal.fire({
+        icon: 'warning',
+        title: '429 Too Many Requests',
+        html: `
+            <div style="text-align:center;line-height:1.7;">
+                <div>Try again in:</div>
+                <div id="tenant-lockout-countdown" style="font-size:1.8rem;font-weight:700;color:#dc2626;">${formatCountdown(remaining)}</div>
+            </div>
+        `,
+        confirmButtonColor: brandingColor.value,
+        confirmButtonText: 'OK',
+        allowOutsideClick: false,
+        didOpen: () => {
+            const el = document.getElementById('tenant-lockout-countdown');
+
+            lockoutCountdownInterval.value = setInterval(() => {
+                remaining = Math.max(remaining - 1, 0);
+
+                if (el) {
+                    el.textContent = formatCountdown(remaining);
+                }
+
+                if (remaining <= 0) {
+                    clearLockoutCountdown();
+                }
+            }, 1000);
+        },
+        willClose: () => {
+            clearLockoutCountdown();
+        },
+    });
+};
 
 // Remember email in localStorage
 const savedEmail = ref('');
@@ -81,6 +139,7 @@ watch(() => props.show, (newVal) => {
 
 onUnmounted(() => {
     document.body.style.overflow = '';
+    clearLockoutCountdown();
 });
 
 const brandingColor = computed(() => props.tenant?.branding_color || '#3b82f6');
@@ -173,6 +232,8 @@ const submitLogin = async () => {
             password: form.password,
             remember: form.remember,
             'g-recaptcha-response': recaptchaTokenLogin.value,
+        }, {
+            headers: csrfHeaders(),
         });
 
         if (response.data.success) {
@@ -187,6 +248,12 @@ const submitLogin = async () => {
             });
         }
     } catch (error) {
+        const lockoutSeconds = Number(error.response?.data?.lockout_seconds || 0);
+        if (error.response?.status === 429 && lockoutSeconds > 0) {
+            showLockoutAlert(lockoutSeconds);
+            return;
+        }
+
         Swal.fire({
             icon: 'error',
             title: 'Login Failed',
@@ -219,6 +286,8 @@ const submitSendCode = async () => {
         const response = await axios.post(route('tenant.password.send-code'), {
             email: forgotForm.email,
             'g-recaptcha-response': recaptchaTokenForgot.value,
+        }, {
+            headers: csrfHeaders(),
         });
 
         if (response.data.success) {
@@ -251,6 +320,8 @@ const submitVerifyCode = async () => {
         const response = await axios.post(route('tenant.password.verify-code'), {
             email: forgotForm.email,
             code: forgotForm.code,
+        }, {
+            headers: csrfHeaders(),
         });
 
         if (response.data.success) {
@@ -296,6 +367,8 @@ const submitResetPassword = async () => {
             code: forgotForm.code,
             password: forgotForm.password,
             password_confirmation: forgotForm.password_confirmation,
+        }, {
+            headers: csrfHeaders(),
         });
 
         if (response.data.success) {
@@ -356,6 +429,7 @@ const resetForm = () => {
 };
 
 const close = () => {
+    clearLockoutCountdown();
     emit('close');
     setTimeout(() => resetForm(), 300);
 };

@@ -7,6 +7,7 @@ use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class SystemSettingsController extends Controller
 {
@@ -32,6 +33,8 @@ class SystemSettingsController extends Controller
         ]);
 
         $settings = $validated['settings'];
+
+        $this->validateConstrainedSettings($settings);
 
         foreach ($settings as $key => $value) {
             $setting = SystemSetting::where('key', $key)->first();
@@ -69,6 +72,7 @@ class SystemSettingsController extends Controller
         ]);
 
         $settings = $validated['settings'];
+        $this->validateConstrainedSettings($settings);
         $updated = 0;
 
         foreach ($settings as $key => $value) {
@@ -285,6 +289,41 @@ class SystemSettingsController extends Controller
                     $reg->expires_at = $reg->created_at->copy()->addMinutes($newTimeout);
                     $reg->save();
                 });
+        }
+    }
+
+    /**
+     * Validate constrained settings to prevent unsafe values.
+     */
+    private function validateConstrainedSettings(array $settings): void
+    {
+        $ruleMap = [
+            'session_lifetime' => ['integer', 'min:5', 'max:1440'],
+            'session_expire_on_close' => ['boolean'],
+            'session_encrypt' => ['boolean'],
+            'remember_me_duration' => ['integer', 'min:60', 'max:525600'],
+            'max_login_attempts' => ['integer', 'min:1', 'max:100'],
+            'lockout_duration' => ['integer', 'min:1', 'max:1440'],
+            'password_reset_expiry' => ['integer', 'min:5', 'max:1440'],
+            'pending_timeout_default_minutes' => ['integer', 'min:1', 'max:525600'],
+            'pending_reminder_minutes_before' => ['integer', 'min:1', 'max:525600'],
+            'pending_auto_approve_minutes' => ['integer', 'min:1', 'max:525600'],
+            'pending_reminder_global_enabled' => ['boolean'],
+            'pending_auto_approve_enabled' => ['boolean'],
+        ];
+
+        $rules = [];
+        $payload = [];
+
+        foreach ($settings as $key => $value) {
+            if (array_key_exists($key, $ruleMap)) {
+                $rules[$key] = $ruleMap[$key];
+                $payload[$key] = $value;
+            }
+        }
+
+        if (!empty($rules)) {
+            Validator::make($payload, $rules)->validate();
         }
     }
 }

@@ -27,6 +27,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'registration/webhook',
+            'api/login',
+            'api/login/google',
+            'api/password/code/send',
+            'api/password/code/verify',
+            'api/password/code/reset',
+            'api/password/email',
+            'api/password/reset',
         ]);
 
         $middleware->alias([
@@ -40,7 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->redirectGuestsTo(function ($request) {
             if (tenant()) {
-                return route('login');
+                return route('tenant.landing');
             }
             
             return route('central.home'); // Or anywhere else for central guests

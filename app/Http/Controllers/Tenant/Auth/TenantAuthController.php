@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Tenant\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\TenantSecuritySettingsService;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
@@ -12,9 +15,11 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use App\Models\User;
 use App\Mail\Tenant\PasswordResetCode;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class TenantAuthController extends Controller
 {
@@ -23,6 +28,10 @@ class TenantAuthController extends Controller
      */
     public function store(Request $request)
     {
+        if ($response = $this->ensureIsNotRateLimited($request)) {
+            return $response;
+        }
+
         // Verify reCAPTCHA
         $captchaToken = $request->input('g-recaptcha-response');
         if (!$this->verifyRecaptcha($captchaToken)) {
@@ -38,18 +47,135 @@ class TenantAuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            RateLimiter::clear($this->throttleKey($request));
             $request->session()->regenerate();
 
             return response()->json([
                 'success' => true,
-                'redirect' => route('tenant.dashboard'),
+                'redirect' => route('tenant.dashboard', absolute: false),
             ]);
+        }
+
+        RateLimiter::hit($this->throttleKey($request), $this->lockoutDecaySeconds());
+
+        $maxAttempts = $this->maxLoginAttempts();
+        $attempts = RateLimiter::attempts($this->throttleKey($request));
+        $remaining = max($maxAttempts - $attempts, 0);
+
+        if (RateLimiter::tooManyAttempts($this->throttleKey($request), $maxAttempts)) {
+            event(new Lockout($request));
+
+            $seconds = RateLimiter::availableIn($this->throttleKey($request));
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many login attempts. Please try again later.',
+                'lockout_seconds' => $seconds,
+                'lockout_minutes' => (int)ceil($seconds / 60),
+            ], 429);
         }
 
         return response()->json([
             'success' => false,
-            'message' => 'The provided credentials do not match our records.',
+            'message' => $this->failedAttemptMessage($remaining),
         ], 422);
+    }
+
+    /**
+     * Ensure tenant login request is not currently locked.
+     */
+    private function ensureIsNotRateLimited(Request $request)
+    {
+        if (!RateLimiter::tooManyAttempts($this->throttleKey($request), $this->maxLoginAttempts())) {
+            return null;
+        }
+
+        event(new Lockout($request));
+
+        $seconds = RateLimiter::availableIn($this->throttleKey($request));
+
+        $this->logThrottledAttempt($request, $seconds);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Too many login attempts. Please try again later.',
+            'lockout_seconds' => $seconds,
+            'lockout_minutes' => (int)ceil($seconds / 60),
+        ], 429);
+    }
+
+    /**
+     * Tenant-isolated throttle key.
+     */
+    private function throttleKey(Request $request): string
+    {
+        $tenantId = tenant()?->getTenantKey() ?? 'tenant';
+        $email = Str::lower((string)$request->input('email', ''));
+
+        return Str::transliterate($tenantId . '|' . $email . '|' . $request->ip());
+    }
+
+    /**
+     * Get tenant max failed attempts before lockout.
+     */
+    private function maxLoginAttempts(): int
+    {
+        return TenantSecuritySettingsService::getLoginMaxAttempts(5);
+    }
+
+    /**
+     * Get tenant lockout decay seconds.
+     */
+    private function lockoutDecaySeconds(): int
+    {
+        $minutes = TenantSecuritySettingsService::getLoginLockoutMinutes(15);
+
+        return $minutes * 60;
+    }
+
+    /**
+     * Build failed attempt message with remaining attempts.
+     */
+    private function failedAttemptMessage(int $remaining): string
+    {
+        if ($remaining <= 0) {
+            return 'The provided credentials do not match our records.';
+        }
+
+        $attemptWord = $remaining === 1 ? 'attempt' : 'attempts';
+
+        return 'The provided credentials do not match our records. You have ' . $remaining . ' ' . $attemptWord . ' remaining before lockout.';
+    }
+
+    /**
+     * Log throttled login attempts so tenant admins can audit suspicious emails.
+     */
+    private function logThrottledAttempt(Request $request, int $seconds): void
+    {
+        if (!tenant() || !Schema::hasTable('activity_log')) {
+            return;
+        }
+
+        $attemptedEmail = Str::lower((string)$request->input('email', ''));
+        $matchedUser = $attemptedEmail !== ''
+            ? User::query()->where('email', $attemptedEmail)->select(['id', 'email'])->first()
+            : null;
+
+        $knownStatus = $matchedUser ? 'known staff email' : 'unknown email';
+        $description = $attemptedEmail !== ''
+            ? "Throttled login attempt for {$attemptedEmail} ({$knownStatus})"
+            : 'Throttled login attempt with missing email';
+
+        activity()
+            ->withProperties([
+                'attempted_email' => $attemptedEmail ?: null,
+                'email_exists' => (bool)$matchedUser,
+                'matched_user_id' => $matchedUser?->id,
+                'ip' => $request->ip(),
+                'lockout_seconds' => $seconds,
+            ])
+            ->event('login_throttled')
+            ->log($description);
     }
 
     /**
