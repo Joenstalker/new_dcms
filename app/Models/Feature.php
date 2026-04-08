@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Feature extends Model
@@ -21,8 +22,8 @@ class Feature extends Model
         'code_identifier',
         'announced_at',
         'released_at',
-        'archived_at',
         'system_release_id',
+        'archived_at',
     ];
 
     protected $casts = [
@@ -31,6 +32,7 @@ class Feature extends Model
         'sort_order' => 'integer',
         'announced_at' => 'datetime',
         'released_at' => 'datetime',
+        'system_release_id' => 'integer',
         'archived_at' => 'datetime',
     ];
 
@@ -40,9 +42,7 @@ class Feature extends Model
     public const STATUS_COMING_SOON = 'coming_soon';
     public const STATUS_IN_DEVELOPMENT = 'in_development';
     public const STATUS_ACTIVE = 'active';
-    public const STATUS_BETA = 'beta';
     public const STATUS_DEPRECATED = 'deprecated';
-    public const STATUS_MAINTENANCE = 'maintenance';
 
     /**
      * Get the display label for implementation status.
@@ -52,10 +52,8 @@ class Feature extends Model
         return match ($this->implementation_status) {
                 self::STATUS_COMING_SOON => 'Coming Soon',
                 self::STATUS_IN_DEVELOPMENT => 'In Development',
-                self::STATUS_BETA => 'Beta',
                 self::STATUS_ACTIVE => 'Active',
                 self::STATUS_DEPRECATED => 'Deprecated',
-                self::STATUS_MAINTENANCE => 'Under Maintenance',
                 default => 'Unknown',
             };
     }
@@ -69,15 +67,6 @@ class Feature extends Model
     }
 
     /**
-     * New: Check if the feature is accessible to tenants (active or under maintenance).
-     * This allows maintenance mode to be non-blocking.
-     */
-    public function isAccessible(): bool
-    {
-        return in_array($this->implementation_status, [self::STATUS_ACTIVE, self::STATUS_MAINTENANCE]) && $this->is_active;
-    }
-
-    /**
      * Check if the feature requires tenant acknowledgment.
      */
     public function requiresAcknowledgment(): bool
@@ -85,7 +74,6 @@ class Feature extends Model
         return in_array($this->implementation_status, [
             self::STATUS_COMING_SOON,
             self::STATUS_IN_DEVELOPMENT,
-            self::STATUS_BETA,
         ]);
     }
 
@@ -97,6 +85,14 @@ class Feature extends Model
         return $this->belongsToMany(SubscriptionPlan::class , 'plan_features')
             ->withPivot('value_boolean', 'value_numeric', 'value_tier')
             ->withTimestamps();
+    }
+
+    /**
+     * Optional release reference for system-version features.
+     */
+    public function systemRelease(): BelongsTo
+    {
+        return $this->belongsTo(SystemRelease::class, 'system_release_id');
     }
 
     /**
@@ -146,24 +142,23 @@ class Feature extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true)
-            ->whereNull('archived_at');
+        return $query->where('is_active', true);
     }
 
     /**
-     * Scope to filter archived features.
-     */
-    public function scopeArchived($query)
-    {
-        return $query->whereNotNull('archived_at');
-    }
-
-    /**
-     * Scope to filter non-archived features.
+     * Scope to exclude archived features.
      */
     public function scopeNotArchived($query)
     {
         return $query->whereNull('archived_at');
+    }
+
+    /**
+     * Scope to include only archived features.
+     */
+    public function scopeArchived($query)
+    {
+        return $query->whereNotNull('archived_at');
     }
 
     /**
@@ -200,21 +195,5 @@ class Feature extends Model
                 'expansion' => 'Expansion',
                 default => 'Other',
             };
-    }
-
-    /**
-     * Get the tenant features (overrides).
-     */
-    public function tenantFeatures()
-    {
-        return $this->hasMany(TenantFeature::class);
-    }
-
-    /**
-     * Get the associated system release.
-     */
-    public function systemRelease(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(SystemRelease::class);
     }
 }

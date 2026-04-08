@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Feature;
 use App\Models\Subscription;
 use App\Models\TenantFeatureUpdate;
+use App\Services\TenantFeatureGateService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -84,7 +85,8 @@ class CheckSubscription
 
         // If a specific feature or limit was requested, check it
         if ($feature) {
-            $featureCandidates = $this->resolveFeatureCandidates($feature);
+            $featureCandidates = app(TenantFeatureGateService::class)
+                ->normalizeFeatureKeys($feature);
 
             // 1. Check for numeric limit first (e.g. max_users)
             $limitChecks = [
@@ -129,7 +131,9 @@ class CheckSubscription
                         ->first();
 
                     if (!$tenantUpdate || !$tenantUpdate->isApplied()) {
-                        Log::info("CheckSubscription: feature '{$feature}' available but not acknowledged by tenant.");
+                        Log::info("CheckSubscription: feature '{$feature}' blocked until tenant applies update.");
+
+                        return $this->updateNotApplied($request, $feature);
                     }
                 }
             }
@@ -225,6 +229,24 @@ class CheckSubscription
     }
 
     /**
+     * Return a "feature update pending" response.
+     */
+    private function updateNotApplied(Request $request, string $feature): Response
+    {
+        $label = str_replace(['has_', '_'], ['', ' '], $feature);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'error' => 'feature_update_pending',
+                'message' => "The '{$label}' feature is ready but not applied yet. Please go to Settings > Updates and apply the latest update.",
+            ], 403);
+        }
+
+        return redirect()->route('settings.updates')
+            ->with('error', "The '{$label}' feature is ready but not applied yet. Please apply the latest update first.");
+    }
+
+    /**
      * Return true only when a valid preview session is active for this tenant.
      */
     private function isTenantPreviewActive(Request $request, string $tenantId): bool
@@ -236,21 +258,6 @@ class CheckSubscription
             && (string)($preview['tenant_id'] ?? '') === $tenantId;
     }
 
-    /**
-     * Keep compatibility while transitioning feature keys.
-     */
-    private function resolveFeatureCandidates(string $feature): array
-    {
-        if ($feature === 'configuration_settings') {
-            return ['security_settings', 'configuration_settings'];
-        }
-
-        if ($feature === 'security_settings') {
-            return ['security_settings', 'configuration_settings'];
-        }
-
-        return [$feature];
-    }
 
     /**
      * Dedicated preview tenant should never be plan-gated.

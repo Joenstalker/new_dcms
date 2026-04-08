@@ -169,6 +169,16 @@ The **Preview Tools** dropdown is the control center for sandbox operations:
 4. Register/publish the feature update in Central Admin.
 5. Tenants apply the update per your OTA/update workflow.
 
+### Important rollout contract (must-gate rule)
+To ensure preview work does **not** auto-apply to live tenants:
+1. All tenant-facing changes must be guarded by a feature gate key.
+2. The gate must validate:
+    - plan entitlement, and
+    - tenant update status (`applied`) for that feature.
+3. Deploying code alone must not expose the behavior unless the tenant applies the update.
+
+If a change is shipped without gating, it becomes global immediately after deployment.
+
 This preserves safe validation in preview while keeping live tenant rollout explicit and controlled.
 
 ## 🛡️ Support

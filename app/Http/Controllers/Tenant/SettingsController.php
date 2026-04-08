@@ -7,6 +7,7 @@ use App\Models\Feature;
 use App\Models\Subscription;
 use App\Models\TenantFeatureUpdate;
 use App\Services\FeatureOTAUpdateService;
+use App\Services\TenantFeatureGateService;
 use App\Services\TenantSecuritySettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -60,39 +61,22 @@ class SettingsController extends Controller
         $tenant = tenant();
         $featureKeys = ['security_settings', 'configuration_settings'];
 
-        $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
-            ->where('stripe_status', 'active')
-            ->with('plan.features')
-            ->latest()
-            ->first();
+        $gate = app(TenantFeatureGateService::class)
+            ->evaluate((string)$tenant->getTenantKey(), $featureKeys, true);
 
-        $hasEntitlement = $subscription && $subscription->plan && (
-            $subscription->plan->hasFeature('security_settings')
-            || $subscription->plan->hasFeature('configuration_settings')
-        );
+        if (!$gate['allowed']) {
+            if ($gate['reason'] === 'plan_missing_feature' || $gate['reason'] === 'subscription_required') {
+                return redirect()->route('settings.features')
+                    ->with('error', 'Security settings are not available for your current plan.');
+            }
 
-        if (!$hasEntitlement) {
-            return redirect()->route('settings.features')
-                ->with('error', 'Security settings are not available for your current plan.');
-        }
+            if ($gate['reason'] === 'update_not_applied') {
+                return redirect()->route('settings.updates')
+                    ->with('error', 'Security settings are locked. Please apply the security settings update first.');
+            }
 
-        $featureIds = Feature::whereIn('key', $featureKeys)->pluck('id');
-
-        // Feature missing or not yet staged to this tenant.
-        if ($featureIds->isEmpty()) {
             return redirect()->route('settings.features')
                 ->with('error', 'Security settings feature is not available yet for your plan.');
-        }
-
-        $featureUpdate = TenantFeatureUpdate::where('tenant_id', $tenant->getTenantKey())
-            ->whereIn('feature_id', $featureIds)
-            ->where('status', TenantFeatureUpdate::STATUS_APPLIED)
-            ->first();
-
-        // Require tenant to apply the OTA update first.
-        if (!$featureUpdate) {
-            return redirect()->route('settings.updates')
-                ->with('error', 'Security settings are locked. Please apply the security settings update first.');
         }
 
         return Inertia::render('Tenant/Settings/SecuritySettings', [

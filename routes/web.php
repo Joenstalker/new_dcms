@@ -198,6 +198,7 @@ $registerCentralRoutes = function ($withNames = false) {
 
                 // Feature Management
                 $featuresI = Route::get('/features', [FeatureController::class , 'index']);
+                $featuresAdoption = Route::get('/features/adoption', [FeatureController::class , 'adoption']);
                 $featuresS = Route::post('/features', [FeatureController::class , 'store']);
                 $featuresU = Route::put('/features/{feature}', [FeatureController::class , 'update']);
                 $featuresD = Route::delete('/features/{feature}', [FeatureController::class , 'destroy']);
@@ -206,6 +207,7 @@ $registerCentralRoutes = function ($withNames = false) {
                 $featuresR = Route::delete('/features/{feature}/remove', [FeatureController::class , 'removeFromPlan']);
                 if ($withNames) {
                     $featuresI->name('features.index');
+                    $featuresAdoption->name('features.adoption');
                     $featuresS->name('features.store');
                     $featuresU->name('features.update');
                     $featuresD->name('features.destroy');

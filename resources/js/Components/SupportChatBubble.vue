@@ -5,6 +5,7 @@ import axios from 'axios';
 
 const page = usePage();
 const primaryColor = computed(() => page.props.branding?.primary_color || '#0ea5e9');
+const isPreviewTenant = computed(() => !!page.props.preview_mode?.active);
 
 const isOpen = ref(false);
 const activeView = ref('list'); // 'list' | 'chat' | 'new'
@@ -260,7 +261,7 @@ onUnmounted(() => {
 
 <template>
     <!-- Floating Chat Bubble -->
-    <div class="fixed bottom-6 right-6 z-[9999]">
+    <div class="fixed right-6 z-[9999]" :class="isPreviewTenant ? 'bottom-14' : 'bottom-6'">
         <!-- Unread Badge -->
         <div 
             v-if="unreadCount > 0 && !isOpen"
