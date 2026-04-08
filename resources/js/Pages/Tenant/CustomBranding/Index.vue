@@ -58,6 +58,7 @@ const form = useForm({
     phone: props.tenant?.clinic_phone || props.tenant?.phone || '',
     address: props.tenant?.clinic_address || props.tenant?.street || '',
     branding_color: props.tenant?.branding_color || page.props.branding?.primary_color || '#0ea5e9',
+    support_chat_bottom_offset: Number(props.tenant?.support_chat_bottom_offset ?? page.props.branding?.support_chat_bottom_offset ?? 56),
     font_family: initialFontFamily,
     hero_title: props.tenant?.hero_title || '',
     hero_subtitle: props.tenant?.hero_subtitle || '',

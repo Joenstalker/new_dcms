@@ -5,7 +5,14 @@ import axios from 'axios';
 
 const page = usePage();
 const primaryColor = computed(() => page.props.branding?.primary_color || '#0ea5e9');
-const isPreviewTenant = computed(() => !!page.props.preview_mode?.active);
+const bubbleBottomOffset = computed(() => {
+    const raw = Number(page.props.branding?.support_chat_bottom_offset ?? 56);
+    if (!Number.isFinite(raw)) {
+        return 56;
+    }
+
+    return Math.min(160, Math.max(16, Math.round(raw)));
+});
 
 const isOpen = ref(false);
 const activeView = ref('list'); // 'list' | 'chat' | 'new'
@@ -45,7 +52,7 @@ watch(activeTicket, (newTicket, oldTicket) => {
 const fetchTicketMessages = async (ticketId) => {
     try {
         const { data } = await axios.get(route('tenant.support.show', ticketId));
-        if (data.success && activeTicket.value && activeTicket.value.id === ticketId) {
+        if (data?.ticket && activeTicket.value && activeTicket.value.id === ticketId) {
             activeTicket.value.messages = data.ticket.messages;
             activeTicket.value.status = data.ticket.status;
         }
@@ -261,7 +268,7 @@ onUnmounted(() => {
 
 <template>
     <!-- Floating Chat Bubble -->
-    <div class="fixed right-6 z-[9999]" :class="isPreviewTenant ? 'bottom-14' : 'bottom-6'">
+    <div class="fixed right-6 z-[9999]" :style="{ bottom: `${bubbleBottomOffset}px` }">
         <!-- Unread Badge -->
         <div 
             v-if="unreadCount > 0 && !isOpen"

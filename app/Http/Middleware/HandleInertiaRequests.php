@@ -226,6 +226,7 @@ class HandleInertiaRequests extends Middleware
                         'platform_name' => SystemSetting::get('platform_name', 'DCMS'),
                         'platform_logo' => SystemSetting::get('platform_logo'),
                         'primary_color' => SystemSetting::get('primary_color', '#0ea5e9'),
+                        'support_chat_bottom_offset' => (int)SystemSetting::get('support_chat_bottom_offset', 56),
                         'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
                         'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
                     ];
@@ -238,6 +239,7 @@ class HandleInertiaRequests extends Middleware
                     'platform_name' => $branding['clinic_name'] ?? $tenant->name ?? SystemSetting::get('platform_name', 'DCMS'),
                     'platform_logo' => $branding['logo_base64'] ?? $tenant->logo_path ?? SystemSetting::get('platform_logo'),
                     'primary_color' => $branding['primary_color'] ?? $tenant->branding_color ?? SystemSetting::get('primary_color', '#0ea5e9'),
+                    'support_chat_bottom_offset' => (int)($branding['support_chat_bottom_offset'] ?? SystemSetting::get('support_chat_bottom_offset', 56)),
                     'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
                     'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
                 ];

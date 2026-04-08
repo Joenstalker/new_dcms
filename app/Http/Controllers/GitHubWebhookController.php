@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Log;
 class GitHubWebhookController extends Controller
 {
     /**
+     * Release actions that should trigger update synchronization.
+     */
+    private const SUPPORTED_RELEASE_ACTIONS = ['published', 'released'];
+
+    /**
      * Handle incoming GitHub webhooks for real-time system updates.
      */
     public function handle(Request $request)
@@ -48,24 +53,58 @@ class GitHubWebhookController extends Controller
         $event = $request->header('X-GitHub-Event');
         $data = $request->all();
 
-        if ($event === 'release' && ($data['action'] ?? '') === 'published') {
+        $action = $data['action'] ?? '';
+
+        if ($event === 'release' && in_array($action, self::SUPPORTED_RELEASE_ACTIONS, true)) {
             $version = $data['release']['tag_name'] ?? 'unknown';
 
-            Log::info("GitHub Webhook: Published release detected - {$version}");
+            Log::info("GitHub Webhook: release.{$action} detected - {$version}");
 
             try {
                 // 3. Clear Update Cache
                 AppVersionService::clearCache();
 
                 // 4. Trigger System Update Check
-                Artisan::call('system:check-updates');
+                $exitCode = Artisan::call('system:check-updates');
+                $commandOutput = trim(Artisan::output());
+
+                if ($exitCode !== 0) {
+                    Log::error('GitHub Webhook update command failed.', [
+                        'event' => $event,
+                        'action' => $action,
+                        'version' => $version,
+                        'exit_code' => $exitCode,
+                        'output' => $commandOutput,
+                    ]);
+
+                    AuditLog::record(
+                        'github_webhook_failed',
+                        "GitHub Webhook failed to sync release: {$version}",
+                        'System',
+                        null,
+                        [
+                            'event' => $event,
+                            'action' => $action,
+                            'version' => $version,
+                            'exit_code' => $exitCode,
+                            'output' => $commandOutput,
+                        ]
+                    );
+
+                    return response()->json(['message' => 'Update sync failed'], 500);
+                }
 
                 AuditLog::record(
                     'github_webhook_success',
                     "GitHub Webhook triggered system update check for release: {$version}",
                     'System',
                     null,
-                ['version' => $version, 'action' => $data['action']]
+                    [
+                        'event' => $event,
+                        'version' => $version,
+                        'action' => $action,
+                        'output' => $commandOutput,
+                    ]
                 );
 
                 return response()->json(['message' => 'Update check triggered successfully']);
@@ -75,6 +114,11 @@ class GitHubWebhookController extends Controller
                 return response()->json(['message' => 'Trigger failed'], 500);
             }
         }
+
+        Log::info('GitHub Webhook event ignored.', [
+            'event' => $event,
+            'action' => $action,
+        ]);
 
         return response()->json(['message' => 'Event ignored']);
     }

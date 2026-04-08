@@ -174,6 +174,7 @@ class SettingsController extends Controller
                 'clinic_email' => $branding['clinic_email'] ?? $tenant->email,
                 'clinic_phone' => $branding['clinic_phone'] ?? $tenant->phone,
                 'clinic_address' => $branding['clinic_address'] ?? $tenant->address,
+                'support_chat_bottom_offset' => (int)($branding['support_chat_bottom_offset'] ?? 56),
             ]),
             'subscription' => $subscription,
             'is_premium' => $tenant->canCustomizeBranding(),
@@ -351,6 +352,7 @@ class SettingsController extends Controller
             'portal_config' => 'nullable|array',
             'operating_hours' => 'nullable|array',
             'online_booking_enabled' => 'nullable|boolean',
+            'support_chat_bottom_offset' => 'nullable|integer|min:16|max:160',
         ]);
 
         $tenant = tenant();
@@ -371,6 +373,7 @@ class SettingsController extends Controller
         if (isset($validated['portal_config'])) \App\Services\TenantBrandingService::set('portal_config', $validated['portal_config']);
         if (isset($validated['operating_hours'])) \App\Services\TenantBrandingService::set('operating_hours', $validated['operating_hours']);
         if (isset($validated['online_booking_enabled'])) \App\Services\TenantBrandingService::set('online_booking_enabled', $validated['online_booking_enabled']);
+        if (isset($validated['support_chat_bottom_offset'])) \App\Services\TenantBrandingService::set('support_chat_bottom_offset', $validated['support_chat_bottom_offset']);
         
         if (isset($validated['hero_title'])) \App\Services\TenantBrandingService::set('hero_title', $validated['hero_title']);
         if (isset($validated['hero_subtitle'])) \App\Services\TenantBrandingService::set('hero_subtitle', $validated['hero_subtitle']);

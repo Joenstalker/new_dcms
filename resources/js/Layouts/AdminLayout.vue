@@ -5,6 +5,7 @@ import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import ProfileDropdown from '@/Components/ProfileDropdown.vue';
 import Dropdown from '@/Components/Dropdown.vue';
+import AdminSupportDrawer from '@/Components/AdminSupportDrawer.vue';
 import { brandingState } from '@/States/brandingState';
 
 const page = usePage();
@@ -235,6 +236,7 @@ watch(() => page.props.flash, (flash) => {
 
 <template>
     <div class="drawer font-sans h-screen overflow-hidden" :class="{ 'drawer-end': isRightSidebar, 'lg:drawer-open': isDesktopSidebarOpen }">
+        <AdminSupportDrawer />
         <input id="admin-sidebar" type="checkbox" v-model="isSidebarOpen" class="drawer-toggle" />
         
         <!-- Main Content Area -->

@@ -22,10 +22,12 @@ const statusColors = {
     closed: 'badge-neutral',
 };
 
-watch(() => supportState.selectedTicket?.messages?.length, (newLen, oldLen) => {
-    if (newLen > (oldLen || 0)) {
-        scrollToBottom();
-    }
+watch(() => supportState.selectedTicket?.id, () => {
+    scrollToBottom();
+});
+
+watch(() => supportState.selectedTicket?.messages?.length, () => {
+    scrollToBottom();
 });
 
 watch(() => supportState.isOpen, (newVal) => {

@@ -300,6 +300,33 @@ const getLogoUrl = (path, field) => {
                         </div>
                     </div>
 
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Support Chat Bottom Offset (px)</span>
+                        </label>
+                        <div class="flex items-center gap-3 bg-base-200 p-3 rounded-2xl border border-base-300">
+                            <input
+                                type="range"
+                                min="16"
+                                max="160"
+                                step="1"
+                                v-model.number="form.support_chat_bottom_offset"
+                                class="range range-primary range-sm w-full"
+                            >
+                            <input
+                                type="number"
+                                min="16"
+                                max="160"
+                                step="1"
+                                v-model.number="form.support_chat_bottom_offset"
+                                class="input input-sm w-20 text-center font-mono"
+                            >
+                        </div>
+                        <p class="text-[10px] text-base-content/50 mt-1">
+                            Controls vertical position of the floating support bubble for this tenant.
+                        </p>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="form-control">
                             <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Header Typography</span></label>
