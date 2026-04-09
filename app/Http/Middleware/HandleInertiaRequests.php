@@ -37,6 +37,23 @@ class HandleInertiaRequests extends Middleware
         $detect = new MobileDetect();
         $resolvedUser = $request->user();
 
+        if (!tenant() && $resolvedUser) {
+            $isAdminFlag = (bool)($resolvedUser->getAttribute('is_admin') ?? false);
+            $hasAdminRole = method_exists($resolvedUser, 'hasRole')
+                ? ($resolvedUser->hasRole('Admin') || $resolvedUser->hasRole('System Root'))
+                : false;
+
+            if (!$isAdminFlag && !$hasAdminRole) {
+                Auth::guard('web')->logout();
+                $request->session()->forget([
+                    'tenant_authenticated',
+                    'tenant_authenticated_tenant_id',
+                    'tenant_authenticated_user_id',
+                ]);
+                $resolvedUser = null;
+            }
+        }
+
         if (tenant() && $resolvedUser) {
             $preview = $request->session()->get('tenant_preview_active');
             $isValidPreview = is_array($preview)
