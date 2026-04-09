@@ -9,6 +9,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use App\Notifications\ClinicPasswordResetNotification;
+use Illuminate\Support\Facades\Storage;
 
 use Spatie\Permission\Traits\HasRoles;
 
@@ -87,7 +88,44 @@ class User extends Authenticatable
             return route('tenant.storage', ['path' => ltrim($this->profile_picture, '/')]);
         }
 
-        return asset('storage/' . ltrim($this->profile_picture, '/'));
+        $path = ltrim($this->profile_picture, '/');
+
+        // Central context: if a historical image was written into tenant storage,
+        // migrate it back to central public storage so /storage URLs work again.
+        if (!Storage::disk('public')->exists($path)) {
+            $candidate = $this->findImageInTenantStorage($path);
+
+            if ($candidate) {
+                $target = storage_path('app/public/' . $path);
+                $targetDir = dirname($target);
+
+                if (!is_dir($targetDir)) {
+                    @mkdir($targetDir, 0775, true);
+                }
+
+                @copy($candidate, $target);
+            }
+        }
+
+        if (!Storage::disk('public')->exists($path)) {
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
+        }
+
+        return asset('storage/' . $path);
+    }
+
+    private function findImageInTenantStorage(string $relativePath): ?string
+    {
+        $tenantPattern = storage_path('tenant*/app/public/' . $relativePath);
+        $matches = glob($tenantPattern) ?: [];
+
+        foreach ($matches as $match) {
+            if (is_file($match) && is_readable($match)) {
+                return $match;
+            }
+        }
+
+        return null;
     }
 
     /**

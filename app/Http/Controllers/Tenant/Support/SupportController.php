@@ -14,8 +14,21 @@ use App\Events\SupportTicketUpdated;
 
 class SupportController extends Controller
 {
+    private function authorizeSupportChat(): void
+    {
+        $user = auth()->user();
+
+        if ($user && ($user->hasRole('Owner') || $user->can('access support chat'))) {
+            return;
+        }
+
+        abort(403, 'You do not have permission to access support chat.');
+    }
+
     public function index()
     {
+        $this->authorizeSupportChat();
+
         $tenantId = tenancy()->tenant->id;
         $tickets = SupportTicket::where('tenant_id', $tenantId)
             ->with(['latestMessage'])
@@ -29,6 +42,8 @@ class SupportController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeSupportChat();
+
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
             'category' => 'required|in:billing,technical,feature_request,account,other',
@@ -68,6 +83,8 @@ class SupportController extends Controller
 
     public function show(SupportTicket $ticket)
     {
+        $this->authorizeSupportChat();
+
         // Ensure tenant owns the ticket
         if ($ticket->tenant_id !== tenancy()->tenant->id) {
             abort(403);
@@ -80,6 +97,8 @@ class SupportController extends Controller
 
     public function sendMessage(Request $request, SupportTicket $ticket)
     {
+        $this->authorizeSupportChat();
+
         if ($ticket->tenant_id !== tenancy()->tenant->id) {
             abort(403);
         }

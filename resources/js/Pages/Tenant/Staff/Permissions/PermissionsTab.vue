@@ -226,6 +226,9 @@ const permissionGroups = computed(() => {
         'subscription': 'Administration',
         'dashboard': 'Administration',
 
+        // Support
+        'support': 'Support',
+
         // Custom Branding (delegatable)
         'branding': 'Custom Branding',
     };

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\StaffInvitation;
@@ -16,12 +17,14 @@ class StaffController extends Controller
 {
     public function index(Request $request)
     {
+        Permission::firstOrCreate(['name' => 'access support chat']);
+
         $staff = User::role(['Dentist', 'Assistant'])->with(['roles', 'permissions'])->get();
         return Inertia::render('Tenant/Staff/Index', [
             'staff' => $staff,
             'roles' => Role::whereIn('name', ['Dentist', 'Assistant'])->get(),
             'api_key' => config('services.google.calendar_api_key'),
-            'allPermissions' => \Spatie\Permission\Models\Permission::all(),
+            'allPermissions' => Permission::all(),
             'initialTab' => $request->query('tab', 'list')
         ]);
     }
@@ -46,8 +49,8 @@ class StaffController extends Controller
 
         $user->assignRole($request->role);
 
-        // Auto-assign base permissions for Guided Onboarding
-        $user->syncPermissions(['view dashboard']);
+        // Auto-assign baseline permissions based on staff role.
+        $user->syncPermissions($this->defaultPermissionsForRole($request->role));
 
         // Send Invitation Email
         try {
@@ -176,5 +179,50 @@ class StaffController extends Controller
         }
 
         broadcast(new TenantStaffChanged((string) tenant()->getTenantKey(), $action, $staffPayload));
+    }
+
+    private function defaultPermissionsForRole(string $role): array
+    {
+        if ($role === 'Dentist') {
+            return [
+                'view dashboard',
+                'view appointments',
+                'create appointments',
+                'edit appointments',
+                'view patients',
+                'create patients',
+                'edit patients',
+                'view treatments',
+                'create treatments',
+                'edit treatments',
+                'view services',
+                'create services',
+                'edit services',
+                'manage own calendar',
+                'manage own notifications',
+                'manage own working hours',
+            ];
+        }
+
+        if ($role === 'Assistant') {
+            return [
+                'view dashboard',
+                'view appointments',
+                'create appointments',
+                'edit appointments',
+                'view patients',
+                'create patients',
+                'edit patients',
+                'view billing',
+                'create billing',
+                'edit billing',
+                'view services',
+                'manage own calendar',
+                'manage own notifications',
+                'manage own working hours',
+            ];
+        }
+
+        return ['view dashboard'];
     }
 }

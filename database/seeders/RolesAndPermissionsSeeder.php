@@ -50,6 +50,9 @@ class RolesAndPermissionsSeeder extends Seeder
 
             // Activity Logs
             'view activity logs',
+
+            // Support Chat
+            'access support chat',
         ];
 
         foreach ($permissions as $permission) {

@@ -5,6 +5,12 @@ import axios from 'axios';
 
 const page = usePage();
 const primaryColor = computed(() => page.props.branding?.primary_color || '#0ea5e9');
+const canAccessSupportChat = computed(() => {
+    const permissions = page.props.auth?.user?.permissions || [];
+    const roles = page.props.auth?.user?.roles || [];
+
+    return roles.includes('Owner') || permissions.includes('access support chat');
+});
 const bubbleBottomOffset = computed(() => {
     const raw = Number(page.props.branding?.support_chat_bottom_offset ?? 56);
     if (!Number.isFinite(raw)) {
@@ -267,6 +273,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+    <div v-if="canAccessSupportChat">
     <!-- Floating Chat Bubble -->
     <div class="fixed right-6 z-[9999]" :style="{ bottom: `${bubbleBottomOffset}px` }">
         <!-- Unread Badge -->
@@ -555,5 +562,6 @@ onUnmounted(() => {
                 </div>
             </div>
         </Transition>
+    </div>
     </div>
 </template>

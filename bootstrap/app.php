@@ -45,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.feature' => \App\Http\Middleware\CheckTenantFeature::class,
             'tenant.limit' => \App\Http\Middleware\CheckTenantLimit::class,
             'tenant.preview.impersonate' => \App\Http\Middleware\ImpersonateTenantPreviewUser::class,
+            'tenant.session.isolated' => \App\Http\Middleware\EnsureTenantSessionIsolation::class,
             'tenant.init.preview_or_subdomain' => \App\Http\Middleware\InitializeTenancyBySubdomainOrPreview::class,
             'tenant.prevent.central_or_preview' => \App\Http\Middleware\PreventAccessFromCentralDomainsOrPreview::class,
         ]);

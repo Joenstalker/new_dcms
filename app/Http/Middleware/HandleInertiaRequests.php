@@ -6,6 +6,9 @@ use Detection\MobileDetect;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use App\Models\SystemSetting;
+use App\Models\Appointment;
+use App\Models\TenantNotification;
+use Illuminate\Support\Facades\Auth;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -32,6 +35,36 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $detect = new MobileDetect();
+        $resolvedUser = $request->user();
+
+        if (tenant() && $resolvedUser) {
+            $preview = $request->session()->get('tenant_preview_active');
+            $isValidPreview = is_array($preview)
+                && (($preview['active'] ?? false) === true)
+                && (string)($preview['tenant_id'] ?? '') === (string)tenant()->getTenantKey();
+
+            if (!$isValidPreview) {
+                $tenantId = (string) tenant()->getTenantKey();
+                $sessionTenantId = (string) $request->session()->get('tenant_authenticated_tenant_id', '');
+                $sessionUserId = (int) $request->session()->get('tenant_authenticated_user_id', 0);
+                $hasTenantAuthFlag = (bool) $request->session()->get('tenant_authenticated', false);
+                $currentUserId = (int) $resolvedUser->id;
+
+                $isValidTenantSession = $hasTenantAuthFlag
+                    && $sessionTenantId === $tenantId
+                    && $sessionUserId === $currentUserId;
+
+                if (!$isValidTenantSession) {
+                    Auth::guard('web')->logout();
+                    $request->session()->forget([
+                        'tenant_authenticated',
+                        'tenant_authenticated_tenant_id',
+                        'tenant_authenticated_user_id',
+                    ]);
+                    $resolvedUser = null;
+                }
+            }
+        }
 
         return [
             ...parent::share($request),
@@ -41,14 +74,14 @@ class HandleInertiaRequests extends Middleware
                 'isDesktop' => !$detect->isMobile() && !$detect->isTablet(),
             ],
             'auth' => [
-                'user' => $request->user() ? [
-                    'id' => $request->user()->id,
-                    'name' => $request->user()->name,
-                    'email' => $request->user()->email,
-                    'profile_picture_url' => $request->user()->profile_picture_url,
-                    'roles' => $request->user()->getRoleNames()->toArray(),
-                    'permissions' => $request->user()->getAllPermissions()->pluck('name')->toArray(),
-                    'requires_password_change' => (bool)$request->user()->requires_password_change,
+                'user' => $resolvedUser ? [
+                    'id' => $resolvedUser->id,
+                    'name' => $resolvedUser->name,
+                    'email' => $resolvedUser->email,
+                    'profile_picture_url' => $resolvedUser->profile_picture_url,
+                    'roles' => $resolvedUser->getRoleNames()->toArray(),
+                    'permissions' => $resolvedUser->getAllPermissions()->pluck('name')->toArray(),
+                    'requires_password_change' => (bool)$resolvedUser->requires_password_change,
                 ] : null,
             ],
             'config' => [
@@ -144,6 +177,22 @@ class HandleInertiaRequests extends Middleware
                 }
                 );
             },
+            'sidebar_badges' => function () use ($request) {
+            if (!$request->user() || !tenant()) {
+                return null;
+            }
+
+            $user = $request->user();
+
+            return [
+                    'appointments_pending' => $user->can('view appointments')
+                        ? Appointment::where('status', 'pending')->count()
+                        : 0,
+                    'notifications_unread' => TenantNotification::where('user_id', $user->id)
+                        ->unread()
+                        ->count(),
+                ];
+        },
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

@@ -64,6 +64,19 @@ class GoogleAuthController extends Controller
 
             $request->session()->regenerate();
 
+            if ($isTenant) {
+                $request->session()->put([
+                    'tenant_authenticated' => true,
+                    'tenant_authenticated_tenant_id' => (string) tenant()->getTenantKey(),
+                    'tenant_authenticated_user_id' => (int) $user->id,
+                ]);
+            }
+            else {
+                $request->session()->forget('tenant_authenticated');
+                $request->session()->forget('tenant_authenticated_tenant_id');
+                $request->session()->forget('tenant_authenticated_user_id');
+            }
+
             // Redirect based on domain
             $redirect = $isTenant 
                 ? route('tenant.dashboard', [], false) 

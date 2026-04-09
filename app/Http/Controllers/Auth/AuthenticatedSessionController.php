@@ -47,11 +47,20 @@ class AuthenticatedSessionController extends Controller
         ]);
 
         if (tenant()) {
+            $request->session()->put([
+                'tenant_authenticated' => true,
+                'tenant_authenticated_tenant_id' => (string) tenant()->getTenantKey(),
+                'tenant_authenticated_user_id' => (int) optional($request->user())->id,
+            ]);
+
             Log::info('Redirecting to tenant dashboard');
             return redirect()->intended(route('tenant.dashboard', absolute: false));
         }
 
         // Admin logins should always start in Admin System mode.
+        $request->session()->forget('tenant_authenticated');
+        $request->session()->forget('tenant_authenticated_tenant_id');
+        $request->session()->forget('tenant_authenticated_user_id');
         $request->session()->forget('tenant_preview_bootstrap');
         $request->session()->forget('tenant_preview_active');
 

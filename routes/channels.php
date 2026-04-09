@@ -79,7 +79,20 @@ Broadcast::channel('tenant.{tenantId}.staff', function ($user, $tenantId) {
 });
 
 Broadcast::channel('support.ticket.{id}', function ($user, $id) {
-    return \Illuminate\Support\Facades\Auth::check();
+    if (!\Illuminate\Support\Facades\Auth::check() || !tenant()) {
+        return false;
+    }
+
+    if (!$user->hasRole('Owner') && !$user->can('access support chat')) {
+        return false;
+    }
+
+    $ticket = \App\Models\SupportTicket::query()->find($id);
+    if (!$ticket) {
+        return false;
+    }
+
+    return (string) $ticket->tenant_id === (string) tenant()->getTenantKey();
 });
 
 Broadcast::channel('admin.support.tickets', function ($user) {

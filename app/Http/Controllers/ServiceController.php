@@ -74,7 +74,7 @@ class ServiceController extends Controller
 
     public function approve(Service $service)
     {
-        if (!auth()->user()->hasRole('Owner')) {
+        if (!auth()->user()->can('approve services')) {
             abort(403);
         }
 
@@ -90,7 +90,7 @@ class ServiceController extends Controller
 
     public function reject(Service $service)
     {
-        if (!auth()->user()->hasRole('Owner')) {
+        if (!auth()->user()->can('approve services')) {
             abort(403);
         }
 

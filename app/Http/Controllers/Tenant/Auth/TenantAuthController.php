@@ -50,6 +50,12 @@ class TenantAuthController extends Controller
             RateLimiter::clear($this->throttleKey($request));
             $request->session()->regenerate();
 
+            $request->session()->put([
+                'tenant_authenticated' => true,
+                'tenant_authenticated_tenant_id' => (string) tenant()->getTenantKey(),
+                'tenant_authenticated_user_id' => (int) optional($request->user())->id,
+            ]);
+
             return response()->json([
                 'success' => true,
                 'redirect' => route('tenant.dashboard', absolute: false),

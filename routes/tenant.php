@@ -12,6 +12,7 @@ Route::middleware([
     'tenant.init.preview_or_subdomain',
     \App\Http\Middleware\SetTenantUrl::class ,
     'tenant.prevent.central_or_preview',
+    'tenant.session.isolated',
     \App\Http\Middleware\CheckTenantStatus::class ,
 ])->group(function () {
     // Tenant storage — serves files from the tenant's isolated storage directory.
@@ -58,7 +59,7 @@ Route::middleware([
         // Authenticated Tenant Routes
         // check.subscription (no feature arg) ensures an active subscription exists
         // and shares plan info with Inertia on every authenticated request.
-        Route::middleware(['tenant.preview.impersonate', 'auth', 'check.subscription'])->group(function () {
+        Route::middleware(['tenant.preview.impersonate', 'tenant.session.isolated', 'auth', 'check.subscription'])->group(function () {
             Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class , 'index'])->name('tenant.dashboard');
 
             // Profile management (all authenticated tenant users)
@@ -158,29 +159,42 @@ Route::middleware([
                 }
                 );
 
-                // Owner only routes
+                // Staff management — permission based for delegated access
+                Route::get('staff', [\App\Http\Controllers\StaffController::class , 'index'])
+                    ->middleware('permission:view staff')
+                    ->name('staff.index');
+                Route::post('staff', [\App\Http\Controllers\StaffController::class , 'store'])
+                    ->middleware(['permission:create staff', 'check.subscription:max_users'])
+                    ->name('staff.store');
+                Route::put('staff/{staff}', [\App\Http\Controllers\StaffController::class , 'update'])
+                    ->middleware('permission:edit staff')
+                    ->name('staff.update');
+                Route::delete('staff/{staff}', [\App\Http\Controllers\StaffController::class , 'destroy'])
+                    ->middleware('permission:delete staff')
+                    ->name('staff.destroy');
+                Route::post('staff/bulk-permissions', [\App\Http\Controllers\StaffController::class , 'bulkUpdatePermissions'])
+                    ->middleware('permission:edit staff')
+                    ->name('staff.bulk-update-permissions');
+
+                // Reports
+                Route::get('reports', [\App\Http\Controllers\ReportController::class , 'index'])
+                    ->middleware('permission:view reports')
+                    ->name('reports.index');
+                Route::get('reports/export/{format}', [\App\Http\Controllers\ReportController::class , 'export'])
+                    ->middleware('permission:view reports')
+                    ->name('reports.export');
+
+                // Activity Logs
+                Route::get('activity-logs', [\App\Http\Controllers\ActivityLogController::class , 'index'])
+                    ->middleware('permission:view activity logs')
+                    ->name('activity-logs.index');
+
+                // Owner only routes (tenant governance)
                 Route::middleware(['role:Owner'])->group(function () {
-                    // Staff management — enforces max_users limit on create
-                    Route::get('staff', [\App\Http\Controllers\StaffController::class , 'index'])->name('staff.index');
-                    Route::post('staff', [\App\Http\Controllers\StaffController::class , 'store'])
-                        ->middleware('check.subscription:max_users')
-                        ->name('staff.store');
-                    Route::put('staff/{staff}', [\App\Http\Controllers\StaffController::class , 'update'])->name('staff.update');
-                    Route::delete('staff/{staff}', [\App\Http\Controllers\StaffController::class , 'destroy'])->name('staff.destroy');
-                    Route::post('staff/bulk-permissions', [\App\Http\Controllers\StaffController::class , 'bulkUpdatePermissions'])->name('staff.bulk-update-permissions');
-
-                    // Reports
-                    Route::get('reports', [\App\Http\Controllers\ReportController::class , 'index'])->name('reports.index');
-                    Route::get('reports/export/{format}', [\App\Http\Controllers\ReportController::class , 'export'])->name('reports.export');
-
                     // Analytics (Ultimate only)
                     Route::get('analytics', [\App\Http\Controllers\Tenant\AnalyticsController::class , 'index'])
                         ->name('analytics.index')
                         ->middleware('check.subscription:advanced_analytics');
-
-                    // Activity Logs
-                    Route::get('activity-logs', [\App\Http\Controllers\ActivityLogController::class , 'index'])
-                        ->name('activity-logs.index');
 
                     // Branches (Ultimate only)
                     Route::middleware(['check.subscription:multi_branch'])->group(function () {
@@ -192,34 +206,33 @@ Route::middleware([
                         }
                         );
 
-                        // Settings
-                        Route::get('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'index'])->name('settings.index');
-                        Route::get('settings/configuration', [\App\Http\Controllers\Tenant\SettingsController::class , 'configuration'])
-                            ->middleware('check.subscription:security_settings')
-                            ->name('settings.configuration');
-                        Route::post('settings/login-lock', [\App\Http\Controllers\Tenant\SettingsController::class , 'updateLoginLockSettings'])
-                            ->name('settings.login-lock.update');
-                        // Settings - Features
-                        Route::get('settings/features', [\App\Http\Controllers\Tenant\SettingsController::class , 'features'])
-                            ->name('settings.features')
-                            ->middleware('check.subscription:custom_system_features');
+                    // Settings
+                    Route::get('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'index'])->name('settings.index');
+                    Route::get('settings/configuration', [\App\Http\Controllers\Tenant\SettingsController::class , 'configuration'])
+                        ->middleware('check.subscription:security_settings')
+                        ->name('settings.configuration');
+                    Route::post('settings/login-lock', [\App\Http\Controllers\Tenant\SettingsController::class , 'updateLoginLockSettings'])
+                        ->name('settings.login-lock.update');
+                    // Settings - Features
+                    Route::get('settings/features', [\App\Http\Controllers\Tenant\SettingsController::class , 'features'])
+                        ->name('settings.features')
+                        ->middleware('check.subscription:custom_system_features');
 
-                        // Settings - Updates (OTA)
-                        Route::get('settings/updates', [\App\Http\Controllers\Tenant\SettingsController::class , 'updates'])->name('settings.updates');
-                        Route::post('settings/updates/apply', [\App\Http\Controllers\Tenant\SettingsController::class , 'applyUpdates'])->name('settings.updates.apply');
-                        Route::get('settings/updates/check', [\App\Http\Controllers\Tenant\SettingsController::class , 'checkUpdates'])->name('settings.updates.check');
+                    // Settings - Updates (OTA)
+                    Route::get('settings/updates', [\App\Http\Controllers\Tenant\SettingsController::class , 'updates'])->name('settings.updates');
+                    Route::post('settings/updates/apply', [\App\Http\Controllers\Tenant\SettingsController::class , 'applyUpdates'])->name('settings.updates.apply');
+                    Route::get('settings/updates/check', [\App\Http\Controllers\Tenant\SettingsController::class , 'checkUpdates'])->name('settings.updates.check');
 
-                        // System Update Core API endpoints
-                        Route::get('api/system/update-status', [\App\Http\Controllers\Tenant\SystemUpdateController::class , 'getStatus'])->name('api.system.update-status');
-                        Route::post('api/system/update', [\App\Http\Controllers\Tenant\SystemUpdateController::class , 'update'])->name('api.system.update');
+                    // System Update Core API endpoints
+                    Route::get('api/system/update-status', [\App\Http\Controllers\Tenant\SystemUpdateController::class , 'getStatus'])->name('api.system.update-status');
+                    Route::post('api/system/update', [\App\Http\Controllers\Tenant\SystemUpdateController::class , 'update'])->name('api.system.update');
 
-                        // Stripe Customer Portal — self-service billing (upgrade, downgrade, cancel, update card)
-                        Route::get('billing-portal', [\App\Http\Controllers\BillingPortalController::class , 'redirect'])->name('billing.portal');
-                    }
-                    );
+                    // Stripe Customer Portal — self-service billing (upgrade, downgrade, cancel, update card)
+                    Route::get('billing-portal', [\App\Http\Controllers\BillingPortalController::class , 'redirect'])->name('billing.portal');
+                });
 
-                    // Custom Branding — Owner OR staff with 'manage clinic branding' permission
-                    Route::middleware(['role:Owner|Assistant', 'check.subscription:custom_branding'])->group(function () {
+                    // Custom Branding — permission-based delegation
+                    Route::middleware(['permission:manage clinic branding', 'check.subscription:custom_branding'])->group(function () {
                     Route::get('settings/branding', [\App\Http\Controllers\Tenant\SettingsController::class , 'branding'])
                         ->name('settings.branding');
                     Route::post('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'update'])
@@ -231,36 +244,36 @@ Route::middleware([
                 }
                 );
 
-                // Services — accessible by Owner, Dentist, and Assistant based on granular permissions
+                // Services — permission based
                 Route::get('services', [\App\Http\Controllers\ServiceController::class , 'index'])
-                    ->middleware(['role:Owner|Dentist|Assistant', 'permission:view services'])
+                    ->middleware(['permission:view services'])
                     ->name('services.index');
 
                 Route::post('services', [\App\Http\Controllers\ServiceController::class , 'store'])
-                    ->middleware(['role:Owner|Dentist|Assistant', 'permission:create services'])
+                    ->middleware(['permission:create services'])
                     ->name('services.store');
 
                 Route::get('services/{service}', [\App\Http\Controllers\ServiceController::class , 'show'])
-                    ->middleware(['role:Owner|Dentist|Assistant', 'permission:view services'])
+                    ->middleware(['permission:view services'])
                     ->name('services.show');
 
                 Route::put('services/{service}', [\App\Http\Controllers\ServiceController::class , 'update'])
-                    ->middleware(['role:Owner|Dentist|Assistant', 'permission:edit services'])
+                    ->middleware(['permission:edit services'])
                     ->name('services.update');
 
                 Route::delete('services/{service}', [\App\Http\Controllers\ServiceController::class , 'destroy'])
-                    ->middleware(['role:Owner|Dentist|Assistant', 'permission:delete services'])
+                    ->middleware(['permission:delete services'])
                     ->name('services.destroy');
 
-                // Service approval — Owner and Dentist only
-                Route::middleware(['role:Owner|Dentist'])->group(function () {
+                // Service approval — delegated via explicit permission
+                Route::middleware(['permission:approve services'])->group(function () {
                     Route::post('services/{service}/approve', [\App\Http\Controllers\ServiceController::class , 'approve'])->name('services.approve');
                     Route::post('services/{service}/reject', [\App\Http\Controllers\ServiceController::class , 'reject'])->name('services.reject');
                 }
                 );
 
                 // Notifications
-                Route::middleware(['check.subscription:sms_notifications'])->group(function () {
+                Route::middleware(['check.subscription:sms_notifications', 'permission:manage own notifications'])->group(function () {
                     Route::get('notifications', [\App\Http\Controllers\Tenant\NotificationController::class , 'index'])->name('notifications.index');
                     Route::get('notifications/recent', [\App\Http\Controllers\Tenant\NotificationController::class , 'getRecent'])->name('notifications.recent');
                     Route::get('notifications/count', [\App\Http\Controllers\Tenant\NotificationController::class , 'getUnreadCount'])->name('notifications.count');
