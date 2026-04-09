@@ -8,36 +8,39 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class OnlineBookingCreated implements ShouldBroadcastNow
+class TenantInvoiceChanged implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public string $tenantId;
-    public array $appointment;
+    public string $action;
+    public array $invoice;
 
-    public function __construct(string $tenantId, array $appointment)
+    public function __construct(string $tenantId, string $action, array $invoice)
     {
         $this->tenantId = $tenantId;
-        $this->appointment = $appointment;
+        $this->action = $action;
+        $this->invoice = $invoice;
     }
 
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tenant.' . $this->tenantId . '.appointments'),
+            new PrivateChannel('tenant.' . $this->tenantId . '.billing'),
         ];
     }
 
     public function broadcastAs(): string
     {
-        return 'OnlineBookingCreated';
+        return 'TenantInvoiceChanged';
     }
 
     public function broadcastWith(): array
     {
         return [
             'tenant_id' => $this->tenantId,
-            'appointment' => $this->appointment,
+            'action' => $this->action,
+            'invoice' => $this->invoice,
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TenantPatientChanged;
 use App\Models\Patient;
 use App\Services\TenantNotificationService;
 use Illuminate\Http\Request;
@@ -71,6 +72,8 @@ class PatientController extends Controller
         );
 
         $patient->recalculateBalance();
+        $patient->refresh();
+        $this->broadcastPatientChange($patient, 'created');
 
         return redirect()->route('patients.index')->with('success', 'Patient created successfully.');
     }
@@ -131,13 +134,21 @@ class PatientController extends Controller
 
         $patient->update($validated);
         $patient->recalculateBalance();
+        $patient->refresh();
+        $this->broadcastPatientChange($patient, 'updated');
 
         return redirect()->back()->with('success', 'Patient updated successfully.');
     }
 
     public function destroy(Patient $patient)
     {
+        $deletedPayload = [
+            'id' => $patient->id,
+        ];
+
         $patient->delete();
+        $this->broadcastRawPatientChange('deleted', $deletedPayload);
+
         return redirect()->route('patients.index')->with('success', 'Patient deleted successfully.');
     }
 
@@ -147,5 +158,35 @@ class PatientController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('tenant.patients.pdf', compact('patient'));
 
         return $pdf->download('Patient-Record-' . str_pad((string)$patient->id, 6, '0', STR_PAD_LEFT) . '.pdf');
+    }
+
+    private function broadcastPatientChange(Patient $patient, string $action): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        $payload = [
+            'id' => $patient->id,
+            'first_name' => $patient->first_name,
+            'last_name' => $patient->last_name,
+            'email' => $patient->email,
+            'phone' => $patient->phone,
+            'last_visit_time' => $patient->last_visit_time,
+            'balance' => $patient->balance,
+            'photo_path' => $patient->photo_path,
+            'photo_url' => $patient->photo_url ?? null,
+        ];
+
+        $this->broadcastRawPatientChange($action, $payload);
+    }
+
+    private function broadcastRawPatientChange(string $action, array $patientPayload): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        broadcast(new TenantPatientChanged((string)tenant()->getTenantKey(), $action, $patientPayload));
     }
 }

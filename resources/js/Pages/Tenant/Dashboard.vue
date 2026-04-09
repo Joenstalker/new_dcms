@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { ref, computed } from 'vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { Head, useForm, usePage, router } from '@inertiajs/vue3';
 
 const props = defineProps({
     stats: Object,
@@ -9,6 +9,12 @@ const props = defineProps({
 });
 
 const currentTab = ref('overview');
+const liveStats = ref({ ...(props.stats || {}) });
+const tenantId = computed(() => page.props.tenant?.id || null);
+let appointmentsChannel = null;
+let patientsChannel = null;
+let billingChannel = null;
+let pendingStatsReload = null;
 
 const form = useForm({
     status: '',
@@ -35,6 +41,66 @@ const hasOnlyBaseAccess = computed(() => {
     // An account is in "Onboarding/Base" state ONLY if it has absolutely zero permissions
     // This is the state for newly invited staff who haven't been touched yet.
     return user.value.permissions.length === 0;
+});
+
+const scheduleStatsReload = () => {
+    if (pendingStatsReload) {
+        clearTimeout(pendingStatsReload);
+    }
+
+    pendingStatsReload = setTimeout(() => {
+        router.reload({
+            only: ['stats'],
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                const nextStats = page.props.stats;
+                if (nextStats) {
+                    liveStats.value = { ...nextStats };
+                }
+            },
+        });
+        pendingStatsReload = null;
+    }, 250);
+};
+
+onMounted(() => {
+    liveStats.value = { ...(props.stats || {}) };
+
+    if (!window.Echo || !tenantId.value) return;
+
+    if (user.value.permissions.includes('view appointments') || user.value.permissions.includes('edit appointments')) {
+        appointmentsChannel = window.Echo.private(`tenant.${tenantId.value}.appointments`)
+            .listen('.OnlineBookingCreated', () => scheduleStatsReload())
+            .listen('.TenantAppointmentChanged', () => scheduleStatsReload());
+    }
+
+    if (user.value.permissions.includes('view patients') || user.value.permissions.includes('edit patients')) {
+        patientsChannel = window.Echo.private(`tenant.${tenantId.value}.patients`)
+            .listen('.TenantPatientChanged', () => scheduleStatsReload());
+    }
+
+    if (user.value.permissions.includes('view billing') || user.value.permissions.includes('edit billing') || user.value.permissions.includes('create billing') || user.value.permissions.includes('view reports')) {
+        billingChannel = window.Echo.private(`tenant.${tenantId.value}.billing`)
+            .listen('.TenantInvoiceChanged', () => scheduleStatsReload());
+    }
+});
+
+onUnmounted(() => {
+    if (pendingStatsReload) {
+        clearTimeout(pendingStatsReload);
+        pendingStatsReload = null;
+    }
+
+    if (window.Echo && tenantId.value) {
+        window.Echo.leave(`tenant.${tenantId.value}.appointments`);
+        window.Echo.leave(`tenant.${tenantId.value}.patients`);
+        window.Echo.leave(`tenant.${tenantId.value}.billing`);
+    }
+
+    appointmentsChannel = null;
+    patientsChannel = null;
+    billingChannel = null;
 });
 
 const updateStatus = (concern, newStatus) => {
@@ -81,25 +147,25 @@ const updateStatus = (concern, newStatus) => {
                             <div class="text-xs font-bold text-blue-500 uppercase tracking-wide mb-1">
                                 {{ isDentist ? 'My Appointments' : 'Daily Appointments' }}
                             </div>
-                            <div class="text-3xl font-black text-gray-900">{{ stats.daily_appointments }}</div>
+                            <div class="text-3xl font-black text-gray-900">{{ liveStats.daily_appointments }}</div>
                         </div>
 
                         <!-- Monthly Revenue (Owner Only) -->
                         <div v-if="isOwner || user.permissions.includes('view reports')" class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-green-500 transition-hover hover:-translate-y-1 duration-300">
                             <div class="text-xs font-bold text-green-500 uppercase tracking-wide mb-1">Monthly Revenue</div>
-                            <div class="text-3xl font-black text-gray-900">₱{{ stats.monthly_revenue }}</div>
+                            <div class="text-3xl font-black text-gray-900">₱{{ liveStats.monthly_revenue }}</div>
                         </div>
 
                         <!-- Total Patients -->
                         <div v-if="isOwner || user.permissions.includes('view patients')" class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-purple-500 transition-hover hover:-translate-y-1 duration-300">
                             <div class="text-xs font-bold text-purple-500 uppercase tracking-wide mb-1">Total Patients</div>
-                            <div class="text-3xl font-black text-gray-900">{{ stats.total_patients }}</div>
+                            <div class="text-3xl font-black text-gray-900">{{ liveStats.total_patients }}</div>
                         </div>
 
                         <!-- Pending Bookings -->
                         <div v-if="isOwner || user.permissions.includes('view appointments')" class="bg-white overflow-hidden shadow-sm sm:rounded-3xl p-6 border-b-4 border-yellow-500 transition-hover hover:-translate-y-1 duration-300">
                             <div class="text-xs font-bold text-yellow-500 uppercase tracking-wide mb-1">Pending Bookings</div>
-                            <div class="text-3xl font-black text-gray-900">{{ stats.pending_appointments }}</div>
+                            <div class="text-3xl font-black text-gray-900">{{ liveStats.pending_appointments }}</div>
                         </div>
 
                         <!-- Storage Usage (Owner only) -->
@@ -107,21 +173,21 @@ const updateStatus = (concern, newStatus) => {
                             <div class="flex justify-between items-center mb-1">
                                 <div class="text-xs font-bold text-indigo-500 uppercase tracking-wide">Storage Used</div>
                                 <div class="text-[10px] font-bold text-gray-400 italic">
-                                    {{ (stats.storage_used_bytes / stats.max_storage_bytes * 100).toFixed(1) }}%
+                                    {{ (liveStats.storage_used_bytes / liveStats.max_storage_bytes * 100).toFixed(1) }}%
                                 </div>
                             </div>
                             <div class="text-2xl font-black text-gray-900 leading-none mb-2">
-                                {{ stats.storage_used_bytes >= 1048576 ? (stats.storage_used_bytes / 1048576).toFixed(1) + ' MB' : (stats.storage_used_bytes / 1024).toFixed(0) + ' KB' }}
+                                {{ liveStats.storage_used_bytes >= 1048576 ? (liveStats.storage_used_bytes / 1048576).toFixed(1) + ' MB' : (liveStats.storage_used_bytes / 1024).toFixed(0) + ' KB' }}
                             </div>
                             <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden shadow-inner">
                                 <div 
                                     class="h-full bg-indigo-500 rounded-full transition-all duration-1000" 
-                                    :style="{ width: Math.min((stats.storage_used_bytes / stats.max_storage_bytes * 100), 100) + '%' }"
+                                    :style="{ width: Math.min((liveStats.storage_used_bytes / liveStats.max_storage_bytes * 100), 100) + '%' }"
                                 ></div>
                             </div>
                             <div class="text-[10px] text-gray-400 mt-2 flex justify-between items-center">
-                                <span>Plan: <span class="font-bold">{{ (stats.max_storage_bytes / 1048576).toFixed(0) }}MB</span></span>
-                                <span v-if="stats.storage_used_bytes > stats.max_storage_bytes" class="text-red-500 font-bold animate-pulse">Limit Exceeded</span>
+                                <span>Plan: <span class="font-bold">{{ (liveStats.max_storage_bytes / 1048576).toFixed(0) }}MB</span></span>
+                                <span v-if="liveStats.storage_used_bytes > liveStats.max_storage_bytes" class="text-red-500 font-bold animate-pulse">Limit Exceeded</span>
                             </div>
                         </div>
                     </div>
@@ -148,9 +214,9 @@ const updateStatus = (concern, newStatus) => {
                                 <span v-if="isOwner">You are currently in the <strong>Admin Control Center</strong>. Manage your clinic operations and staff efficiently.</span>
                                 <span v-else-if="isDentist">You are in the <strong>Dentist Portal</strong>. View your assigned treatments and patient records once authorized.</span>
                                 <span v-else-if="isAssistant">You are in the <strong>Assistant Portal</strong>. Manage appointments and patient inquiries once authorized.</span>
-                                <br v-if="stats.daily_appointments > 0 && user.permissions.includes('view appointments')"/>
-                                <span v-if="stats.daily_appointments > 0 && user.permissions.includes('view appointments')" class="mt-2 block">
-                                    You have <span class="text-blue-600 font-bold underline">{{ stats.daily_appointments }} appointments</span> scheduled for today.
+                                <br v-if="liveStats.daily_appointments > 0 && user.permissions.includes('view appointments')"/>
+                                <span v-if="liveStats.daily_appointments > 0 && user.permissions.includes('view appointments')" class="mt-2 block">
+                                    You have <span class="text-blue-600 font-bold underline">{{ liveStats.daily_appointments }} appointments</span> scheduled for today.
                                 </span>
                             </p>
                         </div>

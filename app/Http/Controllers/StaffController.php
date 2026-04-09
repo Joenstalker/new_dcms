@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TenantStaffChanged;
+use App\Events\UserAccessChanged;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -64,6 +66,8 @@ class StaffController extends Controller
             \Illuminate\Support\Facades\Log::error('Staff invitation email failed: ' . $e->getMessage());
         }
 
+        $this->broadcastStaffChange($user->fresh()->load(['roles', 'permissions']), 'created');
+
         return redirect()->back()->with('success', 'Staff member created successfully and invitation sent.');
     }
 
@@ -80,12 +84,32 @@ class StaffController extends Controller
         
         $staff->syncRoles([$request->role]);
 
+        $this->broadcastStaffChange($staff->fresh()->load(['roles', 'permissions']), 'updated');
+        broadcast(new UserAccessChanged(
+            (int) $staff->id,
+            'role_updated',
+            'Your role or profile access has been updated. Reloading your permissions now.'
+        ));
+
         return redirect()->route('staff.index')->with('success', 'Staff member updated successfully.');
     }
 
     public function destroy(User $staff)
     {
+        broadcast(new UserAccessChanged(
+            (int) $staff->id,
+            'account_deleted',
+            'Your clinic account has been removed. You will be logged out.',
+            true
+        ));
+
+        $deletedPayload = [
+            'id' => $staff->id,
+        ];
+
         $staff->delete();
+        $this->broadcastRawStaffChange('deleted', $deletedPayload);
+
         return redirect()->route('staff.index')->with('success', 'Staff member removed successfully.');
     }
 
@@ -106,8 +130,51 @@ class StaffController extends Controller
                 'existing_permissions' => $staff->permissions->pluck('name')->toArray()
             ]);
             $staff->syncPermissions($request->permissions);
+            $this->broadcastStaffChange($staff->fresh()->load(['roles', 'permissions']), 'permissions_updated');
+            broadcast(new UserAccessChanged(
+                (int) $staff->id,
+                'permissions_updated',
+                'Your permissions were updated. Reloading your access.'
+            ));
         }
 
         return redirect()->back()->with('success', 'Permissions updated for ' . $staffMembers->count() . ' staff members.');
+    }
+
+    private function broadcastStaffChange(User $staff, string $action): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        $payload = [
+            'id' => $staff->id,
+            'name' => $staff->name,
+            'email' => $staff->email,
+            'profile_picture_url' => $staff->profile_picture_url,
+            'roles' => $staff->roles->map(function ($role) {
+                return [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                ];
+            })->values()->all(),
+            'permissions' => $staff->permissions->map(function ($permission) {
+                return [
+                    'id' => $permission->id,
+                    'name' => $permission->name,
+                ];
+            })->values()->all(),
+        ];
+
+        $this->broadcastRawStaffChange($action, $payload);
+    }
+
+    private function broadcastRawStaffChange(string $action, array $staffPayload): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        broadcast(new TenantStaffChanged((string) tenant()->getTenantKey(), $action, $staffPayload));
     }
 }

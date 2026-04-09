@@ -94,8 +94,6 @@ class BookingController extends Controller
             'guest_first_name' => $appointment->guest_first_name,
             'guest_last_name' => $appointment->guest_last_name,
             'guest_phone' => $appointment->guest_phone,
-            'guest_email' => $appointment->guest_email,
-            'guest_medical_history' => $appointment->guest_medical_history,
             'appointment_date' => optional($appointment->appointment_date)?->toISOString(),
             'status' => $appointment->status,
             'type' => $appointment->type,

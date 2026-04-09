@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TenantTreatmentChanged;
 use App\Models\Treatment;
 use App\Models\Patient;
 use App\Models\Appointment;
@@ -34,7 +35,8 @@ class TreatmentController extends Controller
 
         $validated['dentist_id'] = auth()->id() ?? null;
 
-        Treatment::create($validated);
+        $treatment = Treatment::create($validated);
+        $this->broadcastTreatmentChange($treatment->load(['patient', 'dentist']), 'created');
 
         return redirect()->back()->with('success', 'Treatment record added successfully.');
     }
@@ -56,14 +58,60 @@ class TreatmentController extends Controller
         ]);
 
         $treatment->update($validated);
+        $this->broadcastTreatmentChange($treatment->fresh()->load(['patient', 'dentist']), 'updated');
 
         return redirect()->back()->with('success', 'Treatment record updated successfully.');
     }
 
     public function destroy(Treatment $treatment)
     {
+        $deletedPayload = [
+            'id' => $treatment->id,
+        ];
+
         $treatment->delete();
+        $this->broadcastRawTreatmentChange('deleted', $deletedPayload);
 
         return redirect()->back()->with('success', 'Treatment record deleted successfully.');
+    }
+
+    private function broadcastTreatmentChange(Treatment $treatment, string $action): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        $payload = [
+            'id' => $treatment->id,
+            'patient_id' => $treatment->patient_id,
+            'appointment_id' => $treatment->appointment_id,
+            'dentist_id' => $treatment->dentist_id,
+            'diagnosis' => $treatment->diagnosis,
+            'procedure' => $treatment->procedure,
+            'notes' => $treatment->notes,
+            'cost' => $treatment->cost,
+            'created_at' => optional($treatment->created_at)?->toISOString(),
+            'updated_at' => optional($treatment->updated_at)?->toISOString(),
+            'patient' => $treatment->patient ? [
+                'id' => $treatment->patient->id,
+                'first_name' => $treatment->patient->first_name,
+                'last_name' => $treatment->patient->last_name,
+            ] : null,
+            'dentist' => $treatment->dentist ? [
+                'id' => $treatment->dentist->id,
+                'name' => $treatment->dentist->name,
+            ] : null,
+        ];
+
+        $this->broadcastRawTreatmentChange($action, $payload);
+    }
+
+    private function broadcastRawTreatmentChange(string $action, array $treatmentPayload): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        broadcast(new TenantTreatmentChanged((string) tenant()->getTenantKey(), $action, $treatmentPayload));
     }
 }

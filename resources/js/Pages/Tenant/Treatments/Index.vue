@@ -2,7 +2,7 @@
 import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import CreateTreatment from './CreateTreatment.vue';
 import EditTreatment from './EditTreatment.vue';
 import ShowTreatment from './ShowTreatment.vue';
@@ -14,7 +14,14 @@ const props = defineProps({
 });
 
 const page = usePage();
+const tenantId = computed(() => page.props.tenant?.id || null);
 const primaryColor = computed(() => brandingState.primary_color);
+const liveTreatments = ref([...(props.treatments || [])]);
+let treatmentsChannel = null;
+
+watch(() => props.treatments, (nextTreatments) => {
+    liveTreatments.value = [...(nextTreatments || [])];
+}, { deep: true });
 
 const permissions = computed(() => page.props.auth.user?.permissions || []);
 const canCreate = computed(() => permissions.value.includes('create treatments'));
@@ -42,6 +49,57 @@ const openDeleteModal = (treatment) => {
     activeTreatment.value = treatment;
     showDeleteModal.value = true;
 };
+
+onMounted(() => {
+    if (!window.Echo || !tenantId.value) return;
+
+    treatmentsChannel = window.Echo.private(`tenant.${tenantId.value}.treatments`)
+        .listen('.TenantTreatmentChanged', (event) => {
+            const incoming = event?.treatment;
+            const action = event?.action;
+
+            if (!incoming || !incoming.id) return;
+
+            if (action === 'deleted') {
+                liveTreatments.value = liveTreatments.value.filter((item) => item.id !== incoming.id);
+                if (activeTreatment.value?.id === incoming.id) {
+                    activeTreatment.value = null;
+                    showViewModal.value = false;
+                    showEditModal.value = false;
+                    showDeleteModal.value = false;
+                }
+                return;
+            }
+
+            const existingIndex = liveTreatments.value.findIndex((item) => item.id === incoming.id);
+
+            if (existingIndex >= 0) {
+                liveTreatments.value[existingIndex] = {
+                    ...liveTreatments.value[existingIndex],
+                    ...incoming,
+                };
+
+                if (activeTreatment.value?.id === incoming.id) {
+                    activeTreatment.value = {
+                        ...activeTreatment.value,
+                        ...incoming,
+                    };
+                }
+
+                return;
+            }
+
+            liveTreatments.value = [incoming, ...liveTreatments.value];
+        });
+});
+
+onUnmounted(() => {
+    if (window.Echo && tenantId.value) {
+        window.Echo.leave(`tenant.${tenantId.value}.treatments`);
+    }
+
+    treatmentsChannel = null;
+});
 </script>
 
 <template>
@@ -85,7 +143,7 @@ const openDeleteModal = (treatment) => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-base-200">
-                        <tr v-for="treatment in treatments" :key="treatment.id" class="hover:bg-base-200/30 transition-colors group">
+                        <tr v-for="treatment in liveTreatments" :key="treatment.id" class="hover:bg-base-200/30 transition-colors group">
                             <td class="px-6 py-4 text-center">
                                 <span class="text-[10px] font-black text-base-content/30 tracking-widest">TR-{{ treatment.id }}</span>
                             </td>
@@ -153,7 +211,7 @@ const openDeleteModal = (treatment) => {
                                 </div>
                             </td>
                         </tr>
-                        <tr v-if="treatments.length === 0">
+                        <tr v-if="liveTreatments.length === 0">
                             <td colspan="6" class="px-6 py-16 text-center">
                                 <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-base-200 flex items-center justify-center">
                                     <svg class="w-8 h-8 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">

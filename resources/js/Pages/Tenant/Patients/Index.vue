@@ -2,7 +2,7 @@
 import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import debounce from 'lodash/debounce';
 import PatientShowModal from './PatientShowModal.vue';
 import AddPatientModal from './AddPatientModal.vue';
@@ -14,6 +14,13 @@ const props = defineProps({
 });
 
 const primaryColor = computed(() => brandingState.primary_color);
+const tenantId = computed(() => usePage().props.tenant?.id || null);
+const livePatients = ref([...(props.patients || [])]);
+let patientsChannel = null;
+
+watch(() => props.patients, (nextPatients) => {
+    livePatients.value = [...(nextPatients || [])];
+}, { deep: true });
 
 const search = ref(props.filters?.search || '');
 
@@ -31,6 +38,43 @@ const formatDate = (dateString) => {
         year: 'numeric', month: 'short', day: 'numeric'
     });
 };
+
+onMounted(() => {
+    if (!window.Echo || !tenantId.value) return;
+
+    patientsChannel = window.Echo.private(`tenant.${tenantId.value}.patients`)
+        .listen('.TenantPatientChanged', (event) => {
+            const incoming = event?.patient;
+            const action = event?.action;
+
+            if (!incoming || !incoming.id) return;
+
+            if (action === 'deleted') {
+                livePatients.value = livePatients.value.filter((item) => item.id !== incoming.id);
+                return;
+            }
+
+            const existingIndex = livePatients.value.findIndex((item) => item.id === incoming.id);
+
+            if (existingIndex >= 0) {
+                livePatients.value[existingIndex] = {
+                    ...livePatients.value[existingIndex],
+                    ...incoming,
+                };
+                return;
+            }
+
+            livePatients.value = [incoming, ...livePatients.value];
+        });
+});
+
+onUnmounted(() => {
+    if (window.Echo && tenantId.value) {
+        window.Echo.leave(`tenant.${tenantId.value}.patients`);
+    }
+
+    patientsChannel = null;
+});
 
 // Toast notification for flash messages
 watch(() => usePage().props.flash?.success, (successMsg) => {
@@ -89,13 +133,13 @@ const tenantUsage = computed(() => usePage().props.tenant_plan?.current_usage ||
 
 const limitReached = computed(() => {
     const max = tenantLimits.value.max_patients;
-    const current = tenantUsage.value.patients || props.patients?.length || 0;
+    const current = tenantUsage.value.patients || livePatients.value.length || 0;
     return max !== undefined && max !== null && max !== -1 && current >= max;
 });
 
 const checkLimitAndOpenAddModal = () => {
     const maxPatients = tenantLimits.value.max_patients;
-    const currentPatients = tenantUsage.value.patients || props.patients?.length || 0;
+    const currentPatients = tenantUsage.value.patients || livePatients.value.length || 0;
     
     if (maxPatients !== undefined && maxPatients !== null && currentPatients >= maxPatients) {
         Swal.fire({
@@ -185,7 +229,7 @@ const checkLimitAndOpenAddModal = () => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-base-200">
-                        <tr v-for="patient in patients" :key="patient.id" class="hover:bg-base-200/30 transition-colors group">
+                        <tr v-for="patient in livePatients" :key="patient.id" class="hover:bg-base-200/30 transition-colors group">
                             <!-- Patient Details -->
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-4">
@@ -236,7 +280,7 @@ const checkLimitAndOpenAddModal = () => {
                                 </button>
                             </td>
                         </tr>
-                        <tr v-if="patients.length === 0">
+                        <tr v-if="livePatients.length === 0">
                             <td colspan="4" class="px-6 py-16 text-center">
                                 <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-base-200 flex items-center justify-center">
                                     <svg class="w-8 h-8 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">

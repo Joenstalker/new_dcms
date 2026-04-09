@@ -39,7 +39,7 @@ onMounted(() => {
 
     if (!window.Echo || !tenantId.value) return;
 
-    appointmentsChannel = window.Echo.channel(`tenant.${tenantId.value}.appointments`)
+    appointmentsChannel = window.Echo.private(`tenant.${tenantId.value}.appointments`)
         .listen('.OnlineBookingCreated', (event) => {
             const incoming = event?.appointment;
             if (!incoming || !incoming.id) return;
@@ -70,6 +70,29 @@ onMounted(() => {
                 timer: 3500,
                 timerProgressBar: true,
             });
+        })
+        .listen('.TenantAppointmentChanged', (event) => {
+            const incoming = event?.appointment;
+            const action = event?.action;
+
+            if (!incoming || !incoming.id) return;
+
+            if (action === 'deleted') {
+                liveAppointments.value = liveAppointments.value.filter((item) => item.id !== incoming.id);
+                return;
+            }
+
+            const existingIndex = liveAppointments.value.findIndex((item) => item.id === incoming.id);
+
+            if (existingIndex >= 0) {
+                liveAppointments.value[existingIndex] = {
+                    ...liveAppointments.value[existingIndex],
+                    ...incoming,
+                };
+                return;
+            }
+
+            liveAppointments.value = [incoming, ...liveAppointments.value];
         });
 });
 

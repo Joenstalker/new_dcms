@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TenantInvoiceChanged;
 use App\Models\Invoice;
 use App\Models\Patient;
 use Illuminate\Http\Request;
@@ -49,6 +50,8 @@ class BillingController extends Controller
             ]);
         }
 
+        $this->broadcastInvoiceChange($invoice->fresh()->load(['patient.treatments', 'items']), 'created');
+
         return redirect()->back()->with('success', 'Invoice created successfully.');
     }
 
@@ -64,7 +67,51 @@ class BillingController extends Controller
         }
 
         $invoice->update($validated);
+        $this->broadcastInvoiceChange($invoice->fresh()->load(['patient.treatments', 'items']), 'updated');
 
         return redirect()->back()->with('success', 'Invoice updated successfully.');
+    }
+
+    private function broadcastInvoiceChange(Invoice $invoice, string $action): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        $payload = [
+            'id' => $invoice->id,
+            'patient_id' => $invoice->patient_id,
+            'total_amount' => $invoice->total_amount,
+            'amount_paid' => $invoice->amount_paid,
+            'status' => $invoice->status,
+            'due_date' => optional($invoice->due_date)?->toISOString(),
+            'created_at' => optional($invoice->created_at)?->toISOString(),
+            'updated_at' => optional($invoice->updated_at)?->toISOString(),
+            'items' => $invoice->items->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'description' => $item->description,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'amount' => $item->amount,
+                ];
+            })->values()->all(),
+            'patient' => $invoice->patient ? [
+                'id' => $invoice->patient->id,
+                'first_name' => $invoice->patient->first_name,
+                'last_name' => $invoice->patient->last_name,
+                'treatments' => $invoice->patient->treatments->map(function ($treatment) {
+                    return [
+                        'id' => $treatment->id,
+                        'procedure' => $treatment->procedure,
+                        'diagnosis' => $treatment->diagnosis,
+                        'cost' => $treatment->cost,
+                        'created_at' => optional($treatment->created_at)?->toISOString(),
+                    ];
+                })->values()->all(),
+            ] : null,
+        ];
+
+        broadcast(new TenantInvoiceChanged((string) tenant()->getTenantKey(), $action, $payload));
     }
 }

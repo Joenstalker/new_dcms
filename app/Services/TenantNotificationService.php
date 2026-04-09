@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\UserNotificationCreated;
 use App\Models\TenantNotification;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
@@ -26,7 +27,23 @@ class TenantNotificationService
             $notificationData['sender_id'] = $sender->id;
         }
 
-        return TenantNotification::create($notificationData);
+        $notification = TenantNotification::create($notificationData);
+
+        broadcast(new UserNotificationCreated(
+            (int) $user->id,
+            'tenant',
+            [
+                'id' => $notification->id,
+                'type' => $notification->type,
+                'title' => $notification->title,
+                'message' => $notification->message,
+                'is_read' => (bool) $notification->is_read,
+                'created_at' => optional($notification->created_at)?->toISOString(),
+            ],
+            $this->getUnreadCount($user)
+        ));
+
+        return $notification;
     }
 
     /**

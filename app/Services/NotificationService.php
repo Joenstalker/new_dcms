@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\UserNotificationCreated;
 use App\Models\Notification;
 use App\Models\NotificationSetting;
 use App\Models\User;
@@ -27,6 +28,20 @@ class NotificationService
         if ($channel === 'both' || $channel === 'email') {
             $this->sendEmailNotification($user, $notification);
         }
+
+        broadcast(new UserNotificationCreated(
+            (int) $user->id,
+            'admin',
+            [
+                'id' => $notification->id,
+                'type' => $notification->type,
+                'title' => $notification->title,
+                'message' => $notification->message,
+                'is_read' => (bool) $notification->is_read,
+                'created_at' => optional($notification->created_at)?->toISOString(),
+            ],
+            $this->getUnreadCount($user)
+        ));
 
         return $notification;
     }

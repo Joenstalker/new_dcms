@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TenantServiceChanged;
 use App\Models\Service;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -34,7 +35,8 @@ class ServiceController extends Controller
             $validated['approved_by'] = $authenticatedUser->id;
         }
 
-        Service::create($validated);
+        $service = Service::create($validated);
+        $this->broadcastServiceChange($service->load(['creator', 'approver']), 'created');
 
         $message = $validated['status'] === 'approved'
             ? 'Service added and approved successfully.'
@@ -61,6 +63,7 @@ class ServiceController extends Controller
         }
 
         $service->update($validated);
+        $this->broadcastServiceChange($service->fresh()->load(['creator', 'approver']), 'updated');
 
         $message = $service->status === 'approved'
             ? 'Service updated successfully.'
@@ -80,6 +83,8 @@ class ServiceController extends Controller
             'approved_by' => auth()->id(),
         ]);
 
+        $this->broadcastServiceChange($service->fresh()->load(['creator', 'approver']), 'approved');
+
         return redirect()->back()->with('success', 'Service approved successfully.');
     }
 
@@ -93,12 +98,58 @@ class ServiceController extends Controller
             'status' => 'rejected',
         ]);
 
+        $this->broadcastServiceChange($service->fresh()->load(['creator', 'approver']), 'rejected');
+
         return redirect()->back()->with('success', 'Service rejected.');
     }
 
     public function destroy(Service $service)
     {
+        $deletedPayload = [
+            'id' => $service->id,
+        ];
+
         $service->delete();
+        $this->broadcastRawServiceChange('deleted', $deletedPayload);
+
         return redirect()->back()->with('success', 'Service deleted successfully.');
+    }
+
+    private function broadcastServiceChange(Service $service, string $action): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        $payload = [
+            'id' => $service->id,
+            'name' => $service->name,
+            'description' => $service->description,
+            'price' => $service->price,
+            'status' => $service->status,
+            'created_by' => $service->created_by,
+            'approved_by' => $service->approved_by,
+            'creator' => $service->creator ? [
+                'id' => $service->creator->id,
+                'name' => $service->creator->name,
+            ] : null,
+            'approver' => $service->approver ? [
+                'id' => $service->approver->id,
+                'name' => $service->approver->name,
+            ] : null,
+            'created_at' => optional($service->created_at)?->toISOString(),
+            'updated_at' => optional($service->updated_at)?->toISOString(),
+        ];
+
+        $this->broadcastRawServiceChange($action, $payload);
+    }
+
+    private function broadcastRawServiceChange(string $action, array $servicePayload): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        broadcast(new TenantServiceChanged((string) tenant()->getTenantKey(), $action, $servicePayload));
     }
 }

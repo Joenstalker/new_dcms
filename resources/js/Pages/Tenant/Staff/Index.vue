@@ -108,7 +108,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-50">
-                                    <tr v-for="member in staff" :key="member.id" class="group hover:bg-gray-50/70 transition-all duration-300">
+                                    <tr v-for="member in liveStaff" :key="member.id" class="group hover:bg-gray-50/70 transition-all duration-300">
                                         <td class="py-5 px-4">
                                             <div class="flex items-center space-x-4">
                                                 <div class="h-12 w-12 rounded-2xl bg-blue-50/50 flex items-center justify-center font-black text-blue-600 border border-blue-100 uppercase tracking-tighter text-sm group-hover:scale-110 transition-transform duration-300 overflow-hidden">
@@ -142,7 +142,7 @@
                                             </button>
                                         </td>
                                     </tr>
-                                    <tr v-if="staff.length === 0">
+                                    <tr v-if="liveStaff.length === 0">
                                         <td colspan="4" class="py-20 text-center bg-gray-50/50 rounded-2xl">
                                             <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">No staff members found in the current clinic database.</p>
                                         </td>
@@ -154,7 +154,7 @@
                 </div>
 
                 <div v-else-if="activeTab === 'permissions'">
-                    <PermissionsTab :staff="staff" :allPermissions="allPermissions" />
+                    <PermissionsTab :staff="liveStaff" :allPermissions="allPermissions" />
                 </div>
                 <div v-else-if="activeTab === 'schedules'">
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100 p-8">
@@ -163,7 +163,7 @@
                             <div class="flex space-x-3">
                                 <select class="rounded-xl border-gray-100 bg-gray-50/50 text-[10px] font-black uppercase tracking-widest focus:ring-gray-900 focus:border-gray-900 px-6 py-3">
                                     <option value="">All Staff</option>
-                                    <option v-for="member in staff" :key="member.id" :value="member.id">
+                                    <option v-for="member in liveStaff" :key="member.id" :value="member.id">
                                         {{ member.name }}
                                     </option>
                                 </select>
@@ -408,7 +408,7 @@
 import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage, useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import Modal from '@/Components/Modal.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -434,6 +434,13 @@ const props = defineProps({
 
 
 const page = usePage();
+const tenantId = computed(() => page.props.tenant?.id || null);
+const liveStaff = ref([...(props.staff || [])]);
+let staffChannel = null;
+
+watch(() => props.staff, (nextStaff) => {
+    liveStaff.value = [...(nextStaff || [])];
+}, { deep: true });
 
 // Tabs State
 const activeTab = ref(props.initialTab);
@@ -444,13 +451,13 @@ const tenantUsage = computed(() => usePage().props.tenant_plan?.current_usage ||
 
 const limitReached = computed(() => {
     const max = tenantLimits.value.max_users;
-    const current = tenantUsage.value.users || props.staff?.length || 0;
+    const current = tenantUsage.value.users || liveStaff.value.length || 0;
     return max !== undefined && max !== null && max !== -1 && current >= max;
 });
 
 const checkLimitAndOpenAddStaff = () => {
     const maxUsers = tenantLimits.value.max_users;
-    const currentUsers = tenantUsage.value.users || props.staff?.length || 0;
+    const currentUsers = tenantUsage.value.users || liveStaff.value.length || 0;
     
     if (maxUsers !== undefined && maxUsers !== null && currentUsers >= maxUsers) {
         Swal.fire({
@@ -535,6 +542,57 @@ const selectStaffForManage = (member) => {
     selectedStaff.value = member;
     showingStaffModal.value = true;
 };
+
+onMounted(() => {
+    if (!window.Echo || !tenantId.value) return;
+
+    staffChannel = window.Echo.private(`tenant.${tenantId.value}.staff`)
+        .listen('.TenantStaffChanged', (event) => {
+            const incoming = event?.staff;
+            const action = event?.action;
+
+            if (!incoming || !incoming.id) return;
+
+            if (action === 'deleted') {
+                liveStaff.value = liveStaff.value.filter((item) => item.id !== incoming.id);
+
+                if (selectedStaff.value?.id === incoming.id) {
+                    selectedStaff.value = null;
+                    showingStaffModal.value = false;
+                }
+
+                return;
+            }
+
+            const existingIndex = liveStaff.value.findIndex((item) => item.id === incoming.id);
+
+            if (existingIndex >= 0) {
+                liveStaff.value[existingIndex] = {
+                    ...liveStaff.value[existingIndex],
+                    ...incoming,
+                };
+
+                if (selectedStaff.value?.id === incoming.id) {
+                    selectedStaff.value = {
+                        ...selectedStaff.value,
+                        ...incoming,
+                    };
+                }
+
+                return;
+            }
+
+            liveStaff.value = [incoming, ...liveStaff.value];
+        });
+});
+
+onUnmounted(() => {
+    if (window.Echo && tenantId.value) {
+        window.Echo.leave(`tenant.${tenantId.value}.staff`);
+    }
+
+    staffChannel = null;
+});
 
 // Edit Modal State
 const showingEditModal = ref(false);

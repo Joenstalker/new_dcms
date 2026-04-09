@@ -8,16 +8,18 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class OnlineBookingCreated implements ShouldBroadcastNow
+class TenantAppointmentChanged implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public string $tenantId;
+    public string $action;
     public array $appointment;
 
-    public function __construct(string $tenantId, array $appointment)
+    public function __construct(string $tenantId, string $action, array $appointment)
     {
         $this->tenantId = $tenantId;
+        $this->action = $action;
         $this->appointment = $appointment;
     }
 
@@ -30,13 +32,14 @@ class OnlineBookingCreated implements ShouldBroadcastNow
 
     public function broadcastAs(): string
     {
-        return 'OnlineBookingCreated';
+        return 'TenantAppointmentChanged';
     }
 
     public function broadcastWith(): array
     {
         return [
             'tenant_id' => $this->tenantId,
+            'action' => $this->action,
             'appointment' => $this->appointment,
         ];
     }

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import Swal from 'sweetalert2';
 
 import ServicesTabs from './Partials/ServicesTabs.vue';
@@ -13,6 +13,7 @@ const props = defineProps({
 });
 
 const page = usePage();
+const tenantId = computed(() => page.props.tenant?.id || null);
 const user = computed(() => page.props.auth.user);
 const roles = computed(() => user.value?.roles || []);
 const isOwner = computed(() => roles.value.includes('Owner'));
@@ -23,9 +24,15 @@ const isOwnerOrDentist = computed(() => isOwner.value || isDentist.value);
 
 const activeTab = ref('all');
 const searchQuery = ref('');
+const liveServices = ref([...(props.services || [])]);
+let servicesChannel = null;
+
+watch(() => props.services, (nextServices) => {
+    liveServices.value = [...(nextServices || [])];
+}, { deep: true });
 
 const filteredServices = computed(() => {
-    let result = props.services;
+    let result = liveServices.value;
     
     // Status filter
     if (activeTab.value !== 'all') {
@@ -42,6 +49,43 @@ const filteredServices = computed(() => {
     }
     
     return result;
+});
+
+onMounted(() => {
+    if (!window.Echo || !tenantId.value) return;
+
+    servicesChannel = window.Echo.private(`tenant.${tenantId.value}.services`)
+        .listen('.TenantServiceChanged', (event) => {
+            const incoming = event?.service;
+            const action = event?.action;
+
+            if (!incoming || !incoming.id) return;
+
+            if (action === 'deleted') {
+                liveServices.value = liveServices.value.filter((item) => item.id !== incoming.id);
+                return;
+            }
+
+            const existingIndex = liveServices.value.findIndex((item) => item.id === incoming.id);
+
+            if (existingIndex >= 0) {
+                liveServices.value[existingIndex] = {
+                    ...liveServices.value[existingIndex],
+                    ...incoming,
+                };
+                return;
+            }
+
+            liveServices.value = [incoming, ...liveServices.value];
+        });
+});
+
+onUnmounted(() => {
+    if (window.Echo && tenantId.value) {
+        window.Echo.leave(`tenant.${tenantId.value}.services`);
+    }
+
+    servicesChannel = null;
 });
 
 // Create/Edit Modal State

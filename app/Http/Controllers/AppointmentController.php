@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TenantAppointmentChanged;
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\User;
@@ -58,6 +59,7 @@ class AppointmentController extends Controller
         // Send email notification (gated by subscription feature)
         $appointment->load(['patient', 'dentist']);
         app(NotificationTriggerService::class)->onBookingCreated($appointment);
+        $this->broadcastAppointmentChange($appointment, 'created');
 
         return redirect()->route('tenant.appointments.index')->with('success', 'Appointment scheduled successfully.');
     }
@@ -107,6 +109,9 @@ class AppointmentController extends Controller
                 );
             }
         }
+
+        $appointment->load(['patient', 'dentist']);
+        $this->broadcastAppointmentChange($appointment, 'updated');
 
         return redirect()->back()->with('success', 'Appointment updated.');
     }
@@ -161,6 +166,7 @@ class AppointmentController extends Controller
 
         $appointment->load(['patient', 'dentist']);
         app(NotificationTriggerService::class)->onBookingApproved($appointment);
+        $this->broadcastAppointmentChange($appointment, 'approved');
 
         return redirect()->back()->with('success', 'Appointment approved and patient registered.');
     }
@@ -173,6 +179,7 @@ class AppointmentController extends Controller
 
         $appointment->load(['patient', 'dentist']);
         app(NotificationTriggerService::class)->onBookingRejected($appointment);
+        $this->broadcastAppointmentChange($appointment, 'rejected');
 
         return redirect()->back()->with('success', 'Appointment rejected.');
     }
@@ -197,9 +204,62 @@ class AppointmentController extends Controller
             auth()->user()
         );
 
+        $deletedPayload = [
+            'id' => $appointment->id,
+        ];
+
         $appointment->delete();
+        $this->broadcastRawAppointmentChange('deleted', $deletedPayload);
 
         return redirect()->route('tenant.appointments.index')->with('success', 'Appointment deleted.');
+    }
+
+    private function broadcastAppointmentChange(Appointment $appointment, string $action): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        $appointment->loadMissing(['patient', 'dentist']);
+
+        $payload = [
+            'id' => $appointment->id,
+            'patient_id' => $appointment->patient_id,
+            'dentist_id' => $appointment->dentist_id,
+            'guest_first_name' => $appointment->guest_first_name,
+            'guest_last_name' => $appointment->guest_last_name,
+            'guest_phone' => $appointment->guest_phone,
+            'appointment_date' => optional($appointment->appointment_date)?->toISOString(),
+            'status' => $appointment->status,
+            'type' => $appointment->type,
+            'service' => $appointment->service,
+            'notes' => $appointment->notes,
+            'photo_path' => $appointment->photo_path,
+            'patient' => $appointment->patient ? [
+                'id' => $appointment->patient->id,
+                'first_name' => $appointment->patient->first_name,
+                'last_name' => $appointment->patient->last_name,
+                'phone' => $appointment->patient->phone,
+                'email' => $appointment->patient->email,
+                'photo_path' => $appointment->patient->photo_path,
+                'photo_url' => $appointment->patient->photo_url ?? null,
+            ] : null,
+            'dentist' => $appointment->dentist ? [
+                'id' => $appointment->dentist->id,
+                'name' => $appointment->dentist->name,
+            ] : null,
+        ];
+
+        $this->broadcastRawAppointmentChange($action, $payload);
+    }
+
+    private function broadcastRawAppointmentChange(string $action, array $appointmentPayload): void
+    {
+        if (!tenant()) {
+            return;
+        }
+
+        broadcast(new TenantAppointmentChanged((string)tenant()->getTenantKey(), $action, $appointmentPayload));
     }
 
     private function normalizePhotoForPatient(?string $photoPath): ?string

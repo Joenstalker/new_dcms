@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -18,6 +18,8 @@ const isOpen = ref(false);
 const notifications = ref([]);
 const unreadCount = ref(0);
 const loading = ref(false);
+const userId = computed(() => page.props.auth?.user?.id || null);
+let notificationChannel = null;
 
 const getRoute = () => {
     if (props.type === 'admin') {
@@ -141,6 +143,43 @@ const getNotificationTypeIcon = (type) => {
 
 onMounted(() => {
     fetchNotifications();
+
+    if (!window.Echo || !userId.value) return;
+
+    notificationChannel = window.Echo.private(`App.Models.User.${userId.value}`)
+        .listen('.UserNotificationCreated', (event) => {
+            if (!event || event.context !== props.type) {
+                return;
+            }
+
+            if (typeof event.unread_count === 'number') {
+                unreadCount.value = event.unread_count;
+            }
+
+            const incoming = event.notification;
+            if (!incoming || !incoming.id) {
+                return;
+            }
+
+            const existingIndex = notifications.value.findIndex((item) => item.id === incoming.id);
+            if (existingIndex >= 0) {
+                notifications.value[existingIndex] = {
+                    ...notifications.value[existingIndex],
+                    ...incoming,
+                };
+                return;
+            }
+
+            notifications.value = [incoming, ...notifications.value].slice(0, 5);
+        });
+});
+
+onUnmounted(() => {
+    if (window.Echo && userId.value) {
+        window.Echo.leave(`App.Models.User.${userId.value}`);
+    }
+
+    notificationChannel = null;
 });
 </script>
 
