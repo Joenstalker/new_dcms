@@ -52,6 +52,18 @@ const initialEnabledFeatures = computed(() => {
     return [];
 }).value;
 
+const normalizeBoolean = (value, fallback = true) => {
+    if (value === null || value === undefined) return fallback;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+        if (['0', 'false', 'no', 'off', ''].includes(normalized)) return false;
+    }
+    return Boolean(value);
+};
+
 const form = useForm({
     clinic_name: props.tenant?.clinic_name || props.tenant?.name || '',
     email: props.tenant?.clinic_email || props.tenant?.email || '',
@@ -74,7 +86,7 @@ const form = useForm({
         selected_staff: []
     },
     operating_hours: props.tenant?.operating_hours || {},
-    online_booking_enabled: props.tenant?.online_booking_enabled ?? true,
+    online_booking_enabled: normalizeBoolean(props.tenant?.online_booking_enabled, true),
 });
 
 // 3. Import global Branding State to drive Live Preview
@@ -94,8 +106,13 @@ let saveTimeout = null;
 const autoSave = () => {
     isSaving.value = true;
     hasUnsavedChanges.value = false;
-    
-    form.post('/settings', { 
+
+    form
+        .transform((data) => ({
+            ...data,
+            online_booking_enabled: normalizeBoolean(data.online_booking_enabled, true),
+        }))
+        .post('/settings', {
         preserveScroll: true,
         preserveState: true,
         forceFormData: true,

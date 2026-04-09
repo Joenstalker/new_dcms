@@ -32,12 +32,157 @@ const form = useForm({
 });
 
 const photoPreview = ref(null);
-const handlePhotoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        form.photo = file;
-        photoPreview.value = URL.createObjectURL(file);
+const photoClientError = ref('');
+const cameraInputRef = ref(null);
+const uploadInputRef = ref(null);
+const showCameraModal = ref(false);
+const isStartingCamera = ref(false);
+const cameraVideoRef = ref(null);
+const cameraCanvasRef = ref(null);
+const cameraStream = ref(null);
+
+const allowedPhotoTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const maxPhotoBytes = 5 * 1024 * 1024;
+
+const validatePhotoFile = (file) => {
+    if (!allowedPhotoTypes.includes(file.type)) {
+        return 'Please use a JPG, PNG, WEBP, or GIF image.';
     }
+
+    if (file.size > maxPhotoBytes) {
+        return 'Photo must be 5MB or smaller.';
+    }
+
+    return '';
+};
+
+const assignPhotoFile = (file) => {
+    const validationError = validatePhotoFile(file);
+    if (validationError) {
+        form.photo = null;
+        photoClientError.value = validationError;
+        return false;
+    }
+
+    if (photoPreview.value) {
+        URL.revokeObjectURL(photoPreview.value);
+    }
+
+    form.photo = file;
+    form.clearErrors('photo');
+    photoClientError.value = '';
+    photoPreview.value = URL.createObjectURL(file);
+    return true;
+};
+
+const stopCameraStream = () => {
+    if (cameraStream.value) {
+        cameraStream.value.getTracks().forEach((track) => track.stop());
+        cameraStream.value = null;
+    }
+};
+
+const closeCameraModal = () => {
+    stopCameraStream();
+    showCameraModal.value = false;
+};
+
+const startCamera = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        photoClientError.value = 'Camera is not supported on this device/browser. Use Upload Photo instead.';
+        return;
+    }
+
+    isStartingCamera.value = true;
+    photoClientError.value = '';
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'user',
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+            },
+            audio: false,
+        });
+
+        cameraStream.value = stream;
+        showCameraModal.value = true;
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        if (cameraVideoRef.value) {
+            cameraVideoRef.value.srcObject = stream;
+            await cameraVideoRef.value.play();
+        }
+    } catch (error) {
+        photoClientError.value = 'Camera access was blocked or unavailable. You can still upload a photo.';
+        stopCameraStream();
+    } finally {
+        isStartingCamera.value = false;
+    }
+};
+
+const handlePhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    photoClientError.value = '';
+    const isAssigned = assignPhotoFile(file);
+    if (!isAssigned) {
+        e.target.value = '';
+    }
+};
+
+const capturePhotoFromCamera = () => {
+    if (!cameraVideoRef.value || !cameraCanvasRef.value) {
+        photoClientError.value = 'Camera is not ready yet. Please try again.';
+        return;
+    }
+
+    const video = cameraVideoRef.value;
+    const canvas = cameraCanvasRef.value;
+
+    const sourceWidth = video.videoWidth;
+    const sourceHeight = video.videoHeight;
+
+    if (!sourceWidth || !sourceHeight) {
+        photoClientError.value = 'Unable to capture photo. Please try again.';
+        return;
+    }
+
+    const maxDimension = 1280;
+    const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
+    const targetWidth = Math.round(sourceWidth * scale);
+    const targetHeight = Math.round(sourceHeight * scale);
+
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+
+    canvas.toBlob((blob) => {
+        if (!blob) {
+            photoClientError.value = 'Capture failed. Please try again.';
+            return;
+        }
+
+        const cameraFile = new File([blob], `camera-photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        const isAssigned = assignPhotoFile(cameraFile);
+        if (isAssigned) {
+            closeCameraModal();
+        }
+    }, 'image/jpeg', 0.9);
+};
+
+const triggerTakePhoto = () => {
+    startCamera();
+};
+
+const triggerUploadPhoto = () => {
+    photoClientError.value = '';
+    uploadInputRef.value?.click();
 };
 
 const brandingColor = computed(() => props.tenant?.branding_color || '#3b82f6');
@@ -59,12 +204,17 @@ watch(() => props.show, (newVal) => {
     if (newVal) {
         document.body.style.overflow = 'hidden';
     } else {
+        closeCameraModal();
         document.body.style.overflow = '';
     }
 }, { immediate: true });
 
 // Cleanup on component unmount
 onUnmounted(() => {
+    stopCameraStream();
+    if (photoPreview.value) {
+        URL.revokeObjectURL(photoPreview.value);
+    }
     document.body.style.overflow = '';
 });
 
@@ -121,6 +271,25 @@ const selectedDentist = computed(() => {
 const selectedService = computed(() => {
     return props.services.find(s => s.name === form.service);
 });
+
+const serviceSearch = ref('');
+const filteredServices = computed(() => {
+    const keyword = serviceSearch.value.trim().toLowerCase();
+    if (!keyword) {
+        return props.services;
+    }
+
+    return props.services.filter((service) => {
+        const name = String(service.name || '').toLowerCase();
+        const description = String(service.description || '').toLowerCase();
+        return name.includes(keyword) || description.includes(keyword);
+    });
+});
+
+const chooseService = (serviceName) => {
+    form.service = serviceName;
+    serviceSearch.value = serviceName;
+};
 
 const medicalOptions = [
     'Diabetes',
@@ -228,17 +397,51 @@ const timeSlots = [
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
                                 <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-2">Facial Photo (Optional)</label>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                                        Facial Photo
+                                        <span class="text-red-500">*</span>
+                                    </label>
                                     <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                                         <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
                                             <img v-if="photoPreview" :src="photoPreview" class="w-full h-full object-cover">
                                             <span v-else class="text-xl">📸</span>
                                         </div>
-                                        <input type="file" @change="handlePhotoUpload" class="hidden" id="photo-upload" accept="image/*">
-                                        <label for="photo-upload" class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-wider cursor-pointer hover:bg-gray-50 transition-all">
-                                            Upload
-                                        </label>
+                                        <input
+                                            ref="cameraInputRef"
+                                            type="file"
+                                            @change="handlePhotoUpload"
+                                            class="hidden"
+                                            accept="image/jpeg,image/png,image/webp,image/gif"
+                                            capture="user"
+                                        >
+                                        <input
+                                            ref="uploadInputRef"
+                                            type="file"
+                                            @change="handlePhotoUpload"
+                                            class="hidden"
+                                            accept="image/jpeg,image/png,image/webp,image/gif"
+                                        >
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <button
+                                                type="button"
+                                                @click="triggerTakePhoto"
+                                                :disabled="isStartingCamera"
+                                                class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-gray-50 transition-all"
+                                            >
+                                                {{ isStartingCamera ? 'Opening Camera...' : 'Take Photo' }}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="triggerUploadPhoto"
+                                                class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-gray-50 transition-all"
+                                            >
+                                                Upload Photo
+                                            </button>
+                                        </div>
                                     </div>
+                                    <p class="mt-2 text-xs text-gray-500">A clear facial photo is required to continue. Max size: 5MB.</p>
+                                    <p v-if="photoClientError" class="mt-2 text-xs font-bold text-red-500">{{ photoClientError }}</p>
+                                    <p v-if="form.errors.photo" class="mt-2 text-xs font-bold text-red-500">{{ form.errors.photo }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-bold text-gray-700 mb-2">Home Address (Optional)</label>
@@ -290,10 +493,29 @@ const timeSlots = [
 
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-2">Service Needed</label>
-                                <select v-model="form.service" class="w-full bg-gray-50 border-none rounded-2xl focus:ring-2 p-4 transition-all font-bold" :style="{ '--tw-ring-color': brandingColor }">
-                                    <option value="">Select a service...</option>
-                                    <option v-for="s in services" :key="s.id" :value="s.name">{{ s.name }} - ₱{{ s.price }}</option>
-                                </select>
+                                <input
+                                    v-model="serviceSearch"
+                                    type="text"
+                                    class="w-full bg-gray-50 border-none rounded-2xl focus:ring-2 p-4 transition-all font-bold"
+                                    :style="{ '--tw-ring-color': brandingColor }"
+                                    placeholder="Search services..."
+                                >
+
+                                <div class="mt-3 max-h-44 overflow-y-auto rounded-2xl bg-gray-50 p-2 space-y-2">
+                                    <button
+                                        v-for="s in filteredServices"
+                                        :key="s.id"
+                                        type="button"
+                                        @click="chooseService(s.name)"
+                                        class="w-full text-left p-3 rounded-xl border-2 transition-all"
+                                        :class="form.service === s.name ? 'text-white border-transparent' : 'border-transparent bg-white hover:bg-gray-100 text-gray-700'"
+                                        :style="form.service === s.name ? { backgroundColor: brandingColor } : {}"
+                                    >
+                                        <p class="font-black text-sm leading-tight">{{ s.name }}</p>
+                                        <p class="text-[11px] opacity-80">₱{{ s.price }}</p>
+                                    </button>
+                                    <p v-if="filteredServices.length === 0" class="text-xs text-gray-500 px-2 py-3">No matching services found.</p>
+                                </div>
                             </div>
                         </div>
 
@@ -393,7 +615,7 @@ const timeSlots = [
                             Back
                         </button>
                         <button v-if="step < 5" @click="nextStep" 
-                                :disabled="step === 1 && (!form.guest_first_name || !form.guest_last_name || !form.guest_phone)"
+                                :disabled="step === 1 && (!form.guest_first_name || !form.guest_last_name || !form.guest_phone || !form.photo)"
                                 class="flex-1 py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50" 
                                 :style="{ backgroundColor: brandingColor }">
                             Continue
@@ -404,6 +626,34 @@ const timeSlots = [
                             {{ form.processing ? 'Booking...' : 'Confirm Appointment' }}
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showCameraModal" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/80" @click="closeCameraModal"></div>
+            <div class="relative w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl">
+                <p class="text-sm font-black text-gray-900 mb-3">Camera Capture</p>
+                <div class="rounded-2xl overflow-hidden bg-black">
+                    <video ref="cameraVideoRef" autoplay playsinline muted class="w-full h-[320px] object-cover"></video>
+                </div>
+                <canvas ref="cameraCanvasRef" class="hidden"></canvas>
+                <div class="mt-4 flex gap-3">
+                    <button
+                        type="button"
+                        @click="capturePhotoFromCamera"
+                        class="flex-1 py-3 text-white font-black rounded-full"
+                        :style="{ backgroundColor: brandingColor }"
+                    >
+                        Capture Photo
+                    </button>
+                    <button
+                        type="button"
+                        @click="closeCameraModal"
+                        class="px-5 py-3 border-2 border-gray-200 font-bold rounded-full text-gray-600"
+                    >
+                        Cancel
+                    </button>
                 </div>
             </div>
         </div>

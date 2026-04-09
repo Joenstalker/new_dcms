@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\OnlineBookingCreated;
 use App\Models\Appointment;
 use App\Models\User;
 use App\Models\Service;
@@ -52,7 +53,7 @@ class BookingController extends Controller
             'service' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'dentist_id' => 'nullable|exists:users,id',
-            'photo' => 'nullable|image|max:2048', // 2MB max
+            'photo' => 'required|image|max:5120', // 5MB max
         ]);
 
         // Generate a unique booking reference
@@ -75,12 +76,34 @@ class BookingController extends Controller
         if ($request->hasFile('photo')) {
             $path = $request->file('photo')->store('bookings/photos', 'public');
             $validated['photo_path'] = $path;
+
+            if ($existingPatient) {
+                $existingPatient->update(['photo_path' => $path]);
+            }
         }
 
         $validated['status'] = 'pending';
         $validated['type'] = 'online_booking';
 
         $appointment = Appointment::create($validated);
+
+        broadcast(new OnlineBookingCreated((string)tenant()->getTenantKey(), [
+            'id' => $appointment->id,
+            'patient_id' => $appointment->patient_id,
+            'dentist_id' => $appointment->dentist_id,
+            'guest_first_name' => $appointment->guest_first_name,
+            'guest_last_name' => $appointment->guest_last_name,
+            'guest_phone' => $appointment->guest_phone,
+            'guest_email' => $appointment->guest_email,
+            'guest_medical_history' => $appointment->guest_medical_history,
+            'appointment_date' => optional($appointment->appointment_date)?->toISOString(),
+            'status' => $appointment->status,
+            'type' => $appointment->type,
+            'service' => $appointment->service,
+            'notes' => $appointment->notes,
+            'photo_path' => $appointment->photo_path,
+            'patient' => null,
+        ]));
 
         return redirect()->back()->with([
             'success' => 'Your appointment has been successfully booked!',

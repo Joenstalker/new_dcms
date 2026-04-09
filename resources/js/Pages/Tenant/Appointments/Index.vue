@@ -2,7 +2,7 @@
 import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import CalendarView from './CalendarView.vue';
 import ListView from './ListView.vue';
@@ -24,6 +24,10 @@ const props = defineProps({
 });
 
 const primaryColor = computed(() => brandingState.primary_color);
+const page = usePage();
+const tenantId = computed(() => page.props.tenant?.id || null);
+const liveAppointments = ref([...(props.appointments || [])]);
+let appointmentsChannel = null;
 
 // Active tab from URL query
 const activeTab = ref('calendar');
@@ -31,6 +35,32 @@ const activeTab = ref('calendar');
 onMounted(() => {
     const params = new URLSearchParams(window.location.search);
     activeTab.value = params.get('tab') || 'calendar';
+
+    if (!window.Echo || !tenantId.value) return;
+
+    appointmentsChannel = window.Echo.channel(`tenant.${tenantId.value}.appointments`)
+        .listen('.OnlineBookingCreated', (event) => {
+            const incoming = event?.appointment;
+            if (!incoming || !incoming.id) return;
+
+            const existingIndex = liveAppointments.value.findIndex((item) => item.id === incoming.id);
+            if (existingIndex >= 0) {
+                liveAppointments.value[existingIndex] = {
+                    ...liveAppointments.value[existingIndex],
+                    ...incoming,
+                };
+                return;
+            }
+
+            liveAppointments.value = [incoming, ...liveAppointments.value];
+        });
+});
+
+onUnmounted(() => {
+    if (window.Echo && tenantId.value) {
+        window.Echo.leave(`tenant.${tenantId.value}.appointments`);
+    }
+    appointmentsChannel = null;
 });
 
 // Calendar sub-view state (calendar vs list)
@@ -40,7 +70,7 @@ const calendarSubView = ref('calendar');
 const selectedAssociates = ref(props.dentists.map(d => d.id));
 const selectedTypes = ref(['appointment', 'recall', 'birthday', 'event', 'online_booking']);
 
-const permissions = computed(() => usePage().props.auth.user.permissions);
+const permissions = computed(() => page.props.auth.user.permissions);
 const canCreate = computed(() => permissions.value.includes('create appointments'));
 const canView = computed(() => permissions.value.includes('view appointments'));
 
@@ -201,14 +231,14 @@ const toggleType = (type) => {
                     <div class="flex-1">
                         <CalendarView 
                             v-if="calendarSubView === 'calendar'"
-                            :appointments="appointments"
+                            :appointments="liveAppointments"
                             :dentists="dentists"
                             :selectedAssociates="selectedAssociates"
                             :selectedTypes="selectedTypes"
                         />
                         <ListView 
                             v-else
-                            :appointments="appointments"
+                            :appointments="liveAppointments"
                             :selectedAssociates="selectedAssociates"
                             :selectedTypes="selectedTypes"
                         />
@@ -219,7 +249,7 @@ const toggleType = (type) => {
             <!-- Booking Queue Tab -->
             <div v-else-if="activeTab === 'queue'">
                 <BookingQueue 
-                    :appointments="appointments"
+                    :appointments="liveAppointments"
                     :dentists="dentists"
                 />
             </div>

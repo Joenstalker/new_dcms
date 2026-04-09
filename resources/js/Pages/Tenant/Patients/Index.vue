@@ -68,6 +68,16 @@ const openEditModal = (patient) => {
 // Add Patient Modal State
 const showAddModal = ref(false);
 const editPatientData = ref(null);
+const failedPatientPhotoKeys = ref({});
+
+const patientPhotoKey = (patient) => `patient-${patient?.id ?? 'unknown'}`;
+const isPatientPhotoFailed = (patient) => Boolean(failedPatientPhotoKeys.value[patientPhotoKey(patient)]);
+const markPatientPhotoFailed = (patient) => {
+    failedPatientPhotoKeys.value = {
+        ...failedPatientPhotoKeys.value,
+        [patientPhotoKey(patient)]: true,
+    };
+};
 
 const openAddModal = () => {
     editPatientData.value = null;
@@ -180,7 +190,12 @@ const checkLimitAndOpenAddModal = () => {
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-4">
                                     <div class="h-12 w-12 rounded-full overflow-hidden bg-base-200 ring-2 ring-base-100 shrink-0 shadow-sm">
-                                        <img v-if="patient.photo_url" :src="patient.photo_url" class="h-full w-full object-cover">
+                                        <img
+                                            v-if="patient.photo_url && !isPatientPhotoFailed(patient)"
+                                            :src="patient.photo_url"
+                                            class="h-full w-full object-cover"
+                                            @error="markPatientPhotoFailed(patient)"
+                                        >
                                         <div v-else class="h-full w-full flex items-center justify-center text-base-content/20 bg-base-300">
                                             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                                         </div>

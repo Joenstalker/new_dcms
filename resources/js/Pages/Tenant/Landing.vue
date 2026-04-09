@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import BookingModal from '@/Pages/Tenant/Booking/Partials/BookingModal.vue';
 import LoginModal from '@/Pages/Tenant/Auth/Partials/LoginModal.vue';
 
@@ -24,6 +24,9 @@ const tenant = computed(() => page.props.tenant);
 
 const showBookingModal = ref(false);
 const showLoginModal = ref(false);
+const showBookingUnavailableModal = ref(false);
+const onlineBookingEnabled = ref(props.online_booking_enabled ?? true);
+let bookingChannel = null;
 
 const form = useForm({
     name: '',
@@ -108,7 +111,49 @@ const getSectionImage = (name) => {
     return img ? '/tenant-storage/' + img : null;
 };
 
-const bookingEnabled = computed(() => props.online_booking_enabled);
+const bookingEnabled = computed(() => onlineBookingEnabled.value);
+
+const openBookingFlow = () => {
+    if (bookingEnabled.value) {
+        showBookingModal.value = true;
+        return;
+    }
+
+    showBookingUnavailableModal.value = true;
+};
+
+const closeBookingUnavailableModal = () => {
+    showBookingUnavailableModal.value = false;
+};
+
+const goToSection = (sectionId) => {
+    closeBookingUnavailableModal();
+    const section = document.getElementById(sectionId);
+    if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+};
+
+onMounted(() => {
+    if (!window.Echo || !tenant.value?.id) return;
+
+    bookingChannel = window.Echo.channel(`tenant.${tenant.value.id}.booking`)
+        .listen('.OnlineBookingStatusUpdated', (event) => {
+            onlineBookingEnabled.value = Boolean(event.online_booking_enabled);
+
+            if (!onlineBookingEnabled.value && showBookingModal.value) {
+                showBookingModal.value = false;
+                showBookingUnavailableModal.value = true;
+            }
+        });
+});
+
+onUnmounted(() => {
+    if (window.Echo && tenant.value?.id) {
+        window.Echo.leave(`tenant.${tenant.value.id}.booking`);
+    }
+    bookingChannel = null;
+});
 
 const formatTime = (time) => {
     if (!time) return '';
@@ -150,7 +195,7 @@ const hasOperatingHours = computed(() => {
                         <a v-if="isSectionActive('team')" href="#team" class="text-sm font-medium hover:text-gray-600 transition-colors">Our team</a>
                         <a v-if="isSectionActive('contact')" href="#contact" class="text-sm font-medium hover:text-gray-600 transition-colors">Contact</a>
                         <button @click="showLoginModal = true" class="text-sm font-medium text-gray-500 hover:text-gray-900">Login</button>
-                        <button v-if="bookingEnabled" @click="showBookingModal = true" 
+                        <button @click="openBookingFlow" 
                            class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-full shadow-sm text-white transition-all transform hover:scale-105 active:scale-95"
                            :style="{ backgroundColor: brandingColor }">
                             Book Appointment
@@ -158,7 +203,7 @@ const hasOperatingHours = computed(() => {
                     </div>
                     <!-- Mobile Button (Simplified) -->
                     <div class="md:hidden">
-                        <button v-if="bookingEnabled" @click="showBookingModal = true" 
+                        <button @click="openBookingFlow" 
                            class="inline-flex items-center px-4 py-2 border border-transparent text-xs font-bold rounded-full text-white"
                            :style="{ backgroundColor: brandingColor }">
                             Book Now
@@ -172,9 +217,18 @@ const hasOperatingHours = computed(() => {
         <header class="relative py-20 lg:py-32 overflow-hidden bg-gray-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 <div class="lg:w-2/3">
-                    <span class="inline-block px-4 py-1.5 mb-6 text-xs font-bold uppercase tracking-widest text-white rounded-full bg-blue-600/10" :style="{ color: brandingColor, backgroundColor: brandingColor + '15' }">
-                        Expert Dental Care
-                    </span>
+                    <div class="flex flex-wrap items-center gap-3 mb-6">
+                        <span class="inline-block px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white rounded-full bg-blue-600/10" :style="{ color: brandingColor, backgroundColor: brandingColor + '15' }">
+                            Expert Dental Care
+                        </span>
+                        <span
+                            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border"
+                            :class="bookingEnabled ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'"
+                        >
+                            <span class="w-2 h-2 rounded-full" :class="bookingEnabled ? 'bg-emerald-500' : 'bg-red-500'"></span>
+                            Online Booking {{ bookingEnabled ? 'Active' : 'Unavailable' }}
+                        </span>
+                    </div>
                     <h1 class="text-5xl lg:text-7xl font-black leading-tight mb-8" :class="fonts.header" :style="{ color: landingConfig.text_primary }">
                         {{ heroTitle }}
                     </h1>
@@ -182,7 +236,7 @@ const hasOperatingHours = computed(() => {
                         {{ heroSubtitle }}
                     </p>
                     <div class="flex flex-col sm:flex-row items-center gap-6">
-                        <button v-if="bookingEnabled" @click="showBookingModal = true" 
+                        <button @click="openBookingFlow" 
                            class="inline-flex justify-center items-center px-8 py-4 border border-transparent text-lg font-bold rounded-full shadow-xl text-white transition-all hover:shadow-2xl hover:scale-105 active:scale-95"
                            :style="{ backgroundColor: brandingColor }">
                             Schedule Your Visit
@@ -395,7 +449,7 @@ const hasOperatingHours = computed(() => {
                     <div>
                         <h4 class="text-lg font-bold mb-6">Quick Links</h4>
                         <ul class="space-y-4 text-gray-400">
-                            <li><button v-if="bookingEnabled" @click="showBookingModal = true" class="hover:text-white transition-colors">Book Now</button></li>
+                            <li><button @click="openBookingFlow" class="hover:text-white transition-colors">Book Now</button></li>
                            <li><button @click="showLoginModal = true" class="hover:text-white transition-colors">Login</button></li>
                         </ul>
                     </div>
@@ -435,6 +489,38 @@ const hasOperatingHours = computed(() => {
             :dentists="dentists"
             @close="showBookingModal = false" 
         />
+
+        <div v-if="showBookingUnavailableModal" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm" @click="closeBookingUnavailableModal"></div>
+            <div class="relative w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl border border-gray-100">
+                <div class="w-16 h-16 rounded-2xl flex items-center justify-center mb-5" :style="{ backgroundColor: brandingColor + '15' }">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-8 h-8" :style="{ color: brandingColor }">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-black text-gray-900 mb-3">Online Booking Unavailable</h3>
+                <p class="text-sm leading-relaxed text-gray-600 mb-7">
+                    Online appointment booking is currently unavailable for this clinic. You may visit our clinic directly or send us a message and we will assist you.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button
+                        type="button"
+                        @click="goToSection('contact')"
+                        class="flex-1 py-3 rounded-2xl text-white font-black"
+                        :style="{ backgroundColor: brandingColor }"
+                    >
+                        Visit Clinic Info
+                    </button>
+                    <button
+                        type="button"
+                        @click="goToSection('contact-form')"
+                        class="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-700 font-bold hover:bg-gray-50"
+                    >
+                        Send Message
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Login Modal -->
         <LoginModal

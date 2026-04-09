@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\NotificationTriggerService;
 use App\Services\TenantNotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class AppointmentController extends Controller
@@ -61,8 +62,10 @@ class AppointmentController extends Controller
         return redirect()->route('tenant.appointments.index')->with('success', 'Appointment scheduled successfully.');
     }
 
-    public function update(Request $request, Appointment $appointment)
+    public function update(Request $request, $appointmentId)
     {
+        $appointment = Appointment::findOrFail($appointmentId);
+
         $validated = $request->validate([
             'status' => 'required|string|in:scheduled,completed,cancelled,walk-in',
             'appointment_date' => 'sometimes|required|date',
@@ -108,12 +111,16 @@ class AppointmentController extends Controller
         return redirect()->back()->with('success', 'Appointment updated.');
     }
 
-    public function approve(Appointment $appointment)
+    public function approve($appointmentId)
     {
+        $appointment = Appointment::findOrFail($appointmentId);
+
         if (!$appointment->patient_id) {
             $medicalHistoryString = is_array($appointment->guest_medical_history)
                 ? implode(', ', $appointment->guest_medical_history)
                 : $appointment->guest_medical_history;
+
+            $patientPhotoPath = $this->normalizePhotoForPatient($appointment->photo_path);
 
             // Create a new patient from guest details
             $patient = Patient::create([
@@ -124,7 +131,7 @@ class AppointmentController extends Controller
                 'address' => $appointment->guest_address,
                 'medical_history' => $medicalHistoryString,
                 'notes' => 'Created from booking ' . $appointment->booking_reference . ' on ' . now()->format('Y-m-d'),
-                'photo_path' => $appointment->photo_path,
+                'photo_path' => $patientPhotoPath,
             ]);
 
             $appointment->update([
@@ -140,8 +147,16 @@ class AppointmentController extends Controller
             ]);
         }
         else {
-            $appointment->status = 'scheduled';
-            $appointment->save();
+            if ($appointment->photo_path && $appointment->patient) {
+                $appointment->patient->update([
+                    'photo_path' => $this->normalizePhotoForPatient($appointment->photo_path),
+                ]);
+            }
+
+            $appointment->update([
+                'status' => 'scheduled',
+                'photo_path' => null,
+            ]);
         }
 
         $appointment->load(['patient', 'dentist']);
@@ -150,8 +165,10 @@ class AppointmentController extends Controller
         return redirect()->back()->with('success', 'Appointment approved and patient registered.');
     }
 
-    public function reject(Appointment $appointment)
+    public function reject($appointmentId)
     {
+        $appointment = Appointment::findOrFail($appointmentId);
+
         $appointment->update(['status' => 'cancelled']);
 
         $appointment->load(['patient', 'dentist']);
@@ -160,8 +177,10 @@ class AppointmentController extends Controller
         return redirect()->back()->with('success', 'Appointment rejected.');
     }
 
-    public function destroy(Appointment $appointment)
+    public function destroy($appointmentId)
     {
+        $appointment = Appointment::findOrFail($appointmentId);
+
         $patientName = $appointment->patient
             ? $appointment->patient->first_name . ' ' . $appointment->patient->last_name
             : ($appointment->guest_first_name . ' ' . $appointment->guest_last_name);
@@ -181,5 +200,29 @@ class AppointmentController extends Controller
         $appointment->delete();
 
         return redirect()->route('tenant.appointments.index')->with('success', 'Appointment deleted.');
+    }
+
+    private function normalizePhotoForPatient(?string $photoPath): ?string
+    {
+        if (empty($photoPath)) {
+            return null;
+        }
+
+        if (str_starts_with($photoPath, 'data:image')) {
+            return $photoPath;
+        }
+
+        try {
+            if (!Storage::disk('public')->exists($photoPath)) {
+                return $photoPath;
+            }
+
+            $content = Storage::disk('public')->get($photoPath);
+            $mimeType = Storage::disk('public')->mimeType($photoPath) ?: 'image/jpeg';
+
+            return 'data:' . $mimeType . ';base64,' . base64_encode($content);
+        } catch (\Throwable $e) {
+            return $photoPath;
+        }
     }
 }

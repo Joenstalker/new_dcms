@@ -205,3 +205,16 @@ GITHUB_WEBHOOK_SECRET=f999685c-41e5-4072-adbc-4eb5b5c58185
 
 ### 3. Verification
 Check the **Audit Logs** in the Admin Dashboard to verify successful incoming deliveries (`github_webhook_success`) or validation failures (`github_webhook_failed`).
+
+### 4. Local Release Publish Checklist (Important)
+When testing GitHub Releases locally, start your tunnel first before creating/publishing a release.
+
+1. Start Laravel app on port `8080`.
+2. Start ngrok first: `ngrok 8080`.
+3. Update GitHub Webhook **Payload URL** to the current ngrok URL, e.g. `https://<ngrok-id>.ngrok-free.app/github/webhook`.
+4. Validate endpoint availability before publishing:
+    - `GET /github/webhook` should return `405 Method Not Allowed` (not `404`).
+5. Publish the GitHub release (or click **Redeliver** on release events).
+6. Confirm delivery status is `2xx` in GitHub and verify sync output in Admin Audit Logs.
+
+If ngrok is not running before release publish/redelivery, GitHub deliveries can fail with `404` and release sync will be skipped.

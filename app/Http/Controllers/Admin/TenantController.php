@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Tenant;
+use App\Models\TenantUsageMetric;
 use App\Models\PendingRegistration;
 use App\Models\User;
 use App\Mail\TenantApproved;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use App\Models\SubscriptionPlan;
 use App\Models\SystemSetting;
 use App\Services\TenantNotificationService;
@@ -564,11 +566,59 @@ class TenantController extends Controller
         $latestSubscription = $tenant->subscriptions->where('stripe_status', 'active')->last()
             ?? $tenant->subscriptions->last();
 
+        $today = now()->toDateString();
+        $monthStart = now()->startOfMonth()->toDateString();
+
+        $metrics = [
+            'bandwidth_today_bytes' => 0,
+            'bandwidth_month_bytes' => 0,
+            'request_count_today' => 0,
+            'request_count_month' => 0,
+            'api_request_count_month' => 0,
+            'public_request_count_month' => 0,
+        ];
+
+        try {
+            $connection = app()->runningUnitTests() ? config('database.default') : 'central';
+
+            if (Schema::connection($connection)->hasTable('tenant_usage_metrics')) {
+                $todayMetric = TenantUsageMetric::query()
+                    ->forTenant((string) $tenant->id)
+                    ->onDate($today)
+                    ->first();
+
+                $monthAggregate = TenantUsageMetric::query()
+                    ->forTenant((string) $tenant->id)
+                    ->whereDate('date', '>=', $monthStart)
+                    ->selectRaw('SUM(bandwidth_bytes) as bandwidth_month_bytes')
+                    ->selectRaw('SUM(request_count) as request_count_month')
+                    ->selectRaw('SUM(api_request_count) as api_request_count_month')
+                    ->selectRaw('SUM(public_request_count) as public_request_count_month')
+                    ->first();
+
+                $metrics['bandwidth_today_bytes'] = (int) ($todayMetric?->bandwidth_bytes ?? 0);
+                $metrics['bandwidth_month_bytes'] = (int) ($monthAggregate?->bandwidth_month_bytes ?? 0);
+                $metrics['request_count_today'] = (int) ($todayMetric?->request_count ?? 0);
+                $metrics['request_count_month'] = (int) ($monthAggregate?->request_count_month ?? 0);
+                $metrics['api_request_count_month'] = (int) ($monthAggregate?->api_request_count_month ?? 0);
+                $metrics['public_request_count_month'] = (int) ($monthAggregate?->public_request_count_month ?? 0);
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Failed to load usage metrics for tenant {$tenant->id}: " . $e->getMessage());
+        }
+
         return response()->json([
             'storage_used_mb' => round($tenant->storage_used_bytes / (1024 * 1024), 2),
             'max_storage_mb' => $latestSubscription->plan->max_storage_mb ?? 500,
+            // Legacy cumulative value for backward compatibility.
             'bandwidth_used_mb' => round($tenant->bandwidth_used_bytes / (1024 * 1024), 2),
+            'bandwidth_today_mb' => round($metrics['bandwidth_today_bytes'] / (1024 * 1024), 2),
+            'bandwidth_month_mb' => round($metrics['bandwidth_month_bytes'] / (1024 * 1024), 2),
             'max_bandwidth_mb' => $latestSubscription->plan->max_bandwidth_mb ?? 2048,
+            'request_count_today' => $metrics['request_count_today'],
+            'request_count_month' => $metrics['request_count_month'],
+            'api_request_count_month' => $metrics['api_request_count_month'],
+            'public_request_count_month' => $metrics['public_request_count_month'],
         ]);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Events\OnlineBookingStatusUpdated;
 use App\Models\Feature;
 use App\Models\Subscription;
 use App\Models\TenantFeatureUpdate;
@@ -312,6 +313,17 @@ class SettingsController extends Controller
 
     public function update(Request $request)
     {
+        $tenant = tenant();
+        if (!$tenant) {
+            return redirect()->back()->with('error', 'Tenant not found.');
+        }
+
+        $rawCurrentOnlineBooking = \App\Services\TenantBrandingService::get('online_booking_enabled', $tenant->isOnlineBookingEnabled());
+        $currentOnlineBookingEnabled = filter_var($rawCurrentOnlineBooking, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        if ($currentOnlineBookingEnabled === null) {
+            $currentOnlineBookingEnabled = (bool)$rawCurrentOnlineBooking;
+        }
+
         // Decode JSON strings and gracefully force arrays from Inertia FormData
         foreach (['font_family', 'enabled_features', 'landing_page_config', 'portal_config', 'operating_hours'] as $field) {
             $value = $request->input($field);
@@ -355,11 +367,6 @@ class SettingsController extends Controller
             'support_chat_bottom_offset' => 'nullable|integer|min:16|max:160',
         ]);
 
-        $tenant = tenant();
-        if (!$tenant) {
-            return redirect()->back()->with('error', 'Tenant not found.');
-        }
-
         // Store branding settings in tenant database (Primary Source for Visuals)
         if (isset($validated['clinic_name'])) \App\Services\TenantBrandingService::set('clinic_name', $validated['clinic_name']);
         if (isset($validated['email'])) \App\Services\TenantBrandingService::set('clinic_email', $validated['email']);
@@ -372,7 +379,7 @@ class SettingsController extends Controller
         if (isset($validated['landing_page_config'])) \App\Services\TenantBrandingService::set('landing_page_config', $validated['landing_page_config']);
         if (isset($validated['portal_config'])) \App\Services\TenantBrandingService::set('portal_config', $validated['portal_config']);
         if (isset($validated['operating_hours'])) \App\Services\TenantBrandingService::set('operating_hours', $validated['operating_hours']);
-        if (isset($validated['online_booking_enabled'])) \App\Services\TenantBrandingService::set('online_booking_enabled', $validated['online_booking_enabled']);
+            if (array_key_exists('online_booking_enabled', $validated)) \App\Services\TenantBrandingService::set('online_booking_enabled', (bool)$validated['online_booking_enabled']);
         if (isset($validated['support_chat_bottom_offset'])) \App\Services\TenantBrandingService::set('support_chat_bottom_offset', $validated['support_chat_bottom_offset']);
         
         if (isset($validated['hero_title'])) \App\Services\TenantBrandingService::set('hero_title', $validated['hero_title']);
@@ -414,6 +421,14 @@ class SettingsController extends Controller
 
         // Also update regular columns
         $tenant->update($validated);
+
+        if (array_key_exists('online_booking_enabled', $validated)) {
+            $newOnlineBookingEnabled = (bool)$validated['online_booking_enabled'];
+
+            if ($newOnlineBookingEnabled !== $currentOnlineBookingEnabled) {
+                broadcast(new OnlineBookingStatusUpdated((string)$tenant->getTenantKey(), $newOnlineBookingEnabled));
+            }
+        }
 
         return redirect()->back()->with('success', 'Clinic settings updated successfully.');
     }

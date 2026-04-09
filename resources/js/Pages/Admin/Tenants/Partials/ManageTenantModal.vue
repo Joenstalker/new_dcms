@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue';
 import Swal from 'sweetalert2';
 import axios from 'axios';
+import { brandingState } from '@/States/brandingState';
 
 const props = defineProps({
     show: {
@@ -32,12 +33,19 @@ const form = ref({
 const activeTab = ref('general');
 const isProcessing = ref(false);
 const isLoadingUsage = ref(false);
+const usageLoadedTenantId = ref(null);
 
 const usageData = ref({
     storage_used_mb: props.tenant?.storage_used_mb || 0,
     max_storage_mb: props.tenant?.max_storage_mb || 500,
     bandwidth_used_mb: props.tenant?.bandwidth_used_mb || 0,
+    bandwidth_month_mb: props.tenant?.bandwidth_used_mb || 0,
+    bandwidth_today_mb: 0,
     max_bandwidth_mb: props.tenant?.max_bandwidth_mb || 2048,
+    request_count_today: 0,
+    request_count_month: 0,
+    api_request_count_month: 0,
+    public_request_count_month: 0,
 });
 
 const fetchUsageStats = async () => {
@@ -46,7 +54,11 @@ const fetchUsageStats = async () => {
     try {
         isLoadingUsage.value = true;
         const response = await axios.get(route('admin.tenants.usage', props.tenant.id));
-        usageData.value = response.data;
+        usageData.value = {
+            ...usageData.value,
+            ...response.data,
+        };
+        usageLoadedTenantId.value = props.tenant.id;
     } catch (error) {
         console.error('Failed to fetch usage stats:', error);
     } finally {
@@ -55,7 +67,7 @@ const fetchUsageStats = async () => {
 };
 
 watch(activeTab, (newTab) => {
-    if (newTab === 'billing') { // 'billing' is the ID for 'Usage & Billing'
+    if (['usage', 'billing'].includes(newTab) && usageLoadedTenantId.value !== props.tenant?.id) {
         fetchUsageStats();
     }
 });
@@ -76,17 +88,46 @@ watch(() => props.tenant, (newTenant) => {
             storage_used_mb: newTenant.storage_used_mb || 0,
             max_storage_mb: newTenant.max_storage_mb || 500,
             bandwidth_used_mb: newTenant.bandwidth_used_bytes ? Math.round(newTenant.bandwidth_used_bytes / (1024 * 1024) * 100) / 100 : (newTenant.bandwidth_used_mb || 0),
+            bandwidth_month_mb: newTenant.bandwidth_used_bytes ? Math.round(newTenant.bandwidth_used_bytes / (1024 * 1024) * 100) / 100 : (newTenant.bandwidth_used_mb || 0),
+            bandwidth_today_mb: 0,
             max_bandwidth_mb: newTenant.max_bandwidth_mb || 2048,
+            request_count_today: 0,
+            request_count_month: 0,
+            api_request_count_month: 0,
+            public_request_count_month: 0,
         };
+
+        usageLoadedTenantId.value = null;
     }
 }, { immediate: true });
 
 const tabs = [
     { id: 'general', label: 'General', icon: 'clipboard-list' },
-    { id: 'billing', label: 'Usage & Billing', icon: 'credit-card' },
+    { id: 'usage', label: 'Usage', icon: 'chart-bar' },
+    { id: 'billing', label: 'Billing', icon: 'credit-card' },
     { id: 'advanced', label: 'Technical Details', icon: 'cpu-chip' },
     { id: 'contact', label: 'Contact Info', icon: 'phone' },
 ];
+
+const primaryColor = computed(() => brandingState.primary_color || '#0ea5e9');
+const contrastColor = computed(() => brandingState.contrast_color || '#ffffff');
+
+const primaryActionStyle = computed(() => ({
+    backgroundColor: primaryColor.value,
+    color: contrastColor.value,
+    boxShadow: `0 8px 20px -8px ${primaryColor.value}`,
+}));
+
+const activeTabStyle = computed(() => ({
+    borderColor: primaryColor.value,
+    color: primaryColor.value,
+}));
+
+const reactivateButtonStyle = computed(() => ({
+    borderColor: `${primaryColor.value}33`,
+    backgroundColor: `${primaryColor.value}1A`,
+    color: primaryColor.value,
+}));
 
 const submit = () => {
     if (!form.value.reason || form.value.reason.length < 5) {
@@ -94,7 +135,7 @@ const submit = () => {
             icon: 'error',
             title: 'Reason Required',
             text: 'Please provide a justification (at least 5 characters) in the Action Reason field before updating.',
-            confirmButtonColor: '#0d9488',
+            confirmButtonColor: primaryColor.value,
         });
         return;
     }
@@ -104,7 +145,7 @@ const submit = () => {
         text: 'Are you sure you want to save these changes? Whatever changes you did may affect or improve the tenant performance.',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#0d9488',
+        confirmButtonColor: primaryColor.value,
         cancelButtonColor: '#6b7280',
         confirmButtonText: 'Yes, Update Changes',
         cancelButtonText: 'Cancel',
@@ -135,7 +176,7 @@ const confirmSuspend = () => {
             icon: 'error',
             title: 'Reason Required',
             text: 'Please provide a justification (at least 5 characters) in the Action Reason field before changing the clinic status.',
-            confirmButtonColor: '#0d9488',
+            confirmButtonColor: primaryColor.value,
         });
         return;
     }
@@ -149,7 +190,7 @@ const confirmSuspend = () => {
         text: `Are you sure you want to ${actionText} "${props.tenant.name}"?`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: isSuspended ? '#0d9488' : '#d33',
+        confirmButtonColor: isSuspended ? primaryColor.value : '#dc2626',
         cancelButtonColor: '#6b7280',
         confirmButtonText: `Yes, ${actionText} it!`,
         cancelButtonText: 'Cancel',
@@ -194,6 +235,11 @@ const getBandwidthColorClass = (percentage) => {
     if (percentage > 70) return 'bg-orange-500';
     return 'bg-primary';
 };
+
+const formatCount = (value) => {
+    const count = Number(value || 0);
+    return count.toLocaleString();
+};
 </script>
 
 <template>
@@ -205,12 +251,12 @@ const getBandwidthColorClass = (percentage) => {
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
             <!-- Modal panel -->
-            <div class="inline-block align-bottom bg-base-100 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full border border-base-300">
-                <div class="bg-base-100 flex flex-col h-[520px]">
+            <div class="inline-block align-bottom bg-base-100 rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle w-full sm:max-w-4xl lg:max-w-6xl border border-base-300">
+                <div class="bg-base-100 flex flex-col h-[88vh] sm:h-[82vh] max-h-[90vh]">
                     <!-- Modal Header -->
                     <div class="px-6 pt-5 pb-2 bg-base-100">
                         <h3 class="text-xl font-black text-base-content uppercase tracking-widest flex items-center">
-                            <span class="w-1.5 h-6 bg-primary rounded-full mr-3.5"></span>
+                            <span class="w-1.5 h-6 rounded-full mr-3.5" :style="{ backgroundColor: primaryColor }"></span>
                             Manage Clinic
                         </h3>
                     </div>
@@ -223,8 +269,9 @@ const getBandwidthColorClass = (percentage) => {
                             @click="activeTab = tab.id"
                             class="py-4 px-4 text-xs font-bold uppercase tracking-widest transition-all duration-200 border-b-2 whitespace-nowrap"
                             :class="activeTab === tab.id 
-                                ? 'border-primary text-primary bg-base-100 shadow-sm' 
+                                ? 'bg-base-100 shadow-sm' 
                                 : 'border-transparent text-base-content/40 hover:text-base-content/70 hover:bg-base-200/50'"
+                            :style="activeTab === tab.id ? activeTabStyle : {}"
                         >
                             {{ tab.label }}
                         </button>
@@ -269,39 +316,11 @@ const getBandwidthColorClass = (percentage) => {
                                 </div>
                             </div>
 
-                            <!-- Tab 2: Billing & Usage -->
-                            <div v-show="activeTab === 'billing'" class="space-y-6">
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <!-- Subscription Details -->
-                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50">
-                                        <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-4">Subscription Overview</h4>
-                                        <div class="space-y-4">
-                                            <div class="flex justify-between items-center border-b border-base-300/30 pb-2">
-                                                <span class="text-xs text-base-content/60 font-medium">Payment Status:</span>
-                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest" :class="tenant.payment_status === 'paid' ? 'bg-success/20 text-success' : 'bg-base-300 text-base-content/60'">{{ tenant.payment_status }}</span>
-                                            </div>
-                                            <div class="flex justify-between items-center border-b border-base-300/30 pb-2">
-                                                <span class="text-xs text-base-content/60 font-medium">Cycle:</span>
-                                                <span class="text-sm font-bold capitalize text-base-content">{{ tenant.billing_cycle }}</span>
-                                            </div>
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-xs text-base-content/60 font-medium">Amount:</span>
-                                                <span class="text-sm font-black text-primary">₱{{ tenant.amount_paid || '0.00' }}</span>
-                                            </div>
-                                            <div class="pt-2">
-                                                <div class="flex justify-between text-[10px] font-black text-base-content/40 uppercase tracking-widest mb-2">
-                                                    <span>Days Remaining</span>
-                                                    <span>{{ tenant.days_left }} Days</span>
-                                                </div>
-                                                <div class="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
-                                                    <div class="bg-primary h-full transition-all duration-1000" :style="{ width: Math.min(100, (tenant.days_left / (tenant.billing_cycle === 'yearly' ? 365 : 30)) * 100) + '%' }"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
+                            <!-- Tab 2: Usage -->
+                            <div v-show="activeTab === 'usage'" class="space-y-6">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                     <!-- Storage Details -->
-                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50 transition-all duration-300" :class="{ 'opacity-50 grayscale-[0.5]': isLoadingUsage }">
+                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50 transition-all duration-300">
                                         <div class="flex justify-between items-center mb-4">
                                             <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em]">Storage Metrics</h4>
                                             <div v-if="isLoadingUsage" class="flex items-center gap-1.5">
@@ -336,20 +355,20 @@ const getBandwidthColorClass = (percentage) => {
                                     </div>
 
                                     <!-- Bandwidth Details -->
-                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50 transition-all duration-300" :class="{ 'opacity-50 grayscale-[0.5]': isLoadingUsage }">
+                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50 transition-all duration-300">
                                         <div class="flex justify-between items-center mb-4">
                                             <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em]">Monthly Bandwidth</h4>
                                             <div v-if="isLoadingUsage" class="flex items-center gap-1.5">
-                                                <div class="w-1 h-1 rounded-full bg-primary animate-bounce"></div>
-                                                <div class="w-1 h-1 rounded-full bg-primary animate-bounce [animation-delay:0.2s]"></div>
-                                                <span class="text-[9px] font-black text-primary uppercase tracking-tighter">Syncing</span>
+                                                <div class="w-1 h-1 rounded-full animate-bounce" :style="{ backgroundColor: primaryColor }"></div>
+                                                <div class="w-1 h-1 rounded-full animate-bounce [animation-delay:0.2s]" :style="{ backgroundColor: primaryColor }"></div>
+                                                <span class="text-[9px] font-black uppercase tracking-tighter" :style="{ color: primaryColor }">Syncing</span>
                                             </div>
                                         </div>
                                         <div class="space-y-5">
                                             <div class="flex items-end justify-between">
                                                 <div>
-                                                    <span class="text-3xl font-black text-base-content">{{ (usageData.bandwidth_used_mb > 1024) ? (usageData.bandwidth_used_mb / 1024).toFixed(2) : (usageData.bandwidth_used_mb || 0) }}</span>
-                                                    <span class="text-xs font-bold text-base-content/40 ml-1">{{ (usageData.bandwidth_used_mb > 1024) ? 'GB' : 'MB' }}</span>
+                                                    <span class="text-3xl font-black text-base-content">{{ (usageData.bandwidth_month_mb > 1024) ? (usageData.bandwidth_month_mb / 1024).toFixed(2) : (usageData.bandwidth_month_mb || 0) }}</span>
+                                                    <span class="text-xs font-bold text-base-content/40 ml-1">{{ (usageData.bandwidth_month_mb > 1024) ? 'GB' : 'MB' }}</span>
                                                 </div>
                                                 <div class="text-[10px] font-black text-base-content/30 uppercase tracking-widest text-right">
                                                     CAP: {{ (usageData.max_bandwidth_mb / 1024).toFixed(1) }} GB
@@ -358,13 +377,45 @@ const getBandwidthColorClass = (percentage) => {
                                             <div class="space-y-2">
                                                 <div class="w-full bg-base-300 h-3 rounded-full overflow-hidden">
                                                     <div class="h-full transition-all duration-1000 rounded-full" 
-                                                        :class="getBandwidthColorClass(getStoragePercentage(usageData.bandwidth_used_mb, usageData.max_bandwidth_mb))"
-                                                        :style="{ width: getStoragePercentage(usageData.bandwidth_used_mb, usageData.max_bandwidth_mb) + '%' }"
+                                                        :class="getBandwidthColorClass(getStoragePercentage(usageData.bandwidth_month_mb, usageData.max_bandwidth_mb))"
+                                                        :style="{ width: getStoragePercentage(usageData.bandwidth_month_mb, usageData.max_bandwidth_mb) + '%' }"
                                                     ></div>
                                                 </div>
                                                 <div class="flex justify-between text-[10px] font-black tracking-tighter">
-                                                    <span class="text-base-content/50 uppercase">{{ getStoragePercentage(usageData.bandwidth_used_mb, usageData.max_bandwidth_mb) }}% CONSUMED</span>
-                                                    <span class="text-primary uppercase">{{ Math.max(0, ((usageData.max_bandwidth_mb || 2048) - (usageData.bandwidth_used_mb || 0)) / 1024).toFixed(2) }} GB LEFT</span>
+                                                    <span class="text-base-content/50 uppercase">{{ getStoragePercentage(usageData.bandwidth_month_mb, usageData.max_bandwidth_mb) }}% CONSUMED</span>
+                                                    <span class="uppercase" :style="{ color: primaryColor }">{{ Math.max(0, ((usageData.max_bandwidth_mb || 2048) - (usageData.bandwidth_month_mb || 0)) / 1024).toFixed(2) }} GB LEFT</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Request Activity -->
+                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50 transition-all duration-300 sm:col-span-2 lg:col-span-1">
+                                        <div class="flex justify-between items-center mb-4">
+                                            <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em]">Request Activity</h4>
+                                            <div v-if="isLoadingUsage" class="flex items-center gap-1.5">
+                                                <div class="w-1 h-1 rounded-full bg-emerald-500 animate-bounce"></div>
+                                                <div class="w-1 h-1 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]"></div>
+                                                <span class="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">Syncing</span>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-4">
+                                            <div class="flex justify-between items-center border-b border-base-300/30 pb-3">
+                                                <span class="text-xs text-base-content/60 font-medium uppercase tracking-widest">Today</span>
+                                                <span class="text-lg font-black text-base-content">{{ formatCount(usageData.request_count_today) }}</span>
+                                            </div>
+                                            <div class="flex justify-between items-center border-b border-base-300/30 pb-3">
+                                                <span class="text-xs text-base-content/60 font-medium uppercase tracking-widest">This Month</span>
+                                                <span class="text-lg font-black text-base-content">{{ formatCount(usageData.request_count_month) }}</span>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-3 text-[10px] font-black uppercase tracking-widest">
+                                                <div class="bg-base-100 border border-base-300 rounded-lg px-3 py-2">
+                                                    <div class="text-base-content/40">API</div>
+                                                    <div class="text-base-content mt-1">{{ formatCount(usageData.api_request_count_month) }}</div>
+                                                </div>
+                                                <div class="bg-base-100 border border-base-300 rounded-lg px-3 py-2">
+                                                    <div class="text-base-content/40">Public</div>
+                                                    <div class="text-base-content mt-1">{{ formatCount(usageData.public_request_count_month) }}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -372,7 +423,61 @@ const getBandwidthColorClass = (percentage) => {
                                 </div>
                             </div>
 
-                            <!-- Tab 3: Technical Details -->
+                            <!-- Tab 3: Billing -->
+                            <div v-show="activeTab === 'billing'" class="space-y-6">
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50">
+                                        <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-4">Subscription Overview</h4>
+                                        <div class="space-y-4">
+                                            <div class="flex justify-between items-center border-b border-base-300/30 pb-2">
+                                                <span class="text-xs text-base-content/60 font-medium">Payment Status:</span>
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest" :class="tenant.payment_status === 'paid' ? 'bg-success/20 text-success' : 'bg-base-300 text-base-content/60'">{{ tenant.payment_status }}</span>
+                                            </div>
+                                            <div class="flex justify-between items-center border-b border-base-300/30 pb-2">
+                                                <span class="text-xs text-base-content/60 font-medium">Cycle:</span>
+                                                <span class="text-sm font-bold capitalize text-base-content">{{ tenant.billing_cycle }}</span>
+                                            </div>
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-xs text-base-content/60 font-medium">Amount:</span>
+                                                <span class="text-sm font-black" :style="{ color: primaryColor }">₱{{ tenant.amount_paid || '0.00' }}</span>
+                                            </div>
+                                            <div class="pt-2">
+                                                <div class="flex justify-between text-[10px] font-black text-base-content/40 uppercase tracking-widest mb-2">
+                                                    <span>Days Remaining</span>
+                                                    <span>{{ tenant.days_left }} Days</span>
+                                                </div>
+                                                <div class="w-full bg-base-300 h-1.5 rounded-full overflow-hidden">
+                                                    <div class="h-full transition-all duration-1000" :style="{ width: Math.min(100, (tenant.days_left / (tenant.billing_cycle === 'yearly' ? 365 : 30)) * 100) + '%', backgroundColor: primaryColor }"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50">
+                                        <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-4">Billing Breakdown</h4>
+                                        <div class="space-y-3">
+                                            <div class="flex justify-between items-center border-b border-base-300/30 pb-2">
+                                                <span class="text-xs text-base-content/60 font-medium">Payment Method:</span>
+                                                <span class="text-sm font-bold capitalize text-base-content">{{ tenant.payment_method || 'Manual / Cash' }}</span>
+                                            </div>
+                                            <div class="flex justify-between items-center border-b border-base-300/30 pb-2">
+                                                <span class="text-xs text-base-content/60 font-medium">Bandwidth Cap:</span>
+                                                <span class="text-sm font-bold text-base-content">{{ (usageData.max_bandwidth_mb / 1024).toFixed(1) }} GB</span>
+                                            </div>
+                                            <div class="flex justify-between items-center border-b border-base-300/30 pb-2">
+                                                <span class="text-xs text-base-content/60 font-medium">Storage Cap:</span>
+                                                <span class="text-sm font-bold text-base-content">{{ usageData.max_storage_mb || 500 }} MB</span>
+                                            </div>
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-xs text-base-content/60 font-medium">Usage Refresh:</span>
+                                                <span class="text-sm font-bold text-base-content">Real-time</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tab 4: Technical Details -->
                             <div v-show="activeTab === 'advanced'" class="space-y-6">
                                 <div class="bg-base-200/30 border border-base-300/60 rounded-xl divide-y divide-base-300/50">
                                     <div class="p-4 flex items-center justify-between">
@@ -393,7 +498,7 @@ const getBandwidthColorClass = (percentage) => {
                                 </div>
                             </div>
 
-                            <!-- Tab 4: Contact Info -->
+                            <!-- Tab 5: Contact Info -->
                             <div v-show="activeTab === 'contact'" class="space-y-4">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div class="bg-primary/5 border border-primary/10 rounded-xl p-4">
@@ -427,7 +532,8 @@ const getBandwidthColorClass = (percentage) => {
                         <div class="flex flex-row-reverse gap-3 w-full sm:w-auto">
                             <button
                                 @click="submit"
-                                class="flex-1 sm:flex-none inline-flex justify-center rounded-lg border border-transparent shadow-md px-6 py-2 bg-primary text-sm font-black text-primary-content uppercase tracking-widest hover:brightness-110 transition-all focus:outline-none focus:ring-2 focus:ring-primary shadow-primary/20"
+                                class="flex-1 sm:flex-none inline-flex justify-center rounded-lg border border-transparent shadow-md px-6 py-2 text-sm font-black uppercase tracking-widest hover:brightness-110 transition-all focus:outline-none"
+                                :style="primaryActionStyle"
                             >
                                 Update Changes
                             </button>
@@ -444,8 +550,9 @@ const getBandwidthColorClass = (percentage) => {
                                 @click="confirmSuspend"
                                 class="w-full sm:w-auto inline-flex justify-center items-center rounded-lg border shadow-sm px-5 py-2 text-xs font-black uppercase tracking-widest transition-all"
                                 :class="form.status === 'suspended' 
-                                    ? 'border-success/20 bg-success/10 text-success hover:bg-success/20' 
+                                    ? 'hover:brightness-105' 
                                     : 'border-error/20 bg-error/10 text-error hover:bg-error/20'"
+                                :style="form.status === 'suspended' ? reactivateButtonStyle : {}"
                             >
                                 <svg class="w-3.5 h-3.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path v-if="form.status !== 'suspended'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
