@@ -10,6 +10,7 @@ import BookingQueue from './BookingQueue.vue';
 import WalkIn from './WalkIn.vue';
 import NewAppointmentModal from './NewAppointmentModal.vue';
 import CreateAppointments from './CreateAppointments.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     appointments: {
@@ -53,6 +54,22 @@ onMounted(() => {
             }
 
             liveAppointments.value = [incoming, ...liveAppointments.value];
+
+            const patientName = [incoming.guest_first_name, incoming.guest_last_name]
+                .filter(Boolean)
+                .join(' ')
+                .trim() || 'New patient';
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: `New online booking: ${patientName}`,
+                text: incoming.service ? `Service: ${incoming.service}` : 'A new booking was added to the queue.',
+                showConfirmButton: false,
+                timer: 3500,
+                timerProgressBar: true,
+            });
         });
 });
 
