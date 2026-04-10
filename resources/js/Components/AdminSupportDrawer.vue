@@ -13,6 +13,7 @@ const adminChatContainer = ref(null);
 const replyContent = ref(null);
 const isSendingReply = ref(false);
 const replyAttachments = ref([]);
+const failedAvatarMessages = ref(new Set());
 
 const statusColors = {
     open: 'badge-info',
@@ -127,6 +128,44 @@ const deleteTicket = () => {
 
 const formatTime = (d) => d ? new Date(d).toLocaleString() : '';
 const isImage = (type) => type?.startsWith('image/');
+const getSenderName = (msg) => {
+    if (msg?.sender_name) return msg.sender_name;
+    if (msg?.sender?.name) return msg.sender.name;
+
+    if (msg?.sender_type === 'tenant') {
+        return supportState.selectedTicket?.tenant?.name || 'Tenant Clinic';
+    }
+
+    return 'Support Admin';
+};
+
+const getSenderAvatar = (msg) => {
+    const messageKey = String(msg?.id || '');
+
+    if (messageKey && failedAvatarMessages.value.has(messageKey)) {
+        const name = getSenderName(msg);
+        const bg = msg?.sender_type === 'admin' ? '334155' : '1F2937';
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&color=FFFFFF&background=${bg}`;
+    }
+
+    if (msg?.sender_avatar_url) return msg.sender_avatar_url;
+    if (msg?.sender?.profile_picture_url) return msg.sender.profile_picture_url;
+    if (msg?.sender?.profile_photo_url) return msg.sender.profile_photo_url;
+
+    const name = getSenderName(msg);
+    const bg = msg?.sender_type === 'admin' ? '334155' : '1F2937';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&color=FFFFFF&background=${bg}`;
+};
+
+const handleAvatarError = (msg) => {
+    const messageKey = String(msg?.id || '');
+    if (!messageKey) return;
+
+    const updated = new Set(failedAvatarMessages.value);
+    updated.add(messageKey);
+    failedAvatarMessages.value = updated;
+};
+
 const handleFileSelect = (e) => {
     replyAttachments.value.push(...Array.from(e.target.files));
     e.target.value = '';
@@ -187,15 +226,17 @@ const removeAttachment = (i) => replyAttachments.value.splice(i, 1);
                                 class="flex flex-col"
                             >
                                 <div class="flex items-end gap-2" :class="msg.sender_type === 'admin' ? 'flex-row-reverse' : ''">
-                                    <div class="h-8 w-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 overflow-hidden bg-base-300">
-                                        <img v-if="msg.sender?.profile_photo_url" :src="msg.sender.profile_photo_url" class="h-full w-full object-cover" />
-                                        <span v-else>{{ msg.sender_type === 'admin' ? '🛡️' : (msg.sender?.name?.charAt(0) || 'T') }}</span>
+                                    <div class="h-8 w-8 rounded-full shrink-0 overflow-hidden border border-base-300 bg-base-200">
+                                        <img :src="getSenderAvatar(msg)" :alt="getSenderName(msg)" class="h-full w-full object-cover" @error="handleAvatarError(msg)" />
                                     </div>
                                     <div 
                                         class="max-w-[320px] px-4 py-2.5 text-sm rounded-2xl"
                                         :class="msg.sender_type === 'admin' ? 'bg-primary text-primary-content rounded-br-md' : 'bg-base-200 text-base-content rounded-bl-md'"
                                         :style="msg.sender_type === 'admin' ? { backgroundColor: primaryColor } : {}"
                                     >
+                                        <p class="text-[10px] font-black mb-1.5 opacity-80 tracking-wide">
+                                            {{ getSenderName(msg) }}
+                                        </p>
                                         <p class="whitespace-pre-wrap break-words">{{ msg.content }}</p>
                                         <div v-if="msg.attachments?.length" class="mt-2 space-y-1">
                                             <template v-for="att in msg.attachments" :key="att.id">

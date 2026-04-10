@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\SupportTicket;
 use App\Models\SupportMessage;
 use App\Models\AuditLog;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Events\SupportTicketUpdated;
 
 class SupportTicketController extends Controller
@@ -50,8 +52,139 @@ class SupportTicketController extends Controller
 
         return response()->json([
             'success' => true,
-            'ticket' => $ticket
+            'ticket' => $this->transformTicket($ticket),
         ]);
+    }
+
+    protected function transformTicket(SupportTicket $ticket): array
+    {
+        $data = $ticket->toArray();
+        $messages = $ticket->messages ?? collect();
+
+        $data['messages'] = collect($messages)->map(function ($message) use ($ticket) {
+            return $this->transformMessage($message, $ticket);
+        })->values()->all();
+
+        return $data;
+    }
+
+    protected function transformMessage(SupportMessage $message, SupportTicket $ticket): array
+    {
+        $data = $message->toArray();
+        $data['sender_name'] = $this->resolveSenderName($message, $ticket);
+        $data['sender_avatar_url'] = $this->resolveSenderAvatarUrl($message, $ticket);
+
+        return $data;
+    }
+
+    protected function resolveSenderName(SupportMessage $message, SupportTicket $ticket): string
+    {
+        if ($message->sender_type === 'tenant') {
+            $tenantName = $ticket->tenant?->owner_name ?: $ticket->tenant?->name;
+            return $tenantName ?: 'Tenant Clinic';
+        }
+
+        $admin = User::query()->find($message->sender_id);
+        return $admin?->name ?: 'Support Admin';
+    }
+
+    protected function resolveSenderAvatarUrl(SupportMessage $message, SupportTicket $ticket): string
+    {
+        try {
+        if ($message->sender_type === 'tenant') {
+            $tenantUserPicture = $this->resolveTenantUserProfilePicture($ticket, (int) $message->sender_id);
+            if ($tenantUserPicture !== null) {
+                return $tenantUserPicture;
+            }
+
+            $logo = (string) ($ticket->tenant?->logo_path ?? '');
+
+            if ($logo !== '') {
+                if (str_starts_with($logo, 'http://') || str_starts_with($logo, 'https://') || str_starts_with($logo, 'data:image/')) {
+                    return $logo;
+                }
+
+                $tenantLogoUrl = $this->buildTenantStorageUrl($ticket, $logo);
+                if ($tenantLogoUrl !== null) {
+                    return $tenantLogoUrl;
+                }
+
+                return asset('storage/' . ltrim($logo, '/'));
+            }
+
+            $tenantName = $ticket->tenant?->owner_name ?: $ticket->tenant?->name ?: 'Tenant Clinic';
+            return 'https://ui-avatars.com/api/?name=' . urlencode($tenantName) . '&color=FFFFFF&background=1F2937';
+        }
+
+        $admin = User::query()->find($message->sender_id);
+
+        if ($admin?->profile_picture_url) {
+            return $admin->profile_picture_url;
+        }
+
+        return 'https://ui-avatars.com/api/?name=' . urlencode($admin?->name ?: 'Support Admin') . '&color=FFFFFF&background=334155';
+        } catch (\Throwable $e) {
+            $name = $this->resolveSenderName($message, $ticket);
+            $bg = $message->sender_type === 'admin' ? '334155' : '1F2937';
+            return 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&color=FFFFFF&background=' . $bg;
+        }
+    }
+
+    protected function resolveTenantUserProfilePicture(SupportTicket $ticket, int $senderId): ?string
+    {
+        if (!$ticket->tenant || $senderId <= 0) {
+            return null;
+        }
+
+        $tenantDatabase = (string) ($ticket->tenant?->database_name ?? '');
+        if ($tenantDatabase === '') {
+            return null;
+        }
+
+        try {
+            $record = DB::connection('mysql')
+                ->table($tenantDatabase . '.users')
+                ->where('id', $senderId)
+                ->first(['profile_picture']);
+
+            $profilePicture = (string) ($record->profile_picture ?? '');
+            if ($profilePicture === '') {
+                return null;
+            }
+
+            if (str_starts_with($profilePicture, 'http://') || str_starts_with($profilePicture, 'https://') || str_starts_with($profilePicture, 'data:image/')) {
+                return $profilePicture;
+            }
+
+            return $this->buildTenantStorageUrl($ticket, $profilePicture);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    protected function buildTenantStorageUrl(SupportTicket $ticket, string $path): ?string
+    {
+        $tenantDomain = DB::connection('central')
+            ->table('domains')
+            ->where('tenant_id', (string) $ticket->tenant_id)
+            ->value('domain');
+
+        if (!$tenantDomain) {
+            return null;
+        }
+
+        $appUrl = config('app.url', 'http://localhost');
+        $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?: 'http';
+        $centralHost = parse_url($appUrl, PHP_URL_HOST) ?: 'localhost';
+        $port = parse_url($appUrl, PHP_URL_PORT);
+
+        $host = str_contains($tenantDomain, '.')
+            ? $tenantDomain
+            : ($tenantDomain . '.' . $centralHost);
+
+        $portSegment = $port ? ':' . $port : '';
+
+        return $scheme . '://' . $host . $portSegment . '/tenant-storage/' . ltrim($path, '/');
     }
 
     public function updateStatus(Request $request, SupportTicket $ticket)

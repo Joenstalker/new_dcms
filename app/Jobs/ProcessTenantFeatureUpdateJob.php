@@ -45,7 +45,7 @@ class ProcessTenantFeatureUpdateJob implements ShouldQueue
             if (!$this->isAdvertisement) {
                 foreach ($this->features as $feature) {
                     TenantFeatureUpdate::updateOrCreate(
-                        ],
+                        ["tenant_id"=> $this->tenant->id, "feature_id"=> $feature->id], 
                         [
                             'status' => TenantFeatureUpdate::STATUS_PENDING,
                             'batch_id' => $this->batch()?->id,
