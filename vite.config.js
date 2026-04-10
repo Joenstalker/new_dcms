@@ -7,6 +7,7 @@ export default defineConfig({
         laravel({
             input: 'resources/js/app.js',
             refresh: true,
+            detectTls: false,
         }),
         vue({
             template: {
@@ -23,7 +24,7 @@ export default defineConfig({
     | Vite Server Configuration for Multi-Tenant Development
     |--------------------------------------------------------------------------
     |
-    | Configure the Vite development server to work correctly with lvh.me
+    | Configure the Vite development server to work correctly with dcms.lvh.me
     | and subdomains for Hot Module Replacement (HMR).
     |
     */
@@ -36,8 +37,8 @@ export default defineConfig({
 
         // Configure HMR
         hmr: {
-            // Use the lvh.me hostname for HMR connections
-            host: 'lvh.me',
+            // Use the dcms.lvh.me hostname for HMR connections
+            host: 'dcms.lvh.me',
 
             // Use WebSocket protocol
             protocol: 'ws',
@@ -45,8 +46,8 @@ export default defineConfig({
 
         // Allow requests from subdomains
         allowedHosts: [
-            'lvh.me',
-            '*.lvh.me',
+            'dcms.lvh.me',
+            '*.dcms.lvh.me',
             'localhost',
             '127.0.0.1',
         ],
