@@ -2,13 +2,21 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Appointment;
+use App\Models\Feature;
+use App\Models\Patient;
+use App\Models\SubscriptionPlan;
+use App\Models\SystemSetting;
+use App\Models\TenantFeatureUpdate;
+use App\Models\TenantNotification;
+use App\Models\User;
+use App\Services\AppVersionService;
+use App\Services\TenantBrandingService;
 use Detection\MobileDetect;
 use Illuminate\Http\Request;
-use Inertia\Middleware;
-use App\Models\SystemSetting;
-use App\Models\Appointment;
-use App\Models\TenantNotification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -34,16 +42,16 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $detect = new MobileDetect();
+        $detect = new MobileDetect;
         $resolvedUser = $request->user();
 
-        if (!tenant() && $resolvedUser) {
-            $isAdminFlag = (bool)($resolvedUser->getAttribute('is_admin') ?? false);
+        if (! tenant() && $resolvedUser) {
+            $isAdminFlag = (bool) ($resolvedUser->getAttribute('is_admin') ?? false);
             $hasAdminRole = method_exists($resolvedUser, 'hasRole')
                 ? ($resolvedUser->hasRole('Admin') || $resolvedUser->hasRole('System Root'))
                 : false;
 
-            if (!$isAdminFlag && !$hasAdminRole) {
+            if (! $isAdminFlag && ! $hasAdminRole) {
                 Auth::guard('web')->logout();
                 $request->session()->forget([
                     'tenant_authenticated',
@@ -58,19 +66,19 @@ class HandleInertiaRequests extends Middleware
             $preview = $request->session()->get('tenant_preview_active');
             $isValidPreview = is_array($preview)
                 && (($preview['active'] ?? false) === true)
-                && (string)($preview['tenant_id'] ?? '') === (string)tenant()->getTenantKey();
+                && (string) ($preview['tenant_id'] ?? '') === (string) tenant()->getTenantKey();
 
             if ($isValidPreview) {
                 $previewUserId = (int) ($preview['tenant_user_id'] ?? 0);
                 if ($previewUserId > 0) {
-                    $previewUser = \App\Models\User::query()->find($previewUserId);
+                    $previewUser = User::query()->find($previewUserId);
                     if ($previewUser) {
                         $resolvedUser = $previewUser;
                     }
                 }
             }
 
-            if (!$isValidPreview) {
+            if (! $isValidPreview) {
                 $tenantId = (string) tenant()->getTenantKey();
                 $sessionTenantId = (string) $request->session()->get('tenant_authenticated_tenant_id', '');
                 $sessionUserId = (int) $request->session()->get('tenant_authenticated_user_id', 0);
@@ -81,7 +89,7 @@ class HandleInertiaRequests extends Middleware
                     && $sessionTenantId === $tenantId
                     && $sessionUserId === $currentUserId;
 
-                if (!$isValidTenantSession) {
+                if (! $isValidTenantSession) {
                     Auth::guard('web')->logout();
                     $request->session()->forget([
                         'tenant_authenticated',
@@ -98,7 +106,7 @@ class HandleInertiaRequests extends Middleware
             'device' => [
                 'isMobile' => $detect->isMobile(),
                 'isTablet' => $detect->isTablet(),
-                'isDesktop' => !$detect->isMobile() && !$detect->isTablet(),
+                'isDesktop' => ! $detect->isMobile() && ! $detect->isTablet(),
             ],
             'auth' => [
                 'user' => $resolvedUser ? [
@@ -108,7 +116,7 @@ class HandleInertiaRequests extends Middleware
                     'profile_picture_url' => $resolvedUser->profile_picture_url,
                     'roles' => $resolvedUser->getRoleNames()->toArray(),
                     'permissions' => $resolvedUser->getAllPermissions()->pluck('name')->toArray(),
-                    'requires_password_change' => (bool)$resolvedUser->requires_password_change,
+                    'requires_password_change' => (bool) $resolvedUser->requires_password_change,
                 ] : null,
             ],
             'config' => [
@@ -116,25 +124,21 @@ class HandleInertiaRequests extends Middleware
                     ?: config('tenancy.central_domains.0', 'localhost'),
                 'app_url' => $request->getSchemeAndHttpHost(),
                 'recaptcha_site_key' => config('services.recaptcha.site_key', ''),
-                'version' => fn() => tenant() ? (tenant()->version ?: 'v1.0.0') : \App\Services\AppVersionService::getVersion(),
+                'version' => fn () => tenant() ? (tenant()->version ?: 'v1.0.0') : AppVersionService::getVersion(),
             ],
             'tenant' => function () {
-            $tenant = tenant();
-            if (!$tenant)
-                return null;
+                $tenant = tenant();
+                if (! $tenant) {
+                    return null;
+                }
 
-            // Optimized: Only fetch what's needed for the layout/gating
-            // Priority: TenantBrandingService (Binary/Custom) > Tenant Model (Legacy/Sync)
-            $branding = \App\Services\TenantBrandingService::getAll();
+                // Optimized: Only fetch what's needed for the layout/gating
+                // Priority: TenantBrandingService (Binary/Custom) > Tenant Model (Legacy/Sync)
+                $branding = TenantBrandingService::getAll();
 
-            // GRACEFUL DEGRADATION: 
-            // If the tenant currently has access to Custom Branding (Pro), respect their hidden/shown overrides.
-            // If they are downgraded to Basic, ignore their overrides and fallback to default immediately to prevent menu lockouts.
-            $enabledFeatures = $tenant->canCustomizeBranding()
-                ? ($branding['enabled_features'] ?? $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures())
-                : \App\Models\Tenant::getDefaultFeatures();
+                $enabledFeatures = $tenant->getResolvedEnabledFeaturesForUi($branding);
 
-            return array_merge($tenant->toArray(), [
+                return array_merge($tenant->toArray(), [
                     'branding_color' => $branding['primary_color'] ?? $tenant->branding_color,
                     'font_family' => $branding['font_family'] ?? $tenant->font_family,
                     'portal_config' => $branding['portal_config'] ?? $tenant->portal_config,
@@ -150,17 +154,17 @@ class HandleInertiaRequests extends Middleware
                     'logo_booking_path' => $branding['logo_booking_base64'] ?? $tenant->logo_booking_path,
                     'is_premium' => $tenant->canCustomizeBranding(),
                 ]);
-        },
+            },
             'tenant_plan' => function () {
-            $tenant = tenant();
-            if (!$tenant) {
-                return null;
-            }
+                $tenant = tenant();
+                if (! $tenant) {
+                    return null;
+                }
 
-            $previewTenantId = (string)config('tenancy.preview.tenant_id', 'preview-sandbox');
-            $isPreviewTenant = (string)$tenant->getTenantKey() === $previewTenantId;
+                $previewTenantId = (string) config('tenancy.preview.tenant_id', 'preview-sandbox');
+                $isPreviewTenant = (string) $tenant->getTenantKey() === $previewTenantId;
 
-            return [
+                return [
                     'features' => [
                         'sms_notifications' => $isPreviewTenant ? true : $tenant->hasPlanFeature('sms_notifications'),
                         'custom_branding' => $isPreviewTenant ? true : $tenant->hasPlanFeature('custom_branding'),
@@ -171,48 +175,49 @@ class HandleInertiaRequests extends Middleware
                         'enhanced_reports' => $isPreviewTenant ? true : $tenant->hasPlanFeature('enhanced_reports'),
                         'custom_system_features' => $isPreviewTenant ? true : $tenant->hasPlanFeature('custom_system_features'),
                     ],
-                    'feature_requirements' => \App\Models\SubscriptionPlan::getFeatureRequirementMap(),
+                    'feature_requirements' => SubscriptionPlan::getFeatureRequirementMap(),
                     'limits' => [
                         'max_users' => $isPreviewTenant ? null : $tenant->getPlanLimit('max_users'),
                         'max_patients' => $isPreviewTenant ? null : $tenant->getPlanLimit('max_patients'),
                         'max_appointments' => $isPreviewTenant ? null : $tenant->getPlanLimit('max_appointments'),
                     ],
                     'current_usage' => [
-                        'users' => \App\Models\User::count(),
-                        'patients' => \App\Models\Patient::count(),
-                        'appointments' => \App\Models\Appointment::count(),
+                        'users' => User::count(),
+                        'patients' => Patient::count(),
+                        'appointments' => Appointment::count(),
                     ],
                     // Global mapping of all feature keys to their implementation statuses
-                    'global_feature_statuses' => \App\Models\Feature::pluck('implementation_status', 'key'),
+                    'global_feature_statuses' => Feature::pluck('implementation_status', 'key'),
                 ];
-        },
+            },
             'pending_updates_count' => function () use ($request) {
-            if (!$request->user() || !tenant())
-                return 0;
+                if (! $request->user() || ! tenant()) {
+                    return 0;
+                }
 
-            // Only notify those who can manage settings (Owners/Admins)
-            // This prevents spamming doctors/staff who can't apply updates anyway
-            if (!$request->user()->can('manage settings') && !$request->user()->hasRole('Owner')) {
-                return 0;
-            }
+                // Only notify those who can manage settings (Owners/Admins)
+                // This prevents spamming doctors/staff who can't apply updates anyway
+                if (! $request->user()->can('manage settings') && ! $request->user()->hasRole('Owner')) {
+                    return 0;
+                }
 
-            $cacheKey = "tenant_" . tenant()->id . "_pending_updates_count";
+                $cacheKey = 'tenant_'.tenant()->id.'_pending_updates_count';
 
-            return \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addHour(), function () {
-                    return \App\Models\TenantFeatureUpdate::where('tenant_id', tenant()->id)
+                return Cache::remember($cacheKey, now()->addHour(), function () {
+                    return TenantFeatureUpdate::where('tenant_id', tenant()->id)
                         ->pending()
                         ->count();
                 }
                 );
             },
             'sidebar_badges' => function () use ($request) {
-            if (!$request->user() || !tenant()) {
-                return null;
-            }
+                if (! $request->user() || ! tenant()) {
+                    return null;
+                }
 
-            $user = $request->user();
+                $user = $request->user();
 
-            return [
+                return [
                     'appointments_pending' => $user->can('view appointments')
                         ? Appointment::where('status', 'pending')->count()
                         : 0,
@@ -220,147 +225,148 @@ class HandleInertiaRequests extends Middleware
                         ->unread()
                         ->count(),
                 ];
-        },
+            },
             'flash' => [
-                'success' => $request->session()->get('success'),
-                'error' => $request->session()->get('error'),
-            ],
+                    'success' => $request->session()->get('success'),
+                    'error' => $request->session()->get('error'),
+                ],
             'preview_mode' => function () use ($request) {
-            $tenant = tenant();
-            $preview = $request->session()->get('tenant_preview_active');
+                $tenant = tenant();
+                $preview = $request->session()->get('tenant_preview_active');
 
-            if (!$tenant) {
-                return [
+                if (! $tenant) {
+                    return [
                         'active' => false,
                     ];
-            }
+                }
 
-            $previewTenantId = (string)config('tenancy.preview.tenant_id', 'preview-sandbox');
-            if ((string)$tenant->getTenantKey() === $previewTenantId) {
-                return [
+                $previewTenantId = (string) config('tenancy.preview.tenant_id', 'preview-sandbox');
+                if ((string) $tenant->getTenantKey() === $previewTenantId) {
+                    return [
                         'active' => true,
                         'started_at' => $preview['started_at'] ?? null,
-                        'subdomain' => (string)config('tenancy.preview.subdomain', 'tenantpreview'),
+                        'subdomain' => (string) config('tenancy.preview.subdomain', 'tenantpreview'),
                     ];
-            }
+                }
 
-            if (!is_array($preview)) {
-                return [
+                if (! is_array($preview)) {
+                    return [
                         'active' => false,
                     ];
-            }
+                }
 
-            $matchesTenant = (string)($preview['tenant_id'] ?? '') === (string)$tenant->getTenantKey();
+                $matchesTenant = (string) ($preview['tenant_id'] ?? '') === (string) $tenant->getTenantKey();
 
-            return [
+                return [
                     'active' => $matchesTenant && (($preview['active'] ?? false) === true),
                     'started_at' => $preview['started_at'] ?? null,
                     'subdomain' => $preview['subdomain'] ?? null,
                 ];
-        },
+            },
             'admin_preview_mode' => function () use ($request) {
-            $preview = $request->session()->get('tenant_preview_active');
+                $preview = $request->session()->get('tenant_preview_active');
 
-            if (!is_array($preview)) {
-                return [
+                if (! is_array($preview)) {
+                    return [
                         'active' => false,
                     ];
-            }
+                }
 
-            return [
+                return [
                     'active' => (($preview['active'] ?? false) === true),
                     'tenant_id' => $preview['tenant_id'] ?? null,
                     'subdomain' => $preview['subdomain'] ?? null,
                     'is_isolated' => (($preview['is_isolated'] ?? false) === true),
                     'started_at' => $preview['started_at'] ?? null,
                 ];
-        },
+            },
             'preview_credentials' => function () use ($request) {
-            if (tenant() || !$request->user()) {
-                return null;
-            }
+                if (tenant() || ! $request->user()) {
+                    return null;
+                }
 
-            $user = $request->user();
-            $isAdmin = (bool)($user->getAttribute('is_admin') ?? false)
-                || (method_exists($user, 'hasRole') && ($user->hasRole('Admin') || $user->hasRole('System Root')));
+                $user = $request->user();
+                $isAdmin = (bool) ($user->getAttribute('is_admin') ?? false)
+                    || (method_exists($user, 'hasRole') && ($user->hasRole('Admin') || $user->hasRole('System Root')));
 
-            if (!$isAdmin) {
-                return null;
-            }
+                if (! $isAdmin) {
+                    return null;
+                }
 
-            return [
-                    'email' => (string)config('tenancy.preview.login_email', 'preview-owner@local.test'),
-                    'password' => (string)config('tenancy.preview.login_password', 'preview-owner-password'),
-                    'subdomain' => (string)config('tenancy.preview.subdomain', 'tenantpreview'),
-                ];
-        },
-            'branding' => function () {
-            $tenant = tenant();
-
-            // Central Admin: use SystemSetting values only
-            if (!$tenant) {
                 return [
+                    'email' => (string) config('tenancy.preview.login_email', 'preview-owner@local.test'),
+                    'password' => (string) config('tenancy.preview.login_password', 'preview-owner-password'),
+                    'subdomain' => (string) config('tenancy.preview.subdomain', 'tenantpreview'),
+                ];
+            },
+            'branding' => function () {
+                $tenant = tenant();
+
+                // Central Admin: use SystemSetting values only
+                if (! $tenant) {
+                    return [
                         'platform_name' => SystemSetting::get('platform_name', 'DCMS'),
                         'platform_logo' => SystemSetting::get('platform_logo'),
                         'primary_color' => SystemSetting::get('primary_color', '#0ea5e9'),
-                        'support_chat_bottom_offset' => (int)SystemSetting::get('support_chat_bottom_offset', 56),
+                        'support_chat_bottom_offset' => (int) SystemSetting::get('support_chat_bottom_offset', 56),
                         'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
                         'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
                     ];
-            }
+                }
 
-            // Tenant: use TenantBrandingService as absolute source for specific keys
-            $branding = \App\Services\TenantBrandingService::getAll();
+                // Tenant: use TenantBrandingService as absolute source for specific keys
+                $branding = TenantBrandingService::getAll();
 
-            return [
+                return [
                     'platform_name' => $branding['clinic_name'] ?? $tenant->name ?? SystemSetting::get('platform_name', 'DCMS'),
                     'platform_logo' => $branding['logo_base64'] ?? $tenant->logo_path ?? SystemSetting::get('platform_logo'),
                     'primary_color' => $branding['primary_color'] ?? $tenant->branding_color ?? SystemSetting::get('primary_color', '#0ea5e9'),
-                    'support_chat_bottom_offset' => (int)($branding['support_chat_bottom_offset'] ?? SystemSetting::get('support_chat_bottom_offset', 56)),
+                    'support_chat_bottom_offset' => (int) ($branding['support_chat_bottom_offset'] ?? SystemSetting::get('support_chat_bottom_offset', 56)),
                     'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
                     'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
                 ];
-        },
+            },
             'branding_computed' => function () {
-            $tenant = tenant();
+                $tenant = tenant();
 
-            // Central Admin: compute from SystemSetting only
-            if (!$tenant) {
-                $color = SystemSetting::get('primary_color', '#0ea5e9');
-                $hex = ltrim($color, '#');
-                $r = hexdec(substr($hex, 0, 2));
-                $g = hexdec(substr($hex, 2, 2));
-                $b = hexdec(substr($hex, 4, 2));
-                $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
-                return [
+                // Central Admin: compute from SystemSetting only
+                if (! $tenant) {
+                    $color = SystemSetting::get('primary_color', '#0ea5e9');
+                    $hex = ltrim($color, '#');
+                    $r = hexdec(substr($hex, 0, 2));
+                    $g = hexdec(substr($hex, 2, 2));
+                    $b = hexdec(substr($hex, 4, 2));
+                    $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
+
+                    return [
                         'primary_color' => $color,
                         'contrast_color' => $luminance > 0.5 ? '#1f2937' : '#ffffff',
                         'source' => 'central',
                     ];
-            }
+                }
 
-            // Tenant: compute from TenantBrandingService (untouched)
-            $branding = \App\Services\TenantBrandingService::findMany(['primary_color']);
+                // Tenant: compute from TenantBrandingService (untouched)
+                $branding = TenantBrandingService::findMany(['primary_color']);
 
-            $centralColor = SystemSetting::get('primary_color', '#0ea5e9');
-            $tenantColor = $branding['primary_color'] ?? $tenant->branding_color ?? null;
+                $centralColor = SystemSetting::get('primary_color', '#0ea5e9');
+                $tenantColor = $branding['primary_color'] ?? $tenant->branding_color ?? null;
 
-            $activeColor = $tenantColor ?: $centralColor;
+                $activeColor = $tenantColor ?: $centralColor;
 
-            // Server-side luminance calculation for contrast color
-            $hex = ltrim($activeColor, '#');
-            $r = hexdec(substr($hex, 0, 2));
-            $g = hexdec(substr($hex, 2, 2));
-            $b = hexdec(substr($hex, 4, 2));
-            $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
-            $contrastColor = $luminance > 0.5 ? '#1f2937' : '#ffffff';
+                // Server-side luminance calculation for contrast color
+                $hex = ltrim($activeColor, '#');
+                $r = hexdec(substr($hex, 0, 2));
+                $g = hexdec(substr($hex, 2, 2));
+                $b = hexdec(substr($hex, 4, 2));
+                $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
+                $contrastColor = $luminance > 0.5 ? '#1f2937' : '#ffffff';
 
-            return [
+                return [
                     'primary_color' => $activeColor,
                     'contrast_color' => $contrastColor,
                     'source' => $tenantColor ? 'tenant' : 'central',
                 ];
-        },
+            },
         ];
     }
 }

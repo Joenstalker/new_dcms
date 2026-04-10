@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
+use App\Helpers\TenantDatabaseHelper;
+use App\Services\TenantDatabaseNamingService;
+use Illuminate\Support\Str;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDomains;
+use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 use Stancl\Tenancy\DatabaseConfig;
-use App\Services\TenantDatabaseNamingService;
-use App\Helpers\TenantDatabaseHelper;
 
 class Tenant extends BaseTenant implements TenantWithDatabase
 {
@@ -101,7 +102,6 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         ];
     }
 
-
     /**
      * Check if the tenant can use advanced branding customizations
      */
@@ -127,7 +127,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         foreach ($days as $day) {
             $defaults[$day] = [
-                'enabled' => !in_array($day, ['saturday', 'sunday']),
+                'enabled' => ! in_array($day, ['saturday', 'sunday']),
                 'open' => '08:00',
                 'close' => '17:00',
             ];
@@ -136,15 +136,14 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         $hours = $this->operating_hours;
 
         // Handle cases where the value might be a JSON string from the database/Inertia
-        if (is_string($hours) && !empty($hours)) {
+        if (is_string($hours) && ! empty($hours)) {
             try {
                 $decoded = json_decode($hours, true);
                 if (is_array($decoded)) {
                     $hours = $decoded;
                 }
-            }
-            catch (\Exception $e) {
-            // Fallback to defaults on parse error
+            } catch (\Exception $e) {
+                // Fallback to defaults on parse error
             }
         }
 
@@ -155,7 +154,9 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      * Default status for new tenants
      */
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_INACTIVE = 'inactive';
+
     public const STATUS_SUSPENDED = 'suspended';
 
     /**
@@ -171,7 +172,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
 
             // Generate unique tenant ID using UUID (safer for identification)
             if (empty($tenant->id)) {
-                $tenant->id = (string)\Illuminate\Support\Str::uuid();
+                $tenant->id = (string) Str::uuid();
             }
 
             // Generate hashed database name from domain
@@ -185,7 +186,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
                 }
 
                 // If no domain, use the tenant ID (subdomain) as source, then name as fallback
-                if (!$domain) {
+                if (! $domain) {
                     $domain = $tenant->id ?? $tenant->name;
                 }
 
@@ -225,6 +226,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function getSubdomainAttribute(): string
     {
         $suffix = config('tenancy.database.suffix', '_db');
+
         return str_replace($suffix, '', $this->id);
     }
 
@@ -265,7 +267,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      */
     public function getDatabaseName(): string
     {
-        return $this->database ?? $this->database_name ?? config('tenancy.database.prefix') . $this->id . config('tenancy.database.suffix');
+        return $this->database ?? $this->database_name ?? config('tenancy.database.prefix').$this->id.config('tenancy.database.suffix');
     }
 
     /**
@@ -291,13 +293,14 @@ class Tenant extends BaseTenant implements TenantWithDatabase
                 $namingService = app(TenantDatabaseNamingService::class);
                 $domain = $this->id ?? $this->name;
 
-                // Get the domain securely without invoking n+1 exceptions during boot 
+                // Get the domain securely without invoking n+1 exceptions during boot
                 if ($this->relationLoaded('domains') && $this->domains->isNotEmpty()) {
                     $domain = $this->domains->first()->domain ?? $domain;
                 }
 
                 $dbName = $namingService->generateHashedDatabaseName($domain);
             }
+
             return $dbName;
         }
 
@@ -317,7 +320,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      */
     public function usesHashedDatabaseName(): bool
     {
-        return !empty($this->database_name) && TenantDatabaseHelper::isHashedFormat($this->database_name);
+        return ! empty($this->database_name) && TenantDatabaseHelper::isHashedFormat($this->database_name);
     }
 
     /**
@@ -339,7 +342,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             'logs',
             'branches',
             'settings',
-            'branding'
+            'branding',
         ];
     }
 
@@ -348,20 +351,33 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      */
     public function isFeatureEnabled(string $feature): bool
     {
-        $enabled = $this->enabled_features;
+        return in_array($feature, $this->getResolvedEnabledFeaturesForUi(), true);
+    }
 
-        if (is_string($enabled) && !empty($enabled)) {
+    /**
+     * Resolve tenant UI module visibility from branding overrides or tenant defaults.
+     * If custom branding is not entitled by plan, only return baseline defaults.
+     */
+    public function getResolvedEnabledFeaturesForUi(?array $brandingOverrides = null): array
+    {
+        if (! $this->canCustomizeBranding()) {
+            return self::getDefaultFeatures();
+        }
+
+        $enabled = $brandingOverrides['enabled_features'] ?? $this->enabled_features ?? self::getDefaultFeatures();
+
+        if (is_string($enabled) && $enabled !== '') {
             $decoded = json_decode($enabled, true);
             if (is_array($decoded)) {
                 $enabled = $decoded;
             }
         }
 
-        if (!is_array($enabled)) {
-            $enabled = self::getDefaultFeatures();
+        if (! is_array($enabled)) {
+            return self::getDefaultFeatures();
         }
 
-        return in_array($feature, $enabled);
+        return array_values(array_unique($enabled));
     }
 
     /**
@@ -370,9 +386,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function hasPlanFeature(string $key): bool
     {
         $subscription = $this->subscription;
-        if (!$subscription || !$subscription->plan) {
+        if (! $subscription || ! $subscription->plan) {
             return false;
         }
+
         return $subscription->plan->hasFeature($key);
     }
 
@@ -382,9 +399,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function getPlanLimit(string $key): mixed
     {
         $subscription = $this->subscription;
-        if (!$subscription || !$subscription->plan) {
+        if (! $subscription || ! $subscription->plan) {
             return null;
         }
+
         return $subscription->plan->getFeatureValue($key);
     }
 
@@ -394,8 +412,9 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function canAddMorePatients(): bool
     {
         $limit = $this->getPlanLimit('max_patients');
-        if ($limit === null || $limit === -1)
-            return true; // Unlimited
+        if ($limit === null || $limit === -1) {
+            return true;
+        } // Unlimited
 
         $currentCount = \DB::connection($this->getDatabaseConnectionName())
             ->table('patients')
@@ -410,8 +429,9 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function canAddMoreUsers(): bool
     {
         $limit = $this->getPlanLimit('max_users');
-        if ($limit === null || $limit === -1)
-            return true; // Unlimited
+        if ($limit === null || $limit === -1) {
+            return true;
+        } // Unlimited
 
         $currentCount = \DB::connection($this->getDatabaseConnectionName())
             ->table('users')
@@ -426,8 +446,9 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public function canAddMoreAppointments(): bool
     {
         $limit = $this->getPlanLimit('max_appointments');
-        if ($limit === null || $limit === -1)
-            return true; // Unlimited
+        if ($limit === null || $limit === -1) {
+            return true;
+        } // Unlimited
 
         $currentCount = \DB::connection($this->getDatabaseConnectionName())
             ->table('appointments')

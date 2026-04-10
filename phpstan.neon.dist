@@ -1,0 +1,17 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app
+        - routes
+        - config
+    excludePaths:
+        - app/Database/IdGenerators/DomainBasedIdGenerator.php
+    level: 5
+    tmpDir: storage/framework/phpstan
+    checkModelProperties: true
+    treatPhpDocTypesAsCertain: false
+    universalObjectCratesClasses:
+        - stdClass

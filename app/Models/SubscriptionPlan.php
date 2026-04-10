@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class SubscriptionPlan extends Model
 {
     protected $connection = 'central';
+
     protected $loadedFeatures = null;
 
     protected $fillable = [
@@ -35,22 +36,31 @@ class SubscriptionPlan extends Model
 
     /** @deprecated Use dynamic features pivot instead */
     public $legacy_max_users;
+
     /** @deprecated Use dynamic features pivot instead */
     public $legacy_max_patients;
+
     /** @deprecated Use dynamic features pivot instead */
     public $legacy_max_appointments;
+
     /** @deprecated Use dynamic features pivot instead */
     public $legacy_has_qr_booking;
+
     /** @deprecated Use dynamic features pivot instead */
     public $legacy_has_sms;
+
     /** @deprecated Use dynamic features pivot instead */
     public $legacy_has_branding;
+
     /** @deprecated Use dynamic features pivot instead */
     public $legacy_has_analytics;
+
     /** @deprecated Use dynamic features pivot instead */
     public $legacy_has_priority_support;
+
     /** @deprecated Use dynamic features pivot instead */
     public $legacy_has_multi_branch;
+
     /** @deprecated Use dynamic features pivot instead */
     public $legacy_report_level;
 
@@ -71,6 +81,18 @@ class SubscriptionPlan extends Model
         'max_bandwidth_mb' => 'integer',
     ];
 
+    /**
+     * Legacy-to-dynamic alias map for migrated feature keys.
+     */
+    private const LEGACY_FEATURE_KEY_MAP = [
+        'has_qr_booking' => 'qr_booking',
+        'has_sms' => 'sms_notifications',
+        'has_branding' => 'custom_branding',
+        'has_analytics' => 'advanced_analytics',
+        'has_priority_support' => 'priority_support',
+        'has_multi_branch' => 'multi_branch',
+    ];
+
     public function subscriptions()
     {
         return $this->hasMany(Subscription::class);
@@ -81,7 +103,7 @@ class SubscriptionPlan extends Model
      */
     public function features(): BelongsToMany
     {
-        return $this->belongsToMany(Feature::class , 'plan_features')
+        return $this->belongsToMany(Feature::class, 'plan_features')
             ->withPivot('value_boolean', 'value_numeric', 'value_tier', 'pushed_at')
             ->withTimestamps();
     }
@@ -94,6 +116,7 @@ class SubscriptionPlan extends Model
         if ($this->loadedFeatures === null) {
             $this->loadedFeatures = $this->features()->get();
         }
+
         return $this->loadedFeatures;
     }
 
@@ -111,25 +134,20 @@ class SubscriptionPlan extends Model
      */
     public function hasFeature(string $key): bool
     {
-        // Internal mapping for transition
-        $mapping = [
-            'has_qr_booking' => 'qr_booking',
-            'has_sms' => 'sms_notifications',
-            'has_branding' => 'custom_branding',
-            'has_analytics' => 'advanced_analytics',
-            'has_priority_support' => 'priority_support',
-            'has_multi_branch' => 'multi_branch',
-        ];
+        $lookupKey = self::LEGACY_FEATURE_KEY_MAP[$key] ?? $key;
 
-        $lookupKey = $mapping[$key] ?? $key;
-        
         $feature = $this->getFeature($lookupKey);
         if ($feature) {
             return $feature->isEnabledForPlan($this);
         }
 
+        // For managed dynamic keys, do not fallback to legacy columns.
+        if (array_key_exists($key, self::LEGACY_FEATURE_KEY_MAP) || $this->isManagedDynamicFeatureKey($lookupKey)) {
+            return false;
+        }
+
         // Final fallback for purely hardcoded columns (like Stripe IDs) that aren't features
-        return isset($this->{$key}) ? (bool)$this->{$key} : false;
+        return isset($this->{$key}) ? (bool) $this->{$key} : false;
     }
 
     /**
@@ -138,26 +156,27 @@ class SubscriptionPlan extends Model
      */
     public function getFeatureValue(string $key): mixed
     {
-        $mapping = [
-            'has_qr_booking' => 'qr_booking',
-            'has_sms' => 'sms_notifications',
-            'has_branding' => 'custom_branding',
-            'has_analytics' => 'advanced_analytics',
-            'has_priority_support' => 'priority_support',
-            'has_multi_branch' => 'multi_branch',
-            'max_users' => 'max_users',
-            'max_patients' => 'max_patients',
-            'max_appointments' => 'max_appointments',
-        ];
-
-        $lookupKey = $mapping[$key] ?? $key;
+        $lookupKey = self::LEGACY_FEATURE_KEY_MAP[$key] ?? $key;
 
         $feature = $this->getFeature($lookupKey);
         if ($feature) {
             return $feature->getValueForPlan($this);
         }
 
+        // For managed dynamic keys, do not fallback to legacy columns.
+        if (array_key_exists($key, self::LEGACY_FEATURE_KEY_MAP) || $this->isManagedDynamicFeatureKey($lookupKey)) {
+            return null;
+        }
+
         return $this->{$key} ?? null;
+    }
+
+    /**
+     * Detect whether a key is managed by the dynamic feature engine.
+     */
+    private function isManagedDynamicFeatureKey(string $key): bool
+    {
+        return Feature::where('key', $key)->exists();
     }
 
     /**
@@ -170,7 +189,7 @@ class SubscriptionPlan extends Model
 
         foreach ($features as $feature) {
             $category = $feature->category ?? 'other';
-            if (!isset($grouped[$category])) {
+            if (! isset($grouped[$category])) {
                 $grouped[$category] = [];
             }
             $grouped[$category][] = [
@@ -208,16 +227,16 @@ class SubscriptionPlan extends Model
 
         foreach ($featureMappings as $oldColumn => $featureKey) {
             $feature = Feature::where('key', $featureKey)->first();
-            if (!$feature) {
+            if (! $feature) {
                 continue;
             }
 
             $value = match ($feature->type) {
-                    'boolean' => $this->{ $oldColumn},
-                    'numeric' => $this->{ $oldColumn},
-                    'tiered' => $this->{ $oldColumn},
-                    default => null,
-                };
+                'boolean' => $this->{ $oldColumn},
+                'numeric' => $this->{ $oldColumn},
+                'tiered' => $this->{ $oldColumn},
+                default => null,
+            };
 
             $this->features()->syncWithoutDetaching([
                 $feature->id => match ($feature->type) {
@@ -236,11 +255,11 @@ class SubscriptionPlan extends Model
     public function addFeature(Feature $feature, mixed $value): void
     {
         $pivotData = match ($feature->type) {
-                'boolean' => ['value_boolean' => (bool)$value],
-                'numeric' => ['value_numeric' => (int)$value],
-                'tiered' => ['value_tier' => $value],
-                default => [],
-            };
+            'boolean' => ['value_boolean' => (bool) $value],
+            'numeric' => ['value_numeric' => (int) $value],
+            'tiered' => ['value_tier' => $value],
+            default => [],
+        };
 
         $this->features()->syncWithoutDetaching([
             $feature->id => $pivotData,

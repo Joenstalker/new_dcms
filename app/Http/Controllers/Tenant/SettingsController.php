@@ -2,21 +2,25 @@
 
 namespace App\Http\Controllers\Tenant;
 
-use App\Http\Controllers\Controller;
 use App\Events\OnlineBookingStatusUpdated;
+use App\Http\Controllers\Controller;
 use App\Models\Feature;
 use App\Models\Subscription;
-use App\Models\TenantFeatureUpdate;
+use App\Models\SubscriptionPlan;
+use App\Models\User;
 use App\Services\FeatureOTAUpdateService;
+use App\Services\TenantBrandingService;
 use App\Services\TenantFeatureGateService;
 use App\Services\TenantSecuritySettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 /**
  * Tenant Settings Controller
- * 
+ *
  * Handles settings for the dental clinic (tenant).
  */
 class SettingsController extends Controller
@@ -25,22 +29,22 @@ class SettingsController extends Controller
     {
         $tenant = tenant();
 
-        $subscription = \App\Models\Subscription::where('tenant_id', $tenant->getTenantKey())
+        $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
             ->where('stripe_status', 'active')
             ->with(['plan.features'])
             ->latest()
             ->first();
 
         // All available plans for upgrade comparison
-        $plans = \App\Models\SubscriptionPlan::with('features')
+        $plans = SubscriptionPlan::with('features')
             ->orderBy('price_monthly')
             ->get()
             ->map(function ($plan) {
                 return [
                     'id' => $plan->id,
                     'name' => $plan->name,
-                    'price_monthly' => (float)$plan->price_monthly,
-                    'price_yearly' => (float)$plan->price_yearly,
+                    'price_monthly' => (float) $plan->price_monthly,
+                    'price_yearly' => (float) $plan->price_yearly,
                     'features' => $plan->getFeaturesByCategory(),
                 ];
             });
@@ -63,9 +67,9 @@ class SettingsController extends Controller
         $featureKeys = ['security_settings', 'configuration_settings'];
 
         $gate = app(TenantFeatureGateService::class)
-            ->evaluate((string)$tenant->getTenantKey(), $featureKeys, true);
+            ->evaluate((string) $tenant->getTenantKey(), $featureKeys, true);
 
-        if (!$gate['allowed']) {
+        if (! $gate['allowed']) {
             if ($gate['reason'] === 'plan_missing_feature' || $gate['reason'] === 'subscription_required') {
                 return redirect()->route('settings.features')
                     ->with('error', 'Security settings are not available for your current plan.');
@@ -98,8 +102,8 @@ class SettingsController extends Controller
             'login_lockout_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
         ]);
 
-        TenantSecuritySettingsService::setLoginMaxAttempts((int)$validated['login_max_attempts']);
-        TenantSecuritySettingsService::setLoginLockoutMinutes((int)$validated['login_lockout_minutes']);
+        TenantSecuritySettingsService::setLoginMaxAttempts((int) $validated['login_max_attempts']);
+        TenantSecuritySettingsService::setLoginLockoutMinutes((int) $validated['login_lockout_minutes']);
 
         return redirect()->back()->with('success', 'Login lock settings updated successfully.');
     }
@@ -110,27 +114,27 @@ class SettingsController extends Controller
     public function branding()
     {
         $tenant = tenant();
-        $subscription = \App\Models\Subscription::where('tenant_id', $tenant->getTenantKey())
+        $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
             ->where('stripe_status', 'active')
             ->with(['plan.features'])
             ->latest()
             ->first();
 
-        $staff = \App\Models\User::role(['Dentist', 'Assistant'])->get(['id', 'name']);
+        $staff = User::role(['Dentist', 'Assistant'])->get(['id', 'name']);
 
         // Booking data (for QRCodeSetup)
         $bookingUrl = route('tenant.book.create');
-        $qrCode = \SimpleSoftwareIO\QrCode\Facades\QrCode::size(200)
+        $qrCode = QrCode::size(200)
             ->format('svg')
             ->generate($bookingUrl);
 
         // Feature data (for FeatureSettings)
-        $otaService = app(\App\Services\FeatureOTAUpdateService::class);
+        $otaService = app(FeatureOTAUpdateService::class);
         $pendingUpdates = $otaService->getPendingUpdates($tenant->getTenantKey())
             ->pluck('feature_id')
             ->toArray();
 
-        $featuresByCategory = \App\Models\Feature::ordered()
+        $featuresByCategory = Feature::ordered()
             ->active()
             ->where('key', '!=', 'custom_branding')
             ->get()
@@ -138,18 +142,18 @@ class SettingsController extends Controller
             ->map(function ($features) use ($subscription, $pendingUpdates) {
                 return $features->map(function ($feature) use ($subscription, $pendingUpdates) {
                     $planFeature = $subscription && $subscription->plan ? $subscription->plan->features->where('id', $feature->id)->first() : null;
-                    
+
                     return [
                         'id' => $feature->id,
                         'name' => $feature->name,
                         'description' => $feature->description,
                         'type' => $feature->type,
                         'category' => $feature->category,
-                        'is_enabled' => (bool)$planFeature,
+                        'is_enabled' => (bool) $planFeature,
                         'has_pending_update' => in_array($feature->id, $pendingUpdates),
-                        'value' => $planFeature ? match($feature->type) {
-                            'boolean' => (bool)$planFeature->pivot->value_boolean,
-                            'numeric' => (int)$planFeature->pivot->value_numeric,
+                        'value' => $planFeature ? match ($feature->type) {
+                            'boolean' => (bool) $planFeature->pivot->value_boolean,
+                            'numeric' => (int) $planFeature->pivot->value_numeric,
                             'tiered' => $planFeature->pivot->value_tier,
                             default => null
                         } : null,
@@ -157,14 +161,14 @@ class SettingsController extends Controller
                 });
             });
 
-        $branding = \App\Services\TenantBrandingService::getAll();
+        $branding = TenantBrandingService::getAll();
 
         return Inertia::render('Tenant/CustomBranding/Index', [
             'tenant' => array_merge($tenant->toArray(), [
                 'branding_color' => $branding['primary_color'] ?? $tenant->branding_color,
                 'font_family' => $branding['font_family'] ?? $tenant->font_family,
                 'portal_config' => $branding['portal_config'] ?? $tenant->portal_config,
-                'enabled_features' => $branding['enabled_features'] ?? $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures(),
+                'enabled_features' => $tenant->getResolvedEnabledFeaturesForUi($branding),
                 'landing_page_config' => $branding['landing_page_config'] ?? $tenant->landing_page_config ?? null,
                 'operating_hours' => $branding['operating_hours'] ?? $tenant->getOperatingHoursWithDefaults(),
                 'online_booking_enabled' => $branding['online_booking_enabled'] ?? $tenant->isOnlineBookingEnabled(),
@@ -175,13 +179,13 @@ class SettingsController extends Controller
                 'clinic_email' => $branding['clinic_email'] ?? $tenant->email,
                 'clinic_phone' => $branding['clinic_phone'] ?? $tenant->phone,
                 'clinic_address' => $branding['clinic_address'] ?? $tenant->address,
-                'support_chat_bottom_offset' => (int)($branding['support_chat_bottom_offset'] ?? 56),
+                'support_chat_bottom_offset' => (int) ($branding['support_chat_bottom_offset'] ?? 56),
             ]),
             'subscription' => $subscription,
             'is_premium' => $tenant->canCustomizeBranding(),
             'staff' => $staff,
             'booking_url' => $bookingUrl,
-            'qr_code' => (string)$qrCode,
+            'qr_code' => (string) $qrCode,
             'features' => $featuresByCategory,
             'has_pending_updates' => count($pendingUpdates) > 0,
         ]);
@@ -193,44 +197,44 @@ class SettingsController extends Controller
     public function features(Request $request)
     {
         $tenant = tenant();
-        $subscription = \App\Models\Subscription::where('tenant_id', $tenant->getTenantKey())
+        $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
             ->where('stripe_status', 'active')
             ->with(['plan.features'])
             ->latest()
             ->first();
 
-        if (!$subscription || !$subscription->plan) {
+        if (! $subscription || ! $subscription->plan) {
             return Inertia::render('Tenant/Settings/Features', [
                 'features' => [],
             ]);
         }
 
         // Get pending OTA updates for this tenant
-        $otaService = app(\App\Services\FeatureOTAUpdateService::class);
+        $otaService = app(FeatureOTAUpdateService::class);
         $pendingUpdates = $otaService->getPendingUpdates($tenant->getTenantKey())
             ->pluck('feature_id')
             ->toArray();
 
         // Get all active features grouped by category
-        $featuresByCategory = \App\Models\Feature::ordered()
+        $featuresByCategory = Feature::ordered()
             ->active()
             ->get()
             ->groupBy('category')
             ->map(function ($features) use ($subscription, $pendingUpdates) {
                 return $features->map(function ($feature) use ($subscription, $pendingUpdates) {
                     $planFeature = $subscription->plan->features->where('id', $feature->id)->first();
-                    
+
                     return [
                         'id' => $feature->id,
                         'name' => $feature->name,
                         'description' => $feature->description,
                         'type' => $feature->type,
                         'category' => $feature->category,
-                        'is_enabled' => (bool)$planFeature,
+                        'is_enabled' => (bool) $planFeature,
                         'has_pending_update' => in_array($feature->id, $pendingUpdates),
-                        'value' => $planFeature ? match($feature->type) {
-                            'boolean' => (bool)$planFeature->pivot->value_boolean,
-                            'numeric' => (int)$planFeature->pivot->value_numeric,
+                        'value' => $planFeature ? match ($feature->type) {
+                            'boolean' => (bool) $planFeature->pivot->value_boolean,
+                            'numeric' => (int) $planFeature->pivot->value_numeric,
                             'tiered' => $planFeature->pivot->value_tier,
                             default => null
                         } : null,
@@ -251,43 +255,45 @@ class SettingsController extends Controller
     public function serveLogo(string $key)
     {
         $tenant = tenant();
-        if (!$tenant) abort(404);
+        if (! $tenant) {
+            abort(404);
+        }
 
         // Normalize target key (handle both space and underscore versions)
         $searchKey = $key;
-        $row = \Illuminate\Support\Facades\DB::table('branding_settings')
+        $row = DB::table('branding_settings')
             ->where('key', $searchKey)
             ->first();
-            
-        if (!$row && str_contains($searchKey, '_')) {
+
+        if (! $row && str_contains($searchKey, '_')) {
             // Try with space if underscore failed
-            $row = \Illuminate\Support\Facades\DB::table('branding_settings')
+            $row = DB::table('branding_settings')
                 ->where('key', str_replace('_', ' ', $searchKey))
                 ->first();
-        } elseif (!$row && str_contains($searchKey, ' ')) {
+        } elseif (! $row && str_contains($searchKey, ' ')) {
             // Try with underscore if space failed
-            $row = \Illuminate\Support\Facades\DB::table('branding_settings')
+            $row = DB::table('branding_settings')
                 ->where('key', str_replace(' ', '_', $searchKey))
                 ->first();
         }
 
-        if (!$row || $row->binary_value === null) {
+        if (! $row || $row->binary_value === null) {
             // Fallback to tenant model path if available
             $modelMap = [
                 'logo_base64' => 'logo_path',
                 'logo_login_base64' => 'logo_login_path',
-                'logo_booking_base64' => 'logo_booking_path'
+                'logo_booking_base64' => 'logo_booking_path',
             ];
-            
+
             $modelField = $modelMap[$key] ?? null;
             if ($modelField && $tenant->$modelField) {
                 // Return physical file if DB binary is empty
-                $path = storage_path('app/public/' . $tenant->$modelField);
+                $path = storage_path('app/public/'.$tenant->$modelField);
                 if (file_exists($path)) {
                     return response()->file($path);
                 }
             }
-            
+
             abort(404);
         }
 
@@ -314,14 +320,14 @@ class SettingsController extends Controller
     public function update(Request $request)
     {
         $tenant = tenant();
-        if (!$tenant) {
+        if (! $tenant) {
             return redirect()->back()->with('error', 'Tenant not found.');
         }
 
-        $rawCurrentOnlineBooking = \App\Services\TenantBrandingService::get('online_booking_enabled', $tenant->isOnlineBookingEnabled());
+        $rawCurrentOnlineBooking = TenantBrandingService::get('online_booking_enabled', $tenant->isOnlineBookingEnabled());
         $currentOnlineBookingEnabled = filter_var($rawCurrentOnlineBooking, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
         if ($currentOnlineBookingEnabled === null) {
-            $currentOnlineBookingEnabled = (bool)$rawCurrentOnlineBooking;
+            $currentOnlineBookingEnabled = (bool) $rawCurrentOnlineBooking;
         }
 
         // Decode JSON strings and gracefully force arrays from Inertia FormData
@@ -344,9 +350,9 @@ class SettingsController extends Controller
                 $request->merge([$field => [$value]]);
             }
         }
-        \Illuminate\Support\Facades\Log::info("BRANDING PAYLOAD [" . $request->method() . "]", [
+        Log::info('BRANDING PAYLOAD ['.$request->method().']', [
             'enabled_features' => $request->input('enabled_features'),
-            'type' => gettype($request->input('enabled_features'))
+            'type' => gettype($request->input('enabled_features')),
         ]);
 
         $validated = $request->validate([
@@ -368,46 +374,94 @@ class SettingsController extends Controller
         ]);
 
         // Store branding settings in tenant database (Primary Source for Visuals)
-        if (isset($validated['clinic_name'])) \App\Services\TenantBrandingService::set('clinic_name', $validated['clinic_name']);
-        if (isset($validated['email'])) \App\Services\TenantBrandingService::set('clinic_email', $validated['email']);
-        if (isset($validated['phone'])) \App\Services\TenantBrandingService::set('clinic_phone', $validated['phone']);
-        if (isset($validated['address'])) \App\Services\TenantBrandingService::set('clinic_address', $validated['address']);
-        
-        if (isset($validated['branding_color'])) \App\Services\TenantBrandingService::set('primary_color', $validated['branding_color']);
-        if (isset($validated['font_family'])) \App\Services\TenantBrandingService::set('font_family', $validated['font_family']);
-        if (isset($validated['enabled_features'])) \App\Services\TenantBrandingService::set('enabled_features', $validated['enabled_features']);
-        if (isset($validated['landing_page_config'])) \App\Services\TenantBrandingService::set('landing_page_config', $validated['landing_page_config']);
-        if (isset($validated['portal_config'])) \App\Services\TenantBrandingService::set('portal_config', $validated['portal_config']);
-        if (isset($validated['operating_hours'])) \App\Services\TenantBrandingService::set('operating_hours', $validated['operating_hours']);
-            if (array_key_exists('online_booking_enabled', $validated)) \App\Services\TenantBrandingService::set('online_booking_enabled', (bool)$validated['online_booking_enabled']);
-        if (isset($validated['support_chat_bottom_offset'])) \App\Services\TenantBrandingService::set('support_chat_bottom_offset', $validated['support_chat_bottom_offset']);
-        
-        if (isset($validated['hero_title'])) \App\Services\TenantBrandingService::set('hero_title', $validated['hero_title']);
-        if (isset($validated['hero_subtitle'])) \App\Services\TenantBrandingService::set('hero_subtitle', $validated['hero_subtitle']);
-        if (isset($validated['about_us_description'])) \App\Services\TenantBrandingService::set('about_us_description', $validated['about_us_description']);
+        if (isset($validated['clinic_name'])) {
+            TenantBrandingService::set('clinic_name', $validated['clinic_name']);
+        }
+        if (isset($validated['email'])) {
+            TenantBrandingService::set('clinic_email', $validated['email']);
+        }
+        if (isset($validated['phone'])) {
+            TenantBrandingService::set('clinic_phone', $validated['phone']);
+        }
+        if (isset($validated['address'])) {
+            TenantBrandingService::set('clinic_address', $validated['address']);
+        }
+
+        if (isset($validated['branding_color'])) {
+            TenantBrandingService::set('primary_color', $validated['branding_color']);
+        }
+        if (isset($validated['font_family'])) {
+            TenantBrandingService::set('font_family', $validated['font_family']);
+        }
+        if (isset($validated['enabled_features'])) {
+            TenantBrandingService::set('enabled_features', $validated['enabled_features']);
+        }
+        if (isset($validated['landing_page_config'])) {
+            TenantBrandingService::set('landing_page_config', $validated['landing_page_config']);
+        }
+        if (isset($validated['portal_config'])) {
+            TenantBrandingService::set('portal_config', $validated['portal_config']);
+        }
+        if (isset($validated['operating_hours'])) {
+            TenantBrandingService::set('operating_hours', $validated['operating_hours']);
+        }
+        if (array_key_exists('online_booking_enabled', $validated)) {
+            TenantBrandingService::set('online_booking_enabled', (bool) $validated['online_booking_enabled']);
+        }
+        if (isset($validated['support_chat_bottom_offset'])) {
+            TenantBrandingService::set('support_chat_bottom_offset', $validated['support_chat_bottom_offset']);
+        }
+
+        if (isset($validated['hero_title'])) {
+            TenantBrandingService::set('hero_title', $validated['hero_title']);
+        }
+        if (isset($validated['hero_subtitle'])) {
+            TenantBrandingService::set('hero_subtitle', $validated['hero_subtitle']);
+        }
+        if (isset($validated['about_us_description'])) {
+            TenantBrandingService::set('about_us_description', $validated['about_us_description']);
+        }
 
         // Sync to Tenants Table in Central DB (Secondary Source for Discovery/Admin)
-        if (isset($validated['clinic_name'])) $tenant->name = $validated['clinic_name'];
-        if (isset($validated['address'])) $tenant->street = $validated['address'];
-        if (isset($validated['email'])) $tenant->email = $validated['email'];
-        if (isset($validated['phone'])) $tenant->phone = $validated['phone'];
-        
+        if (isset($validated['clinic_name'])) {
+            $tenant->name = $validated['clinic_name'];
+        }
+        if (isset($validated['address'])) {
+            $tenant->street = $validated['address'];
+        }
+        if (isset($validated['email'])) {
+            $tenant->email = $validated['email'];
+        }
+        if (isset($validated['phone'])) {
+            $tenant->phone = $validated['phone'];
+        }
+
         // Apply Plan-Based Gating for premium visuals
-        if (!$tenant->canCustomizeBranding()) {
+        if (! $tenant->canCustomizeBranding()) {
             // Basic plan: Ignore premium fields for the model update
             unset(
-                $validated['branding_color'], 
-                $validated['font_family'], 
+                $validated['branding_color'],
+                $validated['font_family'],
                 $validated['operating_hours']
             );
         } else {
             // Premium: Sync visual state to model for central accessibility
             $data = $tenant->data ?? [];
-            if (isset($validated['branding_color'])) $data['branding_color'] = $validated['branding_color'];
-            if (isset($validated['font_family'])) $data['font_family'] = $validated['font_family'];
-            if (isset($validated['portal_config'])) $data['portal_config'] = $validated['portal_config'];
-            if (isset($validated['operating_hours'])) $data['operating_hours'] = $validated['operating_hours'];
-            if (array_key_exists('online_booking_enabled', $validated)) $data['online_booking_enabled'] = $validated['online_booking_enabled'];
+            if (isset($validated['branding_color'])) {
+                $data['branding_color'] = $validated['branding_color'];
+            }
+            if (isset($validated['font_family'])) {
+                $data['font_family'] = $validated['font_family'];
+            }
+            if (isset($validated['portal_config'])) {
+                $data['portal_config'] = $validated['portal_config'];
+            }
+            if (isset($validated['operating_hours'])) {
+                $data['operating_hours'] = $validated['operating_hours'];
+            }
+            if (array_key_exists('online_booking_enabled', $validated)) {
+                $data['online_booking_enabled'] = $validated['online_booking_enabled'];
+            }
             $tenant->data = $data;
         }
 
@@ -415,7 +469,7 @@ class SettingsController extends Controller
 
         // Clean up internal keys before update
         unset(
-            $validated['clinic_name'], 
+            $validated['clinic_name'],
             $validated['address']
         );
 
@@ -423,10 +477,10 @@ class SettingsController extends Controller
         $tenant->update($validated);
 
         if (array_key_exists('online_booking_enabled', $validated)) {
-            $newOnlineBookingEnabled = (bool)$validated['online_booking_enabled'];
+            $newOnlineBookingEnabled = (bool) $validated['online_booking_enabled'];
 
             if ($newOnlineBookingEnabled !== $currentOnlineBookingEnabled) {
-                broadcast(new OnlineBookingStatusUpdated((string)$tenant->getTenantKey(), $newOnlineBookingEnabled));
+                broadcast(new OnlineBookingStatusUpdated((string) $tenant->getTenantKey(), $newOnlineBookingEnabled));
             }
         }
 
@@ -444,7 +498,7 @@ class SettingsController extends Controller
         ]);
 
         $tenant = tenant();
-        if (!$tenant) {
+        if (! $tenant) {
             return response()->json(['error' => 'Tenant not found.'], 404);
         }
 
@@ -472,15 +526,15 @@ class SettingsController extends Controller
         ];
 
         $storageKey = $keyMap[$field];
-        \App\Services\TenantBrandingService::setStreamed($storageKey, $file->path());
+        TenantBrandingService::setStreamed($storageKey, $file->path());
 
         // Sync to central tenants table so system knows a binary logo exists
         $modelMap = [
             'logo_base64' => 'logo_path',
             'logo_login_base64' => 'logo_login_path',
-            'logo_booking_base64' => 'logo_booking_path'
+            'logo_booking_base64' => 'logo_booking_path',
         ];
-        
+
         $modelField = $modelMap[$storageKey] ?? null;
         if ($modelField) {
             try {
@@ -488,13 +542,13 @@ class SettingsController extends Controller
                     ->where('id', $tenant->id)
                     ->update([$modelField => $storageKey]); // Store the key name as the "path"
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Clinic branding central sync error: " . $e->getMessage());
+                Log::error('Clinic branding central sync error: '.$e->getMessage());
             }
         }
 
         return response()->json([
             'success' => true,
-            'url' => route('settings.logo', ['key' => $storageKey]) . '?v=' . time(),
+            'url' => route('settings.logo', ['key' => $storageKey]).'?v='.time(),
         ]);
     }
 
@@ -508,7 +562,7 @@ class SettingsController extends Controller
         ]);
 
         $tenant = tenant();
-        if (!$tenant) {
+        if (! $tenant) {
             return response()->json(['error' => 'Tenant not found.'], 404);
         }
 
@@ -524,13 +578,13 @@ class SettingsController extends Controller
 
         try {
             DB::table('branding_settings')->where('key', $keyMap[$field])->delete();
-            \App\Services\TenantBrandingService::forget($keyMap[$field]);
-            
+            TenantBrandingService::forget($keyMap[$field]);
+
             // Also clear central tenants table column
             $modelMap = [
                 'logo_base64' => 'logo_path',
                 'logo_login_base64' => 'logo_login_path',
-                'logo_booking_base64' => 'logo_booking_path'
+                'logo_booking_base64' => 'logo_booking_path',
             ];
             $modelField = $modelMap[$keyMap[$field]] ?? null;
             if ($modelField) {

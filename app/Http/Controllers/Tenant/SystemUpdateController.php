@@ -3,14 +3,18 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\UpgradeTenantJob;
 use App\Services\ReleaseService;
 use App\Services\TenantVersionService;
-use App\Jobs\UpgradeTenantJob;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 
 class SystemUpdateController extends Controller
 {
+    use ApiResponse;
+
     protected ReleaseService $releaseService;
+
     protected TenantVersionService $tenantVersionService;
 
     public function __construct(ReleaseService $releaseService, TenantVersionService $tenantVersionService)
@@ -34,35 +38,34 @@ class SystemUpdateController extends Controller
 
         $requiresUpdate = $this->tenantVersionService->needsUpgrade($tenant);
 
-        return response()->json([
+        return $this->respondSuccess([
             'current_version' => $currentVersion,
             'latest_version' => $latestVersion,
             'requires_update' => $requiresUpdate,
             'release_notes' => $latest ? $latest->release_notes : null,
-        ]);
+        ], 'System update status retrieved successfully.');
     }
 
     /**
      * POST /api/system/update
-     * Pushes the UpgradeTenantJob explicitly to the async queue mechanism 
+     * Pushes the UpgradeTenantJob explicitly to the async queue mechanism
      * without blocking the standard request lifecycle.
      */
     public function update(): JsonResponse
     {
         $tenant = tenant();
 
-        if (!$this->tenantVersionService->needsUpgrade($tenant)) {
-            return response()->json([
-                'message' => 'Your system is already up to date.'
-            ], 400);
+        if (! $this->tenantVersionService->needsUpgrade($tenant)) {
+            return $this->respondError('Your system is already up to date.', 400);
         }
 
         // Trigger UpgradeTenantJob entirely asynchronously.
         // Doing this ensures the tenant's HTTP cycle behaves at O(1).
         UpgradeTenantJob::dispatch($tenant);
 
-        return response()->json([
-            'message' => 'System update has been queued. The backend will be migrated shortly.'
-        ]);
+        return $this->respondSuccess(
+            null,
+            'System update has been queued. The backend will be migrated shortly.'
+        );
     }
 }

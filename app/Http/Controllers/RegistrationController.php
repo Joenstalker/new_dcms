@@ -2,21 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Mail\RegistrationPending;
 use App\Models\PendingRegistration;
+use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\SystemEarning;
 use App\Models\SystemSetting;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\NotificationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Stancl\Tenancy\Database\Models\Domain;
 use Stripe\StripeClient;
+use Stripe\Webhook;
 
 class RegistrationController extends Controller
 {
@@ -43,7 +45,7 @@ class RegistrationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Account details validated',
-            'data' => $validated
+            'data' => $validated,
         ]);
     }
 
@@ -74,7 +76,7 @@ class RegistrationController extends Controller
 
         return response()->json([
             'success' => true,
-            'available' => !$exists,
+            'available' => ! $exists,
             'message' => $exists ? 'This subdomain is already taken.' : 'This subdomain is available.',
         ]);
     }
@@ -99,14 +101,14 @@ class RegistrationController extends Controller
         // Generate suggestions
         $variants = [
             $base,
-            $base . 'clinic',
-            $base . 'dental',
-            $base . 'care',
+            $base.'clinic',
+            $base.'dental',
+            $base.'care',
             substr($base, 0, min(10, strlen($base))), // Shortened
         ];
 
         foreach ($variants as $variant) {
-            if (strlen($variant) >= 3 && !in_array($variant, $usedSubdomains)) {
+            if (strlen($variant) >= 3 && ! in_array($variant, $usedSubdomains)) {
                 $suggestions[] = $variant;
             }
             if (count($suggestions) >= 3) {
@@ -117,8 +119,8 @@ class RegistrationController extends Controller
         // Add numeric variants if needed
         if (count($suggestions) < 3) {
             for ($i = 1; $i <= 5; $i++) {
-                $variant = $base . $i;
-                if (!in_array($variant, $usedSubdomains)) {
+                $variant = $base.$i;
+                if (! in_array($variant, $usedSubdomains)) {
                     $suggestions[] = $variant;
                 }
                 if (count($suggestions) >= 3) {
@@ -185,7 +187,7 @@ class RegistrationController extends Controller
             ? $plan->stripe_yearly_price_id
             : $plan->stripe_monthly_price_id;
 
-        if (!$stripePriceId) {
+        if (! $stripePriceId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Selected plan is not available for payment. Please contact support.',
@@ -200,29 +202,29 @@ class RegistrationController extends Controller
 
             // First, create or update a PendingRegistration record
             $pendingRegistration = PendingRegistration::updateOrCreate(
-            ['subdomain' => strtolower($validated['subdomain'])],
-            [
-                'clinic_name' => $validated['clinic_name'],
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'email' => $validated['email'],
-                'phone' => $validated['phone'],
-                'street' => $validated['street'],
-                'region' => $validated['region'],
-                'barangay' => $validated['barangay'],
-                'city' => $validated['city'],
-                'province' => $validated['province'],
-                'password' => $validated['password'],
-                'subscription_plan_id' => $validated['plan_id'],
-                'billing_cycle' => $validated['billing_cycle'],
-                'amount_paid' => $totalPrice, // Save total expected amount
-                'status' => PendingRegistration::STATUS_PENDING,
-                'verification_token' => PendingRegistration::generateToken(),
-                'expires_at' => now('UTC')->addMinutes($defaultTimeoutMinutes),
-                'pending_timeout_minutes' => $defaultTimeoutMinutes,
-                'auto_approve_enabled' => $autoApproveEnabled,
-                'reminder_enabled' => $reminderEnabled,
-            ]
+                ['subdomain' => strtolower($validated['subdomain'])],
+                [
+                    'clinic_name' => $validated['clinic_name'],
+                    'first_name' => $validated['first_name'],
+                    'last_name' => $validated['last_name'],
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'],
+                    'street' => $validated['street'],
+                    'region' => $validated['region'],
+                    'barangay' => $validated['barangay'],
+                    'city' => $validated['city'],
+                    'province' => $validated['province'],
+                    'password' => $validated['password'],
+                    'subscription_plan_id' => $validated['plan_id'],
+                    'billing_cycle' => $validated['billing_cycle'],
+                    'amount_paid' => $totalPrice, // Save total expected amount
+                    'status' => PendingRegistration::STATUS_PENDING,
+                    'verification_token' => PendingRegistration::generateToken(),
+                    'expires_at' => now('UTC')->addMinutes($defaultTimeoutMinutes),
+                    'pending_timeout_minutes' => $defaultTimeoutMinutes,
+                    'auto_approve_enabled' => $autoApproveEnabled,
+                    'reminder_enabled' => $reminderEnabled,
+                ]
             );
 
             $stripe = $this->getStripeClient();
@@ -258,7 +260,7 @@ class RegistrationController extends Controller
                 $lineItems[] = [
                     'price_data' => [
                         'currency' => 'php',
-                        'unit_amount' => (int)($unitPrice * $months * 100), // Total upfront price in cents
+                        'unit_amount' => (int) ($unitPrice * $months * 100), // Total upfront price in cents
                         'product_data' => [
                             'name' => "{$plan->name} Subscription ({$months} Months)",
                             'description' => "Initial payment for {$months} months of {$plan->name} plan.",
@@ -278,8 +280,7 @@ class RegistrationController extends Controller
                     'trial_end' => now()->addMonths($months)->timestamp,
                     'metadata' => $metadata,
                 ];
-            }
-            else {
+            } else {
                 // Scenario: Standard monthly (1 month) or Yearly (1 year)
                 $lineItems[] = [
                     'price' => $stripePriceId,
@@ -297,7 +298,7 @@ class RegistrationController extends Controller
                 'mode' => 'subscription',
                 'ui_mode' => 'embedded',
                 'subscription_data' => $subscriptionData,
-                'return_url' => config('app.url') . '/?payment=success&session_id={CHECKOUT_SESSION_ID}',
+                'return_url' => config('app.url').'/?payment=success&session_id={CHECKOUT_SESSION_ID}',
                 'customer_email' => $validated['email'],
                 'metadata' => $metadata,
             ]);
@@ -326,9 +327,9 @@ class RegistrationController extends Controller
                 'sessionId' => $session->id,
                 'redirect_url' => route('registration.pay'),
             ]);
-        }
-        catch (\Exception $e) {
-            Log::error('Stripe checkout creation failed: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Stripe checkout creation failed: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create payment session. Please try again.',
@@ -346,7 +347,7 @@ class RegistrationController extends Controller
         $sessionId = session('checkout_session_id');
         $orderSummary = session('checkout_order_summary');
 
-        if (!$clientSecret || !$sessionId) {
+        if (! $clientSecret || ! $sessionId) {
             return redirect('/')->with('error', 'Invalid payment session. Please try again.');
         }
 
@@ -371,9 +372,9 @@ class RegistrationController extends Controller
             ]);
 
             $pendingId = $session->metadata->pending_registration_id ?? null;
-            $pending = $pendingId ?PendingRegistration::find($pendingId) : null;
+            $pending = $pendingId ? PendingRegistration::find($pendingId) : null;
 
-            if (!$pending) {
+            if (! $pending) {
                 abort(404, 'Registration not found.');
             }
 
@@ -383,8 +384,8 @@ class RegistrationController extends Controller
 
             // Build 12-digit digital signature: YEAR(4) + MMDD(4) + padded ms(4)
             $now = now();
-            $ms = (int)($now->getPreciseTimestamp(3) % 10000); // last 4 digits of ms
-            $signature = $now->format('Y') . $now->format('md') . str_pad($ms, 4, '0', STR_PAD_LEFT);
+            $ms = (int) ($now->getPreciseTimestamp(3) % 10000); // last 4 digits of ms
+            $signature = $now->format('Y').$now->format('md').str_pad($ms, 4, '0', STR_PAD_LEFT);
 
             return view('registration.receipt', [
                 'registration' => $pending,
@@ -396,9 +397,8 @@ class RegistrationController extends Controller
                 'paidAt' => now()->format('F d, Y \a\t h:i A'),
             ]);
 
-        }
-        catch (\Exception $e) {
-            Log::error('Receipt generation failed: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Receipt generation failed: '.$e->getMessage());
             abort(500, 'Could not generate receipt. Please contact support.');
         }
     }
@@ -411,36 +411,37 @@ class RegistrationController extends Controller
     {
         $sessionId = $request->session_id;
 
-        if (!$sessionId) {
+        if (! $sessionId) {
             return view('errors.registration-failed', [
                 'code' => '400',
                 'title' => 'Session Error',
-                'message' => 'No payment session found.'
+                'message' => 'No payment session found.',
             ]);
         }
 
         try {
             $stripe = $this->getStripeClient();
             $session = $stripe->checkout->sessions->retrieve($sessionId, [
-                'expand' => ['subscription.latest_invoice']
+                'expand' => ['subscription.latest_invoice'],
             ]);
 
             if ($session->payment_status !== 'paid') {
                 return view('errors.registration-failed', [
                     'code' => '402',
                     'title' => 'Payment Incomplete',
-                    'message' => 'Payment was not completed. Please try again.'
+                    'message' => 'Payment was not completed. Please try again.',
                 ]);
             }
 
             $result = $this->processSuccessfulRegistration($session);
 
-            if (!$result['success']) {
+            if (! $result['success']) {
                 $code = $result['error'] === 'not_found' ? '404' : '500';
+
                 return view('errors.registration-failed', [
                     'code' => $code,
                     'title' => 'Registration Error',
-                    'message' => $result['message']
+                    'message' => $result['message'],
                 ]);
             }
 
@@ -449,20 +450,21 @@ class RegistrationController extends Controller
                 if ($pendingRegistration->status === PendingRegistration::STATUS_APPROVED) {
                     return redirect()->to('/?already-approved=true');
                 }
-                return redirect()->to('/?registration-status=' . $pendingRegistration->status);
+
+                return redirect()->to('/?registration-status='.$pendingRegistration->status);
             }
 
             return view('emails.registration.payment-received', [
                 'registration' => $result['registration'],
                 'sessionId' => $sessionId,
             ]);
-        }
-        catch (\Exception $e) {
-            Log::error('Payment success handling failed: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Payment success handling failed: '.$e->getMessage());
+
             return view('errors.registration-failed', [
                 'code' => '500',
                 'title' => 'Verification Failed',
-                'message' => 'Payment verification failed. Please contact support.'
+                'message' => 'Payment verification failed. Please contact support.',
             ]);
         }
     }
@@ -472,16 +474,18 @@ class RegistrationController extends Controller
      */
     public function handleWebhook(Request $request)
     {
-        $payload = $request->getContent();
-        $sigHeader = $request->header('stripe-signature');
-
         try {
+            $event = $request->attributes->get('stripe_event');
             $stripe = $this->getStripeClient();
-            $event = \Stripe\Webhook::constructEvent(
-                $payload,
-                $sigHeader,
-                config('services.stripe.webhook_secret')
-            );
+
+            // Backward-compatible fallback if middleware is bypassed in non-standard environments.
+            if (! $event) {
+                $event = Webhook::constructEvent(
+                    $request->getContent(),
+                    (string) $request->header('stripe-signature'),
+                    config('services.stripe.webhook_secret')
+                );
+            }
 
             // Handle the event
             switch ($event->type) {
@@ -489,7 +493,7 @@ class RegistrationController extends Controller
                     $sessionData = $event->data->object;
                     if ($sessionData->payment_status === 'paid') {
                         $session = $stripe->checkout->sessions->retrieve($sessionData->id, [
-                            'expand' => ['subscription.latest_invoice']
+                            'expand' => ['subscription.latest_invoice'],
                         ]);
                         $this->processSuccessfulRegistration($session);
                     }
@@ -506,13 +510,13 @@ class RegistrationController extends Controller
                     break;
 
                 default:
-                    Log::info('Unhandled Stripe event: ' . $event->type);
+                    Log::info('Unhandled Stripe event: '.$event->type);
             }
 
             return response()->json(['success' => true]);
-        }
-        catch (\Exception $e) {
-            Log::error('Webhook processing failed: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Webhook processing failed: '.$e->getMessage());
+
             return response()->json(['error' => 'Webhook processing failed'], 400);
         }
     }
@@ -530,7 +534,7 @@ class RegistrationController extends Controller
         try {
             $stripe = $this->getStripeClient();
             $session = $stripe->checkout->sessions->retrieve($validated['session_id'], [
-                'expand' => ['subscription.latest_invoice']
+                'expand' => ['subscription.latest_invoice'],
             ]);
 
             Log::info('completeRegistration: session retrieved', [
@@ -540,13 +544,14 @@ class RegistrationController extends Controller
             ]);
 
             if ($session->status !== 'complete') {
-                return response()->json(['success' => false, 'message' => 'Payment not yet completed. Status: ' . $session->status], 402);
+                return response()->json(['success' => false, 'message' => 'Payment not yet completed. Status: '.$session->status], 402);
             }
 
             $result = $this->processSuccessfulRegistration($session);
 
-            if (!$result['success']) {
+            if (! $result['success']) {
                 $status = $result['error'] === 'not_found' ? 404 : 500;
+
                 return response()->json(['success' => false, 'message' => $result['message']], $status);
             }
 
@@ -581,9 +586,9 @@ class RegistrationController extends Controller
                 'server_time' => now('UTC')->timestamp * 1000,
             ]);
 
-        }
-        catch (\Exception $e) {
-            Log::error('completeRegistration failed: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('completeRegistration failed: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Payment verification failed.'], 500);
         }
     }
@@ -599,8 +604,9 @@ class RegistrationController extends Controller
 
         $pendingRegistration = PendingRegistration::find($pendingRegistrationId);
 
-        if (!$pendingRegistration) {
-            Log::error('Pending registration not found: ' . $pendingRegistrationId);
+        if (! $pendingRegistration) {
+            Log::error('Pending registration not found: '.$pendingRegistrationId);
+
             return ['success' => false, 'error' => 'not_found', 'message' => 'Your registration record could not be found.'];
         }
 
@@ -619,11 +625,11 @@ class RegistrationController extends Controller
             // partially created the tenant (stancl/tenancy creates the DB outside
             // the Laravel transaction, so rollback doesn't undo it)
             $tenant = Tenant::find($tenantId);
-            if (!$tenant) {
+            if (! $tenant) {
                 $tenant = Tenant::create([
                     'id' => $tenantId,
                     'name' => $pendingRegistration->clinic_name,
-                    'owner_name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
+                    'owner_name' => $pendingRegistration->first_name.' '.$pendingRegistration->last_name,
                     'email' => $pendingRegistration->email,
                     'phone' => $pendingRegistration->phone,
                     'street' => $pendingRegistration->street,
@@ -632,11 +638,11 @@ class RegistrationController extends Controller
                     'city' => $pendingRegistration->city,
                     'province' => $pendingRegistration->province,
                     'status' => 'pending',
-                    'enabled_features' => \App\Models\Tenant::getDefaultFeatures(),
+                    'enabled_features' => Tenant::getDefaultFeatures(),
                 ]);
             }
 
-            if (!$tenant->domains()->where('domain', $pendingRegistration->subdomain)->exists()) {
+            if (! $tenant->domains()->where('domain', $pendingRegistration->subdomain)->exists()) {
                 $domain = $tenant->domains()->create(['domain' => $pendingRegistration->subdomain]);
                 $tenant->update(['domain_id' => $domain->id]);
             }
@@ -646,28 +652,28 @@ class RegistrationController extends Controller
             $stripeSubscriptionId = is_string($stripeSubscription) ? $stripeSubscription : ($stripeSubscription->id ?? null);
 
             // Get the duration from metadata (defaults to 1 if not found)
-            $monthsPaid = (int)($metadata->months ?? 1);
+            $monthsPaid = (int) ($metadata->months ?? 1);
             $billingCycleEnd = $pendingRegistration->billing_cycle === 'yearly'
                 ? now()->addYear()
                 : now()->addMonths($monthsPaid);
 
             $tenant->subscriptions()->updateOrCreate(
-            ['stripe_id' => $stripeSubscriptionId],
-            [
-                'tenant_id' => $tenantId, // Ensure tenant_id is set
-                'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
-                'stripe_status' => 'active',
-                'stripe_price' => $session->amount_total / 100,
-                'billing_cycle' => $pendingRegistration->billing_cycle,
-                'payment_method' => 'card',
-                'payment_status' => 'paid',
-                'billing_cycle_end' => $billingCycleEnd,
-                'ends_at' => $billingCycleEnd,
-            ]
+                ['stripe_id' => $stripeSubscriptionId],
+                [
+                    'tenant_id' => $tenantId, // Ensure tenant_id is set
+                    'subscription_plan_id' => $pendingRegistration->subscription_plan_id,
+                    'stripe_status' => 'active',
+                    'stripe_price' => $session->amount_total / 100,
+                    'billing_cycle' => $pendingRegistration->billing_cycle,
+                    'payment_method' => 'card',
+                    'payment_status' => 'paid',
+                    'billing_cycle_end' => $billingCycleEnd,
+                    'ends_at' => $billingCycleEnd,
+                ]
             );
 
             $paymentIntentId = is_string($session->payment_intent) ? $session->payment_intent : ($session->payment_intent->id ?? null);
-            if (!$paymentIntentId && $stripeSubscription && !is_string($stripeSubscription)) {
+            if (! $paymentIntentId && $stripeSubscription && ! is_string($stripeSubscription)) {
                 $invoice = $stripeSubscription->latest_invoice ?? null;
                 $paymentIntentId = is_string($invoice->payment_intent ?? null) ? $invoice->payment_intent : ($invoice->payment_intent->id ?? null);
             }
@@ -682,7 +688,7 @@ class RegistrationController extends Controller
                 'expires_at' => now('UTC')->addMinutes($timeoutMinutes),
             ]);
 
-            \App\Models\SystemEarning::create([
+            SystemEarning::create([
                 'tenant_id' => $tenantId,
                 'amount' => $session->amount_total / 100,
                 'currency' => strtoupper($session->currency ?? 'PHP'),
@@ -701,30 +707,29 @@ class RegistrationController extends Controller
                     'new_pending_tenant',
                     'New Tenant Pending Review',
                     "A new clinic '{$pendingRegistration->clinic_name}' has registered and payment received. Please review.",
-                [
-                    'tenant_id' => $tenantId,
-                    'clinic_name' => $pendingRegistration->clinic_name,
-                    'subdomain' => $pendingRegistration->subdomain,
-                    'admin_email' => $pendingRegistration->email,
-                    'amount_paid' => $session->amount_total / 100,
-                ],
+                    [
+                        'tenant_id' => $tenantId,
+                        'clinic_name' => $pendingRegistration->clinic_name,
+                        'subdomain' => $pendingRegistration->subdomain,
+                        'admin_email' => $pendingRegistration->email,
+                        'amount_paid' => $session->amount_total / 100,
+                    ],
                     'both'
                 );
 
                 // Send pending registration email
                 Mail::to($pendingRegistration->email)->send(new RegistrationPending($pendingRegistration));
-            }
-            catch (\Exception $e) {
-                Log::warning('Post-registration notification failed: ' . $e->getMessage());
-            // Don't fail the whole request just because an email failed
+            } catch (\Exception $e) {
+                Log::warning('Post-registration notification failed: '.$e->getMessage());
+                // Don't fail the whole request just because an email failed
             }
 
             return ['success' => true, 'already_processed' => false, 'registration' => $pendingRegistration];
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Tenant creation failed in processSuccessfulRegistration: ' . $e->getMessage());
-            return ['success' => false, 'error' => 'server_error', 'message' => 'Failed to finalize your setup: ' . $e->getMessage()];
+            Log::error('Tenant creation failed in processSuccessfulRegistration: '.$e->getMessage());
+
+            return ['success' => false, 'error' => 'server_error', 'message' => 'Failed to finalize your setup: '.$e->getMessage()];
         }
     }
 
@@ -738,7 +743,7 @@ class RegistrationController extends Controller
         return response()->json([
             'success' => true,
             'plans' => $plans->map(function ($plan) {
-            return [
+                return [
                     'id' => $plan->id,
                     'name' => $plan->name,
                     'price_monthly' => $plan->price_monthly,
@@ -756,7 +761,7 @@ class RegistrationController extends Controller
                         'multi_branch' => $plan->hasFeature('multi_branch'),
                     ],
                 ];
-        }),
+            }),
         ]);
     }
 
@@ -769,7 +774,7 @@ class RegistrationController extends Controller
         // Find the tenant by domain
         $domain = Domain::where('domain', $subdomain)->first();
 
-        if (!$domain) {
+        if (! $domain) {
             abort(404, 'Clinic not found');
         }
 
@@ -780,11 +785,11 @@ class RegistrationController extends Controller
             $bootstrap = $request->session()->get('tenant_preview_bootstrap');
 
             $isAuthorizedPreview = is_array($bootstrap)
-                && ($bootstrap['tenant_id'] ?? null) === (string)$tenant->getTenantKey()
-                && ($bootstrap['subdomain'] ?? null) === (string)$subdomain
-                && (int)($bootstrap['admin_user_id'] ?? 0) === (int)optional($request->user())->id;
+                && ($bootstrap['tenant_id'] ?? null) === (string) $tenant->getTenantKey()
+                && ($bootstrap['subdomain'] ?? null) === (string) $subdomain
+                && (int) ($bootstrap['admin_user_id'] ?? 0) === (int) optional($request->user())->id;
 
-            if (!$isAuthorizedPreview) {
+            if (! $isAuthorizedPreview) {
                 abort(403, 'Invalid tenant preview session.');
             }
 
@@ -796,16 +801,16 @@ class RegistrationController extends Controller
 
             tenancy()->end();
 
-            if (!$previewUser) {
+            if (! $previewUser) {
                 abort(422, 'Cannot start preview because this tenant has no users to impersonate.');
             }
 
             $request->session()->put('tenant_preview_active', [
                 'active' => true,
-                'tenant_id' => (string)$tenant->getTenantKey(),
-                'subdomain' => (string)$subdomain,
-                'admin_user_id' => (int)optional($request->user())->id,
-                'tenant_user_id' => (int)$previewUser->id,
+                'tenant_id' => (string) $tenant->getTenantKey(),
+                'subdomain' => (string) $subdomain,
+                'admin_user_id' => (int) optional($request->user())->id,
+                'tenant_user_id' => (int) $previewUser->id,
                 'started_at' => now()->toIso8601String(),
             ]);
             $request->session()->forget('tenant_preview_bootstrap');
@@ -823,7 +828,7 @@ class RegistrationController extends Controller
                 'tenant' => $tenant,
                 'created_at' => $tenant->created_at,
                 'expires_at' => $pendingRegistration ? $pendingRegistration->expires_at : $tenant->created_at->addMinutes(10080),
-                'timeout_minutes' => $timeoutMinutes
+                'timeout_minutes' => $timeoutMinutes,
             ], 403);
         }
 
@@ -840,7 +845,7 @@ class RegistrationController extends Controller
     {
         $subdomain = session('pending_tenant_subdomain');
 
-        if (!$subdomain) {
+        if (! $subdomain) {
             return redirect('/');
         }
 
@@ -861,6 +866,7 @@ class RegistrationController extends Controller
 
         return redirect('/');
     }
+
     /**
      * Handle Stripe customer.subscription.updated webhook
      */
@@ -870,18 +876,20 @@ class RegistrationController extends Controller
             $stripeSubscriptionId = $subscriptionObj->id;
 
             // Find subscription by stripe_id in DB
-            $subscription = \App\Models\Subscription::where('stripe_id', $stripeSubscriptionId)->first();
+            $subscription = Subscription::where('stripe_id', $stripeSubscriptionId)->first();
 
-            if (!$subscription) {
+            if (! $subscription) {
                 Log::warning("Webhook updated: Subscription not found for Stripe ID: {$stripeSubscriptionId}");
+
                 return;
             }
 
             // Get new price ID
             $priceId = $subscriptionObj->items->data[0]->price->id ?? null;
 
-            if (!$priceId) {
+            if (! $priceId) {
                 Log::warning("Webhook updated: No price ID found for Stripe ID: {$stripeSubscriptionId}");
+
                 return;
             }
 
@@ -890,8 +898,9 @@ class RegistrationController extends Controller
                 ->orWhere('stripe_yearly_price_id', $priceId)
                 ->first();
 
-            if (!$plan) {
+            if (! $plan) {
                 Log::warning("Webhook updated: Unknown Stripe price ID: {$priceId}");
+
                 return;
             }
 
@@ -905,7 +914,7 @@ class RegistrationController extends Controller
 
             // Extract ends_at timestamp if provided
             $currentPeriodEnd = $subscriptionObj->current_period_end ?? null;
-            $endsAt = $currentPeriodEnd ?\Carbon\Carbon::createFromTimestamp($currentPeriodEnd) : null;
+            $endsAt = $currentPeriodEnd ? Carbon::createFromTimestamp($currentPeriodEnd) : null;
 
             // Update local DB
             $subscription->update([
@@ -928,13 +937,13 @@ class RegistrationController extends Controller
                         'subscription_updated',
                         'Tenant Plan Updated',
                         "Tenant '{$tenant->name}' has changed their plan from {$oldPlanName} to {$plan->name} ({$billingCycle}).",
-                    [
-                        'tenant_id' => $tenant->id,
-                        'clinic_name' => $tenant->name,
-                        'new_plan' => $plan->name,
-                        'billing_cycle' => $billingCycle,
-                        'status' => $status
-                    ],
+                        [
+                            'tenant_id' => $tenant->id,
+                            'clinic_name' => $tenant->name,
+                            'new_plan' => $plan->name,
+                            'billing_cycle' => $billingCycle,
+                            'status' => $status,
+                        ],
                         'both'
                     );
                 }
@@ -942,9 +951,8 @@ class RegistrationController extends Controller
 
             Log::info("Webhook processed: Subscription {$stripeSubscriptionId} updated to plan {$plan->name}");
 
-        }
-        catch (\Exception $e) {
-            Log::error("Failed to handle subscription updated: " . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Failed to handle subscription updated: '.$e->getMessage());
         }
     }
 
@@ -956,16 +964,18 @@ class RegistrationController extends Controller
         try {
             $stripeSubscriptionId = $subscriptionObj->id;
 
-            $subscription = \App\Models\Subscription::where('stripe_id', $stripeSubscriptionId)->first();
+            $subscription = Subscription::where('stripe_id', $stripeSubscriptionId)->first();
 
-            if (!$subscription) {
+            if (! $subscription) {
                 Log::warning("Webhook deleted: Subscription not found for Stripe ID: {$stripeSubscriptionId}");
+
                 return;
             }
 
             // Guard: If plan was manually overridden by admin, ignore Stripe deletion
             if ($subscription->payment_method === 'admin_override') {
                 Log::info("Webhook ignored: Subscription {$stripeSubscriptionId} was deleted in Stripe but is currently under Admin Override.");
+
                 return;
             }
 
@@ -982,19 +992,18 @@ class RegistrationController extends Controller
                     'subscription_canceled',
                     'Tenant Subscription Canceled',
                     "Tenant '{$tenant->name}' has canceled their subscription via Stripe.",
-                [
-                    'tenant_id' => $tenant->id,
-                    'clinic_name' => $tenant->name,
-                ],
+                    [
+                        'tenant_id' => $tenant->id,
+                        'clinic_name' => $tenant->name,
+                    ],
                     'both'
                 );
             }
 
             Log::info("Webhook processed: Subscription {$stripeSubscriptionId} canceled");
 
-        }
-        catch (\Exception $e) {
-            Log::error("Failed to handle subscription deleted: " . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Failed to handle subscription deleted: '.$e->getMessage());
         }
     }
 

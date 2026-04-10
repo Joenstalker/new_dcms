@@ -1,9 +1,32 @@
 <?php
 
+use App\Http\Middleware\CheckSubscription;
+use App\Http\Middleware\CheckTenantFeature;
+use App\Http\Middleware\CheckTenantLimit;
+use App\Http\Middleware\EnsurePasswordIsChanged;
+use App\Http\Middleware\EnsureTenantSessionIsolation;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ImpersonateTenantPreviewUser;
+use App\Http\Middleware\InitializeTenancyBySubdomainOrPreview;
+use App\Http\Middleware\PreventAccessFromCentralDomainsOrPreview;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetTenantUrl;
+use App\Http\Middleware\TrackTenantBandwidth;
+use App\Http\Middleware\TrackTenantRequests;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Exceptions\UnauthorizedException;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use Stancl\Tenancy\Exceptions\TenantCouldNotBeIdentifiedOnDomainException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,11 +42,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
-            \App\Http\Middleware\EnsurePasswordIsChanged::class,
-            \App\Http\Middleware\TrackTenantRequests::class,
-            \App\Http\Middleware\TrackTenantBandwidth::class,
+            SecurityHeaders::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
+            EnsurePasswordIsChanged::class,
+            TrackTenantRequests::class,
+            TrackTenantBandwidth::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [
@@ -38,47 +62,48 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-            'check.subscription' => \App\Http\Middleware\CheckSubscription::class,
-            'tenant.feature' => \App\Http\Middleware\CheckTenantFeature::class,
-            'tenant.limit' => \App\Http\Middleware\CheckTenantLimit::class,
-            'tenant.preview.impersonate' => \App\Http\Middleware\ImpersonateTenantPreviewUser::class,
-            'tenant.session.isolated' => \App\Http\Middleware\EnsureTenantSessionIsolation::class,
-            'tenant.init.preview_or_subdomain' => \App\Http\Middleware\InitializeTenancyBySubdomainOrPreview::class,
-            'tenant.prevent.central_or_preview' => \App\Http\Middleware\PreventAccessFromCentralDomainsOrPreview::class,
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'check.subscription' => CheckSubscription::class,
+            'tenant.feature' => CheckTenantFeature::class,
+            'tenant.limit' => CheckTenantLimit::class,
+            'tenant.preview.impersonate' => ImpersonateTenantPreviewUser::class,
+            'tenant.session.isolated' => EnsureTenantSessionIsolation::class,
+            'tenant.init.preview_or_subdomain' => InitializeTenancyBySubdomainOrPreview::class,
+            'tenant.prevent.central_or_preview' => PreventAccessFromCentralDomainsOrPreview::class,
         ]);
 
         $middleware->priority([
-            \App\Http\Middleware\InitializeTenancyBySubdomainOrPreview::class,
-            \App\Http\Middleware\SetTenantUrl::class,
-            \App\Http\Middleware\PreventAccessFromCentralDomainsOrPreview::class,
-            \App\Http\Middleware\ImpersonateTenantPreviewUser::class,
-            \Illuminate\Auth\Middleware\Authenticate::class,
-            \App\Http\Middleware\EnsureTenantSessionIsolation::class,
-            \App\Http\Middleware\HandleInertiaRequests::class,
+            InitializeTenancyBySubdomainOrPreview::class,
+            SetTenantUrl::class,
+            PreventAccessFromCentralDomainsOrPreview::class,
+            ImpersonateTenantPreviewUser::class,
+            Authenticate::class,
+            EnsureTenantSessionIsolation::class,
+            HandleInertiaRequests::class,
         ]);
 
         $middleware->redirectGuestsTo(function ($request) {
             if (tenant()) {
                 return route('tenant.landing');
             }
-            
+
             return route('central.home'); // Or anywhere else for central guests
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (\Stancl\Tenancy\Exceptions\TenantCouldNotBeIdentifiedOnDomainException $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (TenantCouldNotBeIdentifiedOnDomainException $e, Request $request) {
             $appUrl = config('app.url');
             $scheme = parse_url($appUrl, PHP_URL_SCHEME) ?? 'http';
             $host = parse_url($appUrl, PHP_URL_HOST) ?? 'localhost';
-            $port = parse_url($appUrl, PHP_URL_PORT) ? ':' . parse_url($appUrl, PHP_URL_PORT) : '';
+            $port = parse_url($appUrl, PHP_URL_PORT) ? ':'.parse_url($appUrl, PHP_URL_PORT) : '';
+
             return redirect()->away("{$scheme}://{$host}{$port}/?error=clinic_not_found");
         });
 
-        $exceptions->reportable(function (\Spatie\Permission\Exceptions\UnauthorizedException $e) {
-            if (tenant() && auth()->check() && \Illuminate\Support\Facades\Schema::hasTable('activity_log')) {
+        $exceptions->reportable(function (UnauthorizedException $e) {
+            if (tenant() && auth()->check() && Schema::hasTable('activity_log')) {
                 activity()
                     ->causedBy(auth()->user())
                     ->event('unauthorized_access')
@@ -86,8 +111,8 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->reportable(function (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
-            if (tenant() && auth()->check() && \Illuminate\Support\Facades\Schema::hasTable('activity_log')) {
+        $exceptions->reportable(function (AccessDeniedHttpException $e) {
+            if (tenant() && auth()->check() && Schema::hasTable('activity_log')) {
                 activity()
                     ->causedBy(auth()->user())
                     ->event('unauthorized_access')

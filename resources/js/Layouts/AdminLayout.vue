@@ -81,6 +81,12 @@ const menuItems = [
         active: false
     },
     {
+        name: 'Version Compliance',
+        route: 'admin.version-compliance.index',
+        icon: 'shield',
+        active: false
+    },
+    {
         name: 'Feature Management',
         route: 'admin.features.index',
         icon: 'toggle',

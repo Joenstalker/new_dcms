@@ -2,9 +2,17 @@
 
 namespace App\Providers;
 
+use App\Models\SupportTicket;
+use App\Models\User;
+use App\Policies\SupportTicketPolicy;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Schema;
+use Stripe\StripeClient;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -13,8 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(\Stripe\StripeClient::class, function () {
-            return new \Stripe\StripeClient(config('services.stripe.secret'));
+        $this->app->singleton(StripeClient::class, function () {
+            return new StripeClient(config('services.stripe.secret'));
         });
     }
 
@@ -24,10 +32,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureLocalhostSessionCookieDomain();
+        Gate::policy(SupportTicket::class, SupportTicketPolicy::class);
 
         Vite::prefetch(concurrency: 3);
 
-        \Illuminate\Support\Facades\Event::listen(function (\Illuminate\Auth\Events\Login $event) {
+        Event::listen(function (Login $event) {
             if (tenant() && Schema::hasTable('activity_log')) {
                 activity()
                     ->causedBy($event->user)
@@ -40,11 +49,11 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        \Illuminate\Support\Facades\Event::listen(function (\Illuminate\Auth\Events\Failed $event) {
+        Event::listen(function (Failed $event) {
             if (tenant() && Schema::hasTable('activity_log')) {
-                $attemptedEmail = strtolower((string)($event->credentials['email'] ?? ''));
+                $attemptedEmail = strtolower((string) ($event->credentials['email'] ?? ''));
                 $matchedUser = $attemptedEmail !== ''
-                    ? \App\Models\User::query()->where('email', $attemptedEmail)->select(['id', 'email'])->first()
+                    ? User::query()->where('email', $attemptedEmail)->select(['id', 'email'])->first()
                     : null;
 
                 $knownStatus = $matchedUser ? 'known staff email' : 'unknown email';
@@ -56,7 +65,7 @@ class AppServiceProvider extends ServiceProvider
                     ->causedBy($event->user)
                     ->withProperties([
                         'attempted_email' => $attemptedEmail ?: null,
-                        'email_exists' => (bool)$matchedUser,
+                        'email_exists' => (bool) $matchedUser,
                         'matched_user_id' => $matchedUser?->id,
                         'ip' => request()?->ip(),
                     ])
