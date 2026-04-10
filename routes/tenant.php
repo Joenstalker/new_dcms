@@ -12,7 +12,6 @@ Route::middleware([
     'tenant.init.preview_or_subdomain',
     \App\Http\Middleware\SetTenantUrl::class ,
     'tenant.prevent.central_or_preview',
-    'tenant.session.isolated',
     \App\Http\Middleware\CheckTenantStatus::class ,
 ])->group(function () {
     // Tenant storage — serves files from the tenant's isolated storage directory.
@@ -59,7 +58,7 @@ Route::middleware([
         // Authenticated Tenant Routes
         // check.subscription (no feature arg) ensures an active subscription exists
         // and shares plan info with Inertia on every authenticated request.
-        Route::middleware(['tenant.preview.impersonate', 'tenant.session.isolated', 'auth', 'check.subscription'])->group(function () {
+        Route::middleware(['tenant.preview.impersonate', 'auth', 'tenant.session.isolated', 'check.subscription'])->group(function () {
             Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class , 'index'])->name('tenant.dashboard');
 
             // Profile management (all authenticated tenant users)

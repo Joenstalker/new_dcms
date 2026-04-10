@@ -50,6 +50,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.prevent.central_or_preview' => \App\Http\Middleware\PreventAccessFromCentralDomainsOrPreview::class,
         ]);
 
+        $middleware->priority([
+            \App\Http\Middleware\InitializeTenancyBySubdomainOrPreview::class,
+            \App\Http\Middleware\SetTenantUrl::class,
+            \App\Http\Middleware\PreventAccessFromCentralDomainsOrPreview::class,
+            \App\Http\Middleware\ImpersonateTenantPreviewUser::class,
+            \Illuminate\Auth\Middleware\Authenticate::class,
+            \App\Http\Middleware\EnsureTenantSessionIsolation::class,
+            \App\Http\Middleware\HandleInertiaRequests::class,
+        ]);
+
         $middleware->redirectGuestsTo(function ($request) {
             if (tenant()) {
                 return route('tenant.landing');

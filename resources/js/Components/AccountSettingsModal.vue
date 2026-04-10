@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -15,14 +15,15 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-const user = computed(() => usePage().props.auth.user);
+const page = usePage();
+const user = computed(() => page.props.auth?.user || null);
 
 // Detect tenant context for correct route resolution
-const isTenant = computed(() => !!usePage().props.tenant);
+const isTenant = computed(() => !!page.props.tenant);
 
 const nameForm = useForm({
-    name: user.value.name,
-    email: user.value.email,
+    name: user.value?.name || '',
+    email: user.value?.email || '',
 });
 
 const passwordForm = useForm({
@@ -30,6 +31,29 @@ const passwordForm = useForm({
     password: '',
     password_confirmation: '',
 });
+
+const syncNameFormFromUser = () => {
+    const nextName = user.value?.name || '';
+    const nextEmail = user.value?.email || '';
+
+    nameForm.defaults({
+        name: nextName,
+        email: nextEmail,
+    });
+
+    nameForm.name = nextName;
+    nameForm.email = nextEmail;
+};
+
+watch(
+    [() => props.show, user],
+    ([showing]) => {
+        if (showing) {
+            syncNameFormFromUser();
+        }
+    },
+    { immediate: true }
+);
 
 const updateName = () => {
     nameForm.patch(route(isTenant.value ? 'tenant.profile.update' : 'profile.update'), {
@@ -91,7 +115,7 @@ const updatePassword = () => {
 };
 
 const close = () => {
-    nameForm.reset();
+    nameForm.clearErrors();
     passwordForm.reset();
     emit('close');
 };

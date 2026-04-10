@@ -3,7 +3,7 @@ import { ref, computed, provide, onMounted } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
-import ProfileDropdown from '@/Components/ProfileDropdown.vue';
+import TenantProfileDropdown from '@/Components/TenantProfileDropdown.vue';
 import MandatoryPasswordChangeModal from '@/Components/MandatoryPasswordChangeModal.vue';
 import MaintenanceDisplay from '@/Components/MaintenanceDisplay.vue';
 import SupportChatBubble from '@/Components/SupportChatBubble.vue';
@@ -629,7 +629,7 @@ function getContrastColor(hex) {
                 <div class="flex items-center space-x-4">
                     <ThemeSwitcher />
                     <NotificationBell type="tenant" />
-                    <ProfileDropdown />
+                    <TenantProfileDropdown />
                 </div>
             </header>
 

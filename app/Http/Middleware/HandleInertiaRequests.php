@@ -60,6 +60,16 @@ class HandleInertiaRequests extends Middleware
                 && (($preview['active'] ?? false) === true)
                 && (string)($preview['tenant_id'] ?? '') === (string)tenant()->getTenantKey();
 
+            if ($isValidPreview) {
+                $previewUserId = (int) ($preview['tenant_user_id'] ?? 0);
+                if ($previewUserId > 0) {
+                    $previewUser = \App\Models\User::query()->find($previewUserId);
+                    if ($previewUser) {
+                        $resolvedUser = $previewUser;
+                    }
+                }
+            }
+
             if (!$isValidPreview) {
                 $tenantId = (string) tenant()->getTenantKey();
                 $sessionTenantId = (string) $request->session()->get('tenant_authenticated_tenant_id', '');
@@ -102,7 +112,8 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
             'config' => [
-                'central_domain' => config('tenancy.central_domains.0', 'localhost'),
+                'central_domain' => parse_url((string) config('app.url', ''), PHP_URL_HOST)
+                    ?: config('tenancy.central_domains.0', 'localhost'),
                 'app_url' => $request->getSchemeAndHttpHost(),
                 'recaptcha_site_key' => config('services.recaptcha.site_key', ''),
                 'version' => fn() => tenant() ? (tenant()->version ?: 'v1.0.0') : \App\Services\AppVersionService::getVersion(),
