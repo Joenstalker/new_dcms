@@ -723,11 +723,10 @@ function getContrastColor(hex) {
                 </div>
 
                 <!-- Navigation Categories -->
-                <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+                <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
                     <template v-for="(category, catIdx) in menuCategories" :key="category.title">
-                        <!-- Add a subtle visual separation between logical groups, but much more compact than words -->
                         <div v-if="catIdx > 0 && category.items.length > 0" class="h-3"></div>
-                        
+
                         <div class="space-y-1">
                             <Link 
                                 v-for="item in category.items" 
@@ -736,16 +735,16 @@ function getContrastColor(hex) {
                                 @click="item.isLocked ? ($event.preventDefault(), showUpgradeAlert(item.name)) : (isSidebarOpen = false)"
                                 :class="[
                                     isItemActive(item) && !item.isLocked
-                                        ? 'shadow-lg shadow-primary/20 scale-[1.02] bg-primary' 
-                                        : 'hover:bg-primary/10 hover:text-primary',
-                                    item.isLocked ? 'opacity-70 hover:opacity-100 bg-base-100/50' : ''
+                                        ? 'bg-primary' 
+                                        : 'hover:bg-base-200/80',
+                                    item.isLocked ? 'opacity-50' : ''
                                 ]"
-                                class="flex items-center px-5 py-2.5 rounded-2xl group transition-all duration-300 transform"
+                                class="flex items-center px-5 py-2.5 rounded-xl transition-colors duration-200"
                                 :style="isItemActive(item) && !item.isLocked ? { backgroundColor: primaryColor, color: primaryTextColor } : {}"
                             >
                                 <svg 
-                                    class="h-5 w-5 mr-4 transition-transform duration-300 group-hover:scale-110 flex-shrink-0" 
-                                    :class="[isItemActive(item) && !item.isLocked ? 'text-white' : (item.isLocked ? 'text-warning opacity-100' : 'opacity-40 group-hover:opacity-100')]"
+                                    class="h-5 w-5 mr-4 flex-shrink-0" 
+                                    :class="[isItemActive(item) && !item.isLocked ? 'text-white' : 'opacity-40']"
                                     fill="none" 
                                     viewBox="0 0 24 24" 
                                     stroke-width="2" 
@@ -753,13 +752,7 @@ function getContrastColor(hex) {
                                     v-html="item.isLocked ? getIcon('lock') : getIcon(item.icon)"
                                 ></svg>
                                 <span class="font-bold text-xs uppercase tracking-wider truncate" :class="fonts.sidebar">{{ item.name }}</span>
-                                <div v-if="isItemActive(item) && !item.isLocked" class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm flex-shrink-0"></div>
-                                <div v-if="roles.includes('Owner') && item.isLocked" class="ml-auto inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-warning/20 text-warning flex-shrink-0">
-                                    {{ page.props.tenant_plan?.feature_requirements?.[item.featureKey] || 'PREMIUM' }}
-                                </div>
-                                <div v-if="item.badge > 0 && !item.isLocked" class="ml-auto h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm flex-shrink-0">
-                                    {{ item.badge }}
-                                </div>
+                                <div v-if="isItemActive(item) && !item.isLocked" class="ml-auto w-1.5 h-1.5 rounded-full bg-white flex-shrink-0"></div>
                             </Link>
                         </div>
                     </template>

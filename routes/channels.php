@@ -2,16 +2,26 @@
 
 use Illuminate\Support\Facades\Broadcast;
 
+$matchesTenantContext = function ($tenantId): bool {
+    if (tenant() && (string) tenant()->getTenantKey() === (string) $tenantId) {
+        return true;
+    }
+
+    $sessionTenantId = (string) session('tenant_authenticated_tenant_id', '');
+
+    return $sessionTenantId !== '' && $sessionTenantId === (string) $tenantId;
+};
+
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int)$user->id === (int)$id;
 });
 
 Broadcast::channel('tenant.{tenantId}.appointments', function ($user, $tenantId) {
-    if (!auth()->check() || !tenant()) {
+    if (!auth()->check()) {
         return false;
     }
 
-    if ((string) tenant()->getTenantKey() !== (string) $tenantId) {
+    if (!$matchesTenantContext($tenantId)) {
         return false;
     }
 
@@ -19,11 +29,11 @@ Broadcast::channel('tenant.{tenantId}.appointments', function ($user, $tenantId)
 });
 
 Broadcast::channel('tenant.{tenantId}.patients', function ($user, $tenantId) {
-    if (!auth()->check() || !tenant()) {
+    if (!auth()->check()) {
         return false;
     }
 
-    if ((string) tenant()->getTenantKey() !== (string) $tenantId) {
+    if (!$matchesTenantContext($tenantId)) {
         return false;
     }
 
@@ -31,11 +41,11 @@ Broadcast::channel('tenant.{tenantId}.patients', function ($user, $tenantId) {
 });
 
 Broadcast::channel('tenant.{tenantId}.services', function ($user, $tenantId) {
-    if (!auth()->check() || !tenant()) {
+    if (!auth()->check()) {
         return false;
     }
 
-    if ((string) tenant()->getTenantKey() !== (string) $tenantId) {
+    if (!$matchesTenantContext($tenantId)) {
         return false;
     }
 
@@ -43,11 +53,11 @@ Broadcast::channel('tenant.{tenantId}.services', function ($user, $tenantId) {
 });
 
 Broadcast::channel('tenant.{tenantId}.treatments', function ($user, $tenantId) {
-    if (!auth()->check() || !tenant()) {
+    if (!auth()->check()) {
         return false;
     }
 
-    if ((string) tenant()->getTenantKey() !== (string) $tenantId) {
+    if (!$matchesTenantContext($tenantId)) {
         return false;
     }
 
@@ -55,11 +65,11 @@ Broadcast::channel('tenant.{tenantId}.treatments', function ($user, $tenantId) {
 });
 
 Broadcast::channel('tenant.{tenantId}.billing', function ($user, $tenantId) {
-    if (!auth()->check() || !tenant()) {
+    if (!auth()->check()) {
         return false;
     }
 
-    if ((string) tenant()->getTenantKey() !== (string) $tenantId) {
+    if (!$matchesTenantContext($tenantId)) {
         return false;
     }
 
@@ -67,11 +77,11 @@ Broadcast::channel('tenant.{tenantId}.billing', function ($user, $tenantId) {
 });
 
 Broadcast::channel('tenant.{tenantId}.staff', function ($user, $tenantId) {
-    if (!auth()->check() || !tenant()) {
+    if (!auth()->check()) {
         return false;
     }
 
-    if ((string) tenant()->getTenantKey() !== (string) $tenantId) {
+    if (!$matchesTenantContext($tenantId)) {
         return false;
     }
 
@@ -79,7 +89,7 @@ Broadcast::channel('tenant.{tenantId}.staff', function ($user, $tenantId) {
 });
 
 Broadcast::channel('support.ticket.{id}', function ($user, $id) {
-    if (!\Illuminate\Support\Facades\Auth::check() || !tenant()) {
+    if (!\Illuminate\Support\Facades\Auth::check()) {
         return false;
     }
 
@@ -92,7 +102,12 @@ Broadcast::channel('support.ticket.{id}', function ($user, $id) {
         return false;
     }
 
-    return (string) $ticket->tenant_id === (string) tenant()->getTenantKey();
+    if (tenant()) {
+        return (string) $ticket->tenant_id === (string) tenant()->getTenantKey();
+    }
+
+    $sessionTenantId = (string) session('tenant_authenticated_tenant_id', '');
+    return $sessionTenantId !== '' && (string) $ticket->tenant_id === $sessionTenantId;
 });
 
 Broadcast::channel('admin.support.tickets', function ($user) {

@@ -31,8 +31,24 @@ const attachments = ref([]);
 const chatContainer = ref(null);
 const fileInput = ref(null);
 const unreadCount = ref(0);
+const isModalOpen = ref(false);
 let pollInterval = null;
 let currentEchoChannel = null;
+let bodyClassObserver = null;
+
+const bubbleLayerStyle = computed(() => ({
+    zIndex: isModalOpen.value ? 120 : 9999,
+    pointerEvents: isModalOpen.value ? 'none' : 'auto',
+}));
+
+const syncModalState = () => {
+    if (typeof document === 'undefined') {
+        isModalOpen.value = false;
+        return;
+    }
+
+    isModalOpen.value = document.body.classList.contains('has-open-modal');
+};
 
 watch(activeTicket, (newTicket, oldTicket) => {
     if (window.Echo) {
@@ -263,11 +279,45 @@ const getFileIcon = (type) => {
     return '📎';
 };
 
+const getMessageSenderName = (msg) => {
+    if (msg?.sender_name) return msg.sender_name;
+    if (msg?.sender?.name) return msg.sender.name;
+    return msg?.sender_type === 'admin' ? 'Support Admin' : 'Clinic Staff';
+};
+
+const getMessageAvatar = (msg) => {
+    if (msg?.sender_avatar_url) return msg.sender_avatar_url;
+    if (msg?.sender?.profile_picture_url) return msg.sender.profile_picture_url;
+    if (msg?.sender?.profile_photo_url) return msg.sender.profile_photo_url;
+
+    const fallbackName = getMessageSenderName(msg);
+    const bg = msg?.sender_type === 'admin' ? '334155' : '1F2937';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&color=FFFFFF&background=${bg}`;
+};
+
 onMounted(() => {
+    syncModalState();
+
+    if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+        bodyClassObserver = new MutationObserver(() => {
+            syncModalState();
+        });
+
+        bodyClassObserver.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class'],
+        });
+    }
+
     // Polling removed in favor of real-time WebSockets (Echo)
 });
 
 onUnmounted(() => {
+    if (bodyClassObserver) {
+        bodyClassObserver.disconnect();
+        bodyClassObserver = null;
+    }
+
     // Cleanup Echo listeners is handled by the activeTicket watcher
 });
 </script>
@@ -275,7 +325,7 @@ onUnmounted(() => {
 <template>
     <div v-if="canAccessSupportChat">
     <!-- Floating Chat Bubble -->
-    <div class="fixed right-6 z-[9999]" :style="{ bottom: `${bubbleBottomOffset}px` }">
+    <div class="fixed right-6" :style="{ bottom: `${bubbleBottomOffset}px`, ...bubbleLayerStyle }">
         <!-- Unread Badge -->
         <div 
             v-if="unreadCount > 0 && !isOpen"
@@ -466,13 +516,8 @@ onUnmounted(() => {
                             >
                                 <div class="flex items-end gap-2" :class="msg.sender_type === 'tenant' ? 'flex-row-reverse' : ''">
                                     <!-- Avatar -->
-                                    <div 
-                                        class="h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 overflow-hidden"
-                                        :class="msg.sender_type === 'admin' ? 'bg-base-300 text-base-content/60 tracking-tight' : ''"
-                                        :style="msg.sender_type === 'tenant' ? { backgroundColor: primaryColor, color: 'white' } : {}"
-                                    >
-                                        <img v-if="msg.sender?.profile_photo_url" :src="msg.sender.profile_photo_url" class="h-full w-full object-cover" />
-                                        <span v-else>{{ msg.sender_type === 'admin' ? '🛡️' : (msg.sender?.name?.charAt(0) || 'U') }}</span>
+                                    <div class="h-8 w-8 rounded-full shrink-0 overflow-hidden border border-base-300 bg-base-200">
+                                        <img :src="getMessageAvatar(msg)" :alt="getMessageSenderName(msg)" class="h-full w-full object-cover" />
                                     </div>
 
                                     <!-- Bubble -->
@@ -483,6 +528,9 @@ onUnmounted(() => {
                                             : 'rounded-bl-md bg-base-200 text-base-content'"
                                         :style="msg.sender_type === 'tenant' ? { backgroundColor: primaryColor } : {}"
                                     >
+                                        <p class="text-[10px] font-black mb-1.5 opacity-80 tracking-wide">
+                                            {{ getMessageSenderName(msg) }}
+                                        </p>
                                         <p class="whitespace-pre-wrap break-words text-[13px]">{{ msg.content }}</p>
 
                                         <!-- Attachments -->

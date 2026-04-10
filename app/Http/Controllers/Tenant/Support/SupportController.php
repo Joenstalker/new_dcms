@@ -9,6 +9,7 @@ use App\Models\SupportAttachment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Stancl\Tenancy\Facades\Tenancy;
 use App\Events\SupportTicketUpdated;
 
@@ -36,7 +37,17 @@ class SupportController extends Controller
             ->get();
 
         return response()->json([
-            'tickets' => $tickets
+            'tickets' => $tickets->map(function (SupportTicket $ticket) {
+                $data = $ticket->toArray();
+
+                if ($ticket->relationLoaded('latestMessage') && $ticket->latestMessage) {
+                    $latest = $ticket->latestMessage;
+                    $data['latest_message_sender_name'] = $this->resolveSenderName($latest);
+                    $data['latest_message_sender_avatar_url'] = $this->resolveSenderAvatarUrl($latest);
+                }
+
+                return $data;
+            })->values(),
         ]);
     }
 
@@ -77,7 +88,7 @@ class SupportController extends Controller
 
         return response()->json([
             'success' => true,
-            'ticket' => $ticket->load('messages.attachments')
+            'ticket' => $this->transformTicket($ticket->load('messages.attachments')),
         ]);
     }
 
@@ -91,7 +102,7 @@ class SupportController extends Controller
         }
 
         return response()->json([
-            'ticket' => $ticket->load(['messages.attachments', 'messages.sender'])
+            'ticket' => $this->transformTicket($ticket->load(['messages.attachments', 'messages.sender'])),
         ]);
     }
 
@@ -121,10 +132,78 @@ class SupportController extends Controller
 
         broadcast(new SupportTicketUpdated($ticket, 'reply_added'));
 
+        $message->load('attachments');
+
         return response()->json([
             'success' => true,
-            'message' => $message->load('attachments')
+            'message' => $this->transformMessage($message),
         ]);
+    }
+
+    protected function transformTicket(SupportTicket $ticket): array
+    {
+        $data = $ticket->toArray();
+        $messages = $ticket->messages ?? collect();
+
+        $data['messages'] = collect($messages)->map(function ($message) {
+            return $this->transformMessage($message);
+        })->values()->all();
+
+        return $data;
+    }
+
+    protected function transformMessage(SupportMessage $message): array
+    {
+        $data = $message->toArray();
+        $data['sender_name'] = $this->resolveSenderName($message);
+        $data['sender_avatar_url'] = $this->resolveSenderAvatarUrl($message);
+
+        return $data;
+    }
+
+    protected function resolveSenderName(SupportMessage $message): string
+    {
+        if ($message->sender_type === 'tenant') {
+            $tenantUser = \App\Models\User::query()->find($message->sender_id);
+            return $tenantUser?->name ?: 'Clinic Staff';
+        }
+
+        $admin = DB::connection('central')
+            ->table('users')
+            ->where('id', $message->sender_id)
+            ->first(['name']);
+
+        return $admin?->name ?: 'Support Admin';
+    }
+
+    protected function resolveSenderAvatarUrl(SupportMessage $message): string
+    {
+        if ($message->sender_type === 'tenant') {
+            $tenantUser = \App\Models\User::query()->find($message->sender_id);
+
+            if ($tenantUser?->profile_picture_url) {
+                return $tenantUser->profile_picture_url;
+            }
+
+            return 'https://ui-avatars.com/api/?name=' . urlencode($tenantUser?->name ?: 'Clinic Staff') . '&color=FFFFFF&background=1F2937';
+        }
+
+        $admin = DB::connection('central')
+            ->table('users')
+            ->where('id', $message->sender_id)
+            ->first(['name', 'profile_picture']);
+
+        if ($admin && !empty($admin->profile_picture)) {
+            $path = (string) $admin->profile_picture;
+
+            if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, 'data:image/')) {
+                return $path;
+            }
+
+            return asset('storage/' . ltrim($path, '/'));
+        }
+
+        return 'https://ui-avatars.com/api/?name=' . urlencode($admin?->name ?: 'Support Admin') . '&color=FFFFFF&background=334155';
     }
 
     protected function handleAttachments(Request $request, SupportMessage $message)

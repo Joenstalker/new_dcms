@@ -18,14 +18,48 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 const showSlot = ref(props.show);
+const hasRegisteredOpenModal = ref(false);
+
+const setGlobalModalState = (isOpen) => {
+    if (typeof document === 'undefined') {
+        return;
+    }
+
+    const currentCount = Number(document.body.dataset.modalOpenCount || '0');
+
+    if (isOpen) {
+        if (!hasRegisteredOpenModal.value) {
+            const nextCount = currentCount + 1;
+            document.body.dataset.modalOpenCount = String(nextCount);
+            hasRegisteredOpenModal.value = true;
+        }
+    } else if (hasRegisteredOpenModal.value) {
+        const nextCount = Math.max(0, currentCount - 1);
+
+        if (nextCount === 0) {
+            delete document.body.dataset.modalOpenCount;
+            document.body.classList.remove('has-open-modal');
+        } else {
+            document.body.dataset.modalOpenCount = String(nextCount);
+        }
+
+        hasRegisteredOpenModal.value = false;
+    }
+
+    if (Number(document.body.dataset.modalOpenCount || '0') > 0) {
+        document.body.classList.add('has-open-modal');
+    }
+};
 
 watch(
     () => props.show,
     (show) => {
         if (show) {
+            setGlobalModalState(true);
             document.body.style.overflow = 'hidden';
             showSlot.value = true;
         } else {
+            setGlobalModalState(false);
             document.body.style.overflow = '';
             
             setTimeout(() => {
@@ -55,6 +89,7 @@ const closeOnEscape = (e) => {
 onMounted(() => document.addEventListener('keydown', closeOnEscape));
 
 onUnmounted(() => {
+    setGlobalModalState(false);
     document.removeEventListener('keydown', closeOnEscape);
 
     document.body.style.overflow = '';
@@ -107,7 +142,7 @@ const maxWidthClass = computed(() => {
                 >
                     <div
                         v-if="show"
-                        class="mb-6 transform overflow-hidden rounded-lg bg-base-100 shadow-xl transition-all sm:mx-auto sm:w-full border border-base-300"
+                        class="mb-6 transform overflow-y-auto overflow-x-hidden max-h-[calc(100vh-2rem)] rounded-lg bg-base-100 shadow-xl transition-all w-full sm:mx-auto sm:w-full border border-base-300"
                         :class="maxWidthClass"
                     >
                         <slot v-if="showSlot" />

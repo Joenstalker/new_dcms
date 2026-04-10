@@ -12,6 +12,7 @@ use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\StaffInvitation;
+use Illuminate\Validation\ValidationException;
 
 class StaffController extends Controller
 {
@@ -97,8 +98,30 @@ class StaffController extends Controller
         return redirect()->route('staff.index')->with('success', 'Staff member updated successfully.');
     }
 
-    public function destroy(User $staff)
+    public function destroy(Request $request, $staff)
     {
+        $staff = User::query()->find($staff);
+
+        if (!$staff) {
+            throw ValidationException::withMessages([
+                'staff' => 'Staff member no longer exists or is inaccessible.',
+            ]);
+        }
+
+        $actor = $request->user();
+
+        if ($actor && (int) $actor->id === (int) $staff->id) {
+            throw ValidationException::withMessages([
+                'staff' => 'You cannot delete your own account.',
+            ]);
+        }
+
+        if (!$staff->hasAnyRole(['Dentist', 'Assistant'])) {
+            throw ValidationException::withMessages([
+                'staff' => 'Only Dentist and Assistant accounts can be removed from Staff Management.',
+            ]);
+        }
+
         broadcast(new UserAccessChanged(
             (int) $staff->id,
             'account_deleted',

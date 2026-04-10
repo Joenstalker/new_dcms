@@ -321,8 +321,8 @@
 
         <!-- Add Staff Modal -->
         <Modal :show="showingAddModal" @close="showingAddModal = false" maxWidth="md">
-            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 h-24 relative">
-                <div class="absolute -bottom-6 left-8 h-14 w-14 rounded-xl bg-white p-1.5 shadow-2xl border border-white/50 flex items-center justify-center font-black text-blue-600 uppercase tracking-tighter text-lg shadow-blue-200/40">
+            <div class="h-20 sm:h-24 relative" :style="addModalHeaderStyle">
+                <div class="absolute -bottom-6 left-4 sm:left-8 h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-white p-1.5 shadow-2xl border border-white/50 flex items-center justify-center font-black uppercase tracking-tighter text-lg" :style="{ color: primaryColor }">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                     </svg>
@@ -334,19 +334,19 @@
                 </button>
             </div>
 
-            <div class="p-8 pt-10">
-                <div class="mb-8 border-b border-gray-50 pb-6">
-                    <h3 class="text-2xl font-black text-gray-900 tracking-tight uppercase">New Staff Member</h3>
+            <div class="p-4 sm:p-8 pt-8 sm:pt-10 max-h-[78vh] overflow-y-auto" :style="{ '--staff-primary': primaryColor }">
+                <div class="mb-6 sm:mb-8 border-b border-gray-50 pb-4 sm:pb-6">
+                    <h3 class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight uppercase">New Staff Member</h3>
                     <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1.5">Send an invitation to join your clinic</p>
                 </div>
                 
-                <form @submit.prevent="handleAddStaff" class="space-y-6">
+                <form @submit.prevent="handleAddStaff" class="space-y-5 sm:space-y-6">
                     <div class="space-y-3">
                         <InputLabel for="name" value="Full Name" class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1" />
                         <TextInput
                             id="name"
                             type="text"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner"
+                            class="block w-full border-gray-100 focus:border-[var(--staff-primary)] focus:ring-[var(--staff-primary)] rounded-xl p-3.5 sm:p-4 font-black text-sm bg-gray-50/50 shadow-inner"
                             v-model="addForm.name"
                             required
                             placeholder="e.g. Dr. John Doe"
@@ -359,7 +359,7 @@
                         <TextInput
                             id="email"
                             type="email"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner"
+                            class="block w-full border-gray-100 focus:border-[var(--staff-primary)] focus:ring-[var(--staff-primary)] rounded-xl p-3.5 sm:p-4 font-black text-sm bg-gray-50/50 shadow-inner"
                             v-model="addForm.email"
                             required
                             placeholder="john@example.com"
@@ -372,7 +372,7 @@
                         <select 
                             id="role"
                             v-model="addForm.role"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E')] bg-[length:1.25em_1.25em] bg-[right_1.25em_center] bg-no-repeat"
+                            class="block w-full border-gray-100 focus:border-[var(--staff-primary)] focus:ring-[var(--staff-primary)] rounded-xl p-3.5 sm:p-4 font-black text-sm bg-gray-50/50 shadow-inner appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E')] bg-[length:1.25em_1.25em] bg-[right_1.25em_center] bg-no-repeat"
                             required
                         >
                             <option v-for="role in roles" :key="role.id" :value="role.name">{{ role.name }}</option>
@@ -380,12 +380,13 @@
                         <InputError class="mt-2" :message="addForm.errors.role" />
                     </div>
 
-                    <div class="pt-8 flex items-center space-x-4">
-                        <SecondaryButton @click="showingAddModal = false" class="flex-[0.4] py-4 justify-center border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
+                    <div class="pt-4 sm:pt-8 flex items-center gap-3 sm:gap-4">
+                        <SecondaryButton @click="showingAddModal = false" class="flex-[0.42] py-3 sm:py-4 justify-center border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
                             Cancel
                         </SecondaryButton>
                         <PrimaryButton 
-                            class="flex-1 py-4 justify-center bg-gray-900 border-none rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl shadow-gray-400 transition-all hover:bg-black active:scale-95" 
+                            class="flex-1 py-3 sm:py-4 justify-center border-none rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95" 
+                            :style="addModalButtonStyle"
                             :class="{ 'opacity-25': addForm.processing }" 
                             :disabled="addForm.processing"
                         >
@@ -446,8 +447,66 @@ watch(() => props.staff, (nextStaff) => {
 const activeTab = ref(props.initialTab);
 
 const primaryColor = computed(() => brandingState.primary_color);
+const primaryTextColor = computed(() => getContrastColor(primaryColor.value || '#2563eb'));
+const addModalHeaderStyle = computed(() => {
+    const base = primaryColor.value || '#2563eb';
+    const darker = darkenColor(base, 14);
+
+    return {
+        background: `linear-gradient(135deg, ${base}, ${darker})`,
+    };
+});
+
+const addModalButtonStyle = computed(() => ({
+    backgroundColor: primaryColor.value || '#2563eb',
+    color: primaryTextColor.value,
+    boxShadow: `0 20px 24px -12px ${hexToRgba(primaryColor.value || '#2563eb', 0.42)}`,
+}));
+
 const tenantLimits = computed(() => usePage().props.tenant_plan?.limits || {});
 const tenantUsage = computed(() => usePage().props.tenant_plan?.current_usage || {});
+
+function darkenColor(hex, percent) {
+    const value = (hex || '#2563eb').replace('#', '');
+    const num = parseInt(value, 16);
+
+    if (Number.isNaN(num)) return '#1d4ed8';
+
+    const amt = Math.round(2.55 * percent);
+    const r = Math.max(0, Math.min(255, (num >> 16) - amt));
+    const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00ff) - amt));
+    const b = Math.max(0, Math.min(255, (num & 0x0000ff) - amt));
+
+    return `#${(0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1)}`;
+}
+
+function hexToRgba(hex, alpha = 1) {
+    const clean = (hex || '#2563eb').replace('#', '');
+    const bigint = parseInt(clean.length === 3
+        ? clean.split('').map((c) => c + c).join('')
+        : clean, 16);
+
+    if (Number.isNaN(bigint)) return `rgba(37, 99, 235, ${alpha})`;
+
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getContrastColor(hex) {
+    const clean = (hex || '#2563eb').replace('#', '');
+    const full = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+
+    if ([r, g, b].some((value) => Number.isNaN(value))) return '#ffffff';
+
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.58 ? '#111827' : '#ffffff';
+}
 
 const limitReached = computed(() => {
     const max = tenantLimits.value.max_users;
@@ -640,6 +699,21 @@ const updateStaff = () => {
 
 const confirmDelete = (member) => {
     const id = member.id;
+
+    if (!id) {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: 'Action Blocked',
+            text: 'Invalid staff record. Please refresh and try again.',
+            timer: 2500,
+            showConfirmButton: false,
+            timerProgressBar: true,
+        });
+        return;
+    }
+
     Swal.fire({
         title: 'Are you sure?',
         text: "You won't be able to revert this! This will permanently delete the staff member from the database.",
@@ -654,18 +728,26 @@ const confirmDelete = (member) => {
             router.delete(route('staff.destroy', id), {
                 onSuccess: () => {
                     Swal.fire({
+                        toast: true,
+                        position: 'top-end',
                         icon: 'success',
                         title: 'Removed!',
                         text: 'Staff member has been permanently removed.',
                         timer: 2000,
-                        showConfirmButton: false
+                        showConfirmButton: false,
+                        timerProgressBar: true
                     });
                 },
-                onError: () => {
+                onError: (errors) => {
                     Swal.fire({
+                        toast: true,
+                        position: 'top-end',
                         icon: 'error',
-                        title: 'Error',
-                        text: 'Failed to remove staff member.'
+                        title: 'Action Blocked',
+                        text: errors?.staff || 'Failed to remove staff member.',
+                        timer: 2600,
+                        showConfirmButton: false,
+                        timerProgressBar: true
                     });
                 }
             });
