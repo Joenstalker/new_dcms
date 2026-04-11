@@ -577,26 +577,156 @@ class SettingsController extends Controller
             $newOnlineBookingEnabled = (bool) $validated['online_booking_enabled'];
 
             if ($newOnlineBookingEnabled !== $currentOnlineBookingEnabled) {
-                broadcast(new OnlineBookingStatusUpdated((string) $tenant->getTenantKey(), $newOnlineBookingEnabled));
+                try {
+                    broadcast(new OnlineBookingStatusUpdated((string) $tenant->getTenantKey(), $newOnlineBookingEnabled));
+                } catch (\Throwable $e) {
+                    Log::warning('Online booking broadcast failed', [
+                        'tenant_id' => (string) $tenant->getTenantKey(),
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
         }
 
         $shouldBroadcastBranding = isset($validated['enabled_features'])
+            || isset($validated['landing_page_config'])
+            || isset($validated['hero_title'])
+            || isset($validated['hero_subtitle'])
+            || isset($validated['about_us_description'])
             || isset($validated['operating_hours'])
             || array_key_exists('online_booking_enabled', $validated);
 
         if ($shouldBroadcastBranding) {
             $latestBranding = TenantBrandingService::getAll();
             $resolvedEnabledFeatures = $tenant->getResolvedEnabledFeaturesForUi($latestBranding);
+            $landingConfigPayload = $this->buildLandingConfigBroadcastPayload(
+                $latestBranding['landing_page_config'] ?? ($tenant->landing_page_config ?? [])
+            );
 
-            broadcast(new TenantBrandingUpdated((string) $tenant->getTenantKey(), [
-                'enabled_features' => $resolvedEnabledFeatures,
-                'operating_hours' => $latestBranding['operating_hours'] ?? $tenant->getOperatingHoursWithDefaults(),
-                'online_booking_enabled' => (bool) ($latestBranding['online_booking_enabled'] ?? $tenant->isOnlineBookingEnabled()),
-            ]));
+            try {
+                broadcast(new TenantBrandingUpdated((string) $tenant->getTenantKey(), [
+                    'enabled_features' => $resolvedEnabledFeatures,
+                    'landing_page_config' => $landingConfigPayload,
+                    'hero_title' => $latestBranding['hero_title'] ?? $tenant->hero_title,
+                    'hero_subtitle' => $latestBranding['hero_subtitle'] ?? $tenant->hero_subtitle,
+                    'about_us_description' => $latestBranding['about_us_description'] ?? $tenant->about_us_description,
+                    'operating_hours' => $latestBranding['operating_hours'] ?? $tenant->getOperatingHoursWithDefaults(),
+                    'online_booking_enabled' => (bool) ($latestBranding['online_booking_enabled'] ?? $tenant->isOnlineBookingEnabled()),
+                ]));
+            } catch (\Throwable $e) {
+                Log::warning('Tenant branding broadcast failed', [
+                    'tenant_id' => (string) $tenant->getTenantKey(),
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return redirect()->back()->with('success', 'Clinic settings updated successfully.');
+    }
+
+    private function buildLandingConfigBroadcastPayload($rawConfig): array
+    {
+        $config = $rawConfig;
+
+        if (is_string($config) && $config !== '') {
+            $decoded = json_decode($config, true);
+            if (is_array($decoded)) {
+                $config = $decoded;
+            }
+        }
+
+        if (! is_array($config)) {
+            $config = [];
+        }
+
+        $sections = is_array($config['sections'] ?? null) ? $config['sections'] : [];
+        $team = is_array($config['team'] ?? null) ? $config['team'] : [];
+        $manualCards = array_slice(is_array($team['manual_cards'] ?? null) ? $team['manual_cards'] : [], 0, 12);
+
+        $sanitizedCards = array_values(array_filter(array_map(function ($card, $index) {
+            if (! is_array($card)) {
+                return null;
+            }
+
+            $imageUrl = is_string($card['image_url'] ?? null) ? $card['image_url'] : '';
+
+            // Avoid oversized realtime payloads by stripping inline base64 blobs.
+            if (str_starts_with($imageUrl, 'data:image/')) {
+                $imageUrl = '';
+            }
+
+            if (strlen($imageUrl) > 2048) {
+                $imageUrl = '';
+            }
+
+            return [
+                'id' => is_string($card['id'] ?? null) ? $card['id'] : ('manual-' . $index),
+                'name' => is_string($card['name'] ?? null) ? $card['name'] : '',
+                'role' => is_string($card['role'] ?? null) ? $card['role'] : '',
+                'bio' => is_string($card['bio'] ?? null) ? $card['bio'] : '',
+                'image_url' => $imageUrl,
+            ];
+        }, $manualCards, array_keys($manualCards)), fn ($card) => is_array($card)));
+
+        return [
+            'background_color' => is_string($config['background_color'] ?? null) ? $config['background_color'] : '#ffffff',
+            'text_primary' => is_string($config['text_primary'] ?? null) ? $config['text_primary'] : '#111827',
+            'text_secondary' => is_string($config['text_secondary'] ?? null) ? $config['text_secondary'] : '#4b5563',
+            'sections' => [
+                'hero' => [
+                    'active' => (bool) (($sections['hero']['active'] ?? true)),
+                    'background_type' => in_array(($sections['hero']['background_type'] ?? 'color'), ['color', 'image'], true) ? $sections['hero']['background_type'] : 'color',
+                    'background_color' => $sections['hero']['background_color'] ?? '#f9fafb',
+                    'background_image' => $sections['hero']['background_image'] ?? null,
+                    'badge_text' => $sections['hero']['badge_text'] ?? 'Expert Dental Care',
+                    'cta_text' => $sections['hero']['cta_text'] ?? 'Schedule Your Visit',
+                ],
+                'content' => [
+                    'active' => (bool) (($sections['content']['active'] ?? true)),
+                    'image' => $sections['content']['image'] ?? null,
+                    'title' => $sections['content']['title'] ?? 'Committed to Excellence in Dental Care',
+                    'subtitle' => $sections['content']['subtitle'] ?? 'Our clinic is dedicated to providing the best dental care in the region. Our team of experienced professionals is here to ensure your smile remains healthy and beautiful.',
+                    'highlights' => is_array($sections['content']['highlights'] ?? null) ? array_values(array_slice($sections['content']['highlights'], 0, 5)) : ['Modern Technology', 'Sterilized Environment', 'Compassionate Experts'],
+                    'background_type' => in_array(($sections['content']['background_type'] ?? 'color'), ['color', 'image'], true) ? $sections['content']['background_type'] : 'color',
+                    'background_color' => $sections['content']['background_color'] ?? '#f9fafb',
+                    'background_image' => $sections['content']['background_image'] ?? null,
+                ],
+                'services' => [
+                    'active' => (bool) (($sections['services']['active'] ?? true)),
+                    'image' => $sections['services']['image'] ?? null,
+                    'title' => $sections['services']['title'] ?? 'Our Specialized Services',
+                    'subtitle' => $sections['services']['subtitle'] ?? 'We offer a wide range of dental treatments to keep your clinic healthy and your smile glowing.',
+                    'background_type' => in_array(($sections['services']['background_type'] ?? 'color'), ['color', 'image'], true) ? $sections['services']['background_type'] : 'color',
+                    'background_color' => $sections['services']['background_color'] ?? '#ffffff',
+                    'background_image' => $sections['services']['background_image'] ?? null,
+                ],
+                'team' => [
+                    'active' => (bool) (($sections['team']['active'] ?? true)),
+                    'image' => $sections['team']['image'] ?? null,
+                    'title' => $sections['team']['title'] ?? 'Meet Our Specialist Team',
+                    'subtitle' => $sections['team']['subtitle'] ?? 'Expert dentists dedicated to provide world-class dental treatments with care.',
+                    'background_type' => in_array(($sections['team']['background_type'] ?? 'color'), ['color', 'image'], true) ? $sections['team']['background_type'] : 'color',
+                    'background_color' => $sections['team']['background_color'] ?? '#ffffff',
+                    'background_image' => $sections['team']['background_image'] ?? null,
+                ],
+                'contact' => [
+                    'active' => (bool) (($sections['contact']['active'] ?? true)),
+                    'image' => $sections['contact']['image'] ?? null,
+                    'title' => $sections['contact']['title'] ?? "Have a Concern? We're Here to Help.",
+                    'subtitle' => $sections['contact']['subtitle'] ?? "Whether you're looking for an appointment or have a general inquiry, feel free to send us a message. Our team will respond as quickly as possible.",
+                    'background_type' => in_array(($sections['contact']['background_type'] ?? 'color'), ['color', 'image'], true) ? $sections['contact']['background_type'] : 'color',
+                    'background_color' => $sections['contact']['background_color'] ?? '#ffffff',
+                    'background_image' => $sections['contact']['background_image'] ?? null,
+                ],
+            ],
+            'team' => [
+                'source_mode' => in_array(($team['source_mode'] ?? 'auto_staff'), ['auto_staff', 'manual', 'hybrid'], true)
+                    ? $team['source_mode']
+                    : 'auto_staff',
+                'include_owner' => (bool) ($team['include_owner'] ?? true),
+                'manual_cards' => $sanitizedCards,
+            ],
+        ];
     }
 
     /**
@@ -625,7 +755,8 @@ class SettingsController extends Controller
     public function uploadLogo(Request $request)
     {
         $request->validate([
-            'field' => 'required|in:logo,logo_login,logo_booking,landing_services,landing_team,landing_contact,portal_background',
+            'field' => 'required|in:logo,logo_login,logo_booking,landing_content,landing_services,landing_team,landing_contact,landing_bg_hero,landing_bg_content,landing_bg_services,landing_bg_team,landing_bg_contact,portal_background,landing_team_card',
+            'card_id' => 'nullable|string|max:80',
             'image' => 'required|image|mimes:jpeg,png,gif,webp,svg|max:2048',
         ]);
 
@@ -636,6 +767,7 @@ class SettingsController extends Controller
 
         $field = $request->input('field');
         $file = $request->file('image');
+        $cardId = (string) $request->input('card_id', '');
 
         // Validate dimensions
         $dimensions = @getimagesize($file->path());
@@ -652,14 +784,33 @@ class SettingsController extends Controller
             'logo' => 'logo_base64',
             'logo_login' => 'logo_login_base64',
             'logo_booking' => 'logo_booking_base64',
+            'landing_content' => 'landing_image_content',
             'landing_services' => 'landing_image_services',
             'landing_team' => 'landing_image_team',
             'landing_contact' => 'landing_image_contact',
+            'landing_bg_hero' => 'landing_bg_image_hero',
+            'landing_bg_content' => 'landing_bg_image_content',
+            'landing_bg_services' => 'landing_bg_image_services',
+            'landing_bg_team' => 'landing_bg_image_team',
+            'landing_bg_contact' => 'landing_bg_image_contact',
             'portal_background' => 'portal_background_image',
         ];
 
-        $storageKey = $keyMap[$field];
+        if ($field === 'landing_team_card') {
+            $safeCardId = preg_replace('/[^A-Za-z0-9_-]/', '', $cardId);
+            if ($safeCardId === '') {
+                return response()->json(['error' => 'Invalid team card identifier.'], 422);
+            }
+            $storageKey = 'landing_team_card_' . $safeCardId;
+        } else {
+            $storageKey = $keyMap[$field];
+        }
+
+        $oldBlobBytes = $this->getBrandingBinarySize($storageKey);
+
         TenantBrandingService::setStreamed($storageKey, $file->path());
+        $newBlobBytes = $this->getBrandingBinarySize($storageKey);
+        $this->adjustTenantStorageBytes($tenant, $newBlobBytes - $oldBlobBytes);
 
         // Sync to central tenants table so system knows a binary logo exists
         $modelMap = [
@@ -691,7 +842,7 @@ class SettingsController extends Controller
     public function deleteLogo(Request $request)
     {
         $request->validate([
-            'field' => 'required|in:logo,logo_login,logo_booking,landing_services,landing_team,landing_contact,portal_background',
+            'field' => 'required|in:logo,logo_login,logo_booking,landing_content,landing_services,landing_team,landing_contact,landing_bg_hero,landing_bg_content,landing_bg_services,landing_bg_team,landing_bg_contact,portal_background',
         ]);
 
         $tenant = tenant();
@@ -704,15 +855,23 @@ class SettingsController extends Controller
             'logo' => 'logo_base64',
             'logo_login' => 'logo_login_base64',
             'logo_booking' => 'logo_booking_base64',
+            'landing_content' => 'landing_image_content',
             'landing_services' => 'landing_image_services',
             'landing_team' => 'landing_image_team',
             'landing_contact' => 'landing_image_contact',
+            'landing_bg_hero' => 'landing_bg_image_hero',
+            'landing_bg_content' => 'landing_bg_image_content',
+            'landing_bg_services' => 'landing_bg_image_services',
+            'landing_bg_team' => 'landing_bg_image_team',
+            'landing_bg_contact' => 'landing_bg_image_contact',
             'portal_background' => 'portal_background_image',
         ];
 
         try {
+            $oldBlobBytes = $this->getBrandingBinarySize($keyMap[$field]);
             DB::table('branding_settings')->where('key', $keyMap[$field])->delete();
             TenantBrandingService::forget($keyMap[$field]);
+            $this->adjustTenantStorageBytes($tenant, -$oldBlobBytes);
 
             // Also clear central tenants table column
             $modelMap = [
@@ -803,5 +962,40 @@ class SettingsController extends Controller
             'has_updates' => $pendingUpdates->count() > 0,
             'count' => $pendingUpdates->count(),
         ]);
+    }
+
+    private function getBrandingBinarySize(string $key): int
+    {
+        $bytes = DB::table('branding_settings')
+            ->where('key', $key)
+            ->selectRaw('COALESCE(OCTET_LENGTH(binary_value), 0) as bytes')
+            ->value('bytes');
+
+        return (int) ($bytes ?? 0);
+    }
+
+    private function adjustTenantStorageBytes($tenant, int $deltaBytes): void
+    {
+        if ($deltaBytes === 0) {
+            return;
+        }
+
+        try {
+            $current = (int) DB::connection('central')->table('tenants')
+                ->where('id', $tenant->id)
+                ->value('storage_used_bytes');
+
+            $next = max(0, $current + $deltaBytes);
+
+            DB::connection('central')->table('tenants')
+                ->where('id', $tenant->id)
+                ->update(['storage_used_bytes' => $next]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to update tenant storage usage for branding media', [
+                'tenant_id' => $tenant->id,
+                'delta_bytes' => $deltaBytes,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

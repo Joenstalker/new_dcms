@@ -1,12 +1,16 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import BookingModal from '@/Pages/Tenant/Booking/Partials/BookingModal.vue';
 import LoginModal from '@/Pages/Tenant/Auth/Partials/LoginModal.vue';
 
 const props = defineProps({
     services: Array,
     dentists: Array,
+    teamMembers: {
+        type: Array,
+        default: () => [],
+    },
     medicalRecords: {
         type: Array,
         default: () => [],
@@ -31,6 +35,10 @@ const showLoginModal = ref(false);
 const showBookingUnavailableModal = ref(false);
 const onlineBookingEnabled = ref(props.online_booking_enabled ?? true);
 const liveOperatingHours = ref({ ...(props.operating_hours || {}) });
+const liveLandingPageConfig = ref({ ...(tenant.value?.landing_page_config || {}) });
+const liveHeroTitle = ref(tenant.value?.hero_title || `Welcome to ${tenant.value?.name}`);
+const liveHeroSubtitle = ref(tenant.value?.hero_subtitle || 'Providing high-quality dental care with a gentle touch and modern technology.');
+const liveAboutDescription = ref(tenant.value?.about_us_description || `${tenant.value?.name} is dedicated to providing the best dental care in the region. Our team of experienced professionals is here to ensure your smile remains healthy and beautiful.`);
 let bookingChannel = null;
 let brandingChannel = null;
 
@@ -71,12 +79,20 @@ const fonts = computed(() => {
 });
 
 const backgroundColor = computed(() => {
-    return tenant.value?.landing_page_config?.background_color || '#ffffff';
+    return landingConfig.value.background_color || '#ffffff';
 });
 
-const heroTitle = computed(() => tenant.value?.hero_title || `Welcome to ${tenant.value?.name}`);
-const heroSubtitle = computed(() => tenant.value?.hero_subtitle || 'Providing high-quality dental care with a gentle touch and modern technology.');
-const aboutDescription = computed(() => tenant.value?.about_us_description || `${tenant.value?.name} is dedicated to providing the best dental care in the region. Our team of experienced professionals is here to ensure your smile remains healthy and beautiful.`);
+const heroTitle = computed(() => liveHeroTitle.value);
+const heroSubtitle = computed(() => liveHeroSubtitle.value);
+const aboutDescription = computed(() => liveAboutDescription.value);
+const heroBadgeText = computed(() => {
+    const value = landingConfig.value.sections?.hero?.badge_text;
+    return typeof value === 'string' && value.trim() !== '' ? value : 'Expert Dental Care';
+});
+const heroCtaText = computed(() => {
+    const value = landingConfig.value.sections?.hero?.cta_text;
+    return typeof value === 'string' && value.trim() !== '' ? value : 'Schedule Your Visit';
+});
 
 const formattedAddress = computed(() => {
     const parts = [tenant.value?.street, tenant.value?.barangay, tenant.value?.city, tenant.value?.province];
@@ -84,26 +100,154 @@ const formattedAddress = computed(() => {
 });
 
 const landingConfig = computed(() => {
-    const config = tenant.value?.landing_page_config || {};
+    const config = liveLandingPageConfig.value || {};
+    const sectionDefaults = {
+        hero: { active: true, background_type: 'color', background_color: '#f9fafb', background_image: null },
+        content: {
+            active: true,
+            image: null,
+            title: 'Committed to Excellence in Dental Care',
+            subtitle: 'Our clinic is dedicated to providing the best dental care in the region. Our team of experienced professionals is here to ensure your smile remains healthy and beautiful.',
+            highlights: ['Modern Technology', 'Sterilized Environment', 'Compassionate Experts'],
+            background_type: 'color',
+            background_color: '#f9fafb',
+            background_image: null,
+        },
+        services: {
+            active: true,
+            image: null,
+            title: 'Our Specialized Services',
+            subtitle: 'We offer a wide range of dental treatments to keep your clinic healthy and your smile glowing.',
+            background_type: 'color',
+            background_color: '#ffffff',
+            background_image: null,
+        },
+        team: {
+            active: true,
+            image: null,
+            title: 'Meet Our Specialist Team',
+            subtitle: 'Expert dentists dedicated to provide world-class dental treatments with care.',
+            background_type: 'color',
+            background_color: '#ffffff',
+            background_image: null,
+        },
+        contact: {
+            active: true,
+            image: null,
+            title: "Have a Concern? We're Here to Help.",
+            subtitle: "Whether you're looking for an appointment or have a general inquiry, feel free to send us a message. Our team will respond as quickly as possible.",
+            background_type: 'color',
+            background_color: '#ffffff',
+            background_image: null,
+        },
+    };
+
+    const incomingSections = (config.sections && typeof config.sections === 'object') ? config.sections : {};
+    const mergedSections = {
+        hero: { ...sectionDefaults.hero, ...(incomingSections.hero || {}) },
+        content: { ...sectionDefaults.content, ...(incomingSections.content || {}) },
+        services: { ...sectionDefaults.services, ...(incomingSections.services || {}) },
+        team: { ...sectionDefaults.team, ...(incomingSections.team || {}) },
+        contact: { ...sectionDefaults.contact, ...(incomingSections.contact || {}) },
+    };
+
     return {
         background_color: config.background_color || '#ffffff',
-        sections: config.sections || {
-            services: { active: true, image: null },
-            team: { active: true, image: null },
-            contact: { active: true, image: null }
-        },
+        sections: mergedSections,
         text_primary: config.text_primary || '#111827',
         text_secondary: config.text_secondary || '#4b5563',
     };
 });
 
+const autoTeamMembersFromServer = computed(() => {
+    if (Array.isArray(props.teamMembers) && props.teamMembers.length > 0) {
+        const autoOnly = props.teamMembers.filter((member) => member?.source === 'staff');
+        if (autoOnly.length > 0) return autoOnly;
+    }
+
+    return (props.dentists || []).map((dentist) => ({
+        id: `staff-fallback-${dentist.id}`,
+        source: 'staff',
+        name: dentist.name,
+        role: 'Professional Dentist',
+        bio: '',
+        image_url: '',
+    }));
+});
+
+const manualTeamMembersFromConfig = computed(() => {
+    const cards = liveLandingPageConfig.value?.team?.manual_cards;
+    if (!Array.isArray(cards)) return [];
+
+    return cards
+        .filter((card) => card && typeof card === 'object')
+        .map((card, index) => ({
+            id: card.id || `manual-${index}`,
+            source: 'manual',
+            name: String(card.name || '').trim(),
+            role: String(card.role || '').trim(),
+            bio: String(card.bio || '').trim(),
+            image_url: String(card.image_url || '').trim(),
+        }))
+        .filter((card) => card.name !== '');
+});
+
+const resolvedTeamMembers = computed(() => {
+    const mode = liveLandingPageConfig.value?.team?.source_mode || 'auto_staff';
+
+    if (mode === 'manual') {
+        return manualTeamMembersFromConfig.value;
+    }
+
+    if (mode === 'hybrid') {
+        return [...autoTeamMembersFromServer.value, ...manualTeamMembersFromConfig.value];
+    }
+
+    return autoTeamMembersFromServer.value;
+});
+
+watch(
+    () => tenant.value,
+    (currentTenant) => {
+        if (!currentTenant) return;
+        liveLandingPageConfig.value = { ...(currentTenant.landing_page_config || {}) };
+        liveHeroTitle.value = currentTenant.hero_title || `Welcome to ${currentTenant.name}`;
+        liveHeroSubtitle.value = currentTenant.hero_subtitle || 'Providing high-quality dental care with a gentle touch and modern technology.';
+        liveAboutDescription.value = currentTenant.about_us_description || `${currentTenant.name} is dedicated to providing the best dental care in the region. Our team of experienced professionals is here to ensure your smile remains healthy and beautiful.`;
+    },
+    { deep: true }
+);
+
 const isSectionActive = (name) => landingConfig.value.sections[name]?.active;
+const getSectionTitle = (name, fallback) => {
+    const value = landingConfig.value.sections?.[name]?.title;
+    return typeof value === 'string' && value.trim() !== '' ? value : fallback;
+};
+
+const getSectionSubtitle = (name, fallback) => {
+    const value = landingConfig.value.sections?.[name]?.subtitle;
+    return typeof value === 'string' && value.trim() !== '' ? value : fallback;
+};
+
+const contentHighlights = computed(() => {
+    const raw = landingConfig.value.sections?.content?.highlights;
+    if (!Array.isArray(raw)) {
+        return ['Modern Technology', 'Sterilized Environment', 'Compassionate Experts'];
+    }
+
+    return raw
+        .map((item) => String(item || '').trim())
+        .filter((item) => item !== '')
+        .slice(0, 5);
+});
+
 const getSectionImage = (name) => {
     const img = landingConfig.value.sections[name]?.image;
     
     // Fallback to high-quality dental/medical defaults
     if (!img) {
         const defaults = {
+            content: '/images/dentist-model.png',
             services: '/images/dental-smile-for-landingpage.png',
             team: '/images/dentist-model.png',
             contact: '/images/OneTop.png'
@@ -115,6 +259,25 @@ const getSectionImage = (name) => {
         return img;
     }
     return img ? '/tenant-storage/' + img : null;
+};
+
+const getSectionBackgroundStyle = (name, fallbackColor = '#ffffff') => {
+    const section = landingConfig.value.sections?.[name] || {};
+    const backgroundType = section.background_type === 'image' ? 'image' : 'color';
+    const backgroundImage = section.background_image;
+
+    if (backgroundType === 'image' && backgroundImage) {
+        return {
+            backgroundImage: `url(${backgroundImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+        };
+    }
+
+    return {
+        backgroundColor: section.background_color || fallbackColor,
+    };
 };
 
 const bookingEnabled = computed(() => onlineBookingEnabled.value);
@@ -157,6 +320,22 @@ onMounted(() => {
         .listen('.TenantBrandingUpdated', (event) => {
             if (Object.prototype.hasOwnProperty.call(event, 'online_booking_enabled')) {
                 onlineBookingEnabled.value = Boolean(event.online_booking_enabled);
+            }
+
+            if (event?.landing_page_config && typeof event.landing_page_config === 'object') {
+                liveLandingPageConfig.value = { ...event.landing_page_config };
+            }
+
+            if (Object.prototype.hasOwnProperty.call(event, 'hero_title')) {
+                liveHeroTitle.value = event.hero_title || `Welcome to ${tenant.value?.name}`;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(event, 'hero_subtitle')) {
+                liveHeroSubtitle.value = event.hero_subtitle || 'Providing high-quality dental care with a gentle touch and modern technology.';
+            }
+
+            if (Object.prototype.hasOwnProperty.call(event, 'about_us_description')) {
+                liveAboutDescription.value = event.about_us_description || `${tenant.value?.name} is dedicated to providing the best dental care in the region. Our team of experienced professionals is here to ensure your smile remains healthy and beautiful.`;
             }
 
             if (event?.operating_hours && typeof event.operating_hours === 'object') {
@@ -215,6 +394,7 @@ const hasOperatingHours = computed(() => {
                         </div>
                     </div>
                     <div class="hidden md:flex items-center space-x-8">
+                        <a v-if="isSectionActive('content')" href="#content" class="text-sm font-medium hover:text-gray-600 transition-colors">About</a>
                         <a v-if="isSectionActive('services')" href="#services" class="text-sm font-medium hover:text-gray-600 transition-colors">Services</a>
                         <a v-if="isSectionActive('team')" href="#team" class="text-sm font-medium hover:text-gray-600 transition-colors">Our team</a>
                         <a v-if="isSectionActive('contact')" href="#contact" class="text-sm font-medium hover:text-gray-600 transition-colors">Contact</a>
@@ -238,12 +418,12 @@ const hasOperatingHours = computed(() => {
         </nav>
 
         <!-- Hero Section -->
-        <header class="relative py-20 lg:py-32 overflow-hidden bg-gray-50">
+        <header v-if="isSectionActive('hero')" class="relative py-20 lg:py-32 overflow-hidden" :style="getSectionBackgroundStyle('hero', '#f9fafb')">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 <div class="lg:w-2/3">
                     <div class="flex flex-wrap items-center gap-3 mb-6">
                         <span class="inline-block px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white rounded-full bg-blue-600/10" :style="{ color: brandingColor, backgroundColor: brandingColor + '15' }">
-                            Expert Dental Care
+                            {{ heroBadgeText }}
                         </span>
                         <span
                             class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border"
@@ -263,7 +443,7 @@ const hasOperatingHours = computed(() => {
                         <button @click="openBookingFlow" 
                            class="inline-flex justify-center items-center px-8 py-4 border border-transparent text-lg font-bold rounded-full shadow-xl text-white transition-all hover:shadow-2xl hover:scale-105 active:scale-95"
                            :style="{ backgroundColor: brandingColor }">
-                            Schedule Your Visit
+                            {{ heroCtaText }}
                         </button>
                         
                         <!-- QR Code Section (only when booking enabled) -->
@@ -284,15 +464,15 @@ const hasOperatingHours = computed(() => {
         </header>
 
         <!-- Services Section -->
-        <section v-if="isSectionActive('services')" id="services" class="py-24" :style="{ backgroundColor: landingConfig.background_color }">
+        <section v-if="isSectionActive('services')" id="services" class="py-24" :style="getSectionBackgroundStyle('services', landingConfig.background_color)">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex flex-col lg:flex-row gap-16 items-center mb-16">
                     <div class="lg:w-1/2" v-if="getSectionImage('services')">
                         <img :src="getSectionImage('services')" class="w-full rounded-[3rem] shadow-2xl object-cover aspect-video lg:aspect-square" />
                     </div>
                     <div :class="getSectionImage('services') ? 'lg:w-1/2' : 'w-full text-center'">
-                        <h2 class="text-3xl lg:text-4xl font-black mb-4" :class="fonts.header" :style="{ color: landingConfig.text_primary }">Our Specialized Services</h2>
-                        <p class="max-w-2xl" :class="getSectionImage('services') ? '' : 'mx-auto'" :style="{ color: landingConfig.text_secondary }">We offer a wide range of dental treatments to keep your clinic healthy and your smile glowing.</p>
+                        <h2 class="text-3xl lg:text-4xl font-black mb-4" :class="fonts.header" :style="{ color: landingConfig.text_primary }">{{ getSectionTitle('services', 'Our Specialized Services') }}</h2>
+                        <p class="max-w-2xl" :class="getSectionImage('services') ? '' : 'mx-auto'" :style="{ color: landingConfig.text_secondary }">{{ getSectionSubtitle('services', 'We offer a wide range of dental treatments to keep your clinic healthy and your smile glowing.') }}</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -311,37 +491,22 @@ const hasOperatingHours = computed(() => {
         </section>
 
         <!-- About Us -->
-        <section class="py-24 bg-gray-50">
+        <section v-if="isSectionActive('content')" id="content" class="py-24" :style="getSectionBackgroundStyle('content', '#f9fafb')">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center gap-16">
-                <div class="lg:w-1/2">
+                <div class="lg:w-1/2" v-if="getSectionImage('content')">
                     <div class="relative">
-                        <div class="w-full aspect-square bg-blue-100 rounded-[3rem] overflow-hidden">
-                            <!-- Image would go here -->
-                            <div class="w-full h-full flex items-center justify-center text-8xl opacity-20">🏥</div>
-                        </div>
-                        <div class="absolute -bottom-8 -right-8 w-48 h-48 bg-white p-6 rounded-3xl shadow-xl flex flex-col justify-center text-center">
-                            <span class="text-4xl font-black block" :style="{ color: brandingColor }">10+</span>
-                            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Years Experience</span>
-                        </div>
+                        <img :src="getSectionImage('content')" class="w-full aspect-square object-cover rounded-[3rem] shadow-2xl" />
                     </div>
                 </div>
                 <div class="lg:w-1/2">
-                    <h2 class="text-3xl lg:text-4xl font-black mb-8" :class="fonts.header" :style="{ color: landingConfig.text_primary }">Committed to Excellence in Dental Care</h2>
+                    <h2 class="text-3xl lg:text-4xl font-black mb-8" :class="fonts.header" :style="{ color: landingConfig.text_primary }">{{ getSectionTitle('content', 'Committed to Excellence in Dental Care') }}</h2>
                     <p class="text-lg leading-relaxed mb-8" :style="{ color: landingConfig.text_secondary }">
-                        {{ aboutDescription }}
+                        {{ getSectionSubtitle('content', aboutDescription) }}
                     </p>
                     <ul class="space-y-4 mb-10">
-                        <li class="flex items-center gap-3">
+                        <li v-for="(item, idx) in contentHighlights" :key="`content-highlight-${idx}`" class="flex items-center gap-3">
                             <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white" :style="{ backgroundColor: brandingColor }">✓</span>
-                            <span class="font-medium">Modern Technology</span>
-                        </li>
-                        <li class="flex items-center gap-3">
-                            <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white" :style="{ backgroundColor: brandingColor }">✓</span>
-                            <span class="font-medium">Sterilized Environment</span>
-                        </li>
-                        <li class="flex items-center gap-3">
-                            <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white" :style="{ backgroundColor: brandingColor }">✓</span>
-                            <span class="font-medium">Compassionate Experts</span>
+                            <span class="font-medium">{{ item }}</span>
                         </li>
                     </ul>
                 </div>
@@ -349,31 +514,33 @@ const hasOperatingHours = computed(() => {
         </section>
 
         <!-- Team Section -->
-        <section v-if="isSectionActive('team')" id="team" class="py-24" :style="{ backgroundColor: landingConfig.background_color }">
+        <section v-if="isSectionActive('team')" id="team" class="py-24" :style="getSectionBackgroundStyle('team', landingConfig.background_color)">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex flex-col lg:flex-row-reverse gap-16 items-center mb-16">
                     <div class="lg:w-1/2" v-if="getSectionImage('team')">
                         <img :src="getSectionImage('team')" class="w-full rounded-[3rem] shadow-2xl object-cover aspect-video lg:aspect-square" />
                     </div>
                     <div :class="getSectionImage('team') ? 'lg:w-1/2' : 'w-full text-center'">
-                        <h2 class="text-3xl lg:text-4xl font-black mb-4" :class="fonts.header" :style="{ color: landingConfig.text_primary }">Meet Our Specialist Team</h2>
-                        <p class="max-w-2xl mx-auto" :style="{ color: landingConfig.text_secondary }">Expert dentists dedicated to provide world-class dental treatments with care.</p>
+                        <h2 class="text-3xl lg:text-4xl font-black mb-4" :class="fonts.header" :style="{ color: landingConfig.text_primary }">{{ getSectionTitle('team', 'Meet Our Specialist Team') }}</h2>
+                        <p class="max-w-2xl mx-auto" :style="{ color: landingConfig.text_secondary }">{{ getSectionSubtitle('team', 'Expert dentists dedicated to provide world-class dental treatments with care.') }}</p>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <div v-for="dentist in dentists" :key="dentist.id" class="text-center group">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div v-for="member in resolvedTeamMembers" :key="member.id" class="text-center group">
                         <div class="w-full aspect-[4/5] bg-white rounded-3xl mb-6 overflow-hidden relative shadow-sm border border-base-200">
-                             <div class="w-full h-full flex items-center justify-center text-7xl opacity-20 group-hover:scale-110 transition-transform">👨‍⚕️</div>
+                             <img v-if="member.image_url" :src="member.image_url" :alt="member.name" class="w-full h-full object-cover" />
+                             <div v-else class="w-full h-full flex items-center justify-center text-7xl opacity-20 group-hover:scale-110 transition-transform">👨‍⚕️</div>
                         </div>
-                        <h3 class="text-xl font-bold" :class="fonts.names" :style="{ color: landingConfig.text_primary }">{{ dentist.name }}</h3>
-                        <p class="text-sm" :style="{ color: landingConfig.text_secondary }">Professional Dentist</p>
+                        <h3 class="text-xl font-bold" :class="fonts.names" :style="{ color: landingConfig.text_primary }">{{ member.name }}</h3>
+                        <p class="text-sm" :style="{ color: landingConfig.text_secondary }">{{ member.role || 'Clinic Team Member' }}</p>
+                        <p v-if="member.bio" class="text-xs mt-2 line-clamp-3" :style="{ color: landingConfig.text_secondary }">{{ member.bio }}</p>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- Contact Us Section -->
-        <section v-if="isSectionActive('contact')" id="contact-form" class="py-24 border-t border-gray-100" :style="{ backgroundColor: landingConfig.background_color }">
+        <section v-if="isSectionActive('contact')" id="contact-form" class="py-24 border-t border-gray-100" :style="getSectionBackgroundStyle('contact', landingConfig.background_color)">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex flex-col lg:flex-row gap-16 items-center">
                     <div class="lg:w-1/2">
@@ -381,9 +548,9 @@ const hasOperatingHours = computed(() => {
                             <img :src="getSectionImage('contact')" class="w-full rounded-[2rem] shadow-lg object-cover" />
                         </div>
                         <span class="text-xs font-bold uppercase tracking-widest" :style="{ color: brandingColor }">Get in touch</span>
-                        <h2 class="text-3xl lg:text-4xl font-black mb-6 mt-2" :class="fonts.header" :style="{ color: landingConfig.text_primary }">Have a Concern? We're Here to Help.</h2>
+                        <h2 class="text-3xl lg:text-4xl font-black mb-6 mt-2" :class="fonts.header" :style="{ color: landingConfig.text_primary }">{{ getSectionTitle('contact', "Have a Concern? We're Here to Help.") }}</h2>
                         <p class="text-lg mb-10 leading-relaxed" :style="{ color: landingConfig.text_secondary }">
-                            Whether you're looking for an appointment or have a general inquiry, feel free to send us a message. Our team will respond as quickly as possible.
+                            {{ getSectionSubtitle('contact', "Whether you're looking for an appointment or have a general inquiry, feel free to send us a message. Our team will respond as quickly as possible.") }}
                         </p>
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
