@@ -34,6 +34,43 @@
 
         <!-- Permission Checklist Grid -->
         <div class="md:col-span-3 space-y-6">
+            <div v-if="canManageDefaultPermissions" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <div class="mb-6 border-b pb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">Role Default Permissions</h3>
+                        <p class="text-sm text-gray-500">Click a role to open the Set Default Role modal and manage its default permissions.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <button
+                        v-for="role in managedRoles"
+                        :key="`defaults-${role}`"
+                        type="button"
+                        @click="openRoleDefaultsModal(role)"
+                        class="text-left rounded-2xl border border-gray-200 bg-gray-50/60 p-5 hover:border-blue-300 hover:bg-blue-50/40 transition-all"
+                    >
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-black text-gray-900 uppercase tracking-widest">{{ role }} Role</h4>
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-wider">
+                                Set Default Role
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-500 mb-3">Default permissions selected: {{ rolePermissionCount(role) }}</p>
+                        <div class="flex flex-wrap gap-2">
+                            <span
+                                v-for="permission in previewRolePermissions(role)"
+                                :key="`preview-${role}-${permission}`"
+                                class="px-2 py-1 rounded-lg bg-white border border-gray-200 text-[10px] font-black uppercase tracking-wider text-gray-600"
+                            >
+                                {{ permission }}
+                            </span>
+                            <span v-if="previewRolePermissions(role).length === 0" class="text-xs text-gray-400 font-bold">No default permissions selected.</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
             <div v-if="selectedStaffIds.length > 0" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-fade-in">
                 <div class="flex justify-between items-center mb-8 border-b pb-4">
                     <div>
@@ -96,14 +133,99 @@
                     </div>
                 </div>
             </div>
-            <div v-else class="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center flex flex-col items-center justify-center h-[500px]">
-                <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-6 shadow-inner animate-pulse">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-blue-500">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-                    </svg>
+            <div v-else class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <div class="mb-6">
+                    <h3 class="text-xl font-black text-gray-900 uppercase tracking-widest">Permission Catalog</h3>
+                    <p class="text-sm text-gray-500 mt-1">Select staff from the sidebar to edit permissions. All available permissions are listed below.</p>
                 </div>
-                <h3 class="text-xl font-black text-gray-900 uppercase tracking-widest">No Staff Selected</h3>
-                <p class="text-gray-400 mt-2 max-w-sm mx-auto font-medium">Select one or multiple staff members from the sidebar to manage their granular permissions in bulk.</p>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div v-for="(group, feature) in permissionGroups" :key="`readonly-${feature}`" class="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+                        <h4 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-3">{{ feature }}</h4>
+                        <div class="space-y-2">
+                            <div v-for="permission in group" :key="`readonly-${permission.id}`" class="px-3 py-2 rounded-lg bg-white border border-gray-100 text-xs font-bold text-gray-600">
+                                {{ permission.displayName }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div
+        v-if="canManageDefaultPermissions && activeRoleModal"
+        class="fixed inset-0 z-[120] flex items-center justify-center bg-black/45 p-4"
+        @click.self="closeRoleDefaultsModal"
+    >
+        <div class="w-full max-w-3xl bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Set Default Role</p>
+                    <h3 class="text-xl font-black text-gray-900 uppercase tracking-wide mt-1">{{ activeRoleModal }} Role</h3>
+                    <p class="text-xs text-gray-500 mt-1">Click a permission to toggle it as default for new {{ activeRoleModal }} staff.</p>
+                </div>
+                <button type="button" @click="closeRoleDefaultsModal" class="h-9 w-9 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-6 max-h-[62vh] overflow-y-auto">
+                <div class="space-y-5">
+                    <div
+                        v-for="(group, feature) in permissionGroups"
+                        :key="`modal-group-${feature}`"
+                        class="rounded-xl border border-gray-100 bg-gray-50/50 p-4"
+                    >
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-xs font-black uppercase tracking-widest text-gray-500">{{ feature }}</h4>
+                            <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">{{ group.length }} Permissions</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button
+                                v-for="permission in group"
+                                :key="`modal-${activeRoleModal}-${permission.name}`"
+                                type="button"
+                                @click="toggleDefaultPermission(activeRoleModal, permission.name)"
+                                class="w-full px-4 py-3 rounded-xl border text-left transition-all flex items-center justify-between"
+                                :class="isDefaultPermissionChecked(activeRoleModal, permission.name)
+                                    ? 'border-blue-500 bg-blue-50 text-blue-800'
+                                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50/40'"
+                            >
+                                <span class="text-xs font-black uppercase tracking-wide pr-2">{{ permission.displayName }}</span>
+                                <span
+                                    class="h-6 w-6 rounded-lg border-2 flex items-center justify-center shrink-0"
+                                    :class="isDefaultPermissionChecked(activeRoleModal, permission.name)
+                                        ? 'bg-blue-600 border-blue-600 text-white'
+                                        : 'border-gray-300 text-transparent'"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                <p class="text-xs font-bold text-gray-500">Selected: {{ rolePermissionCount(activeRoleModal) }}</p>
+                <div class="flex items-center gap-3">
+                    <button type="button" @click="closeRoleDefaultsModal" class="px-4 py-2 rounded-lg border border-gray-200 text-xs font-black uppercase tracking-wider text-gray-600 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <PrimaryButton
+                        @click="saveRoleDefaults"
+                        :class="{ 'opacity-25': defaultMapForm.processing }"
+                        :disabled="defaultMapForm.processing"
+                    >
+                        Save Defaults
+                    </PrimaryButton>
+                </div>
             </div>
         </div>
     </div>
@@ -111,20 +233,47 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, usePage } from '@inertiajs/vue3';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
     staff: { type: Array, required: true },
-    allPermissions: { type: Array, required: true }
+    allPermissions: { type: Array, required: true },
+    defaultPermissionMap: {
+        type: Object,
+        default: () => ({ Dentist: [], Assistant: [] }),
+    }
 });
+
+const page = usePage();
+const roles = computed(() => page.props.auth?.user?.roles || []);
+const userPermissions = computed(() => page.props.auth?.user?.permissions || []);
+const canManageDefaultPermissions = computed(() => {
+    return roles.value.includes('Owner') || userPermissions.value.includes('edit staff');
+});
+const managedRoles = ['Dentist', 'Assistant'];
+const activeRoleModal = ref(null);
 
 const selectedStaffIds = ref([]);
 const permissionForm = useForm({
     staff_ids: [],
     permissions: []
 });
+
+const defaultMapForm = useForm({
+    default_permission_map: {
+        Dentist: [],
+        Assistant: [],
+    },
+});
+
+watch(() => props.defaultPermissionMap, (map) => {
+    defaultMapForm.default_permission_map = {
+        Dentist: [...(map?.Dentist || [])],
+        Assistant: [...(map?.Assistant || [])],
+    };
+}, { deep: true, immediate: true });
 
 const isStaffSelected = (id) => selectedStaffIds.value.includes(id);
 
@@ -193,47 +342,113 @@ const savePermissionsTab = () => {
     });
 };
 
+const saveDefaultPermissionMap = () => {
+    defaultMapForm.post(route('staff.default-permissions.update'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+
+            Toast.fire({
+                icon: 'success',
+                title: 'Default role permissions saved'
+            });
+        },
+    });
+};
+
+const saveRoleDefaults = () => {
+    saveDefaultPermissionMap();
+    closeRoleDefaultsModal();
+};
+
+const openRoleDefaultsModal = (role) => {
+    activeRoleModal.value = role;
+};
+
+const closeRoleDefaultsModal = () => {
+    activeRoleModal.value = null;
+};
+
+const rolePermissionCount = (role) => {
+    return defaultMapForm.default_permission_map?.[role]?.length || 0;
+};
+
+const previewRolePermissions = (role) => {
+    const selected = defaultMapForm.default_permission_map?.[role] || [];
+    return selected.slice(0, 3);
+};
+
+const isDefaultPermissionChecked = (role, permission) => {
+    return defaultMapForm.default_permission_map?.[role]?.includes(permission) || false;
+};
+
+const toggleDefaultPermission = (role, permission) => {
+    const current = defaultMapForm.default_permission_map?.[role] || [];
+    const exists = current.includes(permission);
+
+    defaultMapForm.default_permission_map[role] = exists
+        ? current.filter((item) => item !== permission)
+        : [...current, permission];
+};
+
+const permissionCatalog = computed(() => {
+    return (props.allPermissions || [])
+        .map((permission) => {
+            const displayName = permission.name
+                .trim()
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+
+            return {
+                ...permission,
+                displayName,
+            };
+        })
+        .sort((a, b) => a.displayName.localeCompare(b.displayName));
+});
+
 // Group permissions for cleaner UI (Role-centric Modules)
 const permissionGroups = computed(() => {
     const groups = {};
     const featureMap = {
-        // Staff Settings (personal)
-        'manage own calendar': 'Staff Settings',
-        'manage own notifications': 'Staff Settings',
-        'manage own working hours': 'Staff Settings',
-
-        // Patient Module
+        // Operational Modules
         'patients': 'Patient Module',
+        'appointments': 'Appointments Module',
+        'billing': 'Billing & POS Module',
+        'treatments': 'Treatment Records Module',
+        'medical records': 'Medical Records Module',
+        'services': 'Service & Pricing Module',
+        'staff': 'Staff Management Module',
+        'reports': 'Reports Module',
 
-        // Services Module
-        'services': 'Services Module',
-        
-        // Treatment Module
-        'treatments': 'Treatment Module',
-        
-        // Schedule Module
-        'appointments': 'Schedule Module',
-        'booking': 'Schedule Module',
-        
-        // Financial Module
-        'billing': 'Financial Module',
-        'reports': 'Financial Module',
-        
-        // Administration
-        'staff': 'Administration',
-        'clinic': 'Administration',
-        'settings': 'Administration',
-        'subscription': 'Administration',
-        'dashboard': 'Administration',
+        // Owner/Administration Features (delegatable)
+        'analytics': 'Owner Features',
+        'branches': 'Owner Features',
+        'subscription': 'Owner Features',
+        'billing portal': 'Owner Features',
+        'clinic branding': 'Owner Features',
+        'security settings': 'Owner Features',
+        'system features': 'Owner Features',
+        'system updates': 'Owner Features',
+        'manage settings': 'Owner Features',
 
-        // Support
+        // Personal and Support
+        'manage own calendar': 'Personal Staff Settings',
+        'manage own notifications': 'Personal Staff Settings',
+        'manage own working hours': 'Personal Staff Settings',
         'support': 'Support',
-
-        // Custom Branding (delegatable)
-        'branding': 'Custom Branding',
+        'activity logs': 'Audit & Activity',
+        'dashboard': 'Dashboard Access',
     };
 
-    props.allPermissions.forEach(p => {
+    permissionCatalog.value.forEach(p => {
         let feature = 'General Access';
         
         // Find matching module from map
@@ -246,15 +461,7 @@ const permissionGroups = computed(() => {
 
         if (!groups[feature]) groups[feature] = [];
         
-        // Make display name pretty and descriptive
-        // e.g., 'view patients' -> 'View Patients'
-        const displayName = p.name
-            .trim()
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-        
-        groups[feature].push({ ...p, displayName });
+        groups[feature].push(p);
     });
 
     // Sort permissions within each group: View -> Create -> Edit -> Delete

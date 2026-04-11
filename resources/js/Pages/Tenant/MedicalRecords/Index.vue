@@ -1,8 +1,8 @@
 <script setup>
 import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { Head, usePage } from '@inertiajs/vue3';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import MedicalCreate from './MedicalCreate.vue';
 import MedicalEdit from './MedicalEdit.vue';
 import MedicalShow from './MedicalShow.vue';
@@ -18,6 +18,73 @@ const props = defineProps({
 const page = usePage();
 const primaryColor = computed(() => brandingState.primary_color);
 const permissions = computed(() => page.props.auth.user?.permissions || []);
+const tenantId = computed(() => page.props.tenant?.id || null);
+const liveMedicalRecords = ref([...(props.medicalRecords || [])]);
+let medicalRecordsChannel = null;
+
+watch(() => props.medicalRecords, (nextRecords) => {
+    liveMedicalRecords.value = [...(nextRecords || [])];
+}, { deep: true });
+
+onMounted(() => {
+    if (!window.Echo || !tenantId.value) {
+        return;
+    }
+
+    medicalRecordsChannel = window.Echo.private(`tenant.${tenantId.value}.medical-records`)
+        .listen('.TenantMedicalRecordChanged', (event) => {
+            const incoming = event?.medicalRecord;
+            const action = event?.action;
+
+            if (!incoming || !incoming.id) {
+                return;
+            }
+
+            if (action === 'deleted') {
+                liveMedicalRecords.value = liveMedicalRecords.value.filter((item) => item.id !== incoming.id);
+
+                if (activeRecord.value?.id === incoming.id) {
+                    activeRecord.value = null;
+                    showViewModal.value = false;
+                    showEditModal.value = false;
+                    showDeleteModal.value = false;
+                }
+
+                return;
+            }
+
+            const existingIndex = liveMedicalRecords.value.findIndex((item) => item.id === incoming.id);
+            if (existingIndex >= 0) {
+                liveMedicalRecords.value[existingIndex] = {
+                    ...liveMedicalRecords.value[existingIndex],
+                    ...incoming,
+                };
+
+                if (activeRecord.value?.id === incoming.id) {
+                    activeRecord.value = {
+                        ...activeRecord.value,
+                        ...incoming,
+                    };
+                }
+            } else {
+                liveMedicalRecords.value = [...liveMedicalRecords.value, incoming];
+            }
+
+            liveMedicalRecords.value = [...liveMedicalRecords.value].sort((a, b) => {
+                const an = String(a?.name || '').toLowerCase();
+                const bn = String(b?.name || '').toLowerCase();
+                return an.localeCompare(bn);
+            });
+        });
+});
+
+onUnmounted(() => {
+    if (window.Echo && tenantId.value) {
+        window.Echo.leave(`tenant.${tenantId.value}.medical-records`);
+    }
+
+    medicalRecordsChannel = null;
+});
 
 const canCreate = computed(() => permissions.value.includes('create medical records'));
 const canEdit = computed(() => permissions.value.includes('edit medical records'));
@@ -84,7 +151,7 @@ const openDeleteModal = (record) => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-base-200">
-                        <tr v-for="record in medicalRecords" :key="record.id" class="hover:bg-base-200/30 transition-colors">
+                        <tr v-for="record in liveMedicalRecords" :key="record.id" class="hover:bg-base-200/30 transition-colors">
                             <td class="px-6 py-4 text-center text-[10px] font-black text-base-content/30 tracking-widest">MR-{{ record.id }}</td>
                             <td class="px-6 py-4">
                                 <p class="text-sm font-black text-base-content">{{ record.name }}</p>
@@ -135,7 +202,7 @@ const openDeleteModal = (record) => {
                                 </div>
                             </td>
                         </tr>
-                        <tr v-if="medicalRecords.length === 0">
+                        <tr v-if="liveMedicalRecords.length === 0">
                             <td colspan="5" class="px-6 py-16 text-center">
                                 <h3 class="text-sm font-black text-base-content/40 uppercase tracking-widest">No Medical Records Found</h3>
                                 <p class="text-xs text-base-content/30 mt-1">Create checklist items to use in patient booking and intake.</p>

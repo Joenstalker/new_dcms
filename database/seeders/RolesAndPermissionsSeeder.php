@@ -18,6 +18,12 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage clinic',
             'manage settings',
             'manage subscription',
+            'access billing portal',
+            'manage security settings',
+            'manage system features',
+            'manage system updates',
+            'view analytics',
+            'manage branches',
             'view reports',
             'access public booking',
             

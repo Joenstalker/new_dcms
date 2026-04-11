@@ -183,6 +183,9 @@ Route::middleware([
                 Route::post('staff/bulk-permissions', [\App\Http\Controllers\StaffController::class , 'bulkUpdatePermissions'])
                     ->middleware('permission:edit staff')
                     ->name('staff.bulk-update-permissions');
+                Route::post('staff/default-permissions', [\App\Http\Controllers\StaffController::class , 'updateDefaultPermissions'])
+                    ->middleware(['permission:edit staff'])
+                    ->name('staff.default-permissions.update');
 
                 // Reports
                 Route::get('reports', [\App\Http\Controllers\ReportController::class , 'index'])
@@ -197,15 +200,16 @@ Route::middleware([
                     ->middleware('permission:view activity logs')
                     ->name('activity-logs.index');
 
-                // Owner only routes (tenant governance)
-                Route::middleware(['role:Owner'])->group(function () {
+                // Tenant governance routes (delegatable via explicit permissions)
+                Route::middleware([])->group(function () {
                     // Analytics (Ultimate only)
                     Route::get('analytics', [\App\Http\Controllers\Tenant\AnalyticsController::class , 'index'])
                         ->name('analytics.index')
+                        ->middleware('permission:view analytics')
                         ->middleware('check.subscription:advanced_analytics');
 
                     // Branches (Ultimate only)
-                    Route::middleware(['check.subscription:multi_branch'])->group(function () {
+                    Route::middleware(['permission:manage branches', 'check.subscription:multi_branch'])->group(function () {
                             Route::get('branches', [\App\Http\Controllers\Tenant\BranchController::class , 'index'])->name('branches.index');
                             Route::post('branches', [\App\Http\Controllers\Tenant\BranchController::class , 'store'])->name('branches.store');
                             Route::put('branches/{branch}', [\App\Http\Controllers\Tenant\BranchController::class , 'update'])->name('branches.update');
@@ -215,28 +219,45 @@ Route::middleware([
                         );
 
                     // Settings
-                    Route::get('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'index'])->name('settings.index');
+                    Route::get('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'index'])
+                        ->middleware('permission:manage settings')
+                        ->name('settings.index');
                     Route::get('settings/configuration', [\App\Http\Controllers\Tenant\SettingsController::class , 'configuration'])
+                        ->middleware('permission:manage security settings')
                         ->middleware('check.subscription:security_settings')
                         ->name('settings.configuration');
                     Route::post('settings/login-lock', [\App\Http\Controllers\Tenant\SettingsController::class , 'updateLoginLockSettings'])
+                        ->middleware('permission:manage security settings')
                         ->name('settings.login-lock.update');
                     // Settings - Features
                     Route::get('settings/features', [\App\Http\Controllers\Tenant\SettingsController::class , 'features'])
                         ->name('settings.features')
+                        ->middleware('permission:manage system features')
                         ->middleware('check.subscription:custom_system_features');
 
                     // Settings - Updates (OTA)
-                    Route::get('settings/updates', [\App\Http\Controllers\Tenant\SettingsController::class , 'updates'])->name('settings.updates');
-                    Route::post('settings/updates/apply', [\App\Http\Controllers\Tenant\SettingsController::class , 'applyUpdates'])->name('settings.updates.apply');
-                    Route::get('settings/updates/check', [\App\Http\Controllers\Tenant\SettingsController::class , 'checkUpdates'])->name('settings.updates.check');
+                    Route::get('settings/updates', [\App\Http\Controllers\Tenant\SettingsController::class , 'updates'])
+                        ->middleware('permission:manage system updates')
+                        ->name('settings.updates');
+                    Route::post('settings/updates/apply', [\App\Http\Controllers\Tenant\SettingsController::class , 'applyUpdates'])
+                        ->middleware('permission:manage system updates')
+                        ->name('settings.updates.apply');
+                    Route::get('settings/updates/check', [\App\Http\Controllers\Tenant\SettingsController::class , 'checkUpdates'])
+                        ->middleware('permission:manage system updates')
+                        ->name('settings.updates.check');
 
                     // System Update Core API endpoints
-                    Route::get('api/system/update-status', [\App\Http\Controllers\Tenant\SystemUpdateController::class , 'getStatus'])->name('api.system.update-status');
-                    Route::post('api/system/update', [\App\Http\Controllers\Tenant\SystemUpdateController::class , 'update'])->name('api.system.update');
+                    Route::get('api/system/update-status', [\App\Http\Controllers\Tenant\SystemUpdateController::class , 'getStatus'])
+                        ->middleware('permission:manage system updates')
+                        ->name('api.system.update-status');
+                    Route::post('api/system/update', [\App\Http\Controllers\Tenant\SystemUpdateController::class , 'update'])
+                        ->middleware('permission:manage system updates')
+                        ->name('api.system.update');
 
                     // Stripe Customer Portal — self-service billing (upgrade, downgrade, cancel, update card)
-                    Route::get('billing-portal', [\App\Http\Controllers\BillingPortalController::class , 'redirect'])->name('billing.portal');
+                    Route::get('billing-portal', [\App\Http\Controllers\BillingPortalController::class , 'redirect'])
+                        ->middleware('permission:access billing portal')
+                        ->name('billing.portal');
                 });
 
                     // Custom Branding — permission-based delegation

@@ -163,7 +163,7 @@ const isSubItemActive = (sub) => {
 // onMounted to check for updates and show toast
 onMounted(() => {
     // Only show if user is Owner or Admin
-    const canManageUpdates = roles.value.includes('Owner') || user.value?.permissions?.includes('manage settings');
+    const canManageUpdates = roles.value.includes('Owner') || user.value?.permissions?.includes('manage system updates');
     
     if (canManageUpdates && pendingUpdatesCount.value > 0) {
         // Check session storage to avoid showing on every page navigation, just once per session
@@ -324,7 +324,7 @@ const menuCategories = computed(() => {
                         { name: 'Appointments Report', route: 'reports.index', permissions: ['view reports'] },
                     ]
                 },
-                { name: 'Analytics', route: 'analytics.index', icon: 'analytics', feature: 'analytics', permissions: ['view reports'], featureKey: 'advanced_analytics' },
+                { name: 'Analytics', route: 'analytics.index', icon: 'analytics', feature: 'analytics', permissions: ['view analytics'], featureKey: 'advanced_analytics' },
                 { name: 'Notifications', route: 'notifications.index', icon: 'bell', feature: 'notifications', permissions: ['view notifications'], featureKey: 'sms_notifications' },
             ]
         },
@@ -350,7 +350,7 @@ const menuCategories = computed(() => {
                     icon: 'paint', 
                     route: 'settings.branding', 
                     feature: 'branding',
-                    permissions: ['manage settings', 'manage clinic branding'],
+                    permissions: ['manage clinic branding'],
                     featureKey: 'custom_branding'
                 },
                 { 
@@ -360,11 +360,11 @@ const menuCategories = computed(() => {
                     permissions: ['manage settings'],
                     subItems: [
                         { name: 'Billing & Plan', route: 'settings.index', permissions: ['manage settings'] },
-                        { name: 'Premium Features', route: 'settings.features', permissions: ['manage settings'], featureKey: 'custom_system_features' },
-                        { name: 'Updates', route: 'settings.updates', permissions: ['manage settings'], icon: 'refresh', badge: pendingUpdatesCount.value },
+                        { name: 'Premium Features', route: 'settings.features', permissions: ['manage system features'], featureKey: 'custom_system_features' },
+                        { name: 'Updates', route: 'settings.updates', permissions: ['manage system updates'], icon: 'refresh', badge: pendingUpdatesCount.value },
                     ]
                 },
-                { name: 'Branches', route: 'branches.index', icon: 'branch', feature: 'branches', permissions: ['manage settings'], featureKey: 'multi_branch' },
+                { name: 'Branches', route: 'branches.index', icon: 'branch', feature: 'branches', permissions: ['manage branches'], featureKey: 'multi_branch' },
             ]
         }
     ];

@@ -195,9 +195,8 @@ class HandleInertiaRequests extends Middleware
                     return 0;
                 }
 
-                // Only notify those who can manage settings (Owners/Admins)
-                // This prevents spamming doctors/staff who can't apply updates anyway
-                if (! $request->user()->can('manage settings') && ! $request->user()->hasRole('Owner')) {
+                // Notify only users who can manage updates (or owners)
+                if (! $request->user()->can('manage system updates') && ! $request->user()->hasRole('Owner')) {
                     return 0;
                 }
 

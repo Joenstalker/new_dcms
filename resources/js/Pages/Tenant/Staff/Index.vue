@@ -154,7 +154,11 @@
                 </div>
 
                 <div v-else-if="activeTab === 'permissions'">
-                    <PermissionsTab :staff="liveStaff" :allPermissions="allPermissions" />
+                    <PermissionsTab
+                        :staff="liveStaff"
+                        :allPermissions="allPermissions"
+                        :defaultPermissionMap="defaultPermissionMap"
+                    />
                 </div>
                 <div v-else-if="activeTab === 'schedules'">
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100 p-8">
@@ -378,6 +382,19 @@
                             <option v-for="role in roles" :key="role.id" :value="role.name">{{ role.name }}</option>
                         </select>
                         <InputError class="mt-2" :message="addForm.errors.role" />
+
+                        <div class="mt-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3">
+                            <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Default Access for {{ addForm.role }}</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span
+                                    v-for="permission in selectedRoleDefaultPermissions"
+                                    :key="permission"
+                                    class="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-[10px] font-black uppercase tracking-wider text-gray-600"
+                                >
+                                    {{ permission }}
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="pt-4 sm:pt-8 flex items-center gap-3 sm:gap-4">
@@ -429,6 +446,10 @@ const props = defineProps({
     staff: Array,
     roles: Array,
     allPermissions: Array,
+    defaultPermissionMap: {
+        type: Object,
+        default: () => ({ Dentist: [], Assistant: [] }),
+    },
     api_key: String,
     initialTab: { type: String, default: 'list' }
 });
@@ -568,6 +589,11 @@ const handleAddStaff = () => {
         }
     });
 };
+
+const selectedRoleDefaultPermissions = computed(() => {
+    const role = addForm.role || 'Dentist';
+    return props.defaultPermissionMap?.[role] || [];
+});
 
 // Calendar State
 const calendarOptions = computed(() => ({

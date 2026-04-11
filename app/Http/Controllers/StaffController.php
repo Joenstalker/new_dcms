@@ -12,22 +12,52 @@ use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\StaffInvitation;
+use App\Services\TenantBrandingService;
 use Illuminate\Validation\ValidationException;
 
 class StaffController extends Controller
 {
+    private const ROLE_DEFAULT_KEYS = ['Dentist', 'Assistant'];
+
     public function index(Request $request)
     {
         Permission::firstOrCreate(['name' => 'access support chat']);
 
         $staff = User::role(['Dentist', 'Assistant'])->with(['roles', 'permissions'])->get();
+        $defaultPermissionMap = $this->resolveDefaultPermissionMap();
+
         return Inertia::render('Tenant/Staff/Index', [
             'staff' => $staff,
             'roles' => Role::whereIn('name', ['Dentist', 'Assistant'])->get(),
             'api_key' => config('services.google.calendar_api_key'),
             'allPermissions' => Permission::all(),
+            'defaultPermissionMap' => $defaultPermissionMap,
             'initialTab' => $request->query('tab', 'list')
         ]);
+    }
+
+    public function updateDefaultPermissions(Request $request)
+    {
+        if (!$request->user()?->can('edit staff')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'default_permission_map' => 'required|array',
+            'default_permission_map.Dentist' => 'required|array',
+            'default_permission_map.Dentist.*' => 'string|exists:permissions,name',
+            'default_permission_map.Assistant' => 'required|array',
+            'default_permission_map.Assistant.*' => 'string|exists:permissions,name',
+        ]);
+
+        $normalized = [
+            'Dentist' => $this->sanitizePermissionList($validated['default_permission_map']['Dentist']),
+            'Assistant' => $this->sanitizePermissionList($validated['default_permission_map']['Assistant']),
+        ];
+
+        TenantBrandingService::set('staff_default_permissions', $normalized);
+
+        return redirect()->back()->with('success', 'Default role permissions updated successfully.');
     }
 
 
@@ -87,6 +117,11 @@ class StaffController extends Controller
         $staff->update($request->only('name', 'email'));
         
         $staff->syncRoles([$request->role]);
+
+        // Ensure role updates retain a baseline access set if user currently has no direct permissions.
+        if ($staff->permissions()->count() === 0) {
+            $staff->syncPermissions($this->defaultPermissionsForRole($request->role));
+        }
 
         $this->broadcastStaffChange($staff->fresh()->load(['roles', 'permissions']), 'updated');
         broadcast(new UserAccessChanged(
@@ -206,8 +241,49 @@ class StaffController extends Controller
 
     private function defaultPermissionsForRole(string $role): array
     {
-        if ($role === 'Dentist') {
-            return [
+        $map = $this->resolveDefaultPermissionMap();
+
+        return $map[$role] ?? ['view dashboard'];
+    }
+
+    private function resolveDefaultPermissionMap(): array
+    {
+        $baseMap = $this->baseDefaultPermissionMap();
+        $storedMap = TenantBrandingService::get('staff_default_permissions', []);
+
+        if (!is_array($storedMap)) {
+            return $baseMap;
+        }
+
+        $resolved = $baseMap;
+
+        foreach (self::ROLE_DEFAULT_KEYS as $role) {
+            if (isset($storedMap[$role]) && is_array($storedMap[$role])) {
+                $resolved[$role] = $this->sanitizePermissionList($storedMap[$role]);
+            }
+        }
+
+        return $resolved;
+    }
+
+    private function sanitizePermissionList(array $permissions): array
+    {
+        $allowedPermissions = array_flip(Permission::pluck('name')->all());
+        $sanitized = [];
+
+        foreach ($permissions as $permission) {
+            if (isset($allowedPermissions[$permission])) {
+                $sanitized[] = $permission;
+            }
+        }
+
+        return array_values(array_unique($sanitized));
+    }
+
+    private function baseDefaultPermissionMap(): array
+    {
+        return [
+            'Dentist' => [
                 'view dashboard',
                 'view appointments',
                 'create appointments',
@@ -225,11 +301,8 @@ class StaffController extends Controller
                 'manage own calendar',
                 'manage own notifications',
                 'manage own working hours',
-            ];
-        }
-
-        if ($role === 'Assistant') {
-            return [
+            ],
+            'Assistant' => [
                 'view dashboard',
                 'view appointments',
                 'create appointments',
@@ -245,9 +318,7 @@ class StaffController extends Controller
                 'manage own calendar',
                 'manage own notifications',
                 'manage own working hours',
-            ];
-        }
-
-        return ['view dashboard'];
+            ],
+        ];
     }
 }
