@@ -18,6 +18,7 @@ class InitializeTenancyBySubdomainOrPreview
     public function handle(Request $request, Closure $next): Response
     {
         if (tenant()) {
+            Log::info('Tenancy already initialized', ['tenant_id' => tenant()->id]);
             return $next($request);
         }
 
@@ -25,12 +26,19 @@ class InitializeTenancyBySubdomainOrPreview
         $centralDomains = array_filter((array)config('tenancy.central_domains', []));
         $isCentralDomain = in_array($host, $centralDomains, true);
 
+        Log::info('InitializeTenancyBySubdomainOrPreview middleware', [
+            'host' => $host,
+            'is_central_domain' => $isCentralDomain,
+            'has_tenant' => !!tenant(),
+        ]);
+
         if ($this->shouldInitializePreviewTenancy($request)) {
             $preview = $request->session()->get('tenant_preview_active');
             $previewTenantId = (string)($preview['tenant_id'] ?? '');
             $tenant = Tenant::find($previewTenantId);
 
             if ($tenant) {
+                Log::info('Initializing preview tenancy', ['tenant_id' => $previewTenantId]);
                 tenancy()->initialize($tenant);
                 return $next($request);
             }
@@ -51,6 +59,7 @@ class InitializeTenancyBySubdomainOrPreview
                 ->with('error', 'Tenant preview session is not active. Use Switch User -> Start Tenant Preview.');
         }
 
+        Log::info('Delegating to InitializeTenancyBySubdomain', ['host' => $host]);
         return app(InitializeTenancyBySubdomain::class)->handle($request, $next);
     }
 

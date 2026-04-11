@@ -78,8 +78,53 @@ class PatientController extends Controller
         return redirect()->route('patients.index')->with('success', 'Patient created successfully.');
     }
 
-    public function show(Request $request, Patient $patient)
+    public function show(Request $request, $patientId)
     {
+        // Debug: Log tenancy state
+        \Log::info('PatientController::show START', [
+            'patient_id' => $patientId,
+            'has_tenant' => !!tenant(),
+            'tenant_id' => tenant()?->id,
+        ]);
+
+        // Verify tenant context is active
+        if (!tenant()) {
+            abort(403, 'No tenant context');
+        }
+
+        $tenantId = tenant()->id;
+        
+        // Debug: Check available database connections
+        $connections = array_keys(config('database.connections', []));
+        \Log::info('Available connections', ['connections' => $connections]);
+
+        // Try to query using the tenant context with global scope
+        // The HasTenantScope trait should scope queries automatically
+        try {
+            $query = Patient::query();
+            \Log::info('Query builder created', [
+                'model' => Patient::class,
+                'connection' => $query->getConnection()->getName(),
+            ]);
+            
+            $patient = $query
+                ->where('id', $patientId)
+                ->where('tenant_id', $tenantId)
+                ->firstOrFail();
+                
+            \Log::info('Patient loaded successfully', [
+                'patient_id' => $patient->id,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to load patient', [
+                'patient_id' => $patientId,
+                'tenant_id' => $tenantId,
+                'error' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+            abort(500, 'Failed to load patient data');
+        }
+
         $patient->load('appointments', 'treatments', 'invoices');
 
         if ($request->wantsJson() || $request->ajax()) {
@@ -105,8 +150,21 @@ class PatientController extends Controller
         ]);
     }
 
-    public function update(Request $request, Patient $patient)
+    public function update(Request $request, $patientId)
     {
+        // Verify tenant context is active
+        if (!tenant()) {
+            abort(403, 'No tenant context');
+        }
+
+        $tenantId = tenant()->id;
+        
+        // Query with explicit tenant_id to prevent cross-tenant access
+        $patient = Patient::query()
+            ->where('id', $patientId)
+            ->where('tenant_id', $tenantId)
+            ->firstOrFail();
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -133,15 +191,36 @@ class PatientController extends Controller
         }
 
         $patient->update($validated);
-        $patient->recalculateBalance();
-        $patient->refresh();
+        
+        // Broadcast changes (with error handling)
         $this->broadcastPatientChange($patient, 'updated');
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Patient updated successfully',
+                'patient' => $patient->load('appointments', 'treatments', 'invoices')
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Patient updated successfully.');
     }
 
-    public function destroy(Patient $patient)
+    public function destroy($patientId)
     {
+        // Verify tenant context is active
+        if (!tenant()) {
+            abort(403, 'No tenant context');
+        }
+
+        $tenantId = tenant()->id;
+        
+        // Query with explicit tenant_id to prevent cross-tenant access
+        $patient = Patient::query()
+            ->where('id', $patientId)
+            ->where('tenant_id', $tenantId)
+            ->firstOrFail();
+
         $deletedPayload = [
             'id' => $patient->id,
         ];
@@ -187,6 +266,18 @@ class PatientController extends Controller
             return;
         }
 
-        broadcast(new TenantPatientChanged((string)tenant()->getTenantKey(), $action, $patientPayload));
+        try {
+            // Only broadcast if BROADCAST_DRIVER is not null
+            if (config('broadcasting.default') && config('broadcasting.default') !== 'null') {
+                broadcast(new TenantPatientChanged((string)tenant()->getTenantKey(), $action, $patientPayload));
+            }
+        } catch (\Throwable $e) {
+            // Don't let broadcasting failures crash the request
+            \Log::warning('Failed to broadcast patient change', [
+                'action' => $action,
+                'error' => $e->getMessage(),
+                'tenant_id' => tenant()->id,
+            ]);
+        }
     }
 }

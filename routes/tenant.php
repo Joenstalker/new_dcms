@@ -90,27 +90,27 @@ Route::middleware([
                 ->middleware(['permission:create patients', 'check.subscription:max_patients'])
                 ->name('patients.store');
 
-            Route::get('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'show'])
+            Route::get('patients/{patientId}', [\App\Http\Controllers\PatientController::class , 'show'])
                 ->middleware('permission:view patients')
                 ->name('patients.show');
 
-            Route::get('patients/{patient}/pdf', [\App\Http\Controllers\PatientController::class , 'downloadPdf'])
+            Route::get('patients/{patientId}/pdf', [\App\Http\Controllers\PatientController::class , 'downloadPdf'])
                 ->middleware('permission:view patients')
                 ->name('patients.pdf');
 
-            Route::get('patients/{patient}/edit', [\App\Http\Controllers\PatientController::class , 'edit'])
+            Route::get('patients/{patientId}/edit', [\App\Http\Controllers\PatientController::class , 'edit'])
                 ->middleware('permission:edit patients')
                 ->name('patients.edit');
 
-            Route::get('patients/{patient}/delete', [\App\Http\Controllers\PatientController::class , 'delete'])
+            Route::get('patients/{patientId}/delete', [\App\Http\Controllers\PatientController::class , 'delete'])
                 ->middleware('permission:delete patients')
                 ->name('patients.delete');
 
-            Route::put('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'update'])
+            Route::put('patients/{patientId}', [\App\Http\Controllers\PatientController::class , 'update'])
                 ->middleware('permission:edit patients')
                 ->name('patients.update');
 
-            Route::delete('patients/{patient}', [\App\Http\Controllers\PatientController::class , 'destroy'])
+            Route::delete('patients/{patientId}', [\App\Http\Controllers\PatientController::class , 'destroy'])
                 ->middleware('permission:delete patients')
                 ->name('patients.destroy');
 

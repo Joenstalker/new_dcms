@@ -35,10 +35,40 @@ watch(() => props.show, async (newVal) => {
             const response = await fetch(`/patients/${props.patientId}`, {
                 headers: { 'Accept': 'application/json' }
             });
-            patient.value = await response.json();
+
+            // Handle non-OK responses first
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`Failed to load patient: server responded ${response.status}`);
+                // If the response is HTML (error page) avoid using it as JSON or image src
+                // Provide a user-friendly fallback here
+                patient.value = null;
+                return;
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                // Unexpected content-type (HTML or plain text) — don't attempt to parse as JSON
+                console.error('Failed to load patient: unexpected content-type', contentType);
+                patient.value = null;
+                return;
+            }
+
+            const data = await response.json();
+
+            // Ensure photo_url is a safe value (avoid HTML error pages being used as image src)
+            if (data && data.photo_url && typeof data.photo_url === 'string') {
+                const url = data.photo_url.trim();
+                if (url.includes('?error=') || url.startsWith(window.location.origin + '/?error=')) {
+                    data.photo_url = null;
+                }
+            }
+
+            patient.value = data;
             activeTab.value = 'medical_history';
         } catch (error) {
             console.error("Failed to load patient:", error);
+            patient.value = null;
         } finally {
             loading.value = false;
         }

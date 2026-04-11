@@ -1,9 +1,10 @@
 <script setup>
 import { brandingState } from '@/States/brandingState';
-import { useForm, usePage } from '@inertiajs/vue3';
+import { useForm, usePage, router } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import { VueDatePicker } from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     show: Boolean,
@@ -13,7 +14,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'saved']);
 
 const primaryColor = computed(() => brandingState.primary_color);
 
@@ -47,7 +48,7 @@ watch(() => props.show, (newVal) => {
             form.address = props.patient.address || '';
             form.medical_history = props.patient.medical_history || '';
             form.operation_history = props.patient.operation_history || '';
-            form.initial_balance = props.patient.initial_balance || 0;
+            form.initial_balance = props.patient.initial_balance || props.patient.balance || 0;
             form.last_visit_time = props.patient.last_visit_time || '';
             form.photo = null;
             
@@ -76,21 +77,59 @@ const handlePhotoUpload = (e) => {
 
 const submit = () => {
     if (props.patient) {
-        // Handle multipart data under Laravel PUT by simulating POST with _method
-        form.transform((data) => ({
-            ...data,
-            _method: 'put',
-        })).post(`/patients/${props.patient.id}`, {
+        // Use PUT method for updating existing patient
+        form.put(`/patients/${props.patient.id}`, {
             preserveScroll: true,
             onSuccess: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Patient record updated successfully.',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    timerProgressBar: true,
+                });
+                emit('saved');
                 close();
+                // Don't reload - let Reverb handle the real-time update
+            },
+            onError: (errors) => {
+                console.error('Validation errors:', errors);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: 'Failed to update patient record. Please check the form for errors.',
+                    timer: 3000,
+                    showConfirmButton: true,
+                });
             }
         });
     } else {
-        form.transform((data) => data).post('/patients', {
+        // Use POST method for creating new patient
+        form.post('/patients', {
             preserveScroll: true,
             onSuccess: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Patient record created successfully.',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    timerProgressBar: true,
+                });
+                emit('saved');
                 close();
+                // Don't reload - let Reverb handle the real-time update
+            },
+            onError: (errors) => {
+                console.error('Validation errors:', errors);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: 'Failed to create patient record. Please check the form for errors.',
+                    timer: 3000,
+                    showConfirmButton: true,
+                });
             }
         });
     }
