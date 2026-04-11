@@ -30,6 +30,14 @@ watch(() => page.props.branding_computed, (newBranding) => {
     }
 }, { deep: true });
 
+watch(() => page.props.tenant, (tenant) => {
+    if (!tenant) return;
+
+    brandingState.setPortalBackgroundType(tenant.portal_background_type || 'color');
+    brandingState.setPortalBackgroundColor(tenant.portal_background_color || null);
+    brandingState.setPortalBackgroundImage(tenant.portal_background_image || null);
+}, { deep: true });
+
 const showUpgradeAlert = (featureName) => {
     Swal.fire({
         title: 'Premium Feature',
@@ -106,6 +114,48 @@ const fonts = computed(() => {
     }
     
     return { ...defaults, ...tenantFonts };
+});
+
+const portalBackgroundType = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.portal_background_type || page.props.tenant?.portal_background_type || 'color')
+        : (page.props.tenant?.portal_background_type || 'color');
+});
+
+const portalBackgroundColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.portal_background_color ?? page.props.tenant?.portal_background_color ?? null)
+        : (page.props.tenant?.portal_background_color ?? null);
+});
+
+const portalBackgroundImage = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.portal_background_image || page.props.tenant?.portal_background_image || null)
+        : (page.props.tenant?.portal_background_image || null);
+});
+const hasImageBackground = computed(() => portalBackgroundType.value === 'image' && !!portalBackgroundImage.value);
+
+const contentBackgroundStyle = computed(() => {
+    if (!shouldApplyBranding.value) {
+        return {};
+    }
+
+    if (hasImageBackground.value) {
+        return {
+            backgroundImage: `url(${portalBackgroundImage.value})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+        };
+    }
+
+    if (!portalBackgroundColor.value) {
+        return {};
+    }
+
+    return {
+        backgroundColor: portalBackgroundColor.value,
+    };
 });
 
 // Platform info
@@ -607,7 +657,11 @@ function getContrastColor(hex) {
         <input id="tenant-sidebar" type="checkbox" v-model="isSidebarOpen" class="drawer-toggle" />
         
         <!-- Main Content Area -->
-        <div class="drawer-content flex flex-col h-screen bg-base-200 overflow-hidden">
+        <div
+            class="drawer-content flex flex-col h-screen overflow-hidden"
+            :class="hasImageBackground ? 'bg-transparent' : 'bg-base-200'"
+            :style="contentBackgroundStyle"
+        >
             <!-- Top Navigation for Mobile & Title -->
             <header 
                 class="bg-base-100 border-b border-base-300 sticky top-0 z-40 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0 shadow-sm"

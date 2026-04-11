@@ -2,6 +2,7 @@
 import { ref, reactive } from 'vue';
 import { router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
+import { brandingState } from '@/States/brandingState';
 
 const props = defineProps({
     form: {
@@ -31,6 +32,7 @@ const uploading = reactive({
     logo: false,
     logo_login: false,
     logo_booking: false,
+    portal_background: false,
 });
 
 // Track object URLs for live preview
@@ -38,6 +40,7 @@ const logoPreviews = ref({
     logo: null,
     logo_login: null,
     logo_booking: null,
+    portal_background: null,
 });
 
 // Store the confirmed server URL for each logo (to use after upload)
@@ -45,6 +48,7 @@ const logoUrls = ref({
     logo: null,
     logo_login: null,
     logo_booking: null,
+    portal_background: null,
 });
 
 const resizeImage = (file, maxWidth = 800, maxHeight = 800) => {
@@ -145,6 +149,13 @@ const handleFileChange = async (e, field) => {
         }
         logoPreviews.value[field] = result.url;
 
+        if (field === 'portal_background') {
+            // Auto-switch to image mode and apply instantly in layout preview.
+            props.form.portal_background_type = 'image';
+            brandingState.setPortalBackgroundType('image');
+            brandingState.setPortalBackgroundImage(result.url);
+        }
+
         Swal.fire({
             toast: true,
             position: 'top-end',
@@ -209,6 +220,12 @@ const handleDeleteLogo = async (field) => {
         }
         logoUrls.value[field] = null;
 
+        if (field === 'portal_background') {
+            brandingState.setPortalBackgroundImage(null);
+            props.form.portal_background_type = 'color';
+            brandingState.setPortalBackgroundType('color');
+        }
+
         Swal.fire({
             toast: true,
             position: 'top-end',
@@ -231,6 +248,7 @@ const fieldLabel = (field) => ({
     logo: 'Header Logo',
     logo_login: 'Login Logo',
     logo_booking: 'Booking Logo',
+    portal_background: 'Portal Background',
 }[field] || field);
 
 const getLogoUrl = (path, field) => {
@@ -327,6 +345,47 @@ const getLogoUrl = (path, field) => {
                         </p>
                     </div>
 
+                    <div class="space-y-4 p-4 rounded-2xl border border-base-300 bg-base-200/40">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Portal Background Type</span></label>
+                            <select v-model="form.portal_background_type" class="select select-bordered w-full rounded-2xl border-base-300 bg-base-100 focus:border-primary">
+                                <option value="color">Solid Color</option>
+                                <option value="image">Background Image</option>
+                            </select>
+                        </div>
+
+                        <div v-if="form.portal_background_type === 'color'" class="form-control">
+                            <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Portal Background Color</span></label>
+                            <div class="flex items-center gap-4 bg-base-100 p-3 rounded-2xl border border-base-300">
+                                <input type="color" v-model="form.portal_background_color" :disabled="!is_premium" class="w-12 h-12 rounded-xl border-none cursor-pointer bg-transparent">
+                                <input type="text" v-model="form.portal_background_color" :disabled="!is_premium" class="input input-sm border-none bg-transparent font-mono text-xs w-full focus:ring-0 uppercase">
+                            </div>
+                        </div>
+
+                        <div v-else class="form-control bg-base-100 p-4 rounded-2xl border border-dashed border-base-300 hover:border-primary transition-colors relative group"
+                            :class="{ 'pointer-events-none': uploading.portal_background }">
+                            <label class="label mb-2"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-50">Portal Background Image</span></label>
+                            <div class="h-32 w-full flex flex-col items-center justify-center gap-2 relative rounded-xl overflow-hidden bg-base-200/60">
+                                <div v-if="uploading.portal_background" class="absolute inset-0 flex items-center justify-center bg-base-200/80 rounded-xl z-10">
+                                    <span class="loading loading-spinner loading-md text-primary"></span>
+                                </div>
+                                <img v-if="getLogoUrl(tenant.portal_background_image, 'portal_background')" :src="getLogoUrl(tenant.portal_background_image, 'portal_background')" class="h-full w-full object-cover" />
+                                <div v-else class="text-2xl opacity-20">🖼️</div>
+                                <input type="file" accept="image/*" @change="handleFileChange($event, 'portal_background')" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="uploading.portal_background">
+                            </div>
+                            <div class="mt-3 text-center flex items-center justify-center gap-3">
+                                <span class="text-[9px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                    {{ getLogoUrl(tenant.portal_background_image, 'portal_background') ? 'Replace' : 'Upload' }}
+                                </span>
+                                <button v-if="getLogoUrl(tenant.portal_background_image, 'portal_background')"
+                                    @click.stop="handleDeleteLogo('portal_background')"
+                                    class="text-[9px] font-black uppercase tracking-widest text-error opacity-0 group-hover:opacity-100 transition-opacity hover:underline">
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="form-control">
                             <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Header Typography</span></label>
@@ -373,6 +432,14 @@ const getLogoUrl = (path, field) => {
                         <p :class="form.font_family.header" class="text-sm font-black uppercase">Header Sample</p>
                         <p :class="form.font_family.names" class="text-lg font-bold">Dr. John Doe</p>
                         <p :class="form.font_family.general" class="text-xs opacity-60">The quick brown fox jumps over the lazy dog.</p>
+                    </div>
+                    <div class="w-full rounded-2xl mt-4 border border-base-300 overflow-hidden">
+                        <div
+                            class="h-20"
+                            :style="form.portal_background_type === 'image' && getLogoUrl(tenant.portal_background_image, 'portal_background')
+                                ? { backgroundImage: `url(${getLogoUrl(tenant.portal_background_image, 'portal_background')})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                : { backgroundColor: form.portal_background_color || '#e5e7eb' }"
+                        ></div>
                     </div>
                 </div>
             </div>

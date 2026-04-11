@@ -152,6 +152,9 @@ class HandleInertiaRequests extends Middleware
                     'logo_path' => $branding['logo_base64'] ?? $tenant->logo_path,
                     'logo_login_path' => $branding['logo_login_base64'] ?? $tenant->logo_login_path,
                     'logo_booking_path' => $branding['logo_booking_base64'] ?? $tenant->logo_booking_path,
+                    'portal_background_type' => $branding['portal_background_type'] ?? 'color',
+                    'portal_background_color' => $branding['portal_background_color'] ?? null,
+                    'portal_background_image' => $branding['portal_background_image'] ?? null,
                     'is_premium' => $tenant->canCustomizeBranding(),
                 ]);
             },

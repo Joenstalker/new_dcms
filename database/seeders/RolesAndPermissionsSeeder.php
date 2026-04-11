@@ -15,7 +15,6 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Create Permissions
         $permissions = [
-            'manage clinic',
             'manage settings',
             'manage subscription',
             'access billing portal',
@@ -66,6 +65,14 @@ class RolesAndPermissionsSeeder extends Seeder
 
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
+        }
+
+        // Cleanup legacy permission no longer used by tenant modules.
+        $legacyManageClinic = Permission::where('name', 'manage clinic')->first();
+        if ($legacyManageClinic) {
+            $legacyManageClinic->roles()->detach();
+            $legacyManageClinic->users()->detach();
+            $legacyManageClinic->delete();
         }
 
         // Create Roles (Owner retains all permissions)

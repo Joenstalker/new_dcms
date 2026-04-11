@@ -67,8 +67,8 @@ const getCategoryStatusColor = (status) => {
     switch (status) {
         case 'full': return 'bg-green-50 border-green-200';
         case 'partial': return 'bg-yellow-50 border-yellow-200';
-        case 'locked': return 'bg-gray-50 border-gray-200';
-        default: return 'bg-white border-gray-200';
+        case 'locked': return 'bg-base-200 border-base-300';
+        default: return 'bg-base-100 border-base-300';
     }
 };
 
@@ -97,13 +97,13 @@ const applyUpdate = (featureId) => {
         :class="getCategoryStatusColor(status)"
     >
         <!-- Category Header -->
-        <div class="px-6 py-4 border-b" :class="status === 'locked' ? 'border-gray-200' : ''">
+        <div class="px-6 py-4 border-b" :class="status === 'locked' ? 'border-base-300' : 'border-base-300'">
             <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-900">
+                    <h3 class="text-lg font-semibold text-base-content">
                         {{ categoryLabels[category] || category }}
                     </h3>
-                    <p class="text-sm text-gray-500 mt-1">
+                    <p class="text-sm text-base-content/60 mt-1">
                         {{ categoryDescriptions[category] }}
                     </p>
                 </div>
@@ -122,7 +122,7 @@ const applyUpdate = (featureId) => {
                     </span>
                     <span 
                         v-else-if="status === 'locked'"
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-200 text-base-content/80"
                     >
                         Upgrade to Unlock
                     </span>
@@ -131,7 +131,7 @@ const applyUpdate = (featureId) => {
         </div>
 
         <!-- Features List -->
-        <div class="divide-y divide-gray-200">
+        <div class="divide-y divide-base-300">
             <div 
                 v-for="feature in categoryFeatures" 
                 :key="feature.key"
@@ -142,7 +142,7 @@ const applyUpdate = (featureId) => {
                     <!-- Icon -->
                     <div 
                         class="flex-shrink-0 h-10 w-10 rounded-lg flex items-center justify-center"
-                        :class="feature.is_enabled ? 'bg-indigo-100 text-indigo-600' : (feature.has_pending_update ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400')"
+                        :class="feature.is_enabled ? 'bg-primary/15 text-primary' : (feature.has_pending_update ? 'bg-warning/20 text-warning' : 'bg-base-200 text-base-content/40')"
                     >
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" :d="getFeatureIcon(feature.key)" />
@@ -152,7 +152,7 @@ const applyUpdate = (featureId) => {
                     <!-- Name & Description -->
                     <div>
                         <div class="flex items-center gap-2">
-                            <h4 class="text-sm font-medium text-gray-900">
+                            <h4 class="text-sm font-medium text-base-content">
                                 {{ feature.name }}
                             </h4>
                             <span 
@@ -162,7 +162,7 @@ const applyUpdate = (featureId) => {
                                 Update Available
                             </span>
                         </div>
-                        <p v-if="feature.description" class="text-xs text-gray-500">
+                        <p v-if="feature.description" class="text-xs text-base-content/60">
                             {{ feature.description }}
                         </p>
                     </div>
@@ -186,7 +186,7 @@ const applyUpdate = (featureId) => {
                     <template v-else>
                         <span 
                             class="text-sm font-medium"
-                            :class="feature.is_enabled ? 'text-gray-900' : 'text-gray-500'"
+                            :class="feature.is_enabled ? 'text-base-content' : 'text-base-content/60'"
                         >
                             {{ formatValue(feature) }}
                         </span>
@@ -201,7 +201,7 @@ const applyUpdate = (featureId) => {
                         </svg>
                         <svg 
                             v-else 
-                            class="h-5 w-5 text-gray-400" 
+                            class="h-5 w-5 text-base-content/40" 
                             fill="none" 
                             viewBox="0 0 24 24" 
                             stroke="currentColor"

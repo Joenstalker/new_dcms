@@ -89,7 +89,7 @@ const openDaysCount = computed(() => {
                     <span class="w-2 h-2 rounded-full bg-primary"></span>
                     Clinic Operating Hours
                 </h4>
-                <p class="text-sm text-gray-500 mt-1">Configure your clinic's weekly schedule. This will be displayed on your landing page.</p>
+                <p class="text-sm text-base-content/60 mt-1">Configure your clinic's weekly schedule. This will be displayed on your landing page.</p>
             </div>
 
             <!-- Today's Status Badge -->
@@ -103,7 +103,7 @@ const openDaysCount = computed(() => {
                     <p class="text-sm font-bold" :class="isCurrentlyOpen ? 'text-emerald-600' : 'text-red-500'">
                         {{ isCurrentlyOpen ? 'Open Now' : (todaySchedule ? 'Closed Now' : 'Closed Today') }}
                     </p>
-                    <p v-if="todaySchedule" class="text-[10px] text-gray-400 font-mono">
+                    <p v-if="todaySchedule" class="text-[10px] text-base-content/50 font-mono">
                         {{ formatTime(todaySchedule.open) }} – {{ formatTime(todaySchedule.close) }}
                     </p>
                 </div>
@@ -199,13 +199,13 @@ const openDaysCount = computed(() => {
         </section>
 
         <!-- Tip -->
-        <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-start gap-4">
+        <div class="bg-info/10 p-4 rounded-2xl border border-info/20 flex items-start gap-4">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-blue-500 shrink-0 mt-0.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
             </svg>
             <div>
-                <p class="text-xs font-bold text-blue-800">Quick Tip</p>
-                <p class="text-[10px] text-blue-600 mt-1">Set your hours for one day, then click "Apply to All" to copy the same schedule to every day. You can then adjust individual days as needed.</p>
+                <p class="text-xs font-bold text-info">Quick Tip</p>
+                <p class="text-[10px] text-info/80 mt-1">Set your hours for one day, then click "Apply to All" to copy the same schedule to every day. You can then adjust individual days as needed.</p>
             </div>
         </div>
     </div>

@@ -46,7 +46,7 @@ const clearAll = () => {
                 Portal Branding Scope
             </h4>
 
-            <p class="text-sm text-gray-500 max-w-2xl">
+            <p class="text-sm text-base-content/60 max-w-2xl">
                 Choose how your clinic branding (colors, logos, fonts) is applied to the Dentist and Assistant portals. 
                 Full branding application ensures a cohesive professional experience.
             </p>
@@ -58,7 +58,7 @@ const clearAll = () => {
                     class="p-6 rounded-[2.5rem] border-2 transition-all cursor-pointer group flex flex-col items-center text-center gap-4"
                     :class="[form.portal_config.apply_to === 'all' ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5' : 'bg-base-200 border-transparent opacity-60 hover:opacity-100']"
                 >
-                    <div class="w-16 h-16 rounded-3xl bg-white shadow-sm flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                    <div class="w-16 h-16 rounded-3xl bg-base-100 shadow-sm flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                         🌍
                     </div>
                     <div>
@@ -74,7 +74,7 @@ const clearAll = () => {
                     class="p-6 rounded-[2.5rem] border-2 transition-all cursor-pointer group flex flex-col items-center text-center gap-4"
                     :class="[form.portal_config.apply_to === 'specific' ? 'bg-primary/5 border-primary shadow-xl shadow-primary/5' : 'bg-base-200 border-transparent opacity-60 hover:opacity-100']"
                 >
-                    <div class="w-16 h-16 rounded-3xl bg-white shadow-sm flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                    <div class="w-16 h-16 rounded-3xl bg-base-100 shadow-sm flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                         🎯
                     </div>
                     <div>

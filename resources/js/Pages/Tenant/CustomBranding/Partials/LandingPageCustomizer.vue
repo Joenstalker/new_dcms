@@ -299,7 +299,7 @@ const getPreviewUrl = (section) => {
                             </div>
                         </div>
                         <div class="flex items-center">
-                            <p class="text-[10px] text-gray-400 italic">This image will be displayed alongside your specialized services on the landing page.</p>
+                            <p class="text-[10px] text-base-content/50 italic">This image will be displayed alongside your specialized services on the landing page.</p>
                         </div>
                     </div>
                 </div>
@@ -327,7 +327,7 @@ const getPreviewUrl = (section) => {
                             </div>
                         </div>
                         <div class="flex items-center">
-                            <p class="text-[10px] text-gray-400 italic">Upload a photo of your clinic team or staff in action to build trust with patients.</p>
+                            <p class="text-[10px] text-base-content/50 italic">Upload a photo of your clinic team or staff in action to build trust with patients.</p>
                         </div>
                     </div>
                 </div>
@@ -355,7 +355,7 @@ const getPreviewUrl = (section) => {
                             </div>
                         </div>
                         <div class="flex items-center">
-                            <p class="text-[10px] text-gray-400 italic">This image appears in the contact section to make your clinic feel approachable.</p>
+                            <p class="text-[10px] text-base-content/50 italic">This image appears in the contact section to make your clinic feel approachable.</p>
                         </div>
                     </div>
                 </div>

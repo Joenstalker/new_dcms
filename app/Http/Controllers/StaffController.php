@@ -30,7 +30,7 @@ class StaffController extends Controller
             'staff' => $staff,
             'roles' => Role::whereIn('name', ['Dentist', 'Assistant'])->get(),
             'api_key' => config('services.google.calendar_api_key'),
-            'allPermissions' => Permission::all(),
+            'allPermissions' => Permission::where('name', '!=', 'manage clinic')->get(),
             'defaultPermissionMap' => $defaultPermissionMap,
             'initialTab' => $request->query('tab', 'list')
         ]);

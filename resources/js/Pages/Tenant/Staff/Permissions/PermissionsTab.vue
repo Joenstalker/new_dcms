@@ -116,6 +116,7 @@
                                 :key="permission.id" 
                                 @click="togglePermission(permission.name)"
                                 class="flex items-center justify-between p-3 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50/30 transition-all cursor-pointer group"
+                                :class="permission.isLocked ? 'opacity-60 cursor-not-allowed border-amber-200 bg-amber-50/30 hover:border-amber-200 hover:bg-amber-50/30' : ''"
                             >
                                 <div class="flex items-center space-x-3">
                                     <div 
@@ -126,7 +127,12 @@
                                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                         </svg>
                                     </div>
-                                    <span class="text-sm font-bold transition-colors" :class="permissionForm.permissions.includes(permission.name) ? 'text-gray-900 font-black' : 'text-gray-500 font-bold'">{{ permission.displayName }}</span>
+                                    <div>
+                                        <span class="text-sm font-bold transition-colors" :class="permissionForm.permissions.includes(permission.name) ? 'text-gray-900 font-black' : 'text-gray-500 font-bold'">{{ permission.displayName }}</span>
+                                        <p v-if="permission.isLocked" class="text-[10px] font-black uppercase tracking-wider text-amber-600 mt-1">
+                                            Locked by plan{{ permission.requiredPlan ? ` (${permission.requiredPlan})` : '' }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -144,7 +150,12 @@
                         <h4 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-3">{{ feature }}</h4>
                         <div class="space-y-2">
                             <div v-for="permission in group" :key="`readonly-${permission.id}`" class="px-3 py-2 rounded-lg bg-white border border-gray-100 text-xs font-bold text-gray-600">
-                                {{ permission.displayName }}
+                                <div class="flex items-center justify-between gap-2">
+                                    <span>{{ permission.displayName }}</span>
+                                    <span v-if="permission.isLocked" class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider">
+                                        {{ permission.requiredPlan || 'Upgrade' }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -181,7 +192,23 @@
                     >
                         <div class="flex items-center justify-between mb-3">
                             <h4 class="text-xs font-black uppercase tracking-widest text-gray-500">{{ feature }}</h4>
-                            <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">{{ group.length }} Permissions</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">{{ roleGroupCheckedCount(activeRoleModal, group) }}/{{ group.length }}</span>
+                                <button
+                                    type="button"
+                                    @click="selectRoleGroupPermissions(activeRoleModal, group)"
+                                    class="px-2 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-wider hover:bg-blue-100"
+                                >
+                                    Select All
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="clearRoleGroupPermissions(activeRoleModal, group)"
+                                    class="px-2 py-1 rounded-md border border-gray-200 bg-white text-gray-600 text-[10px] font-black uppercase tracking-wider hover:bg-gray-100"
+                                >
+                                    Clear
+                                </button>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -191,11 +218,19 @@
                                 type="button"
                                 @click="toggleDefaultPermission(activeRoleModal, permission.name)"
                                 class="w-full px-4 py-3 rounded-xl border text-left transition-all flex items-center justify-between"
-                                :class="isDefaultPermissionChecked(activeRoleModal, permission.name)
+                                :class="permission.isLocked
+                                    ? 'border-amber-200 bg-amber-50 text-amber-700 opacity-70 cursor-not-allowed'
+                                    : (isDefaultPermissionChecked(activeRoleModal, permission.name)
                                     ? 'border-blue-500 bg-blue-50 text-blue-800'
-                                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50/40'"
+                                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50/40')"
+                                :disabled="permission.isLocked"
                             >
-                                <span class="text-xs font-black uppercase tracking-wide pr-2">{{ permission.displayName }}</span>
+                                <div class="pr-2">
+                                    <span class="text-xs font-black uppercase tracking-wide">{{ permission.displayName }}</span>
+                                    <p v-if="permission.isLocked" class="text-[10px] font-black uppercase tracking-wider mt-1">
+                                        Locked{{ permission.requiredPlan ? ` • ${permission.requiredPlan}` : '' }}
+                                    </p>
+                                </div>
                                 <span
                                     class="h-6 w-6 rounded-lg border-2 flex items-center justify-center shrink-0"
                                     :class="isDefaultPermissionChecked(activeRoleModal, permission.name)
@@ -249,6 +284,8 @@ const props = defineProps({
 const page = usePage();
 const roles = computed(() => page.props.auth?.user?.roles || []);
 const userPermissions = computed(() => page.props.auth?.user?.permissions || []);
+const tenantPlanFeatures = computed(() => page.props.tenant_plan?.features || {});
+const featureRequirementMap = computed(() => page.props.tenant_plan?.feature_requirements || {});
 const canManageDefaultPermissions = computed(() => {
     return roles.value.includes('Owner') || userPermissions.value.includes('edit staff');
 });
@@ -313,6 +350,10 @@ const selectAllStaff = () => {
 };
 
 const togglePermission = (name) => {
+    if (isPermissionLocked(name)) {
+        return;
+    }
+
     const index = permissionForm.permissions.indexOf(name);
     if (index > -1) {
         permissionForm.permissions.splice(index, 1);
@@ -379,6 +420,36 @@ const rolePermissionCount = (role) => {
     return defaultMapForm.default_permission_map?.[role]?.length || 0;
 };
 
+const roleGroupCheckedCount = (role, groupPermissions) => {
+    if (!role || !Array.isArray(groupPermissions)) return 0;
+    const selected = defaultMapForm.default_permission_map?.[role] || [];
+    return groupPermissions.filter((permission) => selected.includes(permission.name)).length;
+};
+
+const selectRoleGroupPermissions = (role, groupPermissions) => {
+    if (!role || !Array.isArray(groupPermissions)) return;
+
+    const selected = defaultMapForm.default_permission_map?.[role] || [];
+    const selectedSet = new Set(selected);
+
+    groupPermissions.forEach((permission) => {
+        if (!permission.isLocked) {
+            selectedSet.add(permission.name);
+        }
+    });
+
+    defaultMapForm.default_permission_map[role] = Array.from(selectedSet);
+};
+
+const clearRoleGroupPermissions = (role, groupPermissions) => {
+    if (!role || !Array.isArray(groupPermissions)) return;
+
+    const groupNames = new Set(groupPermissions.map((permission) => permission.name));
+    const selected = defaultMapForm.default_permission_map?.[role] || [];
+
+    defaultMapForm.default_permission_map[role] = selected.filter((permission) => !groupNames.has(permission));
+};
+
 const previewRolePermissions = (role) => {
     const selected = defaultMapForm.default_permission_map?.[role] || [];
     return selected.slice(0, 3);
@@ -389,6 +460,10 @@ const isDefaultPermissionChecked = (role, permission) => {
 };
 
 const toggleDefaultPermission = (role, permission) => {
+    if (isPermissionLocked(permission)) {
+        return;
+    }
+
     const current = defaultMapForm.default_permission_map?.[role] || [];
     const exists = current.includes(permission);
 
@@ -398,7 +473,8 @@ const toggleDefaultPermission = (role, permission) => {
 };
 
 const permissionCatalog = computed(() => {
-    return (props.allPermissions || [])
+    const baseCatalog = (props.allPermissions || [])
+        .filter((permission) => permission.name !== 'manage clinic')
         .map((permission) => {
             const displayName = permission.name
                 .trim()
@@ -409,10 +485,58 @@ const permissionCatalog = computed(() => {
             return {
                 ...permission,
                 displayName,
+                isLocked: isPermissionLocked(permission.name),
+                requiredPlan: requiredPlanForPermission(permission.name),
             };
-        })
+        });
+
+    const existingNames = new Set(baseCatalog.map((permission) => permission.name));
+    const gatedExtras = Object.keys(permissionFeatureMap)
+        .filter((permissionName) => !existingNames.has(permissionName) && isPermissionLocked(permissionName))
+        .map((permissionName, index) => ({
+            id: `virtual-locked-${index}`,
+            name: permissionName,
+            displayName: permissionName
+                .trim()
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' '),
+            isLocked: true,
+            requiredPlan: requiredPlanForPermission(permissionName),
+        }));
+
+    return [...baseCatalog, ...gatedExtras]
         .sort((a, b) => a.displayName.localeCompare(b.displayName));
 });
+
+const permissionFeatureMap = {
+    'manage clinic branding': 'custom_branding',
+    'view analytics': 'advanced_analytics',
+    'manage branches': 'multi_branch',
+    'manage system features': 'custom_system_features',
+    'manage security settings': 'security_settings',
+    'manage own notifications': 'sms_notifications',
+};
+
+const requiredPlanForPermission = (permissionName) => {
+    const featureKey = permissionFeatureMap[permissionName];
+
+    if (!featureKey) {
+        return null;
+    }
+
+    return featureRequirementMap.value?.[featureKey] || null;
+};
+
+const isPermissionLocked = (permissionName) => {
+    const featureKey = permissionFeatureMap[permissionName];
+
+    if (!featureKey) {
+        return false;
+    }
+
+    return tenantPlanFeatures.value?.[featureKey] === false;
+};
 
 // Group permissions for cleaner UI (Role-centric Modules)
 const permissionGroups = computed(() => {
@@ -433,6 +557,7 @@ const permissionGroups = computed(() => {
         'branches': 'Owner Features',
         'subscription': 'Owner Features',
         'billing portal': 'Owner Features',
+        'manage clinic': 'Owner Features',
         'clinic branding': 'Owner Features',
         'security settings': 'Owner Features',
         'system features': 'Owner Features',
@@ -481,7 +606,7 @@ const permissionGroups = computed(() => {
 
 const toggleGroup = (groupPermissions, event) => {
     const isChecked = event.target.checked;
-    const groupNames = groupPermissions.map(p => p.name);
+    const groupNames = groupPermissions.filter(p => !p.isLocked).map(p => p.name);
     
     if (isChecked) {
         // Add permissions not already in the list

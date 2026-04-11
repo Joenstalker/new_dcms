@@ -71,6 +71,8 @@ const form = useForm({
     address: props.tenant?.clinic_address || props.tenant?.street || '',
     branding_color: props.tenant?.branding_color || page.props.branding?.primary_color || '#0ea5e9',
     support_chat_bottom_offset: Number(props.tenant?.support_chat_bottom_offset ?? page.props.branding?.support_chat_bottom_offset ?? 56),
+    portal_background_type: props.tenant?.portal_background_type || 'color',
+    portal_background_color: props.tenant?.portal_background_color || '#e5e7eb',
     font_family: initialFontFamily,
     hero_title: props.tenant?.hero_title || '',
     hero_subtitle: props.tenant?.hero_subtitle || '',
@@ -97,6 +99,14 @@ watch(() => form.branding_color, (newColor) => {
     if (newColor) {
         brandingState.setPrimaryColor(newColor);
     }
+}, { immediate: true });
+
+watch(() => form.portal_background_type, (newType) => {
+    brandingState.setPortalBackgroundType(newType);
+}, { immediate: true });
+
+watch(() => form.portal_background_color, (newColor) => {
+    brandingState.setPortalBackgroundColor(newColor);
 }, { immediate: true });
 
 const isSaving = ref(false);
@@ -163,7 +173,7 @@ watch(() => usePage().props.flash, (flash) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
+            <h2 class="text-xl font-semibold leading-tight text-base-content">
                 Custom Branding & Design
             </h2>
         </template>
@@ -171,12 +181,12 @@ watch(() => usePage().props.flash, (flash) => {
         <div class="mt-6">
             <form @submit.prevent class="space-y-6">
                 <!-- Tabs Navigation -->
-                <div class="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4 overflow-x-auto no-scrollbar">
+                <div class="flex items-center gap-2 mb-6 border-b border-base-300 pb-4 overflow-x-auto no-scrollbar">
                     <button 
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'branding' }))"
                         class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'branding' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'"
+                        :class="currentTab === 'branding' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
                     >
                         🎨 Clinic & Colors
                     </button>
@@ -184,7 +194,7 @@ watch(() => usePage().props.flash, (flash) => {
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'hours' }))"
                         class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'hours' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'"
+                        :class="currentTab === 'hours' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
                     >
                         🕐 Operating Hours
                     </button>
@@ -192,7 +202,7 @@ watch(() => usePage().props.flash, (flash) => {
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'qr' }))"
                         class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'qr' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'"
+                        :class="currentTab === 'qr' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
                     >
                         📱 QR Booking
                     </button>
@@ -200,7 +210,7 @@ watch(() => usePage().props.flash, (flash) => {
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'portal' }))"
                         class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'portal' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'"
+                        :class="currentTab === 'portal' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
                     >
                         🖌️ Portal Design
                     </button>
@@ -208,7 +218,7 @@ watch(() => usePage().props.flash, (flash) => {
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'designer' }))"
                         class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'designer' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'"
+                        :class="currentTab === 'designer' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
                     >
                         🚀 Landing Designer
                     </button>
@@ -216,7 +226,7 @@ watch(() => usePage().props.flash, (flash) => {
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'features' }))"
                         class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'features' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'"
+                        :class="currentTab === 'features' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
                     >
                         ⚙️ Features
                     </button>

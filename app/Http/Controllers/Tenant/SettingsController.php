@@ -180,6 +180,9 @@ class SettingsController extends Controller
                 'clinic_phone' => $branding['clinic_phone'] ?? $tenant->phone,
                 'clinic_address' => $branding['clinic_address'] ?? $tenant->address,
                 'support_chat_bottom_offset' => (int) ($branding['support_chat_bottom_offset'] ?? 56),
+                'portal_background_type' => $branding['portal_background_type'] ?? 'color',
+                'portal_background_color' => $branding['portal_background_color'] ?? null,
+                'portal_background_image' => $branding['portal_background_image'] ?? null,
             ]),
             'subscription' => $subscription,
             'is_premium' => $tenant->canCustomizeBranding(),
@@ -371,6 +374,8 @@ class SettingsController extends Controller
             'operating_hours' => 'nullable|array',
             'online_booking_enabled' => 'nullable|boolean',
             'support_chat_bottom_offset' => 'nullable|integer|min:16|max:160',
+            'portal_background_type' => 'nullable|in:color,image',
+            'portal_background_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ]);
 
         // Store branding settings in tenant database (Primary Source for Visuals)
@@ -410,6 +415,12 @@ class SettingsController extends Controller
         }
         if (isset($validated['support_chat_bottom_offset'])) {
             TenantBrandingService::set('support_chat_bottom_offset', $validated['support_chat_bottom_offset']);
+        }
+        if (isset($validated['portal_background_type'])) {
+            TenantBrandingService::set('portal_background_type', $validated['portal_background_type']);
+        }
+        if (isset($validated['portal_background_color'])) {
+            TenantBrandingService::set('portal_background_color', $validated['portal_background_color']);
         }
 
         if (isset($validated['hero_title'])) {
@@ -493,7 +504,7 @@ class SettingsController extends Controller
     public function uploadLogo(Request $request)
     {
         $request->validate([
-            'field' => 'required|in:logo,logo_login,logo_booking,landing_services,landing_team,landing_contact',
+            'field' => 'required|in:logo,logo_login,logo_booking,landing_services,landing_team,landing_contact,portal_background',
             'image' => 'required|image|mimes:jpeg,png,gif,webp,svg|max:2048',
         ]);
 
@@ -523,6 +534,7 @@ class SettingsController extends Controller
             'landing_services' => 'landing_image_services',
             'landing_team' => 'landing_image_team',
             'landing_contact' => 'landing_image_contact',
+            'portal_background' => 'portal_background_image',
         ];
 
         $storageKey = $keyMap[$field];
@@ -558,7 +570,7 @@ class SettingsController extends Controller
     public function deleteLogo(Request $request)
     {
         $request->validate([
-            'field' => 'required|in:logo,logo_login,logo_booking,landing_services,landing_team,landing_contact',
+            'field' => 'required|in:logo,logo_login,logo_booking,landing_services,landing_team,landing_contact,portal_background',
         ]);
 
         $tenant = tenant();
@@ -574,6 +586,7 @@ class SettingsController extends Controller
             'landing_services' => 'landing_image_services',
             'landing_team' => 'landing_image_team',
             'landing_contact' => 'landing_image_contact',
+            'portal_background' => 'portal_background_image',
         ];
 
         try {

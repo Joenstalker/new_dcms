@@ -43,10 +43,10 @@ const isEnabled = (id) => props.form.enabled_features.includes(id);
                     <span class="w-2 h-2 rounded-full bg-primary"></span>
                     Module Management
                 </h1>
-                <div class="badge badge-primary badge-sm font-black uppercase tracking-widest text-[8px] p-2 text-white">Dashboard & Settings are always enabled</div>
+                <div class="badge badge-primary badge-sm font-black uppercase tracking-widest text-[8px] p-2">Dashboard & Settings are always enabled</div>
             </div>
 
-            <p class="text-sm text-gray-500 max-w-2xl">
+            <p class="text-sm text-base-content/60 max-w-2xl">
                 Select which modules you want to display in your clinic's sidebar. Disabling a module will hide it for all users but will not delete any data.
             </p>
             
@@ -62,7 +62,7 @@ const isEnabled = (id) => props.form.enabled_features.includes(id);
                             : 'bg-base-200 border-base-300 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 hover:border-primary'
                     ]"
                 >
-                    <div class="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-xl shrink-0 group-hover:scale-110 transition-transform">
+                    <div class="w-12 h-12 rounded-2xl bg-base-100 shadow-sm flex items-center justify-center text-xl shrink-0 group-hover:scale-110 transition-transform">
                         {{ feature.icon }}
                     </div>
                     <div class="flex-1 min-w-0">
@@ -80,11 +80,11 @@ const isEnabled = (id) => props.form.enabled_features.includes(id);
             </div>
         </section>
 
-        <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-start gap-4">
+        <div class="bg-info/10 p-4 rounded-2xl border border-info/20 flex items-start gap-4">
             <span class="text-xl">💡</span>
             <div>
-                <p class="text-xs font-bold text-blue-800">Pro Tip: Streamline your Workflow</p>
-                <p class="text-[10px] text-blue-600 mt-1">If you don't use Billing or Staff Management yet, disable them to keep your sidebar clean and focused on patient care.</p>
+                <p class="text-xs font-bold text-info">Pro Tip: Streamline your Workflow</p>
+                <p class="text-[10px] text-info/80 mt-1">If you don't use Billing or Staff Management yet, disable them to keep your sidebar clean and focused on patient care.</p>
             </div>
         </div>
     </div>
