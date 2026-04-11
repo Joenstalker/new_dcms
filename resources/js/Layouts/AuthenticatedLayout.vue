@@ -40,10 +40,13 @@ watch(() => page.props.tenant, (tenant) => {
     brandingState.setUiTokens({
         ui_sidebar_text_color: tenant.ui_sidebar_text_color || null,
         ui_sidebar_text_size: tenant.ui_sidebar_text_size ?? 12,
+        ui_sidebar_background_color: tenant.ui_sidebar_background_color || null,
+        ui_subnav_background_color: tenant.ui_subnav_background_color || null,
         ui_header_title_color: tenant.ui_header_title_color || null,
         ui_header_title_size: tenant.ui_header_title_size ?? 20,
         ui_footer_text_color: tenant.ui_footer_text_color || null,
         ui_footer_text_size: tenant.ui_footer_text_size ?? 10,
+        ui_footer_background_color: tenant.ui_footer_background_color || null,
         ui_main_text_color: tenant.ui_main_text_color || null,
         ui_main_text_size: tenant.ui_main_text_size ?? 14,
         ui_card_background_color: tenant.ui_card_background_color || null,
@@ -167,6 +170,18 @@ const uiSidebarTextSize = computed(() => {
         : Number(page.props.tenant?.ui_sidebar_text_size ?? 12);
 });
 
+const uiSidebarBackgroundColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_sidebar_background_color ?? page.props.tenant?.ui_sidebar_background_color ?? null)
+        : (page.props.tenant?.ui_sidebar_background_color ?? null);
+});
+
+const uiSubnavBackgroundColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_subnav_background_color ?? page.props.tenant?.ui_subnav_background_color ?? null)
+        : (page.props.tenant?.ui_subnav_background_color ?? null);
+});
+
 const uiHeaderTitleColor = computed(() => {
     return shouldApplyBranding.value
         ? (brandingState.ui_header_title_color ?? page.props.tenant?.ui_header_title_color ?? null)
@@ -189,6 +204,12 @@ const uiFooterTextSize = computed(() => {
     return shouldApplyBranding.value
         ? Number(brandingState.ui_footer_text_size ?? page.props.tenant?.ui_footer_text_size ?? 10)
         : Number(page.props.tenant?.ui_footer_text_size ?? 10);
+});
+
+const uiFooterBackgroundColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_footer_background_color ?? page.props.tenant?.ui_footer_background_color ?? null)
+        : (page.props.tenant?.ui_footer_background_color ?? null);
 });
 
 const uiMainTextColor = computed(() => {
@@ -487,6 +508,7 @@ const menuCategories = computed(() => {
                     icon: 'staff', 
                     feature: 'staff', 
                     permissions: ['view staff'],
+                    hideSubnav: true,
                     subItems: [
                         { name: 'Staff Overview', route: 'staff.index', permissions: ['view staff'] },
                         { name: 'Team Schedules', route: 'staff.index', routeParams: { tab: 'schedules' }, permissions: ['view staff'] },
@@ -656,7 +678,7 @@ const getIcon = (name) => {
 const activeCategoryWithSubItems = computed(() => {
     for (const category of menuCategories.value) {
         for (const item of category.items) {
-            if (item.subItems && item.subItems.some(si => route().current(si.route))) {
+            if (!item.hideSubnav && item.subItems && item.subItems.some(si => route().current(si.route))) {
                 return item;
             }
         }
@@ -713,10 +735,13 @@ const brandStyle = computed(() => {
             --pc: ${content};
             --tenant-sidebar-text-color: ${uiSidebarTextColor.value || 'inherit'};
             --tenant-sidebar-text-size: ${uiSidebarTextSize.value}px;
+            --tenant-sidebar-bg-color: ${uiSidebarBackgroundColor.value || 'hsl(var(--b1))'};
+            --tenant-subnav-bg-color: ${uiSubnavBackgroundColor.value || 'hsl(var(--b1))'};
             --tenant-header-title-color: ${uiHeaderTitleColor.value || 'inherit'};
             --tenant-header-title-size: ${uiHeaderTitleSize.value}px;
             --tenant-footer-text-color: ${uiFooterTextColor.value || 'inherit'};
             --tenant-footer-text-size: ${uiFooterTextSize.value}px;
+            --tenant-footer-bg-color: ${uiFooterBackgroundColor.value || 'hsl(var(--b1))'};
             --tenant-main-text-color: ${uiMainTextColor.value || 'inherit'};
             --tenant-main-text-size: ${uiMainTextSize.value}px;
             --tenant-card-bg-color: ${uiCardBackgroundColor.value || 'hsl(var(--b1) / 0.86)'};
@@ -749,6 +774,36 @@ const brandStyle = computed(() => {
         .tenant-sidebar-text {
             color: var(--tenant-sidebar-text-color) !important;
             font-size: var(--tenant-sidebar-text-size) !important;
+        }
+
+        .tenant-sidebar-panel {
+            background-color: var(--tenant-sidebar-bg-color) !important;
+        }
+
+        .tenant-subnav-panel {
+            background-color: transparent !important;
+        }
+
+        .tenant-subnav-pill {
+            background-color: var(--tenant-subnav-bg-color) !important;
+            border: 1px solid hsl(var(--b3) / 0.95) !important;
+            color: hsl(var(--bc) / 0.68) !important;
+        }
+
+        .tenant-subnav-pill:hover {
+            color: hsl(var(--bc) / 0.9) !important;
+            border-color: hsl(var(--b3) / 0.8) !important;
+        }
+
+        .tenant-subnav-pill-active {
+            color: hsl(var(--bc)) !important;
+            border-color: ${color} !important;
+            box-shadow: 0 1px 0 hsl(var(--bc) / 0.04), 0 0 0 1px hsl(var(--b1) / 0.35) inset;
+            filter: brightness(0.94);
+        }
+
+        .tenant-footer-panel {
+            background-color: var(--tenant-footer-bg-color) !important;
         }
 
         .tenant-header-title {
@@ -877,17 +932,18 @@ function getContrastColor(hex) {
             <nav 
                 id="tenant-subnav"
                 v-if="activeCategoryWithSubItems"
-                class="bg-base-100 border-b border-base-300 sticky top-16 z-30 px-4 sm:px-6 lg:px-8 overflow-x-auto custom-scrollbar flex-shrink-0"
+                class="tenant-subnav-panel bg-base-100 border-b border-base-300 sticky top-16 z-30 px-4 sm:px-6 lg:px-8 overflow-x-auto custom-scrollbar flex-shrink-0"
             >
-                <div class="flex space-x-8">
+                <div class="flex items-center gap-2 py-2">
                     <Link 
                         v-for="sub in activeCategoryWithSubItems.subItems" 
                         :key="sub.name"
                         :href="route(sub.route, sub.routeParams || {})"
+                        class="tenant-subnav-pill px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap"
                         :class="[
                             isSubItemActive(sub)
-                                ? 'font-black border-primary' 
-                                : 'border-transparent text-base-content/40 hover:text-base-content/70 hover:border-base-300',
+                                ? 'tenant-subnav-pill-active' 
+                                : '',
                             fonts.sidebar
                         ]"
                     >
@@ -937,7 +993,7 @@ function getContrastColor(hex) {
             </main>
 
             <!-- Footer -->
-            <footer id="tenant-footer" class="bg-base-100 border-t border-base-300 py-4 px-8 mt-auto flex items-center justify-between">
+            <footer id="tenant-footer" class="tenant-footer-panel bg-base-100 border-t border-base-300 py-4 px-8 mt-auto flex items-center justify-between">
                 <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/20 tenant-footer-text">{{ footerText }}</p>
                 <span class="text-[10px] font-black tracking-widest text-base-content/30 hover:text-primary transition-colors cursor-default tenant-footer-text" :class="fonts.general">
                     {{ page.props.tenant ? 'DCMS ' : 'App ' }}{{ page.props.config?.version || 'v1.0.0' }}
@@ -948,12 +1004,12 @@ function getContrastColor(hex) {
         <!-- Sidebar -->
         <div class="drawer-side z-[100] overflow-hidden custom-scrollbar">
             <label for="tenant-sidebar" aria-label="close sidebar" class="drawer-overlay"></label>
-            <aside id="tenant-sidebar-panel" class="h-full bg-base-100 flex flex-col shadow-2xl lg:shadow-none transition-all duration-300 overflow-hidden custom-scrollbar" :class="sidebarPanelClasses">
+            <aside id="tenant-sidebar-panel" class="tenant-sidebar-panel h-full bg-base-100 flex flex-col shadow-2xl lg:shadow-none transition-all duration-300 overflow-hidden custom-scrollbar" :class="sidebarPanelClasses">
                 <!-- Sidebar Header -->
-                <div class="flex items-center px-4 h-16 bg-base-100 border-b border-base-300">
+                <div class="flex items-center px-4 h-16 border-b border-base-300">
                     <Link :href="usePage().props.tenant ? route('tenant.dashboard') : route('dashboard')" class="flex items-center min-w-0" :class="isSidebarCollapsed ? 'justify-center w-full' : 'space-x-4'">
-                        <div class="h-10 w-10 rounded-xl overflow-hidden shadow-inner border border-base-300 bg-base-200 flex items-center justify-center p-1.5">
-                            <img v-if="platformLogo" :src="platformLogo" :alt="platformName" class="h-full w-full object-contain" />
+                        <div class="h-10 w-10 rounded-xl overflow-hidden shadow-inner border border-base-300 bg-base-200 flex items-center justify-center p-1">
+                            <img v-if="platformLogo" :src="platformLogo" :alt="platformName" class="h-full w-full object-contain object-center" />
                             <ApplicationLogo v-else class="h-7 w-7 fill-current" :style="{ color: primaryColor }" />
                         </div>
                         <div v-if="!isSidebarCollapsed" class="truncate">
@@ -1028,7 +1084,7 @@ function getContrastColor(hex) {
                 </nav>
 
                 <!-- User Footer -->
-                <div class="p-4 bg-base-200/50 border-t border-base-300">
+                <div class="p-4 border-t border-base-300">
                     <div class="flex items-center gap-3" :class="isSidebarCollapsed ? 'justify-center flex-col' : 'justify-between'">
                         <div class="flex items-center min-w-0" :class="isSidebarCollapsed ? 'justify-center' : 'gap-4'">
                             <div 

@@ -9,10 +9,13 @@ export const brandingState = reactive({
     portal_background_overlay_opacity: 0,
     ui_sidebar_text_color: null,
     ui_sidebar_text_size: 12,
+    ui_sidebar_background_color: null,
+    ui_subnav_background_color: null,
     ui_header_title_color: null,
     ui_header_title_size: 20,
     ui_footer_text_color: null,
     ui_footer_text_size: 10,
+    ui_footer_background_color: null,
     ui_main_text_color: null,
     ui_main_text_size: 14,
     ui_card_background_color: null,
@@ -36,10 +39,13 @@ export const brandingState = reactive({
             this.portal_background_overlay_opacity = Number(props.tenant.portal_background_overlay_opacity ?? 0);
             this.ui_sidebar_text_color = props.tenant.ui_sidebar_text_color || null;
             this.ui_sidebar_text_size = Number(props.tenant.ui_sidebar_text_size ?? 12);
+            this.ui_sidebar_background_color = props.tenant.ui_sidebar_background_color || null;
+            this.ui_subnav_background_color = props.tenant.ui_subnav_background_color || null;
             this.ui_header_title_color = props.tenant.ui_header_title_color || null;
             this.ui_header_title_size = Number(props.tenant.ui_header_title_size ?? 20);
             this.ui_footer_text_color = props.tenant.ui_footer_text_color || null;
             this.ui_footer_text_size = Number(props.tenant.ui_footer_text_size ?? 10);
+            this.ui_footer_background_color = props.tenant.ui_footer_background_color || null;
             this.ui_main_text_color = props.tenant.ui_main_text_color || null;
             this.ui_main_text_size = Number(props.tenant.ui_main_text_size ?? 14);
             this.ui_card_background_color = props.tenant.ui_card_background_color || null;
@@ -79,6 +85,12 @@ export const brandingState = reactive({
         this.ui_sidebar_text_size = Number(Object.prototype.hasOwnProperty.call(tokens, 'ui_sidebar_text_size')
             ? tokens.ui_sidebar_text_size
             : (this.ui_sidebar_text_size ?? 12));
+        this.ui_sidebar_background_color = Object.prototype.hasOwnProperty.call(tokens, 'ui_sidebar_background_color')
+            ? tokens.ui_sidebar_background_color
+            : this.ui_sidebar_background_color;
+        this.ui_subnav_background_color = Object.prototype.hasOwnProperty.call(tokens, 'ui_subnav_background_color')
+            ? tokens.ui_subnav_background_color
+            : this.ui_subnav_background_color;
 
         this.ui_header_title_color = Object.prototype.hasOwnProperty.call(tokens, 'ui_header_title_color')
             ? tokens.ui_header_title_color
@@ -93,6 +105,9 @@ export const brandingState = reactive({
         this.ui_footer_text_size = Number(Object.prototype.hasOwnProperty.call(tokens, 'ui_footer_text_size')
             ? tokens.ui_footer_text_size
             : (this.ui_footer_text_size ?? 10));
+        this.ui_footer_background_color = Object.prototype.hasOwnProperty.call(tokens, 'ui_footer_background_color')
+            ? tokens.ui_footer_background_color
+            : this.ui_footer_background_color;
 
         this.ui_main_text_color = Object.prototype.hasOwnProperty.call(tokens, 'ui_main_text_color')
             ? tokens.ui_main_text_color

@@ -188,10 +188,13 @@ class SettingsController extends Controller
                 'portal_background_overlay_opacity' => (int) ($branding['portal_background_overlay_opacity'] ?? 0),
                 'ui_sidebar_text_color' => $branding['ui_sidebar_text_color'] ?? null,
                 'ui_sidebar_text_size' => (int) ($branding['ui_sidebar_text_size'] ?? 12),
+                'ui_sidebar_background_color' => $branding['ui_sidebar_background_color'] ?? null,
+                'ui_subnav_background_color' => $branding['ui_subnav_background_color'] ?? null,
                 'ui_header_title_color' => $branding['ui_header_title_color'] ?? null,
                 'ui_header_title_size' => (int) ($branding['ui_header_title_size'] ?? 20),
                 'ui_footer_text_color' => $branding['ui_footer_text_color'] ?? null,
                 'ui_footer_text_size' => (int) ($branding['ui_footer_text_size'] ?? 10),
+                'ui_footer_background_color' => $branding['ui_footer_background_color'] ?? null,
                 'ui_main_text_color' => $branding['ui_main_text_color'] ?? null,
                 'ui_main_text_size' => (int) ($branding['ui_main_text_size'] ?? 14),
                 'ui_card_background_color' => $branding['ui_card_background_color'] ?? null,
@@ -395,10 +398,13 @@ class SettingsController extends Controller
             'portal_background_overlay_opacity' => 'nullable|integer|min:0|max:40',
             'ui_sidebar_text_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'ui_sidebar_text_size' => 'nullable|integer|min:10|max:18',
+            'ui_sidebar_background_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'ui_subnav_background_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'ui_header_title_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'ui_header_title_size' => 'nullable|integer|min:16|max:36',
             'ui_footer_text_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'ui_footer_text_size' => 'nullable|integer|min:8|max:18',
+            'ui_footer_background_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'ui_main_text_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'ui_main_text_size' => 'nullable|integer|min:12|max:20',
             'ui_card_background_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -465,6 +471,12 @@ class SettingsController extends Controller
         if (isset($validated['ui_sidebar_text_size'])) {
             TenantBrandingService::set('ui_sidebar_text_size', (int) $validated['ui_sidebar_text_size']);
         }
+        if (isset($validated['ui_sidebar_background_color'])) {
+            TenantBrandingService::set('ui_sidebar_background_color', $validated['ui_sidebar_background_color']);
+        }
+        if (isset($validated['ui_subnav_background_color'])) {
+            TenantBrandingService::set('ui_subnav_background_color', $validated['ui_subnav_background_color']);
+        }
         if (isset($validated['ui_header_title_color'])) {
             TenantBrandingService::set('ui_header_title_color', $validated['ui_header_title_color']);
         }
@@ -476,6 +488,9 @@ class SettingsController extends Controller
         }
         if (isset($validated['ui_footer_text_size'])) {
             TenantBrandingService::set('ui_footer_text_size', (int) $validated['ui_footer_text_size']);
+        }
+        if (isset($validated['ui_footer_background_color'])) {
+            TenantBrandingService::set('ui_footer_background_color', $validated['ui_footer_background_color']);
         }
         if (isset($validated['ui_main_text_color'])) {
             TenantBrandingService::set('ui_main_text_color', $validated['ui_main_text_color']);

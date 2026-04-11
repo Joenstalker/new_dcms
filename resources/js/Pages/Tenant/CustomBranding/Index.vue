@@ -78,10 +78,13 @@ const form = useForm({
     portal_background_overlay_opacity: Number(props.tenant?.portal_background_overlay_opacity ?? 0),
     ui_sidebar_text_color: props.tenant?.ui_sidebar_text_color || '',
     ui_sidebar_text_size: Number(props.tenant?.ui_sidebar_text_size ?? 12),
+    ui_sidebar_background_color: props.tenant?.ui_sidebar_background_color || '',
+    ui_subnav_background_color: props.tenant?.ui_subnav_background_color || '',
     ui_header_title_color: props.tenant?.ui_header_title_color || '',
     ui_header_title_size: Number(props.tenant?.ui_header_title_size ?? 20),
     ui_footer_text_color: props.tenant?.ui_footer_text_color || '',
     ui_footer_text_size: Number(props.tenant?.ui_footer_text_size ?? 10),
+    ui_footer_background_color: props.tenant?.ui_footer_background_color || '',
     ui_main_text_color: props.tenant?.ui_main_text_color || '',
     ui_main_text_size: Number(props.tenant?.ui_main_text_size ?? 14),
     ui_card_background_color: props.tenant?.ui_card_background_color || '',
@@ -130,10 +133,13 @@ watch(() => form.portal_background_overlay_opacity, (newValue) => {
 watch(() => [
     form.ui_sidebar_text_color,
     form.ui_sidebar_text_size,
+    form.ui_sidebar_background_color,
+    form.ui_subnav_background_color,
     form.ui_header_title_color,
     form.ui_header_title_size,
     form.ui_footer_text_color,
     form.ui_footer_text_size,
+    form.ui_footer_background_color,
     form.ui_main_text_color,
     form.ui_main_text_size,
     form.ui_card_background_color,
@@ -143,10 +149,13 @@ watch(() => [
     brandingState.setUiTokens({
         ui_sidebar_text_color: form.ui_sidebar_text_color || null,
         ui_sidebar_text_size: form.ui_sidebar_text_size,
+        ui_sidebar_background_color: form.ui_sidebar_background_color || null,
+        ui_subnav_background_color: form.ui_subnav_background_color || null,
         ui_header_title_color: form.ui_header_title_color || null,
         ui_header_title_size: form.ui_header_title_size,
         ui_footer_text_color: form.ui_footer_text_color || null,
         ui_footer_text_size: form.ui_footer_text_size,
+        ui_footer_background_color: form.ui_footer_background_color || null,
         ui_main_text_color: form.ui_main_text_color || null,
         ui_main_text_size: form.ui_main_text_size,
         ui_card_background_color: form.ui_card_background_color || null,
@@ -227,54 +236,54 @@ watch(() => usePage().props.flash, (flash) => {
         <div class="mt-6">
             <form @submit.prevent class="space-y-6">
                 <!-- Tabs Navigation -->
-                <div class="flex items-center gap-2 mb-6 border-b border-base-300 pb-4 overflow-x-auto no-scrollbar">
+                <div class="tenant-subnav-panel flex items-center gap-2 mb-6 p-1 overflow-x-auto no-scrollbar">
                     <button 
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'branding' }))"
-                        class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'branding' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
+                        class="tenant-subnav-pill px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap border"
+                        :class="currentTab === 'branding' ? 'tenant-subnav-pill-active' : ''"
                     >
-                        🎨 Clinic & Colors
+                        Clinic & Colors
                     </button>
                     <button 
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'hours' }))"
-                        class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'hours' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
+                        class="tenant-subnav-pill px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap border"
+                        :class="currentTab === 'hours' ? 'tenant-subnav-pill-active' : ''"
                     >
-                        🕐 Operating Hours
+                        Operating Hours
                     </button>
                     <button 
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'qr' }))"
-                        class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'qr' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
+                        class="tenant-subnav-pill px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap border"
+                        :class="currentTab === 'qr' ? 'tenant-subnav-pill-active' : ''"
                     >
-                        📱 QR Booking
+                        QR Booking
                     </button>
                     <button 
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'portal' }))"
-                        class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'portal' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
+                        class="tenant-subnav-pill px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap border"
+                        :class="currentTab === 'portal' ? 'tenant-subnav-pill-active' : ''"
                     >
-                        🖌️ Portal Design
+                        Portal Design
                     </button>
                     <button 
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'designer' }))"
-                        class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'designer' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
+                        class="tenant-subnav-pill px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap border"
+                        :class="currentTab === 'designer' ? 'tenant-subnav-pill-active' : ''"
                     >
-                        🚀 Landing Designer
+                        Landing Designer
                     </button>
                     <button 
                         type="button"
                         @click="$inertia.visit(route('settings.branding', { tab: 'features' }))"
-                        class="px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap"
-                        :class="currentTab === 'features' ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10' : 'text-base-content/50 hover:text-base-content/80 hover:bg-base-200'"
+                        class="tenant-subnav-pill px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap border"
+                        :class="currentTab === 'features' ? 'tenant-subnav-pill-active' : ''"
                     >
-                        ⚙️ Features
+                        Features
                     </button>
                 </div>
 

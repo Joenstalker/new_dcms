@@ -463,6 +463,22 @@ const getLogoUrl = (path, field) => {
                             </div>
 
                             <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Sidebar Background Color</span></label>
+                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
+                                    <input type="color" v-model="form.ui_sidebar_background_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
+                                    <input type="text" v-model="form.ui_sidebar_background_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
+                                </div>
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Subnav Background Color</span></label>
+                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
+                                    <input type="color" v-model="form.ui_subnav_background_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
+                                    <input type="text" v-model="form.ui_subnav_background_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
+                                </div>
+                            </div>
+
+                            <div class="form-control">
                                 <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Header Title Color</span></label>
                                 <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
                                     <input type="color" v-model="form.ui_header_title_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
@@ -484,6 +500,14 @@ const getLogoUrl = (path, field) => {
                             <div class="form-control">
                                 <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Footer Text Size (px)</span></label>
                                 <input type="range" min="8" max="18" step="1" v-model.number="form.ui_footer_text_size" class="range range-primary range-sm">
+                            </div>
+
+                            <div class="form-control md:col-span-2">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Footer Background Color</span></label>
+                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
+                                    <input type="color" v-model="form.ui_footer_background_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
+                                    <input type="text" v-model="form.ui_footer_background_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
+                                </div>
                             </div>
 
                             <div class="form-control">

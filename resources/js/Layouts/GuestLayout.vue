@@ -36,8 +36,10 @@ const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. A
 
         <div>
             <Link href="/">
-                <img v-if="platformLogo" :src="platformLogo" :alt="platformName" class="h-20 w-20 rounded-lg object-cover" />
-                <ApplicationLogo v-else class="h-20 w-20 fill-current text-base-content/50" />
+                <div class="h-20 w-20 rounded-lg border border-base-300 bg-base-100 p-2 flex items-center justify-center overflow-hidden">
+                    <img v-if="platformLogo" :src="platformLogo" :alt="platformName" class="h-full w-full object-contain object-center" />
+                    <ApplicationLogo v-else class="h-full w-full fill-current text-base-content/50" />
+                </div>
             </Link>
         </div>
 
