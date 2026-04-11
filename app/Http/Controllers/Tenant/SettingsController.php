@@ -183,6 +183,18 @@ class SettingsController extends Controller
                 'portal_background_type' => $branding['portal_background_type'] ?? 'color',
                 'portal_background_color' => $branding['portal_background_color'] ?? null,
                 'portal_background_image' => $branding['portal_background_image'] ?? null,
+                'portal_background_overlay_opacity' => (int) ($branding['portal_background_overlay_opacity'] ?? 0),
+                'ui_sidebar_text_color' => $branding['ui_sidebar_text_color'] ?? null,
+                'ui_sidebar_text_size' => (int) ($branding['ui_sidebar_text_size'] ?? 12),
+                'ui_header_title_color' => $branding['ui_header_title_color'] ?? null,
+                'ui_header_title_size' => (int) ($branding['ui_header_title_size'] ?? 20),
+                'ui_footer_text_color' => $branding['ui_footer_text_color'] ?? null,
+                'ui_footer_text_size' => (int) ($branding['ui_footer_text_size'] ?? 10),
+                'ui_main_text_color' => $branding['ui_main_text_color'] ?? null,
+                'ui_main_text_size' => (int) ($branding['ui_main_text_size'] ?? 14),
+                'ui_card_background_color' => $branding['ui_card_background_color'] ?? null,
+                'ui_card_border_color' => $branding['ui_card_border_color'] ?? null,
+                'ui_card_text_color' => $branding['ui_card_text_color'] ?? null,
             ]),
             'subscription' => $subscription,
             'is_premium' => $tenant->canCustomizeBranding(),
@@ -376,6 +388,18 @@ class SettingsController extends Controller
             'support_chat_bottom_offset' => 'nullable|integer|min:16|max:160',
             'portal_background_type' => 'nullable|in:color,image',
             'portal_background_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'portal_background_overlay_opacity' => 'nullable|integer|min:0|max:40',
+            'ui_sidebar_text_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'ui_sidebar_text_size' => 'nullable|integer|min:10|max:18',
+            'ui_header_title_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'ui_header_title_size' => 'nullable|integer|min:16|max:36',
+            'ui_footer_text_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'ui_footer_text_size' => 'nullable|integer|min:8|max:18',
+            'ui_main_text_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'ui_main_text_size' => 'nullable|integer|min:12|max:20',
+            'ui_card_background_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'ui_card_border_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'ui_card_text_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ]);
 
         // Store branding settings in tenant database (Primary Source for Visuals)
@@ -421,6 +445,42 @@ class SettingsController extends Controller
         }
         if (isset($validated['portal_background_color'])) {
             TenantBrandingService::set('portal_background_color', $validated['portal_background_color']);
+        }
+        if (isset($validated['portal_background_overlay_opacity'])) {
+            TenantBrandingService::set('portal_background_overlay_opacity', (int) $validated['portal_background_overlay_opacity']);
+        }
+        if (isset($validated['ui_sidebar_text_color'])) {
+            TenantBrandingService::set('ui_sidebar_text_color', $validated['ui_sidebar_text_color']);
+        }
+        if (isset($validated['ui_sidebar_text_size'])) {
+            TenantBrandingService::set('ui_sidebar_text_size', (int) $validated['ui_sidebar_text_size']);
+        }
+        if (isset($validated['ui_header_title_color'])) {
+            TenantBrandingService::set('ui_header_title_color', $validated['ui_header_title_color']);
+        }
+        if (isset($validated['ui_header_title_size'])) {
+            TenantBrandingService::set('ui_header_title_size', (int) $validated['ui_header_title_size']);
+        }
+        if (isset($validated['ui_footer_text_color'])) {
+            TenantBrandingService::set('ui_footer_text_color', $validated['ui_footer_text_color']);
+        }
+        if (isset($validated['ui_footer_text_size'])) {
+            TenantBrandingService::set('ui_footer_text_size', (int) $validated['ui_footer_text_size']);
+        }
+        if (isset($validated['ui_main_text_color'])) {
+            TenantBrandingService::set('ui_main_text_color', $validated['ui_main_text_color']);
+        }
+        if (isset($validated['ui_main_text_size'])) {
+            TenantBrandingService::set('ui_main_text_size', (int) $validated['ui_main_text_size']);
+        }
+        if (isset($validated['ui_card_background_color'])) {
+            TenantBrandingService::set('ui_card_background_color', $validated['ui_card_background_color']);
+        }
+        if (isset($validated['ui_card_border_color'])) {
+            TenantBrandingService::set('ui_card_border_color', $validated['ui_card_border_color']);
+        }
+        if (isset($validated['ui_card_text_color'])) {
+            TenantBrandingService::set('ui_card_text_color', $validated['ui_card_text_color']);
         }
 
         if (isset($validated['hero_title'])) {

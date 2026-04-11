@@ -36,6 +36,20 @@ watch(() => page.props.tenant, (tenant) => {
     brandingState.setPortalBackgroundType(tenant.portal_background_type || 'color');
     brandingState.setPortalBackgroundColor(tenant.portal_background_color || null);
     brandingState.setPortalBackgroundImage(tenant.portal_background_image || null);
+    brandingState.setPortalBackgroundOverlayOpacity(tenant.portal_background_overlay_opacity ?? 0);
+    brandingState.setUiTokens({
+        ui_sidebar_text_color: tenant.ui_sidebar_text_color || null,
+        ui_sidebar_text_size: tenant.ui_sidebar_text_size ?? 12,
+        ui_header_title_color: tenant.ui_header_title_color || null,
+        ui_header_title_size: tenant.ui_header_title_size ?? 20,
+        ui_footer_text_color: tenant.ui_footer_text_color || null,
+        ui_footer_text_size: tenant.ui_footer_text_size ?? 10,
+        ui_main_text_color: tenant.ui_main_text_color || null,
+        ui_main_text_size: tenant.ui_main_text_size ?? 14,
+        ui_card_background_color: tenant.ui_card_background_color || null,
+        ui_card_border_color: tenant.ui_card_border_color || null,
+        ui_card_text_color: tenant.ui_card_text_color || null,
+    });
 }, { deep: true });
 
 const showUpgradeAlert = (featureName) => {
@@ -135,14 +149,89 @@ const portalBackgroundImage = computed(() => {
 });
 const hasImageBackground = computed(() => portalBackgroundType.value === 'image' && !!portalBackgroundImage.value);
 
+const portalBackgroundOverlayOpacity = computed(() => {
+    return shouldApplyBranding.value
+        ? Number(brandingState.portal_background_overlay_opacity ?? page.props.tenant?.portal_background_overlay_opacity ?? 0)
+        : Number(page.props.tenant?.portal_background_overlay_opacity ?? 0);
+});
+
+const uiSidebarTextColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_sidebar_text_color ?? page.props.tenant?.ui_sidebar_text_color ?? null)
+        : (page.props.tenant?.ui_sidebar_text_color ?? null);
+});
+
+const uiSidebarTextSize = computed(() => {
+    return shouldApplyBranding.value
+        ? Number(brandingState.ui_sidebar_text_size ?? page.props.tenant?.ui_sidebar_text_size ?? 12)
+        : Number(page.props.tenant?.ui_sidebar_text_size ?? 12);
+});
+
+const uiHeaderTitleColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_header_title_color ?? page.props.tenant?.ui_header_title_color ?? null)
+        : (page.props.tenant?.ui_header_title_color ?? null);
+});
+
+const uiHeaderTitleSize = computed(() => {
+    return shouldApplyBranding.value
+        ? Number(brandingState.ui_header_title_size ?? page.props.tenant?.ui_header_title_size ?? 20)
+        : Number(page.props.tenant?.ui_header_title_size ?? 20);
+});
+
+const uiFooterTextColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_footer_text_color ?? page.props.tenant?.ui_footer_text_color ?? null)
+        : (page.props.tenant?.ui_footer_text_color ?? null);
+});
+
+const uiFooterTextSize = computed(() => {
+    return shouldApplyBranding.value
+        ? Number(brandingState.ui_footer_text_size ?? page.props.tenant?.ui_footer_text_size ?? 10)
+        : Number(page.props.tenant?.ui_footer_text_size ?? 10);
+});
+
+const uiMainTextColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_main_text_color ?? page.props.tenant?.ui_main_text_color ?? null)
+        : (page.props.tenant?.ui_main_text_color ?? null);
+});
+
+const uiMainTextSize = computed(() => {
+    return shouldApplyBranding.value
+        ? Number(brandingState.ui_main_text_size ?? page.props.tenant?.ui_main_text_size ?? 14)
+        : Number(page.props.tenant?.ui_main_text_size ?? 14);
+});
+
+const uiCardBackgroundColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_card_background_color ?? page.props.tenant?.ui_card_background_color ?? null)
+        : (page.props.tenant?.ui_card_background_color ?? null);
+});
+
+const uiCardBorderColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_card_border_color ?? page.props.tenant?.ui_card_border_color ?? null)
+        : (page.props.tenant?.ui_card_border_color ?? null);
+});
+
+const uiCardTextColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_card_text_color ?? page.props.tenant?.ui_card_text_color ?? null)
+        : (page.props.tenant?.ui_card_text_color ?? null);
+});
+
 const contentBackgroundStyle = computed(() => {
     if (!shouldApplyBranding.value) {
         return {};
     }
 
     if (hasImageBackground.value) {
+        const overlay = Math.min(40, Math.max(0, Number(portalBackgroundOverlayOpacity.value || 0))) / 100;
         return {
-            backgroundImage: `url(${portalBackgroundImage.value})`,
+            backgroundImage: overlay > 0
+                ? `linear-gradient(hsl(var(--b1) / ${overlay}), hsl(var(--b1) / ${overlay})), url(${portalBackgroundImage.value})`
+                : `url(${portalBackgroundImage.value})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
@@ -576,6 +665,17 @@ const brandStyle = computed(() => {
             --p: ${hsl};
             --pf: ${focus};
             --pc: ${content};
+            --tenant-sidebar-text-color: ${uiSidebarTextColor.value || 'inherit'};
+            --tenant-sidebar-text-size: ${uiSidebarTextSize.value}px;
+            --tenant-header-title-color: ${uiHeaderTitleColor.value || 'inherit'};
+            --tenant-header-title-size: ${uiHeaderTitleSize.value}px;
+            --tenant-footer-text-color: ${uiFooterTextColor.value || 'inherit'};
+            --tenant-footer-text-size: ${uiFooterTextSize.value}px;
+            --tenant-main-text-color: ${uiMainTextColor.value || 'inherit'};
+            --tenant-main-text-size: ${uiMainTextSize.value}px;
+            --tenant-card-bg-color: ${uiCardBackgroundColor.value || 'hsl(var(--b1) / 0.86)'};
+            --tenant-card-border-color: ${uiCardBorderColor.value || 'hsl(var(--b3) / 0.95)'};
+            --tenant-card-text-color: ${uiCardTextColor.value || 'hsl(var(--bc))'};
             
             /* Success and other states can also be derived if needed */
             --s: ${hsl}; /* Primary as Secondary fallback */
@@ -598,6 +698,44 @@ const brandStyle = computed(() => {
         
         .bg-primary {
             background-color: ${color} !important;
+        }
+
+        .tenant-sidebar-text {
+            color: var(--tenant-sidebar-text-color) !important;
+            font-size: var(--tenant-sidebar-text-size) !important;
+        }
+
+        .tenant-header-title {
+            color: var(--tenant-header-title-color) !important;
+            font-size: var(--tenant-header-title-size) !important;
+            line-height: 1.2 !important;
+        }
+
+        .tenant-footer-text {
+            color: var(--tenant-footer-text-color) !important;
+            font-size: var(--tenant-footer-text-size) !important;
+        }
+
+        .tenant-main {
+            color: var(--tenant-main-text-color);
+            font-size: var(--tenant-main-text-size);
+        }
+
+        .tenant-main .bg-base-100,
+        .tenant-main .bg-white {
+            background-color: var(--tenant-card-bg-color, transparent) !important;
+            color: var(--tenant-card-text-color) !important;
+        }
+
+        .tenant-main .border-base-300,
+        .tenant-main .border-gray-100,
+        .tenant-main .border-gray-200 {
+            border-color: var(--tenant-card-border-color, currentColor) !important;
+        }
+
+        .tenant-main .bg-base-100,
+        .tenant-main .bg-white {
+            backdrop-filter: saturate(120%) blur(1.5px);
         }
     `;
 });
@@ -676,7 +814,7 @@ function getContrastColor(hex) {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </label>
-                    <div v-if="$slots.header" class="flex-1 min-w-0" :class="fonts.header">
+                    <div v-if="$slots.header" class="flex-1 min-w-0 tenant-header-title" :class="fonts.header">
                         <slot name="header" />
                     </div>
                 </div>
@@ -714,7 +852,7 @@ function getContrastColor(hex) {
             </nav>
 
             <!-- Content Area -->
-            <main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8">
+            <main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8 tenant-main">
                 <div class="max-w-[1600px] mx-auto">
                     <!-- Authorization Guard -->
                     <template v-if="isRouteAuthorized">
@@ -752,8 +890,8 @@ function getContrastColor(hex) {
 
             <!-- Footer -->
             <footer class="bg-base-100 border-t border-base-300 py-4 px-8 mt-auto flex items-center justify-between">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/20">{{ footerText }}</p>
-                <span class="text-[10px] font-black tracking-widest text-base-content/30 hover:text-primary transition-colors cursor-default" :class="fonts.general">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/20 tenant-footer-text">{{ footerText }}</p>
+                <span class="text-[10px] font-black tracking-widest text-base-content/30 hover:text-primary transition-colors cursor-default tenant-footer-text" :class="fonts.general">
                     {{ page.props.tenant ? 'DCMS ' : 'App ' }}{{ page.props.config?.version || 'v1.0.0' }}
                 </span>
             </footer>
@@ -771,7 +909,7 @@ function getContrastColor(hex) {
                             <ApplicationLogo v-else class="h-7 w-7 fill-current" :style="{ color: primaryColor }" />
                         </div>
                         <div class="truncate">
-                            <span class="text-sm font-black tracking-tight text-base-content block truncate" :class="fonts.header">{{ platformName }}</span>
+                            <span class="text-sm font-black tracking-tight text-base-content block truncate tenant-sidebar-text" :class="fonts.header">{{ platformName }}</span>
                             <span class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30 block" :class="fonts.header" :style="{ color: primaryColor }">Professional Portal</span>
                         </div>
                     </Link>
@@ -806,7 +944,7 @@ function getContrastColor(hex) {
                                     stroke="currentColor"
                                     v-html="item.isLocked ? getIcon('lock') : getIcon(item.icon)"
                                 ></svg>
-                                <span class="font-bold text-xs uppercase tracking-wider truncate" :class="fonts.sidebar">{{ item.name }}</span>
+                                <span class="font-bold text-xs uppercase tracking-wider truncate tenant-sidebar-text" :class="fonts.sidebar">{{ item.name }}</span>
                                 <div v-if="isItemActive(item) && !item.isLocked" class="ml-auto w-1.5 h-1.5 rounded-full bg-white flex-shrink-0"></div>
                             </Link>
                         </div>
@@ -830,8 +968,8 @@ function getContrastColor(hex) {
                                 <span v-else>{{ user.name.charAt(0) }}</span>
                             </div>
                             <div class="truncate">
-                                <p class="text-xs font-black truncate text-base-content" :class="fonts.names">{{ user.name }}</p>
-                                <p class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30" :class="fonts.header">{{ roles[0] || 'Staff' }}</p>
+                                <p class="text-xs font-black truncate text-base-content tenant-sidebar-text" :class="fonts.names">{{ user.name }}</p>
+                                <p class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30 tenant-sidebar-text" :class="fonts.header">{{ roles[0] || 'Staff' }}</p>
                             </div>
                         </div>
                         <button 

@@ -384,6 +384,105 @@ const getLogoUrl = (path, field) => {
                                 </button>
                             </div>
                         </div>
+
+                        <div v-if="form.portal_background_type === 'image'" class="form-control">
+                            <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Image Overlay Intensity (%)</span></label>
+                            <div class="flex items-center gap-3 bg-base-100 p-3 rounded-2xl border border-base-300">
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="40"
+                                    step="1"
+                                    v-model.number="form.portal_background_overlay_opacity"
+                                    class="range range-primary range-sm w-full"
+                                >
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="40"
+                                    step="1"
+                                    v-model.number="form.portal_background_overlay_opacity"
+                                    class="input input-sm w-20 text-center font-mono"
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 p-4 rounded-2xl border border-base-300 bg-base-200/40">
+                        <p class="text-[10px] font-black uppercase tracking-widest opacity-60">Portal Theme Lab</p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Sidebar Text Color</span></label>
+                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
+                                    <input type="color" v-model="form.ui_sidebar_text_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
+                                    <input type="text" v-model="form.ui_sidebar_text_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
+                                </div>
+                            </div>
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Sidebar Text Size (px)</span></label>
+                                <input type="range" min="10" max="18" step="1" v-model.number="form.ui_sidebar_text_size" class="range range-primary range-sm">
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Header Title Color</span></label>
+                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
+                                    <input type="color" v-model="form.ui_header_title_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
+                                    <input type="text" v-model="form.ui_header_title_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
+                                </div>
+                            </div>
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Header Title Size (px)</span></label>
+                                <input type="range" min="16" max="36" step="1" v-model.number="form.ui_header_title_size" class="range range-primary range-sm">
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Footer Text Color</span></label>
+                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
+                                    <input type="color" v-model="form.ui_footer_text_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
+                                    <input type="text" v-model="form.ui_footer_text_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
+                                </div>
+                            </div>
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Footer Text Size (px)</span></label>
+                                <input type="range" min="8" max="18" step="1" v-model.number="form.ui_footer_text_size" class="range range-primary range-sm">
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Main Content Text Color</span></label>
+                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
+                                    <input type="color" v-model="form.ui_main_text_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
+                                    <input type="text" v-model="form.ui_main_text_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
+                                </div>
+                            </div>
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Main Content Text Size (px)</span></label>
+                                <input type="range" min="12" max="20" step="1" v-model.number="form.ui_main_text_size" class="range range-primary range-sm">
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Card Background Color</span></label>
+                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
+                                    <input type="color" v-model="form.ui_card_background_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
+                                    <input type="text" v-model="form.ui_card_background_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
+                                </div>
+                            </div>
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Card Border Color</span></label>
+                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
+                                    <input type="color" v-model="form.ui_card_border_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
+                                    <input type="text" v-model="form.ui_card_border_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
+                                </div>
+                            </div>
+
+                            <div class="form-control md:col-span-2">
+                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Card Text Color</span></label>
+                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
+                                    <input type="color" v-model="form.ui_card_text_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
+                                    <input type="text" v-model="form.ui_card_text_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

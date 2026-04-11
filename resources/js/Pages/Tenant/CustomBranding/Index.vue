@@ -73,6 +73,18 @@ const form = useForm({
     support_chat_bottom_offset: Number(props.tenant?.support_chat_bottom_offset ?? page.props.branding?.support_chat_bottom_offset ?? 56),
     portal_background_type: props.tenant?.portal_background_type || 'color',
     portal_background_color: props.tenant?.portal_background_color || '#e5e7eb',
+    portal_background_overlay_opacity: Number(props.tenant?.portal_background_overlay_opacity ?? 0),
+    ui_sidebar_text_color: props.tenant?.ui_sidebar_text_color || '',
+    ui_sidebar_text_size: Number(props.tenant?.ui_sidebar_text_size ?? 12),
+    ui_header_title_color: props.tenant?.ui_header_title_color || '',
+    ui_header_title_size: Number(props.tenant?.ui_header_title_size ?? 20),
+    ui_footer_text_color: props.tenant?.ui_footer_text_color || '',
+    ui_footer_text_size: Number(props.tenant?.ui_footer_text_size ?? 10),
+    ui_main_text_color: props.tenant?.ui_main_text_color || '',
+    ui_main_text_size: Number(props.tenant?.ui_main_text_size ?? 14),
+    ui_card_background_color: props.tenant?.ui_card_background_color || '',
+    ui_card_border_color: props.tenant?.ui_card_border_color || '',
+    ui_card_text_color: props.tenant?.ui_card_text_color || '',
     font_family: initialFontFamily,
     hero_title: props.tenant?.hero_title || '',
     hero_subtitle: props.tenant?.hero_subtitle || '',
@@ -107,6 +119,38 @@ watch(() => form.portal_background_type, (newType) => {
 
 watch(() => form.portal_background_color, (newColor) => {
     brandingState.setPortalBackgroundColor(newColor);
+}, { immediate: true });
+
+watch(() => form.portal_background_overlay_opacity, (newValue) => {
+    brandingState.setPortalBackgroundOverlayOpacity(newValue);
+}, { immediate: true });
+
+watch(() => [
+    form.ui_sidebar_text_color,
+    form.ui_sidebar_text_size,
+    form.ui_header_title_color,
+    form.ui_header_title_size,
+    form.ui_footer_text_color,
+    form.ui_footer_text_size,
+    form.ui_main_text_color,
+    form.ui_main_text_size,
+    form.ui_card_background_color,
+    form.ui_card_border_color,
+    form.ui_card_text_color,
+], () => {
+    brandingState.setUiTokens({
+        ui_sidebar_text_color: form.ui_sidebar_text_color || null,
+        ui_sidebar_text_size: form.ui_sidebar_text_size,
+        ui_header_title_color: form.ui_header_title_color || null,
+        ui_header_title_size: form.ui_header_title_size,
+        ui_footer_text_color: form.ui_footer_text_color || null,
+        ui_footer_text_size: form.ui_footer_text_size,
+        ui_main_text_color: form.ui_main_text_color || null,
+        ui_main_text_size: form.ui_main_text_size,
+        ui_card_background_color: form.ui_card_background_color || null,
+        ui_card_border_color: form.ui_card_border_color || null,
+        ui_card_text_color: form.ui_card_text_color || null,
+    });
 }, { immediate: true });
 
 const isSaving = ref(false);
