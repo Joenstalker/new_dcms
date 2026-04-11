@@ -150,6 +150,15 @@ Route::middleware([
                 }
                 );
 
+                // Medical records (master checklist for booking and clinical intake)
+                Route::middleware(['permission:view medical records'])->group(function () {
+                    Route::get('medical-records', [\App\Http\Controllers\Tenant\MedicalRecordController::class, 'index'])->name('medical-records.index');
+                    Route::post('medical-records', [\App\Http\Controllers\Tenant\MedicalRecordController::class, 'store'])->middleware('permission:create medical records')->name('medical-records.store');
+                    Route::get('medical-records/{medicalRecord}', [\App\Http\Controllers\Tenant\MedicalRecordController::class, 'show'])->name('medical-records.show');
+                    Route::put('medical-records/{medicalRecord}', [\App\Http\Controllers\Tenant\MedicalRecordController::class, 'update'])->middleware('permission:edit medical records')->name('medical-records.update');
+                    Route::delete('medical-records/{medicalRecord}', [\App\Http\Controllers\Tenant\MedicalRecordController::class, 'destroy'])->middleware('permission:delete medical records')->name('medical-records.destroy');
+                });
+
                 // Billing
                 Route::middleware(['permission:view billing'])->group(function () {
                     Route::get('billing', [\App\Http\Controllers\BillingController::class , 'index'])->name('billing.index');

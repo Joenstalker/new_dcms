@@ -32,6 +32,9 @@ class RolesAndPermissionsSeeder extends Seeder
             
             // Treatments
             'view treatments', 'create treatments', 'edit treatments', 'delete treatments',
+
+            // Medical records (booking/checklist templates)
+            'view medical records', 'create medical records', 'edit medical records', 'delete medical records',
             
             // Billing
             'view billing', 'create billing', 'edit billing',

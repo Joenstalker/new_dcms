@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\OnlineBookingCreated;
 use App\Models\Appointment;
+use App\Models\MedicalRecord;
 use App\Models\User;
 use App\Models\Service;
 use App\Models\Patient;
@@ -30,10 +31,14 @@ class BookingController extends Controller
 
         $dentists = User::role('Dentist')->get(['id', 'name', 'email', 'profile_picture']);
         $services = Service::approved()->get(['id', 'name', 'description', 'price']);
+        $medicalRecords = MedicalRecord::active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'description']);
 
         return Inertia::render('Tenant/Booking/PublicBooking', [
             'dentists' => $dentists,
-            'services' => $services
+            'services' => $services,
+            'medicalRecords' => $medicalRecords,
         ]);
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use Database\Seeders\MedicalRecordSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -40,6 +41,10 @@ class SeedTenantDatabase implements ShouldQueue
             // Run the roles and permissions seeder
             $seeder = new RolesAndPermissionsSeeder();
             $seeder->run();
+
+            // Seed default medical checklist items for booking/clinical intake
+            $medicalSeeder = new MedicalRecordSeeder();
+            $medicalSeeder->run();
 
             Log::info('Tenant database seeded successfully', [
                 'tenant_id' => $this->tenant->getTenantKey(),

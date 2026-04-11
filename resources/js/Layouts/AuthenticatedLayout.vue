@@ -291,6 +291,7 @@ const menuCategories = computed(() => {
                     ]
                 },
                 { name: 'Treatment Records', route: 'treatments.index', icon: 'calendar', feature: 'treatments', permissions: ['view treatments'] },
+                { name: 'Medical Records', route: 'medical-records.index', icon: 'users', feature: 'patients', permissions: ['view medical records'] },
             ]
         },
         {

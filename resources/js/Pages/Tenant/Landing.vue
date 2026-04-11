@@ -7,6 +7,10 @@ import LoginModal from '@/Pages/Tenant/Auth/Partials/LoginModal.vue';
 const props = defineProps({
     services: Array,
     dentists: Array,
+    medicalRecords: {
+        type: Array,
+        default: () => [],
+    },
     recaptchaSiteKey: String,
     online_booking_enabled: {
         type: Boolean,
@@ -487,6 +491,7 @@ const hasOperatingHours = computed(() => {
             :tenant="$page.props.tenant || tenant" 
             :services="services" 
             :dentists="dentists"
+            :medical-records="medicalRecords"
             @close="showBookingModal = false" 
         />
 

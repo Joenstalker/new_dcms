@@ -12,6 +12,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    medicalRecords: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const page = usePage();
@@ -51,6 +55,7 @@ onUnmounted(() => {
             :tenant="tenant"
             :services="services"
             :dentists="dentists"
+            :medical-records="medicalRecords"
             @close="handleClose"
         />
     </div>

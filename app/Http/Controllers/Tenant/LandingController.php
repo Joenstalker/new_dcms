@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Models\MedicalRecord;
 use App\Models\Service;
 use App\Models\User;
 use Inertia\Inertia;
@@ -20,10 +21,14 @@ class LandingController extends Controller
         
         // Fetch dentists
         $dentists = User::role('Dentist')->get(['id', 'name', 'email']);
+        $medicalRecords = MedicalRecord::active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'description']);
 
         return Inertia::render('Tenant/Landing', [
             'services' => $services,
             'dentists' => $dentists,
+            'medicalRecords' => $medicalRecords,
             'recaptchaSiteKey' => config('services.recaptcha.site_key'),
             'online_booking_enabled' => $tenant->isOnlineBookingEnabled(),
             'operating_hours' => $tenant->getOperatingHoursWithDefaults(),

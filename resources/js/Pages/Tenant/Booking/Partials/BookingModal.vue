@@ -7,6 +7,10 @@ const props = defineProps({
     tenant: Object,
     services: Array,
     dentists: Array,
+    medicalRecords: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const emit = defineEmits(['close']);
@@ -291,14 +295,22 @@ const chooseService = (serviceName) => {
     serviceSearch.value = serviceName;
 };
 
-const medicalOptions = [
-    'Diabetes',
-    'Heart Condition',
-    'Asthma',
-    'Allergies',
-    'Hypertension',
-    'Epilepsy',
-];
+const medicalOptions = computed(() => {
+    if (Array.isArray(props.medicalRecords) && props.medicalRecords.length > 0) {
+        return props.medicalRecords
+            .map((item) => String(item?.name || '').trim())
+            .filter((name) => name.length > 0);
+    }
+
+    return [
+        'Diabetes',
+        'Heart Condition',
+        'Asthma',
+        'Allergies',
+        'Hypertension',
+        'Epilepsy',
+    ];
+});
 
 const timeSlots = [
     '09:00 AM', '10:00 AM', '11:00 AM',

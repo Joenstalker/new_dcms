@@ -113,6 +113,22 @@ onUnmounted(() => {
         </template>
 
         <div class="mt-8 space-y-6">
+            <div class="flex flex-wrap items-center gap-2">
+                <Link
+                    :href="route('treatments.index')"
+                    class="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border border-base-300 bg-base-100 text-base-content"
+                >
+                    Treatment Records
+                </Link>
+                <Link
+                    v-if="permissions.includes('view medical records')"
+                    :href="route('medical-records.index')"
+                    class="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border border-base-300 bg-base-100 text-base-content/70 hover:text-base-content"
+                >
+                    Medical Records
+                </Link>
+            </div>
+
             <!-- Top Actions -->
             <div class="flex justify-between items-center bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm">
                 <div>
