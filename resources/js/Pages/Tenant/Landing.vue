@@ -30,7 +30,9 @@ const showBookingModal = ref(false);
 const showLoginModal = ref(false);
 const showBookingUnavailableModal = ref(false);
 const onlineBookingEnabled = ref(props.online_booking_enabled ?? true);
+const liveOperatingHours = ref({ ...(props.operating_hours || {}) });
 let bookingChannel = null;
+let brandingChannel = null;
 
 const form = useForm({
     name: '',
@@ -150,13 +152,31 @@ onMounted(() => {
                 showBookingUnavailableModal.value = true;
             }
         });
+
+    brandingChannel = window.Echo.channel(`tenant.${tenant.value.id}.branding`)
+        .listen('.TenantBrandingUpdated', (event) => {
+            if (Object.prototype.hasOwnProperty.call(event, 'online_booking_enabled')) {
+                onlineBookingEnabled.value = Boolean(event.online_booking_enabled);
+            }
+
+            if (event?.operating_hours && typeof event.operating_hours === 'object') {
+                liveOperatingHours.value = { ...event.operating_hours };
+            }
+
+            if (!onlineBookingEnabled.value && showBookingModal.value) {
+                showBookingModal.value = false;
+                showBookingUnavailableModal.value = true;
+            }
+        });
 });
 
 onUnmounted(() => {
     if (window.Echo && tenant.value?.id) {
         window.Echo.leave(`tenant.${tenant.value.id}.booking`);
+        window.Echo.leave(`tenant.${tenant.value.id}.branding`);
     }
     bookingChannel = null;
+    brandingChannel = null;
 });
 
 const formatTime = (time) => {
@@ -174,7 +194,7 @@ const dayLabels = {
 };
 
 const hasOperatingHours = computed(() => {
-    return props.operating_hours && Object.keys(props.operating_hours).length > 0;
+    return liveOperatingHours.value && Object.keys(liveOperatingHours.value).length > 0;
 });
 </script>
 
@@ -464,7 +484,7 @@ const hasOperatingHours = computed(() => {
                         <h4 class="text-lg font-bold mb-4">Operating Hours</h4>
                         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                             <div 
-                                v-for="(schedule, day) in operating_hours" 
+                                v-for="(schedule, day) in liveOperatingHours" 
                                 :key="day"
                                 class="text-center p-3 rounded-xl"
                                 :class="schedule.enabled ? 'bg-gray-800' : 'bg-gray-800/30'"

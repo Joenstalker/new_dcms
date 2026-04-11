@@ -22,6 +22,7 @@ const page = usePage();
 const tenant = computed(() => page.props.tenant || null);
 const showBookingModal = ref(true);
 let bookingChannel = null;
+let brandingChannel = null;
 
 const handleClose = () => {
     showBookingModal.value = false;
@@ -38,13 +39,23 @@ onMounted(() => {
                 router.visit(route('tenant.book.create'), { replace: true, preserveScroll: true });
             }
         });
+
+    brandingChannel = window.Echo.channel(`tenant.${tenant.value.id}.branding`)
+        .listen('.TenantBrandingUpdated', (event) => {
+            if (Object.prototype.hasOwnProperty.call(event, 'online_booking_enabled') && !Boolean(event.online_booking_enabled)) {
+                showBookingModal.value = false;
+                router.visit(route('tenant.book.create'), { replace: true, preserveScroll: true });
+            }
+        });
 });
 
 onUnmounted(() => {
     if (window.Echo && tenant.value?.id) {
         window.Echo.leave(`tenant.${tenant.value.id}.booking`);
+        window.Echo.leave(`tenant.${tenant.value.id}.branding`);
     }
     bookingChannel = null;
+    brandingChannel = null;
 });
 </script>
 

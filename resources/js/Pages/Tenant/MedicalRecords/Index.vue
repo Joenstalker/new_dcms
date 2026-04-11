@@ -117,8 +117,8 @@ const openDeleteModal = (record) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-black tracking-tight text-base-content uppercase">
-                Service & Pricing Management
+            <h2 class="text-xl font-black tracking-tight text-base-content normal-case">
+                Medical Records
             </h2>
         </template>
 

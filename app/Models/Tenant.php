@@ -334,6 +334,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             'patients',
             'billing',
             'treatments',
+            'medical_records',
             'staff',
             'services',
             'reports',

@@ -9,6 +9,7 @@ const props = defineProps({
 const featuresList = [
     { id: 'appointments', name: 'Appointment Management', icon: '📅', description: 'Manage bookings, calendar, and walk-ins.' },
     { id: 'patients', name: 'Patient Records', icon: '👥', description: 'Database of patient profiles and medical history.' },
+    { id: 'medical_records', name: 'Medical Records', icon: '🩺', description: 'Manage medical history checklist templates and records.' },
     { id: 'billing', name: 'Billing & POS', icon: '💳', description: 'Invoices, transactions, and payment management.' },
     { id: 'treatments', name: 'Treatment Records', icon: '🦷', description: 'Clinical notes and procedure tracking.' },
     { id: 'staff', name: 'Staff Management', icon: '👩‍⚕️', description: 'Employee profiles, schedules, and permissions.' },
@@ -71,7 +72,8 @@ const isEnabled = (id) => props.form.enabled_features.includes(id);
                             <input 
                                 type="checkbox" 
                                 :checked="isEnabled(feature.id)" 
-                                class="toggle toggle-primary toggle-sm"
+                                class="toggle toggle-sm"
+                                :class="isEnabled(feature.id) ? 'toggle-success' : 'toggle-error'"
                             >
                         </div>
                         <p class="text-[10px] text-base-content/50 mt-1 truncate">{{ feature.description }}</p>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, provide, onMounted } from 'vue';
+import { ref, computed, provide, onMounted, onUnmounted } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
@@ -16,6 +16,8 @@ const user = computed(() => page.props.auth.user);
 const roles = computed(() => user.value?.roles || []);
 const branding = computed(() => page.props.branding || {});
 const pendingUpdatesCount = computed(() => page.props.pending_updates_count || 0);
+const liveEnabledFeatures = ref([...(page.props.tenant?.enabled_features || [])]);
+let tenantBrandingChannel = null;
 
 // 1. Initial State from Server-Side Computation (Robust)
 // Initialize immediately before first render to prevent flickering
@@ -32,6 +34,8 @@ watch(() => page.props.branding_computed, (newBranding) => {
 
 watch(() => page.props.tenant, (tenant) => {
     if (!tenant) return;
+
+    liveEnabledFeatures.value = [...(tenant.enabled_features || [])];
 
     brandingState.setPortalBackgroundType(tenant.portal_background_type || 'color');
     brandingState.setPortalBackgroundColor(tenant.portal_background_color || null);
@@ -368,6 +372,16 @@ const isSubItemActive = (sub) => {
 onMounted(() => {
     loadSidebarCollapsePreference();
 
+    const tenantId = page.props.tenant?.id;
+    if (window.Echo && tenantId) {
+        tenantBrandingChannel = window.Echo.channel(`tenant.${tenantId}.branding`)
+            .listen('.TenantBrandingUpdated', (event) => {
+                if (Array.isArray(event?.enabled_features)) {
+                    liveEnabledFeatures.value = [...event.enabled_features];
+                }
+            });
+    }
+
     // Only show if user is Owner or Admin
     const canManageUpdates = roles.value.includes('Owner') || user.value?.permissions?.includes('manage system updates');
     
@@ -397,6 +411,15 @@ onMounted(() => {
             }, 1000);
         }
     }
+});
+
+onUnmounted(() => {
+    const tenantId = page.props.tenant?.id;
+    if (window.Echo && tenantId) {
+        window.Echo.leave(`tenant.${tenantId}.branding`);
+    }
+
+    tenantBrandingChannel = null;
 });
 
 // Authorization Guard: Check if the current route is allowed for the user
@@ -497,7 +520,7 @@ const menuCategories = computed(() => {
                     ]
                 },
                 { name: 'Treatment Records', route: 'treatments.index', icon: 'calendar', feature: 'treatments', permissions: ['view treatments'] },
-                { name: 'Medical Records', route: 'medical-records.index', icon: 'users', feature: 'patients', permissions: ['view medical records'] },
+                { name: 'Medical Records', route: 'medical-records.index', icon: 'users', feature: 'medical_records', permissions: ['view medical records'] },
             ]
         },
         {
@@ -596,7 +619,7 @@ const menuCategories = computed(() => {
                     
                     // Clinic Owner Toggle Logic (Hide/Show sidebar features)
                     // Dashboard, Custom Branding, and Settings are always mandatory for the Owner
-                    if (item.feature && !page.props.tenant?.enabled_features?.includes(item.feature)) {
+                    if (item.feature && !liveEnabledFeatures.value.includes(item.feature)) {
                         const mandatoryFeatures = ['dashboard', 'branding', 'settings'];
                         if (!mandatoryFeatures.includes(item.feature)) return false;
                     }

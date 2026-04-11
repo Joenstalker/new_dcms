@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Events\OnlineBookingStatusUpdated;
+use App\Events\TenantBrandingUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Feature;
 use App\Models\Subscription;
@@ -578,6 +579,21 @@ class SettingsController extends Controller
             if ($newOnlineBookingEnabled !== $currentOnlineBookingEnabled) {
                 broadcast(new OnlineBookingStatusUpdated((string) $tenant->getTenantKey(), $newOnlineBookingEnabled));
             }
+        }
+
+        $shouldBroadcastBranding = isset($validated['enabled_features'])
+            || isset($validated['operating_hours'])
+            || array_key_exists('online_booking_enabled', $validated);
+
+        if ($shouldBroadcastBranding) {
+            $latestBranding = TenantBrandingService::getAll();
+            $resolvedEnabledFeatures = $tenant->getResolvedEnabledFeaturesForUi($latestBranding);
+
+            broadcast(new TenantBrandingUpdated((string) $tenant->getTenantKey(), [
+                'enabled_features' => $resolvedEnabledFeatures,
+                'operating_hours' => $latestBranding['operating_hours'] ?? $tenant->getOperatingHoursWithDefaults(),
+                'online_booking_enabled' => (bool) ($latestBranding['online_booking_enabled'] ?? $tenant->isOnlineBookingEnabled()),
+            ]));
         }
 
         return redirect()->back()->with('success', 'Clinic settings updated successfully.');
