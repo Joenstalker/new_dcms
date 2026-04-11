@@ -11,12 +11,6 @@ const canAccessSupportChat = computed(() => {
 
     return roles.includes('Owner') || permissions.includes('access support chat');
 });
-const canConfigureSupportChatPosition = computed(() => {
-    const permissions = page.props.auth?.user?.permissions || [];
-    const roles = page.props.auth?.user?.roles || [];
-
-    return roles.includes('Owner') || permissions.includes('manage clinic branding');
-});
 
 const clampOffset = (value, fallback = 56) => {
     if (!Number.isFinite(value)) {
@@ -54,10 +48,10 @@ const dragState = ref({
     moved: false,
 });
 const suppressNextToggle = ref(false);
-let persistTimeout = null;
 let pollInterval = null;
 let currentEchoChannel = null;
 let bodyClassObserver = null;
+const runtimePositionStoreKey = '__tenantSupportChatBubblePosition';
 
 const bubbleLayerStyle = computed(() => ({
     zIndex: isModalOpen.value ? 120 : 9999,
@@ -103,29 +97,29 @@ const clampOffsetsToViewport = (rightOffset, bottomOffset) => {
     };
 };
 
-const persistSupportChatPosition = async () => {
-    if (!canConfigureSupportChatPosition.value) {
+const saveRuntimeBubblePosition = () => {
+    if (typeof window === 'undefined') {
         return;
     }
 
-    try {
-        await axios.post(route('settings.support-chat-position.update'), {
-            support_chat_bottom_offset: currentBottomOffset.value,
-            support_chat_right_offset: currentRightOffset.value,
-        });
-    } catch (error) {
-        console.error('Failed to persist support chat position', error);
-    }
+    window[runtimePositionStoreKey] = {
+        right: currentRightOffset.value,
+        bottom: currentBottomOffset.value,
+    };
 };
 
-const queuePositionPersist = () => {
-    if (persistTimeout) {
-        clearTimeout(persistTimeout);
+const restoreRuntimeBubblePosition = () => {
+    if (typeof window === 'undefined') {
+        return;
     }
 
-    persistTimeout = setTimeout(() => {
-        persistSupportChatPosition();
-    }, 250);
+    const runtimePosition = window[runtimePositionStoreKey];
+    if (!runtimePosition || typeof runtimePosition !== 'object') {
+        return;
+    }
+
+    currentRightOffset.value = clampOffset(runtimePosition.right, bubbleRightOffset.value);
+    currentBottomOffset.value = clampOffset(runtimePosition.bottom, bubbleBottomOffset.value);
 };
 
 const onBubblePointerMove = (event) => {
@@ -173,7 +167,7 @@ const onBubblePointerUp = () => {
 
     if (dragState.value.moved) {
         suppressNextToggle.value = true;
-        queuePositionPersist();
+        saveRuntimeBubblePosition();
         setTimeout(() => {
             suppressNextToggle.value = false;
         }, 180);
@@ -190,7 +184,7 @@ const onBubblePointerUp = () => {
 };
 
 const startBubbleDrag = (event) => {
-    if (isModalOpen.value || isOpen.value || !canConfigureSupportChatPosition.value || !bubbleAnchor.value) {
+    if (isModalOpen.value || isOpen.value || !canAccessSupportChat.value || !bubbleAnchor.value) {
         return;
     }
 
@@ -234,6 +228,7 @@ watch([bubbleBottomOffset, bubbleRightOffset], ([bottom, right]) => {
 
     currentBottomOffset.value = bottom;
     currentRightOffset.value = right;
+    restoreRuntimeBubblePosition();
     clampCurrentBubblePosition();
 }, { immediate: true });
 
@@ -484,6 +479,7 @@ const getMessageAvatar = (msg) => {
 
 onMounted(() => {
     syncModalState();
+    restoreRuntimeBubblePosition();
     clampCurrentBubblePosition();
 
     if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
@@ -512,11 +508,6 @@ onUnmounted(() => {
 
     if (typeof window !== 'undefined') {
         window.removeEventListener('resize', clampCurrentBubblePosition);
-    }
-
-    if (persistTimeout) {
-        clearTimeout(persistTimeout);
-        persistTimeout = null;
     }
 
     onBubblePointerUp();
@@ -551,7 +542,7 @@ onUnmounted(() => {
             @touchstart="startBubbleDrag"
             @click="handleToggle"
             class="h-14 w-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-primary/40"
-            :class="canConfigureSupportChatPosition && !isOpen ? 'cursor-grab active:cursor-grabbing' : ''"
+            :class="!isOpen ? 'cursor-grab active:cursor-grabbing' : ''"
             :style="{ backgroundColor: primaryColor }"
         >
             <!-- Chat Icon -->
