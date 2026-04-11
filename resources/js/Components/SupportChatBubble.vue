@@ -11,14 +11,25 @@ const canAccessSupportChat = computed(() => {
 
     return roles.includes('Owner') || permissions.includes('access support chat');
 });
-const bubbleBottomOffset = computed(() => {
-    const raw = Number(page.props.branding?.support_chat_bottom_offset ?? 56);
-    if (!Number.isFinite(raw)) {
-        return 56;
+const canConfigureSupportChatPosition = computed(() => {
+    const permissions = page.props.auth?.user?.permissions || [];
+    const roles = page.props.auth?.user?.roles || [];
+
+    return roles.includes('Owner') || permissions.includes('manage clinic branding');
+});
+
+const clampOffset = (value, fallback = 56) => {
+    if (!Number.isFinite(value)) {
+        return fallback;
     }
 
-    return Math.min(160, Math.max(16, Math.round(raw)));
-});
+    return Math.min(720, Math.max(16, Math.round(value)));
+};
+
+const bubbleBottomOffset = computed(() => clampOffset(page.props.branding?.support_chat_bottom_offset, 56));
+const bubbleRightOffset = computed(() => clampOffset(page.props.branding?.support_chat_right_offset, 24));
+const currentBottomOffset = ref(bubbleBottomOffset.value);
+const currentRightOffset = ref(bubbleRightOffset.value);
 
 const isOpen = ref(false);
 const activeView = ref('list'); // 'list' | 'chat' | 'new'
@@ -32,6 +43,18 @@ const chatContainer = ref(null);
 const fileInput = ref(null);
 const unreadCount = ref(0);
 const isModalOpen = ref(false);
+const bubbleAnchor = ref(null);
+const isDraggingBubble = ref(false);
+const dragState = ref({
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    offsetX: 0,
+    offsetY: 0,
+    moved: false,
+});
+const suppressNextToggle = ref(false);
+let persistTimeout = null;
 let pollInterval = null;
 let currentEchoChannel = null;
 let bodyClassObserver = null;
@@ -49,6 +72,170 @@ const syncModalState = () => {
 
     isModalOpen.value = document.body.classList.contains('has-open-modal');
 };
+
+const getPointerPosition = (event) => {
+    if (event?.touches?.[0]) {
+        return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    }
+
+    if (event?.changedTouches?.[0]) {
+        return { x: event.changedTouches[0].clientX, y: event.changedTouches[0].clientY };
+    }
+
+    return { x: event.clientX, y: event.clientY };
+};
+
+const clampOffsetsToViewport = (rightOffset, bottomOffset) => {
+    if (typeof window === 'undefined' || !bubbleAnchor.value) {
+        return {
+            right: clampOffset(rightOffset, 24),
+            bottom: clampOffset(bottomOffset, 56),
+        };
+    }
+
+    const rect = bubbleAnchor.value.getBoundingClientRect();
+    const maxRight = Math.max(16, Math.round(window.innerWidth - rect.width - 8));
+    const maxBottom = Math.max(16, Math.round(window.innerHeight - rect.height - 8));
+
+    return {
+        right: Math.min(maxRight, Math.max(16, Math.round(rightOffset))),
+        bottom: Math.min(maxBottom, Math.max(16, Math.round(bottomOffset))),
+    };
+};
+
+const persistSupportChatPosition = async () => {
+    if (!canConfigureSupportChatPosition.value) {
+        return;
+    }
+
+    try {
+        await axios.post(route('settings.support-chat-position.update'), {
+            support_chat_bottom_offset: currentBottomOffset.value,
+            support_chat_right_offset: currentRightOffset.value,
+        });
+    } catch (error) {
+        console.error('Failed to persist support chat position', error);
+    }
+};
+
+const queuePositionPersist = () => {
+    if (persistTimeout) {
+        clearTimeout(persistTimeout);
+    }
+
+    persistTimeout = setTimeout(() => {
+        persistSupportChatPosition();
+    }, 250);
+};
+
+const onBubblePointerMove = (event) => {
+    if (!isDraggingBubble.value || !bubbleAnchor.value || isOpen.value) {
+        return;
+    }
+
+    event.preventDefault();
+    const point = getPointerPosition(event);
+    const rect = bubbleAnchor.value.getBoundingClientRect();
+    const nextLeft = point.x - dragState.value.offsetX;
+    const nextTop = point.y - dragState.value.offsetY;
+
+    const minLeft = 8;
+    const minTop = 8;
+    const maxLeft = Math.max(minLeft, window.innerWidth - rect.width - 8);
+    const maxTop = Math.max(minTop, window.innerHeight - rect.height - 8);
+
+    const clampedLeft = Math.min(maxLeft, Math.max(minLeft, nextLeft));
+    const clampedTop = Math.min(maxTop, Math.max(minTop, nextTop));
+    const nextRight = Math.round(window.innerWidth - (clampedLeft + rect.width));
+    const nextBottom = Math.round(window.innerHeight - (clampedTop + rect.height));
+
+    const clampedOffsets = clampOffsetsToViewport(nextRight, nextBottom);
+    currentRightOffset.value = clampedOffsets.right;
+    currentBottomOffset.value = clampedOffsets.bottom;
+
+    if (!dragState.value.moved) {
+        const deltaX = Math.abs(point.x - dragState.value.startX);
+        const deltaY = Math.abs(point.y - dragState.value.startY);
+        dragState.value.moved = deltaX > 4 || deltaY > 4;
+    }
+};
+
+const onBubblePointerUp = () => {
+    if (!isDraggingBubble.value) {
+        return;
+    }
+
+    isDraggingBubble.value = false;
+    window.removeEventListener('mousemove', onBubblePointerMove);
+    window.removeEventListener('mouseup', onBubblePointerUp);
+    window.removeEventListener('touchmove', onBubblePointerMove);
+    window.removeEventListener('touchend', onBubblePointerUp);
+
+    if (dragState.value.moved) {
+        suppressNextToggle.value = true;
+        queuePositionPersist();
+        setTimeout(() => {
+            suppressNextToggle.value = false;
+        }, 180);
+    }
+
+    dragState.value = {
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        offsetX: 0,
+        offsetY: 0,
+        moved: false,
+    };
+};
+
+const startBubbleDrag = (event) => {
+    if (isModalOpen.value || isOpen.value || !canConfigureSupportChatPosition.value || !bubbleAnchor.value) {
+        return;
+    }
+
+    const point = getPointerPosition(event);
+    const rect = bubbleAnchor.value.getBoundingClientRect();
+
+    isDraggingBubble.value = true;
+    dragState.value = {
+        pointerId: event.pointerId ?? null,
+        startX: point.x,
+        startY: point.y,
+        offsetX: point.x - rect.left,
+        offsetY: point.y - rect.top,
+        moved: false,
+    };
+
+    window.addEventListener('mousemove', onBubblePointerMove, { passive: false });
+    window.addEventListener('mouseup', onBubblePointerUp);
+    window.addEventListener('touchmove', onBubblePointerMove, { passive: false });
+    window.addEventListener('touchend', onBubblePointerUp);
+};
+
+const handleToggle = () => {
+    if (suppressNextToggle.value) {
+        return;
+    }
+
+    toggle();
+};
+
+const clampCurrentBubblePosition = () => {
+    const clamped = clampOffsetsToViewport(currentRightOffset.value, currentBottomOffset.value);
+    currentRightOffset.value = clamped.right;
+    currentBottomOffset.value = clamped.bottom;
+};
+
+watch([bubbleBottomOffset, bubbleRightOffset], ([bottom, right]) => {
+    if (isDraggingBubble.value) {
+        return;
+    }
+
+    currentBottomOffset.value = bottom;
+    currentRightOffset.value = right;
+    clampCurrentBubblePosition();
+}, { immediate: true });
 
 watch(activeTicket, (newTicket, oldTicket) => {
     if (window.Echo) {
@@ -297,6 +484,7 @@ const getMessageAvatar = (msg) => {
 
 onMounted(() => {
     syncModalState();
+    clampCurrentBubblePosition();
 
     if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
         bodyClassObserver = new MutationObserver(() => {
@@ -309,6 +497,10 @@ onMounted(() => {
         });
     }
 
+    if (typeof window !== 'undefined') {
+        window.addEventListener('resize', clampCurrentBubblePosition);
+    }
+
     // Polling removed in favor of real-time WebSockets (Echo)
 });
 
@@ -318,6 +510,17 @@ onUnmounted(() => {
         bodyClassObserver = null;
     }
 
+    if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', clampCurrentBubblePosition);
+    }
+
+    if (persistTimeout) {
+        clearTimeout(persistTimeout);
+        persistTimeout = null;
+    }
+
+    onBubblePointerUp();
+
     // Cleanup Echo listeners is handled by the activeTicket watcher
 });
 </script>
@@ -325,7 +528,15 @@ onUnmounted(() => {
 <template>
     <div v-if="canAccessSupportChat">
     <!-- Floating Chat Bubble -->
-    <div class="fixed right-6" :style="{ bottom: `${bubbleBottomOffset}px`, ...bubbleLayerStyle }">
+    <div
+        ref="bubbleAnchor"
+        class="fixed"
+        :style="{
+            right: `${currentRightOffset}px`,
+            bottom: `${currentBottomOffset}px`,
+            ...bubbleLayerStyle,
+        }"
+    >
         <!-- Unread Badge -->
         <div 
             v-if="unreadCount > 0 && !isOpen"
@@ -336,8 +547,11 @@ onUnmounted(() => {
 
         <!-- Chat Bubble Button -->
         <button
-            @click="toggle"
+            @mousedown="startBubbleDrag"
+            @touchstart="startBubbleDrag"
+            @click="handleToggle"
             class="h-14 w-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-primary/40"
+            :class="canConfigureSupportChatPosition && !isOpen ? 'cursor-grab active:cursor-grabbing' : ''"
             :style="{ backgroundColor: primaryColor }"
         >
             <!-- Chat Icon -->

@@ -71,6 +71,7 @@ const form = useForm({
     address: props.tenant?.clinic_address || props.tenant?.street || '',
     branding_color: props.tenant?.branding_color || page.props.branding?.primary_color || '#0ea5e9',
     support_chat_bottom_offset: Number(props.tenant?.support_chat_bottom_offset ?? page.props.branding?.support_chat_bottom_offset ?? 56),
+    support_chat_right_offset: Number(props.tenant?.support_chat_right_offset ?? page.props.branding?.support_chat_right_offset ?? 24),
     portal_background_type: props.tenant?.portal_background_type || 'color',
     portal_background_color: props.tenant?.portal_background_color || '#e5e7eb',
     portal_background_overlay_opacity: Number(props.tenant?.portal_background_overlay_opacity ?? 0),

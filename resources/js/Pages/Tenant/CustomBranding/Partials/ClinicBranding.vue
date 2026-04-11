@@ -345,6 +345,33 @@ const getLogoUrl = (path, field) => {
                         </p>
                     </div>
 
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Support Chat Right Offset (px)</span>
+                        </label>
+                        <div class="flex items-center gap-3 bg-base-200 p-3 rounded-2xl border border-base-300">
+                            <input
+                                type="range"
+                                min="16"
+                                max="720"
+                                step="1"
+                                v-model.number="form.support_chat_right_offset"
+                                class="range range-primary range-sm w-full"
+                            >
+                            <input
+                                type="number"
+                                min="16"
+                                max="720"
+                                step="1"
+                                v-model.number="form.support_chat_right_offset"
+                                class="input input-sm w-20 text-center font-mono"
+                            >
+                        </div>
+                        <p class="text-[10px] text-base-content/50 mt-1">
+                            Controls horizontal position. You can also drag the support bubble directly.
+                        </p>
+                    </div>
+
                     <div class="space-y-4 p-4 rounded-2xl border border-base-300 bg-base-200/40">
                         <div class="form-control">
                             <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Portal Background Type</span></label>

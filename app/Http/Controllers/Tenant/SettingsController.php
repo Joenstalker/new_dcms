@@ -180,6 +180,7 @@ class SettingsController extends Controller
                 'clinic_phone' => $branding['clinic_phone'] ?? $tenant->phone,
                 'clinic_address' => $branding['clinic_address'] ?? $tenant->address,
                 'support_chat_bottom_offset' => (int) ($branding['support_chat_bottom_offset'] ?? 56),
+                'support_chat_right_offset' => (int) ($branding['support_chat_right_offset'] ?? 24),
                 'portal_background_type' => $branding['portal_background_type'] ?? 'color',
                 'portal_background_color' => $branding['portal_background_color'] ?? null,
                 'portal_background_image' => $branding['portal_background_image'] ?? null,
@@ -385,7 +386,8 @@ class SettingsController extends Controller
             'portal_config' => 'nullable|array',
             'operating_hours' => 'nullable|array',
             'online_booking_enabled' => 'nullable|boolean',
-            'support_chat_bottom_offset' => 'nullable|integer|min:16|max:160',
+            'support_chat_bottom_offset' => 'nullable|integer|min:16|max:720',
+            'support_chat_right_offset' => 'nullable|integer|min:16|max:720',
             'portal_background_type' => 'nullable|in:color,image',
             'portal_background_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'portal_background_overlay_opacity' => 'nullable|integer|min:0|max:40',
@@ -439,6 +441,9 @@ class SettingsController extends Controller
         }
         if (isset($validated['support_chat_bottom_offset'])) {
             TenantBrandingService::set('support_chat_bottom_offset', $validated['support_chat_bottom_offset']);
+        }
+        if (isset($validated['support_chat_right_offset'])) {
+            TenantBrandingService::set('support_chat_right_offset', $validated['support_chat_right_offset']);
         }
         if (isset($validated['portal_background_type'])) {
             TenantBrandingService::set('portal_background_type', $validated['portal_background_type']);
@@ -556,6 +561,26 @@ class SettingsController extends Controller
         }
 
         return redirect()->back()->with('success', 'Clinic settings updated successfully.');
+    }
+
+    /**
+     * Persist draggable support chat bubble position.
+     */
+    public function updateSupportChatPosition(Request $request)
+    {
+        $validated = $request->validate([
+            'support_chat_bottom_offset' => 'required|integer|min:16|max:720',
+            'support_chat_right_offset' => 'required|integer|min:16|max:720',
+        ]);
+
+        TenantBrandingService::set('support_chat_bottom_offset', (int) $validated['support_chat_bottom_offset']);
+        TenantBrandingService::set('support_chat_right_offset', (int) $validated['support_chat_right_offset']);
+
+        return response()->json([
+            'success' => true,
+            'support_chat_bottom_offset' => (int) $validated['support_chat_bottom_offset'],
+            'support_chat_right_offset' => (int) $validated['support_chat_right_offset'],
+        ]);
     }
 
     /**

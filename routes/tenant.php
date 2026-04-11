@@ -266,6 +266,8 @@ Route::middleware([
                         ->name('settings.branding');
                     Route::post('settings', [\App\Http\Controllers\Tenant\SettingsController::class , 'update'])
                         ->name('settings.update');
+                    Route::post('settings/support-chat-position', [\App\Http\Controllers\Tenant\SettingsController::class , 'updateSupportChatPosition'])
+                        ->name('settings.support-chat-position.update');
                     Route::post('settings/logo', [\App\Http\Controllers\Tenant\SettingsController::class , 'uploadLogo'])
                         ->name('settings.logo.upload');
                     Route::delete('settings/logo', [\App\Http\Controllers\Tenant\SettingsController::class , 'deleteLogo'])
