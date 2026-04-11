@@ -70,6 +70,7 @@ const form = useForm({
     phone: props.tenant?.clinic_phone || props.tenant?.phone || '',
     address: props.tenant?.clinic_address || props.tenant?.street || '',
     branding_color: props.tenant?.branding_color || page.props.branding?.primary_color || '#0ea5e9',
+    sidebar_position: props.tenant?.sidebar_position || page.props.branding?.sidebar_position || 'left',
     support_chat_bottom_offset: Number(props.tenant?.support_chat_bottom_offset ?? page.props.branding?.support_chat_bottom_offset ?? 56),
     support_chat_right_offset: Number(props.tenant?.support_chat_right_offset ?? page.props.branding?.support_chat_right_offset ?? 24),
     portal_background_type: props.tenant?.portal_background_type || 'color',

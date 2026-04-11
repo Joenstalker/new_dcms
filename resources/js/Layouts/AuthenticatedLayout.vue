@@ -271,6 +271,50 @@ const platformLogo = computed(() => {
 const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. All rights reserved.');
 
 const isSidebarOpen = ref(false);
+const isSidebarCollapsed = ref(false);
+
+const sidebarCollapseStorageKey = computed(() => {
+    const tenantKey = page.props.tenant?.id || page.props.tenant?.tenant_id || 'default';
+    return `tenant-sidebar-collapsed:${tenantKey}:${sidebarPosition.value}`;
+});
+
+const loadSidebarCollapsePreference = () => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    const saved = window.localStorage.getItem(sidebarCollapseStorageKey.value);
+    isSidebarCollapsed.value = saved === '1';
+};
+
+const toggleSidebarCollapsed = () => {
+    isSidebarCollapsed.value = !isSidebarCollapsed.value;
+};
+
+const sidebarPanelClasses = computed(() => {
+    return [
+        isSidebarCollapsed.value ? 'w-72 lg:w-20' : 'w-72 lg:w-72',
+        isRightSidebar.value ? 'border-l border-r-0' : 'border-r border-l-0',
+    ];
+});
+
+const collapsedTooltipClasses = computed(() => {
+    return isRightSidebar.value
+        ? 'right-full mr-2'
+        : 'left-full ml-2';
+});
+
+watch(sidebarCollapseStorageKey, () => {
+    loadSidebarCollapsePreference();
+}, { immediate: true });
+
+watch(isSidebarCollapsed, (collapsed) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    window.localStorage.setItem(sidebarCollapseStorageKey.value, collapsed ? '1' : '0');
+});
 
 const dashboardRoute = computed(() => usePage().props.tenant ? 'tenant.dashboard' : 'dashboard');
 
@@ -301,6 +345,8 @@ const isSubItemActive = (sub) => {
 
 // onMounted to check for updates and show toast
 onMounted(() => {
+    loadSidebarCollapsePreference();
+
     // Only show if user is Owner or Admin
     const canManageUpdates = roles.value.includes('Owner') || user.value?.permissions?.includes('manage system updates');
     
@@ -802,6 +848,7 @@ function getContrastColor(hex) {
         >
             <!-- Top Navigation for Mobile & Title -->
             <header 
+                id="tenant-top-header"
                 class="bg-base-100 border-b border-base-300 sticky top-0 z-40 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0 shadow-sm"
                 :style="{ borderTop: `4px solid ${primaryColor}` }"
             >
@@ -828,6 +875,7 @@ function getContrastColor(hex) {
 
             <!-- Tab Navigation (Dynamic Sub-menus) -->
             <nav 
+                id="tenant-subnav"
                 v-if="activeCategoryWithSubItems"
                 class="bg-base-100 border-b border-base-300 sticky top-16 z-30 px-4 sm:px-6 lg:px-8 overflow-x-auto custom-scrollbar flex-shrink-0"
             >
@@ -889,7 +937,7 @@ function getContrastColor(hex) {
             </main>
 
             <!-- Footer -->
-            <footer class="bg-base-100 border-t border-base-300 py-4 px-8 mt-auto flex items-center justify-between">
+            <footer id="tenant-footer" class="bg-base-100 border-t border-base-300 py-4 px-8 mt-auto flex items-center justify-between">
                 <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/20 tenant-footer-text">{{ footerText }}</p>
                 <span class="text-[10px] font-black tracking-widest text-base-content/30 hover:text-primary transition-colors cursor-default tenant-footer-text" :class="fonts.general">
                     {{ page.props.tenant ? 'DCMS ' : 'App ' }}{{ page.props.config?.version || 'v1.0.0' }}
@@ -900,19 +948,35 @@ function getContrastColor(hex) {
         <!-- Sidebar -->
         <div class="drawer-side z-[100] overflow-hidden custom-scrollbar">
             <label for="tenant-sidebar" aria-label="close sidebar" class="drawer-overlay"></label>
-            <aside class="w-72 h-full bg-base-100 border-r border-base-300 flex flex-col shadow-2xl lg:shadow-none transition-colors duration-300 overflow-hidden custom-scrollbar">
+            <aside id="tenant-sidebar-panel" class="h-full bg-base-100 flex flex-col shadow-2xl lg:shadow-none transition-all duration-300 overflow-hidden custom-scrollbar" :class="sidebarPanelClasses">
                 <!-- Sidebar Header -->
-                <div class="flex items-center px-6 h-16 bg-base-100 border-b border-base-300">
-                    <Link :href="usePage().props.tenant ? route('tenant.dashboard') : route('dashboard')" class="flex items-center space-x-4">
+                <div class="flex items-center px-4 h-16 bg-base-100 border-b border-base-300">
+                    <Link :href="usePage().props.tenant ? route('tenant.dashboard') : route('dashboard')" class="flex items-center min-w-0" :class="isSidebarCollapsed ? 'justify-center w-full' : 'space-x-4'">
                         <div class="h-10 w-10 rounded-xl overflow-hidden shadow-inner border border-base-300 bg-base-200 flex items-center justify-center p-1.5">
                             <img v-if="platformLogo" :src="platformLogo" :alt="platformName" class="h-full w-full object-contain" />
                             <ApplicationLogo v-else class="h-7 w-7 fill-current" :style="{ color: primaryColor }" />
                         </div>
-                        <div class="truncate">
+                        <div v-if="!isSidebarCollapsed" class="truncate">
                             <span class="text-sm font-black tracking-tight text-base-content block truncate tenant-sidebar-text" :class="fonts.header">{{ platformName }}</span>
                             <span class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30 block" :class="fonts.header" :style="{ color: primaryColor }">Professional Portal</span>
                         </div>
                     </Link>
+                    <button
+                        type="button"
+                        class="btn btn-ghost btn-xs btn-square hidden lg:inline-flex ml-2"
+                        @click="toggleSidebarCollapsed"
+                        :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                :d="isSidebarCollapsed
+                                    ? (isRightSidebar ? 'm10.5 19.5 7.5-7.5-7.5-7.5' : 'M13.5 4.5 6 12l7.5 7.5')
+                                    : (isRightSidebar ? 'M13.5 4.5 6 12l7.5 7.5' : 'm10.5 19.5 7.5-7.5-7.5-7.5')"
+                            />
+                        </svg>
+                    </button>
                 </div>
 
                 <!-- Navigation Categories -->
@@ -930,22 +994,34 @@ function getContrastColor(hex) {
                                     isItemActive(item) && !item.isLocked
                                         ? 'bg-primary' 
                                         : 'hover:bg-base-200/80',
-                                    item.isLocked ? 'opacity-50' : ''
+                                    item.isLocked ? 'opacity-50' : '',
+                                    isSidebarCollapsed ? 'justify-center px-3 relative group' : 'px-5'
                                 ]"
-                                class="flex items-center px-5 py-2.5 rounded-xl transition-colors duration-200"
+                                class="flex items-center py-2.5 rounded-xl transition-colors duration-200"
                                 :style="isItemActive(item) && !item.isLocked ? { backgroundColor: primaryColor, color: primaryTextColor } : {}"
+                                :title="item.name"
                             >
                                 <svg 
-                                    class="h-5 w-5 mr-4 flex-shrink-0" 
-                                    :class="[isItemActive(item) && !item.isLocked ? 'text-white' : 'opacity-40']"
+                                    class="h-5 w-5 flex-shrink-0" 
+                                    :class="[
+                                        isSidebarCollapsed ? '' : 'mr-4',
+                                        isItemActive(item) && !item.isLocked ? 'text-white' : 'opacity-40'
+                                    ]"
                                     fill="none" 
                                     viewBox="0 0 24 24" 
                                     stroke-width="2" 
                                     stroke="currentColor"
                                     v-html="item.isLocked ? getIcon('lock') : getIcon(item.icon)"
                                 ></svg>
-                                <span class="font-bold text-xs uppercase tracking-wider truncate tenant-sidebar-text" :class="fonts.sidebar">{{ item.name }}</span>
-                                <div v-if="isItemActive(item) && !item.isLocked" class="ml-auto w-1.5 h-1.5 rounded-full bg-white flex-shrink-0"></div>
+                                <span v-if="!isSidebarCollapsed" class="font-bold text-xs uppercase tracking-wider truncate tenant-sidebar-text" :class="fonts.sidebar">{{ item.name }}</span>
+                                <div v-if="!isSidebarCollapsed && isItemActive(item) && !item.isLocked" class="ml-auto w-1.5 h-1.5 rounded-full bg-white flex-shrink-0"></div>
+                                <span
+                                    v-if="isSidebarCollapsed"
+                                    class="hidden lg:block absolute top-1/2 -translate-y-1/2 z-30 px-2 py-1 rounded-md bg-base-content text-base-100 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity"
+                                    :class="collapsedTooltipClasses"
+                                >
+                                    {{ item.name }}
+                                </span>
                             </Link>
                         </div>
                     </template>
@@ -953,11 +1029,12 @@ function getContrastColor(hex) {
 
                 <!-- User Footer -->
                 <div class="p-4 bg-base-200/50 border-t border-base-300">
-                    <div class="flex items-center justify-between gap-3">
-                        <div class="flex items-center gap-4 min-w-0">
+                    <div class="flex items-center gap-3" :class="isSidebarCollapsed ? 'justify-center flex-col' : 'justify-between'">
+                        <div class="flex items-center min-w-0" :class="isSidebarCollapsed ? 'justify-center' : 'gap-4'">
                             <div 
                                 class="h-11 w-11 rounded-2xl flex items-center justify-center font-black flex-shrink-0 shadow-lg shadow-primary/10 overflow-hidden"
                                 :style="{ backgroundColor: primaryColor, color: primaryTextColor }"
+                                :title="isSidebarCollapsed ? user.name : ''"
                             >
                                 <img 
                                     v-if="user?.profile_picture_url" 
@@ -967,7 +1044,7 @@ function getContrastColor(hex) {
                                 />
                                 <span v-else>{{ user.name.charAt(0) }}</span>
                             </div>
-                            <div class="truncate">
+                            <div v-if="!isSidebarCollapsed" class="truncate">
                                 <p class="text-xs font-black truncate text-base-content tenant-sidebar-text" :class="fonts.names">{{ user.name }}</p>
                                 <p class="text-[9px] uppercase tracking-[0.2em] font-black opacity-30 tenant-sidebar-text" :class="fonts.header">{{ roles[0] || 'Staff' }}</p>
                             </div>
@@ -975,6 +1052,7 @@ function getContrastColor(hex) {
                         <button 
                             @click="handleLogout"
                             class="btn btn-ghost btn-sm btn-circle text-base-content/20 hover:text-error hover:bg-error/10"
+                            :title="isSidebarCollapsed ? 'Logout' : ''"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />

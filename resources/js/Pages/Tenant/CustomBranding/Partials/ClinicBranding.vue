@@ -319,6 +319,17 @@ const getLogoUrl = (path, field) => {
                     </div>
 
                     <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Sidebar Position</span></label>
+                        <select v-model="form.sidebar_position" class="select select-bordered w-full rounded-2xl border-base-300 bg-base-100 focus:border-primary">
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                        </select>
+                        <p class="text-[10px] text-base-content/50 mt-1">
+                            Moves the desktop sidebar to the left or right side.
+                        </p>
+                    </div>
+
+                    <div class="form-control">
                         <label class="label">
                             <span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Support Chat Bottom Offset (px)</span>
                         </label>

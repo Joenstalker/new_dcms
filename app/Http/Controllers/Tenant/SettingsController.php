@@ -179,6 +179,7 @@ class SettingsController extends Controller
                 'clinic_email' => $branding['clinic_email'] ?? $tenant->email,
                 'clinic_phone' => $branding['clinic_phone'] ?? $tenant->phone,
                 'clinic_address' => $branding['clinic_address'] ?? $tenant->address,
+                'sidebar_position' => $branding['sidebar_position'] ?? 'left',
                 'support_chat_bottom_offset' => (int) ($branding['support_chat_bottom_offset'] ?? 56),
                 'support_chat_right_offset' => (int) ($branding['support_chat_right_offset'] ?? 24),
                 'portal_background_type' => $branding['portal_background_type'] ?? 'color',
@@ -386,6 +387,7 @@ class SettingsController extends Controller
             'portal_config' => 'nullable|array',
             'operating_hours' => 'nullable|array',
             'online_booking_enabled' => 'nullable|boolean',
+            'sidebar_position' => 'nullable|in:left,right',
             'support_chat_bottom_offset' => 'nullable|integer|min:16|max:720',
             'support_chat_right_offset' => 'nullable|integer|min:16|max:720',
             'portal_background_type' => 'nullable|in:color,image',
@@ -438,6 +440,9 @@ class SettingsController extends Controller
         }
         if (array_key_exists('online_booking_enabled', $validated)) {
             TenantBrandingService::set('online_booking_enabled', (bool) $validated['online_booking_enabled']);
+        }
+        if (isset($validated['sidebar_position'])) {
+            TenantBrandingService::set('sidebar_position', $validated['sidebar_position']);
         }
         if (isset($validated['support_chat_bottom_offset'])) {
             TenantBrandingService::set('support_chat_bottom_offset', $validated['support_chat_bottom_offset']);

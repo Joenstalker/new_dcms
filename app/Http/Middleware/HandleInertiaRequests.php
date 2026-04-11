@@ -339,7 +339,7 @@ class HandleInertiaRequests extends Middleware
                     'support_chat_bottom_offset' => (int) ($branding['support_chat_bottom_offset'] ?? SystemSetting::get('support_chat_bottom_offset', 56)),
                     'support_chat_right_offset' => (int) ($branding['support_chat_right_offset'] ?? SystemSetting::get('support_chat_right_offset', 24)),
                     'footer_text' => SystemSetting::get('footer_text', '© 2026 DCMS. All rights reserved.'),
-                    'sidebar_position' => SystemSetting::get('sidebar_position', 'left'),
+                    'sidebar_position' => $branding['sidebar_position'] ?? SystemSetting::get('sidebar_position', 'left'),
                 ];
             },
             'branding_computed' => function () {

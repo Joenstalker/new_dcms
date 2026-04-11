@@ -22,6 +22,10 @@ const clampOffset = (value, fallback = 56) => {
 
 const bubbleBottomOffset = computed(() => clampOffset(page.props.branding?.support_chat_bottom_offset, 56));
 const bubbleRightOffset = computed(() => clampOffset(page.props.branding?.support_chat_right_offset, 24));
+const currentSidebarPosition = computed(() => {
+    const side = page.props.branding?.sidebar_position;
+    return side === 'right' ? 'right' : 'left';
+});
 const currentBottomOffset = ref(bubbleBottomOffset.value);
 const currentRightOffset = ref(bubbleRightOffset.value);
 
@@ -51,6 +55,9 @@ const suppressNextToggle = ref(false);
 let pollInterval = null;
 let currentEchoChannel = null;
 let bodyClassObserver = null;
+let layoutResizeObserver = null;
+let layoutMutationObserver = null;
+let clampFrame = null;
 const runtimePositionStoreKey = '__tenantSupportChatBubblePosition';
 
 const bubbleLayerStyle = computed(() => ({
@@ -79,6 +86,68 @@ const getPointerPosition = (event) => {
     return { x: event.clientX, y: event.clientY };
 };
 
+const getElementHeight = (el) => {
+    if (!el) {
+        return 0;
+    }
+
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') {
+        return 0;
+    }
+
+    return Math.max(0, Math.round(el.getBoundingClientRect().height));
+};
+
+const getLayoutSafeBounds = (bubbleRect) => {
+    const padding = 16;
+    const header = document.getElementById('tenant-top-header');
+    const subnav = document.getElementById('tenant-subnav');
+    const footer = document.getElementById('tenant-footer');
+    const sidebar = document.getElementById('tenant-sidebar-panel');
+
+    const headerHeight = getElementHeight(header);
+    const subnavHeight = getElementHeight(subnav);
+    const footerHeight = getElementHeight(footer);
+
+    let minLeft = padding;
+    let maxLeft = Math.round(window.innerWidth - bubbleRect.width - padding);
+    const minTop = Math.round(padding + headerHeight + subnavHeight);
+    let maxTop = Math.round(window.innerHeight - bubbleRect.height - footerHeight - padding);
+
+    if (window.innerWidth >= 1024 && sidebar) {
+        const sidebarRect = sidebar.getBoundingClientRect();
+        const sidebarWidth = Math.round(sidebarRect.width);
+
+        if (sidebarWidth > 0) {
+            const sideGap = 8;
+            const isLeftDocked = sidebarRect.left <= 4 && sidebarRect.right > 0;
+            const isRightDocked = sidebarRect.right >= window.innerWidth - 4;
+
+            if (isLeftDocked) {
+                minLeft = Math.max(minLeft, Math.round(sidebarRect.right + sideGap));
+            } else if (isRightDocked) {
+                maxLeft = Math.min(maxLeft, Math.round(sidebarRect.left - bubbleRect.width - sideGap));
+            }
+        }
+    }
+
+    if (maxLeft < minLeft) {
+        maxLeft = minLeft;
+    }
+
+    if (maxTop < minTop) {
+        maxTop = minTop;
+    }
+
+    return {
+        minLeft,
+        maxLeft,
+        minTop,
+        maxTop,
+    };
+};
+
 const clampOffsetsToViewport = (rightOffset, bottomOffset) => {
     if (typeof window === 'undefined' || !bubbleAnchor.value) {
         return {
@@ -88,38 +157,91 @@ const clampOffsetsToViewport = (rightOffset, bottomOffset) => {
     }
 
     const rect = bubbleAnchor.value.getBoundingClientRect();
-    const maxRight = Math.max(16, Math.round(window.innerWidth - rect.width - 8));
-    const maxBottom = Math.max(16, Math.round(window.innerHeight - rect.height - 8));
+    const bounds = getLayoutSafeBounds(rect);
+
+    const requestedRight = Number.isFinite(rightOffset) ? Math.round(rightOffset) : 24;
+    const requestedBottom = Number.isFinite(bottomOffset) ? Math.round(bottomOffset) : 56;
+
+    const requestedLeft = Math.round(window.innerWidth - rect.width - requestedRight);
+    const requestedTop = Math.round(window.innerHeight - rect.height - requestedBottom);
+
+    const clampedLeft = Math.min(bounds.maxLeft, Math.max(bounds.minLeft, requestedLeft));
+    const clampedTop = Math.min(bounds.maxTop, Math.max(bounds.minTop, requestedTop));
+
+    const safeRight = Math.round(window.innerWidth - rect.width - clampedLeft);
+    const safeBottom = Math.round(window.innerHeight - rect.height - clampedTop);
 
     return {
-        right: Math.min(maxRight, Math.max(16, Math.round(rightOffset))),
-        bottom: Math.min(maxBottom, Math.max(16, Math.round(bottomOffset))),
+        right: Math.max(0, safeRight),
+        bottom: Math.max(0, safeBottom),
     };
 };
 
-const saveRuntimeBubblePosition = () => {
+const scheduleBubbleAutoAdjust = () => {
     if (typeof window === 'undefined') {
         return;
     }
 
-    window[runtimePositionStoreKey] = {
+    if (clampFrame) {
+        return;
+    }
+
+    clampFrame = window.requestAnimationFrame(() => {
+        clampFrame = null;
+        if (!isDraggingBubble.value) {
+            clampCurrentBubblePosition();
+        }
+    });
+};
+
+const observeLayoutTargets = () => {
+    if (!layoutResizeObserver || typeof document === 'undefined') {
+        return;
+    }
+
+    ['tenant-top-header', 'tenant-subnav', 'tenant-footer', 'tenant-sidebar-panel'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            layoutResizeObserver.observe(el);
+        }
+    });
+};
+
+const saveRuntimeBubblePosition = (side = currentSidebarPosition.value) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    const currentStore = window[runtimePositionStoreKey] && typeof window[runtimePositionStoreKey] === 'object'
+        ? window[runtimePositionStoreKey]
+        : {};
+
+    currentStore[side] = {
         right: currentRightOffset.value,
         bottom: currentBottomOffset.value,
     };
+
+    window[runtimePositionStoreKey] = currentStore;
 };
 
-const restoreRuntimeBubblePosition = () => {
+const restoreRuntimeBubblePosition = (side = currentSidebarPosition.value) => {
     if (typeof window === 'undefined') {
-        return;
+        return false;
     }
 
-    const runtimePosition = window[runtimePositionStoreKey];
+    const runtimeStore = window[runtimePositionStoreKey];
+    const runtimePosition = runtimeStore && typeof runtimeStore === 'object'
+        ? runtimeStore[side]
+        : null;
+
     if (!runtimePosition || typeof runtimePosition !== 'object') {
-        return;
+        return false;
     }
 
     currentRightOffset.value = clampOffset(runtimePosition.right, bubbleRightOffset.value);
     currentBottomOffset.value = clampOffset(runtimePosition.bottom, bubbleBottomOffset.value);
+
+    return true;
 };
 
 const onBubblePointerMove = (event) => {
@@ -231,6 +353,22 @@ watch([bubbleBottomOffset, bubbleRightOffset], ([bottom, right]) => {
     restoreRuntimeBubblePosition();
     clampCurrentBubblePosition();
 }, { immediate: true });
+
+watch(currentSidebarPosition, (newSide, oldSide) => {
+    if (newSide === oldSide || isDraggingBubble.value) {
+        return;
+    }
+
+    saveRuntimeBubblePosition(oldSide);
+
+    const restored = restoreRuntimeBubblePosition(newSide);
+    if (!restored) {
+        currentBottomOffset.value = bubbleBottomOffset.value;
+        currentRightOffset.value = bubbleRightOffset.value;
+    }
+
+    clampCurrentBubblePosition();
+});
 
 watch(activeTicket, (newTicket, oldTicket) => {
     if (window.Echo) {
@@ -494,7 +632,28 @@ onMounted(() => {
     }
 
     if (typeof window !== 'undefined') {
-        window.addEventListener('resize', clampCurrentBubblePosition);
+        window.addEventListener('resize', scheduleBubbleAutoAdjust);
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+        layoutResizeObserver = new ResizeObserver(() => {
+            scheduleBubbleAutoAdjust();
+        });
+        observeLayoutTargets();
+    }
+
+    if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+        layoutMutationObserver = new MutationObserver(() => {
+            observeLayoutTargets();
+            scheduleBubbleAutoAdjust();
+        });
+
+        layoutMutationObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+        });
     }
 
     // Polling removed in favor of real-time WebSockets (Echo)
@@ -507,7 +666,22 @@ onUnmounted(() => {
     }
 
     if (typeof window !== 'undefined') {
-        window.removeEventListener('resize', clampCurrentBubblePosition);
+        window.removeEventListener('resize', scheduleBubbleAutoAdjust);
+    }
+
+    if (layoutResizeObserver) {
+        layoutResizeObserver.disconnect();
+        layoutResizeObserver = null;
+    }
+
+    if (layoutMutationObserver) {
+        layoutMutationObserver.disconnect();
+        layoutMutationObserver = null;
+    }
+
+    if (clampFrame && typeof window !== 'undefined') {
+        window.cancelAnimationFrame(clampFrame);
+        clampFrame = null;
     }
 
     onBubblePointerUp();
