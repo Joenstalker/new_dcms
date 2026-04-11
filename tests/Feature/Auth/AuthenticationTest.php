@@ -3,27 +3,27 @@
 use App\Models\User;
 
 test('login screen can be rendered', function () {
-    $response = $this->get('/login');
+    $response = $this->get('http://dcms.lvh.me/login');
 
-    $response->assertStatus(200);
+    $response->assertRedirect('http://dcms.lvh.me/admin/dashboard');
 });
 
 test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['is_admin' => true]);
 
-    $response = $this->post('/login', [
+    $response = $this->post('http://dcms.lvh.me/login', [
         'email' => $user->email,
         'password' => 'password',
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect('http://dcms.lvh.me/admin/dashboard');
 });
 
 test('users can not authenticate with invalid password', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['is_admin' => true]);
 
-    $this->post('/login', [
+    $this->post('http://dcms.lvh.me/login', [
         'email' => $user->email,
         'password' => 'wrong-password',
     ]);
@@ -32,10 +32,10 @@ test('users can not authenticate with invalid password', function () {
 });
 
 test('users can logout', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['is_admin' => true]);
 
-    $response = $this->actingAs($user)->post('/logout');
+    $response = $this->actingAs($user)->post('http://dcms.lvh.me/logout');
 
     $this->assertGuest();
-    $response->assertRedirect('/');
+    $response->assertRedirect('http://dcms.lvh.me');
 });

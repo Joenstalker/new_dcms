@@ -20,6 +20,18 @@ import bgImage from '../../../public/images/landingpage-background.png';
 const page = usePage();
 const recaptchaSiteKey = computed(() => page.props.config?.recaptcha_site_key || '');
 
+const isGoogleSignInSupported = computed(() => {
+    if (!props.googleClientId || typeof window === 'undefined') {
+        return false;
+    }
+
+    const host = window.location.hostname;
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+
+    // Google Identity Services requires HTTPS, except for localhost origins.
+    return window.location.protocol === 'https:' || isLocalhost;
+});
+
 const props = defineProps({
     canLogin: {
         type: Boolean,
@@ -231,7 +243,7 @@ window.onLoginRecaptchaError = onLoginRecaptchaError;
 
 // Google Sign-In Logic
 const initializeGoogleSignIn = () => {
-    if (window.google && props.googleClientId) {
+    if (window.google && isGoogleSignInSupported.value) {
         window.google.accounts.id.initialize({
             client_id: props.googleClientId,
             callback: handleGoogleCredentialResponse,
@@ -327,9 +339,9 @@ watch(() => isLoginModalOpen.value, (newVal) => {
                 initLoginRecaptcha();
                 
                 // Initialize/Render Google Login if available
-                if (window.google && props.googleClientId) {
+                if (window.google && isGoogleSignInSupported.value) {
                     initializeGoogleSignIn();
-                } else if (props.googleClientId) {
+                } else if (isGoogleSignInSupported.value) {
                     // Script might still be loading
                     loadGoogleScript();
                 }
@@ -559,20 +571,20 @@ onUnmounted(() => {
             ]"
         >
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">  
-                    <div class="flex items-center">
-                        <img :src="logoImage" alt="DCMS Logo" class="h-10 w-auto drop-shadow-md mr-3">
-                        <span class="font-bold text-xl tracking-wider">Dental Clinic Management System</span>
+                <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-2 py-2 md:py-0 min-h-[4.5rem] md:h-16">
+                    <div class="flex items-center justify-center md:justify-start min-w-0">
+                        <img :src="logoImage" alt="DCMS Logo" class="h-8 md:h-10 w-auto drop-shadow-md mr-3">
+                        <span class="font-bold text-base sm:text-lg lg:text-xl tracking-wide truncate">Dental Clinic Management System</span>
                     </div>
-                    <div class="hidden md:flex space-x-8 items-center text-sm font-medium">
+                    <div class="flex items-center justify-center md:justify-end gap-4 sm:gap-6 text-xs sm:text-sm font-medium flex-wrap">
                         <a href="#home" class="hover:text-green-300 transition-colors">Home</a>
-                        <a href="#features" class="hover:text-green-300 transition-colors">Features</a>
+                        <a href="#features" class="hover:text-green-300 transition-colors">Feature</a>
                         <a href="#pricing" class="hover:text-green-300 transition-colors">Pricing</a>
                         
-                        <Link v-if="$page.props.auth.user" :href="route('admin.dashboard')" class="bg-[#2B7CB3] hover:bg-[#24699A] text-white px-5 py-2 rounded-md transition-colors font-semibold shadow-sm">
+                        <Link v-if="$page.props.auth.user" :href="route('admin.dashboard')" class="bg-[#2B7CB3] hover:bg-[#24699A] text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-md transition-colors font-semibold shadow-sm whitespace-nowrap">
                             Dashboard
                         </Link>
-                        <button v-else @click="openLoginModal" class="bg-[#2B7CB3] hover:bg-[#24699A] text-white px-5 py-2 rounded-md transition-colors font-semibold shadow-sm">
+                        <button v-else @click="openLoginModal" class="bg-[#2B7CB3] hover:bg-[#24699A] text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded-md transition-colors font-semibold shadow-sm whitespace-nowrap">
                             LOGIN
                         </button>
                     </div>
@@ -581,7 +593,7 @@ onUnmounted(() => {
         </nav>
 
         <!-- Spacer for fixed navbar -->
-        <div class="h-16"></div>
+        <div class="h-24 md:h-16"></div>
 
         <!-- Hero Section with Background Image -->
         <main 
@@ -801,15 +813,19 @@ onUnmounted(() => {
                         </PrimaryButton>
                     </div>
 
-                    <div v-if="googleClientId" class="relative flex items-center gap-4 my-6">
+                    <div v-if="isGoogleSignInSupported" class="relative flex items-center gap-4 my-6">
                         <div class="flex-grow border-t border-gray-200"></div>
                         <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">or</span>
                         <div class="flex-grow border-t border-gray-200"></div>
                     </div>
 
-                    <div v-if="googleClientId" class="flex justify-center">
+                    <div v-if="isGoogleSignInSupported" class="flex justify-center">
                         <div ref="googleButton" class="w-full max-w-[320px]"></div>
                     </div>
+
+                    <p v-else-if="googleClientId" class="text-center text-xs text-amber-600 mt-2">
+                        Google Sign-In is unavailable on this domain. Use HTTPS or localhost.
+                    </p>
 
                     <!-- reCAPTCHA Notice -->
                     <p class="text-center text-[10px] text-gray-400 mt-3">

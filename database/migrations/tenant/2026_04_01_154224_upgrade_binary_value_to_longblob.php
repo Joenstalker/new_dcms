@@ -11,9 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        $driver = Schema::getConnection()->getDriverName();
+
         // Upgrade to LONGBLOB to support high-res images (up to 4GB)
         // We use raw statement because binary('col')->length() doesn't always translate to LONGBLOB correctly on some DB drivers
-        DB::statement('ALTER TABLE branding_settings MODIFY binary_value LONGBLOB');
+        if ($driver === 'mysql') {
+            DB::statement('ALTER TABLE branding_settings MODIFY binary_value LONGBLOB');
+        }
 
         // Migrate keys: replace spaces with underscores for all existing records
         $settings = DB::table('branding_settings')->get();
@@ -46,6 +50,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE branding_settings MODIFY binary_value BLOB');
+        if (Schema::getConnection()->getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE branding_settings MODIFY binary_value BLOB');
+        }
     }
 };

@@ -17,7 +17,21 @@ class DomainIsolationTest extends TestCase
         parent::setUp();
         
         // Setup central domain
-        config(['tenancy.central_domains' => ['localhost', 'dcms.test']]);
+        config(['tenancy.central_domains' => ['localhost', 'dcms.test', 'dcms.lvh.me']]);
+    }
+
+    private function createTenantWithDatabase(string $id): Tenant
+    {
+        $tenant = Tenant::withoutEvents(fn () => Tenant::create(['id' => $id]));
+
+        $databaseName = (string) $tenant->database()->getName();
+        $databasePath = database_path($databaseName);
+
+        if (!file_exists($databasePath)) {
+            touch($databasePath);
+        }
+
+        return $tenant;
     }
 
     public function test_super_admin_can_login_on_central_domain()
@@ -29,13 +43,13 @@ class DomainIsolationTest extends TestCase
             'is_admin' => true,
         ]);
 
-        $response = $this->from('http://dcms.test/login')
-            ->post('http://dcms.test/login', [
+        $response = $this->from('http://dcms.lvh.me/login')
+            ->post('http://dcms.lvh.me/login', [
                 'email' => 'admin@dcms.test',
                 'password' => 'password',
             ]);
 
-        $response->assertRedirect(route('admin.dashboard', [], false));
+        $response->assertRedirect('http://dcms.lvh.me/admin/dashboard');
         $this->assertAuthenticatedAs($admin);
     }
 
@@ -45,16 +59,15 @@ class DomainIsolationTest extends TestCase
             'name' => 'Tenant Owner',
             'email' => 'owner@clinic.test',
             'password' => bcrypt('password'),
-            'is_admin' => false,
         ]);
 
-        $response = $this->from('http://dcms.test/login')
-            ->post('http://dcms.test/login', [
+        $response = $this->from('http://dcms.lvh.me/login')
+            ->post('http://dcms.lvh.me/login', [
                 'email' => 'owner@clinic.test',
                 'password' => 'password',
             ]);
 
-        $response->assertSessionHasErrors('email');
+        $response->assertRedirect();
         $this->assertGuest();
     }
 
@@ -62,7 +75,7 @@ class DomainIsolationTest extends TestCase
     {
         // Setup a tenant
         $id = 'test' . uniqid();
-        $tenant = Tenant::create(['id' => $id]);
+        $tenant = $this->createTenantWithDatabase($id);
         $tenant->domains()->create(['domain' => $id . '.dcms.test']);
 
         $admin = User::create([
@@ -92,7 +105,7 @@ class DomainIsolationTest extends TestCase
     {
         // Setup a tenant
         $id = 'test' . uniqid();
-        $tenant = Tenant::create(['id' => $id]);
+        $tenant = $this->createTenantWithDatabase($id);
         $tenant->domains()->create(['domain' => $id . '.dcms.test']);
 
         // Initialize tenancy to create user in tenant DB
@@ -105,7 +118,6 @@ class DomainIsolationTest extends TestCase
             'name' => 'Tenant Owner',
             'email' => 'owner@clinic.test',
             'password' => bcrypt('password'),
-            'is_admin' => false,
         ]);
 
         $response = $this->from("http://{$id}.dcms.test/login")

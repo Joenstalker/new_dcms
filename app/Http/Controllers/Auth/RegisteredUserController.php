@@ -17,6 +17,20 @@ use Inertia\Response;
 class RegisteredUserController extends Controller
 {
     /**
+     * Resolve the appropriate post-auth redirect target for current context.
+     */
+    private function postAuthRedirect(User $user): string
+    {
+        if (tenant()) {
+            return route('tenant.dashboard', absolute: false);
+        }
+
+        return $user->is_admin
+            ? route('admin.dashboard', absolute: false)
+            : route('central.home', absolute: false);
+    }
+
+    /**
      * Display the registration view.
      */
     public function create(): Response
@@ -47,6 +61,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        return redirect($this->postAuthRedirect($user));
     }
 }

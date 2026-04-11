@@ -18,17 +18,30 @@ class SecurityHeaders
 
         // CSP is intentionally permissive enough for current Inertia/Vite behavior,
         // while still enforcing a safer default than no CSP at all.
+        $viteDevOrigins = $this->viteDevServerOrigins();
+
+        $styleSrc = "style-src 'self' 'unsafe-inline' https:";
+        $scriptSrc = "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:";
+        $connectSrc = "connect-src 'self' https: wss: ws:";
+        $imgSrc = "img-src 'self' data: blob: https:";
+        foreach ($viteDevOrigins as $origin) {
+            $styleSrc .= ' '.$origin;
+            $scriptSrc .= ' '.$origin;
+            $connectSrc .= ' '.$origin;
+            $imgSrc .= ' '.$origin;
+        }
+
         $directives = [
             "default-src 'self'",
             "base-uri 'self'",
             "form-action 'self'",
             "frame-ancestors 'none'",
             "object-src 'none'",
-            "img-src 'self' data: https:",
+            $imgSrc,
             "font-src 'self' data: https:",
-            "style-src 'self' 'unsafe-inline' https:",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
-            "connect-src 'self' https: wss: ws:",
+            $styleSrc,
+            $scriptSrc,
+            $connectSrc,
             "frame-src 'self' https://www.google.com https://www.gstatic.com https://accounts.google.com https://js.stripe.com",
         ];
 
@@ -57,5 +70,39 @@ class SecurityHeaders
         }
 
         return $response;
+    }
+
+    /**
+     * Origins for the Vite dev server (different host/port than the app) so CSP allows HMR scripts/styles.
+     *
+     * @return list<string>
+     */
+    private function viteDevServerOrigins(): array
+    {
+        if (! app()->environment('local')) {
+            return [];
+        }
+
+        $hotPath = public_path('hot');
+        if (! is_readable($hotPath)) {
+            return [];
+        }
+
+        $url = trim((string) file_get_contents($hotPath));
+        if ($url === '' || ! str_starts_with($url, 'http')) {
+            return [];
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
+            return [];
+        }
+
+        $origin = $parts['scheme'].'://'.$parts['host'];
+        if (isset($parts['port'])) {
+            $origin .= ':'.$parts['port'];
+        }
+
+        return [$origin];
     }
 }

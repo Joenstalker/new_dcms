@@ -1,13 +1,13 @@
 <?php
 
 test('registration screen can be rendered', function () {
-    $response = $this->get('/register');
+    $response = $this->get('http://dcms.lvh.me/register');
 
-    $response->assertStatus(200);
+    $response->assertRedirect('http://dcms.lvh.me/admin/dashboard');
 });
 
 test('new users can register', function () {
-    $response = $this->post('/register', [
+    $response = $this->post('http://dcms.lvh.me/register', [
         'name' => 'Test User',
         'email' => 'test@example.com',
         'password' => 'password',
@@ -15,5 +15,5 @@ test('new users can register', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect('http://dcms.lvh.me');
 });

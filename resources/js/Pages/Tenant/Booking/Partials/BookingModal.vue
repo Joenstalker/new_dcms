@@ -312,8 +312,8 @@ const timeSlots = [
         <!-- Backdrop -->
         <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="close"></div>
 
-        <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
-            <div class="relative transform overflow-hidden rounded-[2.5rem] bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl animate-in fade-in zoom-in duration-300">
+        <div class="flex min-h-screen items-start sm:items-center justify-center p-2 sm:p-4 text-center">
+            <div class="relative flex max-h-[calc(100vh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl sm:rounded-[2.5rem] bg-white text-left shadow-2xl transition-all animate-in fade-in zoom-in duration-300">
                 
                 <!-- Success State -->
                 <div v-if="showSuccess" class="p-8 lg:p-12 text-center">
@@ -343,9 +343,9 @@ const timeSlots = [
                 </div>
 
                 <!-- Form Steps -->
-                <div v-else>
+                <div v-else class="flex min-h-0 flex-1 flex-col">
                     <!-- Header -->
-                    <div class="px-8 pt-8 pb-4 flex justify-between items-start">
+                    <div class="px-4 sm:px-8 pt-5 sm:pt-8 pb-4 flex justify-between items-start shrink-0">
                         <div>
                             <!-- Logo -->
                             <div v-if="logoUrl" class="mb-4">
@@ -362,7 +362,7 @@ const timeSlots = [
                     </div>
 
                     <!-- Progress Bar -->
-                    <div class="px-8 mb-8">
+                    <div class="px-4 sm:px-8 mb-5 sm:mb-8 shrink-0">
                         <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                             <div class="h-full transition-all duration-500 ease-out" 
                                  :style="{ width: (step / 5 * 100) + '%', backgroundColor: brandingColor }">
@@ -371,7 +371,7 @@ const timeSlots = [
                     </div>
 
                     <!-- Step Content -->
-                    <div class="px-8 pb-8 min-h-[400px]">
+                    <div class="px-4 sm:px-8 pb-6 sm:pb-8 flex-1 min-h-0 overflow-y-auto">
                         
                         <!-- Step 1: Patient Info -->
                         <div v-if="step === 1" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
@@ -453,7 +453,7 @@ const timeSlots = [
                         <!-- Step 2: Medical History -->
                         <div v-if="step === 2" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
                             <p class="text-sm text-gray-500 mb-4">Please check any conditions that apply to you. This helps us provide the safest care.</p>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <label v-for="option in medicalOptions" :key="option" 
                                        class="flex items-center p-4 rounded-2xl border-2 transition-all cursor-pointer group"
                                        :class="form.guest_medical_history.includes(option) ? 'border-blue-500 bg-blue-50' : 'border-gray-50 bg-gray-50 hover:bg-gray-100'">
@@ -480,7 +480,7 @@ const timeSlots = [
                             
                             <div v-if="form.appointment_date">
                                 <label class="block text-sm font-bold text-gray-700 mb-4">Available Time Slots</label>
-                                <div class="grid grid-cols-3 gap-3">
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     <button v-for="time in timeSlots" :key="time" 
                                             @click="form.appointment_time = time"
                                             class="p-4 rounded-2xl border-2 font-bold text-sm transition-all shadow-sm"
@@ -569,7 +569,7 @@ const timeSlots = [
                                     </div>
                                 </div>
                                 
-                                <div class="grid grid-cols-2 gap-8">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                                     <div>
                                         <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-2 text-center">Date</p>
                                         <div class="bg-white p-4 rounded-3xl text-center shadow-sm">
@@ -610,18 +610,18 @@ const timeSlots = [
                     </div>
 
                     <!-- Footer Actions -->
-                    <div class="px-8 py-8 border-t border-gray-50 flex gap-4">
-                        <button v-if="step > 1" @click="prevStep" class="px-8 py-4 border-2 border-gray-100 font-bold rounded-full text-gray-500 hover:bg-gray-50 transition-all">
+                    <div class="px-4 sm:px-8 py-5 sm:py-8 border-t border-gray-50 flex flex-col sm:flex-row gap-3 sm:gap-4 shrink-0">
+                        <button v-if="step > 1" @click="prevStep" class="w-full sm:w-auto px-8 py-4 border-2 border-gray-100 font-bold rounded-full text-gray-500 hover:bg-gray-50 transition-all">
                             Back
                         </button>
                         <button v-if="step < 5" @click="nextStep" 
                                 :disabled="step === 1 && (!form.guest_first_name || !form.guest_last_name || !form.guest_phone || !form.photo)"
-                                class="flex-1 py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50" 
+                                class="w-full sm:flex-1 py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50" 
                                 :style="{ backgroundColor: brandingColor }">
                             Continue
                         </button>
                         <button v-if="step === 5" @click="submit" :disabled="form.processing"
-                                class="flex-1 py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50" 
+                                class="w-full sm:flex-1 py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50" 
                                 :style="{ backgroundColor: brandingColor }">
                             {{ form.processing ? 'Booking...' : 'Confirm Appointment' }}
                         </button>

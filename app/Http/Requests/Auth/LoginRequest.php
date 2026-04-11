@@ -44,6 +44,10 @@ class LoginRequest extends FormRequest
      */
     private function verifyRecaptcha(): void
     {
+        if (app()->environment('testing')) {
+            return;
+        }
+
         $recaptchaSecret = env('RECAPTCHA_SECRET_KEY');
         
         // If reCAPTCHA is configured, it's required
