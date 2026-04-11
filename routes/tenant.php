@@ -236,22 +236,23 @@ Route::middleware([
                         ->middleware('check.subscription:custom_system_features');
 
                     // Settings - Updates (OTA)
+                    // Match sidebar: Owners see Updates; staff need explicit permission.
                     Route::get('settings/updates', [\App\Http\Controllers\Tenant\SettingsController::class , 'updates'])
-                        ->middleware('permission:manage system updates')
+                        ->middleware('role_or_permission:Owner|manage system updates')
                         ->name('settings.updates');
                     Route::post('settings/updates/apply', [\App\Http\Controllers\Tenant\SettingsController::class , 'applyUpdates'])
-                        ->middleware('permission:manage system updates')
+                        ->middleware('role_or_permission:Owner|manage system updates')
                         ->name('settings.updates.apply');
                     Route::get('settings/updates/check', [\App\Http\Controllers\Tenant\SettingsController::class , 'checkUpdates'])
-                        ->middleware('permission:manage system updates')
+                        ->middleware('role_or_permission:Owner|manage system updates')
                         ->name('settings.updates.check');
 
                     // System Update Core API endpoints
                     Route::get('api/system/update-status', [\App\Http\Controllers\Tenant\SystemUpdateController::class , 'getStatus'])
-                        ->middleware('permission:manage system updates')
+                        ->middleware('role_or_permission:Owner|manage system updates')
                         ->name('api.system.update-status');
                     Route::post('api/system/update', [\App\Http\Controllers\Tenant\SystemUpdateController::class , 'update'])
-                        ->middleware('permission:manage system updates')
+                        ->middleware('role_or_permission:Owner|manage system updates')
                         ->name('api.system.update');
 
                     // Stripe Customer Portal — self-service billing (upgrade, downgrade, cancel, update card)

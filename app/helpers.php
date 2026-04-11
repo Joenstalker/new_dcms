@@ -14,6 +14,11 @@ if (!function_exists('tenant_asset')) {
      */
     function tenant_asset(string $path): string
     {
-        return url('tenant-storage/' . ltrim($path, '/'));
+        $path = ltrim($path, '/');
+
+        // Relative URL so the browser always loads from the current document origin
+        // (tenant subdomain). Absolute URLs built from APP_URL (e.g. http://localhost:8080)
+        // break under CSP and trigger tenant resolution failures → ?error=clinic_not_found.
+        return route('tenant.storage', ['path' => $path], absolute: false);
     }
 }

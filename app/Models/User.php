@@ -85,7 +85,7 @@ class User extends Authenticatable
         }
 
         if (tenant()) {
-            return route('tenant.storage', ['path' => ltrim($this->profile_picture, '/')]);
+            return route('tenant.storage', ['path' => ltrim($this->profile_picture, '/')], absolute: false);
         }
 
         $path = ltrim($this->profile_picture, '/');
