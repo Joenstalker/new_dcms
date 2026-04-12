@@ -2,10 +2,13 @@
 
 use App\Models\User;
 
-test('login screen can be rendered', function () {
-    $response = $this->get('http://dcms.lvh.me/login');
+/*
+| Central routes register POST /login only (modal); there is no GET /login on the primary domain.
+*/
 
-    $response->assertRedirect('http://dcms.lvh.me/admin/dashboard');
+test('central landing page can be rendered', function () {
+    $this->get('http://dcms.lvh.me/')
+        ->assertOk();
 });
 
 test('users can authenticate using the login screen', function () {

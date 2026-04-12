@@ -11,6 +11,12 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // ParaTest sets TEST_TOKEN per worker; scope tenant SQLite files so parallel runs do not delete or open each other's DBs.
+        $token = getenv('TEST_TOKEN');
+        if ($this->app->environment('testing') && $token !== false && $token !== '') {
+            config(['tenancy.database.prefix' => 'tenant_'.$token.'_']);
+        }
+
         $host = parse_url((string) config('app.url'), PHP_URL_HOST);
         if (is_string($host) && $host !== '') {
             $this->withServerVariables([
@@ -43,6 +49,9 @@ abstract class TestCase extends BaseTestCase
 
         if ($app->environment('testing')) {
             $app['config']->set('tenancy.database.auto_create', false);
+            // .env can override phpunit.xml; non-hashed names pair with TEST_TOKEN prefix + deleteTenantSqliteFiles().
+            $app['config']->set('tenancy.use_hashed_database_names', false);
+            $app['config']->set('broadcasting.default', 'null');
 
             $app['config']->set('database.connections.sqlite.busy_timeout', 60000);
 
@@ -88,7 +97,12 @@ abstract class TestCase extends BaseTestCase
      */
     protected function deleteTenantSqliteFiles(): void
     {
-        foreach (glob(database_path('tenant_*')) ?: [] as $file) {
+        $token = getenv('TEST_TOKEN');
+        $pattern = ($token !== false && $token !== '')
+            ? database_path('tenant_'.$token.'_*')
+            : database_path('tenant_*');
+
+        foreach (glob($pattern) ?: [] as $file) {
             if (is_file($file)) {
                 @unlink($file);
             }

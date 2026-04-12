@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature\Security;
+namespace Tests\Feature\Auth;
 
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 /**
- * Ensures authentication boundaries between central (admin) and tenant portals are enforced.
+ * Central vs tenant authentication boundaries (merged from redundant Security\AuthenticationTest).
+ *
+ * DomainIsolationTest covers login host routing; this file covers dashboard guest access and central login rules.
  */
-class AuthenticationTest extends TestCase
+class TenantAndCentralAuthSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -83,11 +85,11 @@ class AuthenticationTest extends TestCase
     }
 
     /**
-     * Protects against: clinic staff attempting to use the central admin login flow (domain isolation).
+     * Protects against: non-admin users using the central admin login (domain / role boundary).
      */
     public function test_non_admin_cannot_authenticate_via_central_login(): void
     {
-        $staff = User::factory()->create([
+        User::factory()->create([
             'email' => 'staff-only@example.test',
             'password' => 'password',
             'is_admin' => false,
@@ -100,10 +102,7 @@ class AuthenticationTest extends TestCase
     }
 
     /**
-     * Protects against: credential stuffing on the central admin login (failed attempts must not authenticate).
-     *
-     * Note: Tenant DB `users` tables often omit `is_admin`; blocking super-admins on tenant hosts is covered in
-     * `App\Http\Requests\Auth\LoginRequest` — add a dedicated unit/integration test there if you add that column to tenant.
+     * Protects against: credential stuffing — wrong password must not authenticate.
      */
     public function test_central_login_with_wrong_password_does_not_authenticate(): void
     {

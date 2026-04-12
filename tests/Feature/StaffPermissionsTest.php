@@ -7,6 +7,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -97,7 +98,7 @@ class StaffPermissionsTest extends TestCase
         parent::tearDown();
     }
 
-    /** @test */
+    #[Test]
     public function a_newly_created_staff_member_receives_base_dashboard_permissions()
     {
         // 1. Setup Owner
@@ -140,7 +141,7 @@ class StaffPermissionsTest extends TestCase
         $storeResponse->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function staff_with_create_services_can_access_service_store()
     {
         // 1. Setup Staff with create services permission

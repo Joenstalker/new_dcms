@@ -166,36 +166,35 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     {
         parent::boot();
 
-        // Use hash-based database name from domain
         static::creating(function ($tenant) {
-            $namingService = app(TenantDatabaseNamingService::class);
-
             // Generate unique tenant ID using UUID (safer for identification)
             if (empty($tenant->id)) {
                 $tenant->id = (string) Str::uuid();
             }
 
-            // Generate hashed database name from domain
-            // Get the first domain if available, otherwise use the tenant name
             if (empty($tenant->database_name)) {
                 $domain = null;
 
-                // Try to get domain from the tenant's domains relationship
                 if ($tenant->relationLoaded('domains') && $tenant->domains->isNotEmpty()) {
                     $domain = $tenant->domains->first()->domain ?? null;
                 }
 
-                // If no domain, use the tenant ID (subdomain) as source, then name as fallback
                 if (! $domain) {
                     $domain = $tenant->id ?? $tenant->name;
                 }
 
-                $hashedDbName = $namingService->generateHashedDatabaseName($domain);
-                $tenant->database_name = $hashedDbName;
-
-                // Set the stancl internal key so DatabaseConfig::getName() uses the hashed name
-                // for physical database creation instead of falling back to prefix+id+suffix
-                $tenant->setInternal('db_name', $hashedDbName);
+                if (config('tenancy.use_hashed_database_names', true)) {
+                    $namingService = app(TenantDatabaseNamingService::class);
+                    $hashedDbName = $namingService->generateHashedDatabaseName((string) $domain);
+                    $tenant->database_name = $hashedDbName;
+                    $tenant->setInternal('db_name', $hashedDbName);
+                } else {
+                    $prefix = config('tenancy.database.prefix', 'tenant_');
+                    $suffix = config('tenancy.database.suffix', '_db');
+                    $dbName = $prefix.$tenant->getTenantKey().$suffix;
+                    $tenant->database_name = $dbName;
+                    $tenant->setInternal('db_name', $dbName);
+                }
             }
 
             // Generate database connection name
@@ -292,18 +291,22 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         $value = parent::getInternal($key);
 
         if ($key === 'db_name' && empty($value)) {
-            // Fetch directly from attributes to prevent infinite recursion with getDatabaseNameAttribute
             $dbName = $this->attributes['database'] ?? $this->attributes['database_name'] ?? null;
             if (empty($dbName)) {
-                $namingService = app(TenantDatabaseNamingService::class);
                 $domain = $this->id ?? $this->name;
 
-                // Get the domain securely without invoking n+1 exceptions during boot
                 if ($this->relationLoaded('domains') && $this->domains->isNotEmpty()) {
                     $domain = $this->domains->first()->domain ?? $domain;
                 }
 
-                $dbName = $namingService->generateHashedDatabaseName($domain);
+                if (config('tenancy.use_hashed_database_names', true)) {
+                    $namingService = app(TenantDatabaseNamingService::class);
+                    $dbName = $namingService->generateHashedDatabaseName((string) $domain);
+                } else {
+                    $prefix = config('tenancy.database.prefix', 'tenant_');
+                    $suffix = config('tenancy.database.suffix', '_db');
+                    $dbName = $prefix.$this->getTenantKey().$suffix;
+                }
             }
 
             return $dbName;

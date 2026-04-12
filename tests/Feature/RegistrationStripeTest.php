@@ -12,6 +12,7 @@ use App\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Stripe\StripeClient;
 use Tests\TestCase;
 use Mockery;
@@ -34,7 +35,7 @@ class RegistrationStripeTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_completes_registration_after_successful_stripe_payment()
     {
         // 1. Arrange

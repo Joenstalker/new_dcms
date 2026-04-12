@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 /**
- * Verifies that data for one tenant cannot be read or inferred from another tenant's context.
+ * Verifies that data for one tenant cannot be read or inferred from another tenant's context (IDOR).
+ * For login host boundaries, see DomainIsolationTest; for central/tenant auth rules, see TenantAndCentralAuthSecurityTest.
  *
  * Replace route URLs with route('patients.show', [...]) if your route model binding uses a different key.
  */

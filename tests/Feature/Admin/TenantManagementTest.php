@@ -7,6 +7,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class TenantManagementTest extends TestCase
@@ -36,7 +37,7 @@ class TenantManagementTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function an_active_paying_tenant_cannot_be_deleted()
     {
         // 1. Arrange
@@ -68,7 +69,7 @@ class TenantManagementTest extends TestCase
         $this->assertDatabaseHas('tenants', ['id' => 'active-paying']);
     }
 
-    /** @test */
+    #[Test]
     public function a_suspended_or_inactive_tenant_can_be_deleted()
     {
         // 1. Arrange
@@ -89,7 +90,7 @@ class TenantManagementTest extends TestCase
         $this->assertDatabaseMissing('tenants', ['id' => 'safe-to-delete']);
     }
 
-    /** @test */
+    #[Test]
     public function updating_tenant_status_requires_a_reason()
     {
         // 1. Arrange

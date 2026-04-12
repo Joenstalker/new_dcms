@@ -12,6 +12,7 @@ use App\Services\FeatureOTAUpdateService;
 use App\Mail\PlanFeatureUpdateMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class FeatureOTAUpdateTest extends TestCase
@@ -30,7 +31,7 @@ class FeatureOTAUpdateTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_create_feature_and_notify_eligible_tenants()
     {
         // 1. Arrange: Create a plan and an active tenant subscription
@@ -89,7 +90,7 @@ class FeatureOTAUpdateTest extends TestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function tenant_can_apply_a_pending_update()
     {
         // Arrange
@@ -128,7 +129,7 @@ class FeatureOTAUpdateTest extends TestCase
         $this->assertNotNull(TenantFeatureUpdate::where('feature_id', $feature->id)->first()->applied_at);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_manually_push_features_for_a_plan_to_all_tenants()
     {
         // 1. Arrange: Plan, Features, and Two Tenants

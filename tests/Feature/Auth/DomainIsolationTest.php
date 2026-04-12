@@ -8,6 +8,9 @@ use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 use Stancl\Tenancy\Database\Models\Domain;
 
+/**
+ * Login and session behaviour on central host vs tenant host (not cross-tenant data — see TenantIsolationTest).
+ */
 class DomainIsolationTest extends TestCase
 {
     use DatabaseMigrations;
@@ -15,7 +18,7 @@ class DomainIsolationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Setup central domain
         config(['tenancy.central_domains' => ['localhost', 'dcms.test', 'dcms.lvh.me']]);
     }

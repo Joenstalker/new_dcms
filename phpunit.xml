@@ -25,10 +25,15 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
+        <!-- Avoid real Reverb/Pusher HTTP during HTTP tests when .env has REVERB_* set -->
+        <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value="database/testing.sqlite"/>
+        <!-- :memory: per PHPUnit process: fast RefreshDatabase and safe parallel runs -->
+        <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_CENTRAL_CONNECTION" value="sqlite"/>
-        <env name="DB_CENTRAL_DATABASE" value="database/testing.sqlite"/>
+        <env name="DB_CENTRAL_DATABASE" value=":memory:"/>
+        <!-- Predictable tenant sqlite names (tenant_{TEST_TOKEN}_{id}_db) for parallel workers + cleanup glob -->
+        <env name="TENANT_USE_HASHED_NAMES" value="false"/>
         <env name="DB_URL" value=""/>
         <!-- Empty in tests so LoginRequest does not call Google reCAPTCHA HTTP API -->
         <env name="RECAPTCHA_SECRET_KEY" value=""/>

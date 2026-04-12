@@ -107,9 +107,9 @@ class TenantProfileTest extends TestCase
             ])
             ->get('http://' . $this->tenantDomain . '/profile');
 
-        $response
-            ->assertOk()
-            ->assertSee('Tenant/Profile/Edit', false);
+        $response->assertOk();
+        // Inertia embeds the component name as JSON (forward slashes escaped as \/).
+        $this->assertStringContainsString('Tenant\\/Profile\\/Edit', $response->getContent());
     }
 
     public function test_tenant_can_update_profile_picture(): void
