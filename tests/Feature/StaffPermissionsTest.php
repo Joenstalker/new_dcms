@@ -120,7 +120,7 @@ class StaffPermissionsTest extends TestCase
         $this->assertTrue($staff->hasPermissionTo('view dashboard'));
     }
 
-    /** @test */
+    #[Test]
     public function staff_with_only_view_patients_permission_cannot_create_patients()
     {
         // 1. Setup Staff with ONLY view permission
