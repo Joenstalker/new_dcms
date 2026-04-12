@@ -19,19 +19,13 @@ class TenantManagementTest extends TestCase
     {
         parent::setUp();
         
-        // Mock Tenancy events
+        // Mock Tenancy events (tenant lifecycle jobs we do not need for these HTTP assertions).
         \Illuminate\Support\Facades\Event::fake([
             \Stancl\Tenancy\Events\TenantCreated::class,
             \Stancl\Tenancy\Events\TenantSaved::class,
             \Stancl\Tenancy\Events\TenantUpdated::class,
             \Stancl\Tenancy\Events\DatabaseCreated::class,
         ]);
-
-        // Force 'central' connection for SQLite tests (as seen in RegistrationStripeTest)
-        $this->app['db']->extend('central', function () {
-            return $this->app['db']->connection('sqlite');
-        });
-        config(['tenancy.database.auto_create' => false]);
 
         // Create a super admin user
         $this->admin = User::create([
@@ -67,7 +61,7 @@ class TenantManagementTest extends TestCase
 
         // 2. Act
         $this->actingAs($this->admin);
-        $response = $this->delete("/admin/tenants/{$tenant->id}");
+        $response = $this->delete(route('admin.tenants.destroy', $tenant));
 
         // 3. Assert
         $response->assertSessionHas('error');
@@ -88,9 +82,10 @@ class TenantManagementTest extends TestCase
 
         // 2. Act
         $this->actingAs($this->admin);
-        $response = $this->delete("/admin/tenants/{$tenant->id}");
+        $response = $this->delete(route('admin.tenants.destroy', $tenant));
 
         // 3. Assert
+        $response->assertSessionHas('success');
         $this->assertDatabaseMissing('tenants', ['id' => 'safe-to-delete']);
     }
 
@@ -108,7 +103,7 @@ class TenantManagementTest extends TestCase
 
         // 2. Act
         $this->actingAs($this->admin);
-        $response = $this->put("/admin/tenants/{$tenant->id}", [
+        $response = $this->put(route('admin.tenants.update', $tenant), [
             'name' => 'Updated Name',
             'owner_name' => 'Updated Owner',
             'status' => 'suspended',

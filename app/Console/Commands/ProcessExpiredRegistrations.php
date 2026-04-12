@@ -107,8 +107,13 @@ class ProcessExpiredRegistrations extends Command
                 // End tenancy
                 tenancy()->end();
 
-                // Update tenant status to active
-                $tenant->update(['status' => 'active']);
+                // Update tenant status to active and ensure landing defaults
+                $tenant->update([
+                    'status' => 'active',
+                    'landing_page_config' => Tenant::mergeLandingPageConfig(
+                        is_array($tenant->landing_page_config) ? $tenant->landing_page_config : null
+                    ),
+                ]);
 
                 // Create subscription if not exists
                 if (!$tenant->subscriptions()->exists()) {
@@ -184,11 +189,7 @@ class ProcessExpiredRegistrations extends Command
 
             // Send approval email
             try {
-                $appUrl = config('app.url');
-                $parsed = parse_url($appUrl);
-                $host = $parsed['host'] ?? str_replace(['http://', 'https://'], '', $appUrl);
-                $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
-                $tenantUrl = 'http://' . $registration->subdomain . '.' . $host . $port;
+                $tenantUrl = Tenant::publicWebsiteUrlForSubdomain($registration->subdomain);
                 Mail::to($registration->email)->send(new TenantApproved($registration, $tenantUrl));
                 $this->info("Approval email sent to: {$registration->email}");
             }

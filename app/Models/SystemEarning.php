@@ -6,7 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class SystemEarning extends Model
 {
-    protected $connection = 'mysql';
+    /**
+     * Central DB only (never the tenant connection).
+     */
+    public function getConnectionName(): string
+    {
+        return (string) config('tenancy.database.central_connection', config('database.default'));
+    }
 
     protected $fillable = [
         'tenant_id',

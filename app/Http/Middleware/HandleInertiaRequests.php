@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Appointment;
 use App\Models\Feature;
+use App\Models\Tenant;
 use App\Models\Patient;
 use App\Models\SubscriptionPlan;
 use App\Models\SystemSetting;
@@ -138,11 +139,15 @@ class HandleInertiaRequests extends Middleware
 
                 $enabledFeatures = $tenant->getResolvedEnabledFeaturesForUi($branding);
 
+                $rawLandingConfig = $branding['landing_page_config'] ?? $tenant->landing_page_config;
+
                 return array_merge($tenant->toArray(), [
                     'branding_color' => $branding['primary_color'] ?? $tenant->branding_color,
                     'font_family' => $branding['font_family'] ?? $tenant->font_family,
                     'portal_config' => $branding['portal_config'] ?? $tenant->portal_config,
-                    'landing_page_config' => $branding['landing_page_config'] ?? $tenant->landing_page_config,
+                    'landing_page_config' => Tenant::mergeLandingPageConfig(
+                        is_array($rawLandingConfig) ? $rawLandingConfig : null
+                    ),
                     'hero_title' => $branding['hero_title'] ?? $tenant->hero_title,
                     'hero_subtitle' => $branding['hero_subtitle'] ?? $tenant->hero_subtitle,
                     'about_us_description' => $branding['about_us_description'] ?? $tenant->about_us_description,

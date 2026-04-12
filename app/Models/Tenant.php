@@ -217,6 +217,11 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             if (empty($tenant->version)) {
                 $tenant->version = config('app_version.version', '1.0.0');
             }
+
+            // Ensure public landing page config is always complete (avoids errors before first branding save)
+            $tenant->landing_page_config = self::mergeLandingPageConfig(
+                is_array($tenant->landing_page_config) ? $tenant->landing_page_config : null
+            );
         });
     }
 
@@ -345,6 +350,77 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             'settings',
             'branding',
         ];
+    }
+
+    /**
+     * Baseline landing page JSON for new tenants and for merging with partial stored config.
+     */
+    public static function defaultLandingPageConfig(): array
+    {
+        return [
+            'background_color' => '#ffffff',
+            'text_primary' => '#111827',
+            'text_secondary' => '#4b5563',
+            'team' => [
+                'source_mode' => 'auto_staff',
+                'include_owner' => true,
+                'manual_cards' => [],
+            ],
+        ];
+    }
+
+    /**
+     * Merge stored landing config with defaults so required keys (e.g. team.source_mode) always exist.
+     *
+     * @param  array<string, mixed>|null  $existing
+     * @return array<string, mixed>
+     */
+    public static function mergeLandingPageConfig(?array $existing): array
+    {
+        $defaults = self::defaultLandingPageConfig();
+        $existing = is_array($existing) ? $existing : [];
+
+        $teamExisting = isset($existing['team']) && is_array($existing['team']) ? $existing['team'] : [];
+        $withoutTeam = $existing;
+        unset($withoutTeam['team']);
+
+        $merged = array_replace_recursive($defaults, $withoutTeam);
+        $merged['team'] = array_merge($defaults['team'], $teamExisting);
+
+        $mode = $merged['team']['source_mode'] ?? 'auto_staff';
+        if (! in_array($mode, ['auto_staff', 'manual', 'hybrid'], true)) {
+            $merged['team']['source_mode'] = 'auto_staff';
+        }
+
+        if (! isset($merged['team']['manual_cards']) || ! is_array($merged['team']['manual_cards'])) {
+            $merged['team']['manual_cards'] = [];
+        }
+
+        $merged['team']['include_owner'] = (bool) ($merged['team']['include_owner'] ?? true);
+
+        return $merged;
+    }
+
+    /**
+     * Public website URL for a tenant subdomain (matches tenancy host routing).
+     */
+    public static function publicWebsiteUrlForSubdomain(string $subdomain): string
+    {
+        $appUrl = config('app.url', 'http://localhost');
+        $parsed = parse_url($appUrl) ?: [];
+        $scheme = ($parsed['scheme'] ?? 'http') === 'https' ? 'https' : 'http';
+        $host = $parsed['host'] ?? '';
+        if ($host === '') {
+            $host = preg_replace('#^https?://#i', '', (string) $appUrl);
+            $host = explode('/', $host, 2)[0];
+            $host = explode(':', $host, 2)[0];
+        }
+        if ($host === '') {
+            $host = 'localhost';
+        }
+        $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
+
+        return $scheme . '://' . $subdomain . '.' . $host . $port;
     }
 
     /**

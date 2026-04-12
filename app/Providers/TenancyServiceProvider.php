@@ -45,13 +45,7 @@ class TenancyServiceProvider extends ServiceProvider
             Events\UpdatingTenant::class => [],
             Events\TenantUpdated::class => [],
             Events\DeletingTenant::class => [],
-            Events\TenantDeleted::class => [
-                JobPipeline::make([
-                    Jobs\DeleteDatabase::class ,
-                ])->send(function (Events\TenantDeleted $event) {
-            return $event->tenant;
-        })->shouldBeQueued(false), // `false` by default, but you probably want to make this `true` for production.
-            ],
+            Events\TenantDeleted::class => $this->tenantDeletedListeners(),
 
             // Domain events
             Events\CreatingDomain::class => [],
@@ -138,5 +132,23 @@ class TenancyServiceProvider extends ServiceProvider
         foreach (array_reverse($tenancyMiddleware) as $middleware) {
             $this->app[\Illuminate\Contracts\Http\Kernel::class]->prependToMiddlewarePriority($middleware);
         }
+    }
+
+    /**
+     * @return array<int, \Stancl\JobPipeline\JobPipeline>
+     */
+    protected function tenantDeletedListeners(): array
+    {
+        if ($this->app->runningUnitTests() && $this->app['config']->get('database.default') === 'sqlite') {
+            return [];
+        }
+
+        return [
+            JobPipeline::make([
+                Jobs\DeleteDatabase::class,
+            ])->send(function (Events\TenantDeleted $event) {
+                return $event->tenant;
+            })->shouldBeQueued(false),
+        ];
     }
 }

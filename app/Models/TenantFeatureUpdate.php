@@ -14,9 +14,10 @@ class TenantFeatureUpdate extends Model
     public function getConnectionName()
     {
         if (app()->runningUnitTests()) {
-            return config('database.default');
+            // When tenancy is active, default is switched to `tenant`; central data must stay on the central connection.
+            return (string) config('tenancy.database.central_connection', config('database.default'));
         }
-        
+
         return parent::getConnectionName();
     }
 

@@ -212,6 +212,9 @@ class PendingRegistrationController extends Controller
                 $tenant->update([
                     'status' => 'active',
                     'enabled_features' => $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures(),
+                    'landing_page_config' => Tenant::mergeLandingPageConfig(
+                        is_array($tenant->landing_page_config) ? $tenant->landing_page_config : null
+                    ),
                 ]);
             }
 
@@ -225,11 +228,7 @@ class PendingRegistrationController extends Controller
 
             // Send approval email
             try {
-                $appUrl = config('app.url');
-                $parsed = parse_url($appUrl);
-                $host = $parsed['host'] ?? str_replace(['http://', 'https://'], '', $appUrl);
-                $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
-                $tenantUrl = 'http://' . $pendingRegistration->subdomain . '.' . $host . $port;
+                $tenantUrl = Tenant::publicWebsiteUrlForSubdomain($pendingRegistration->subdomain);
                 Mail::to($pendingRegistration->email)->send(new TenantApproved($pendingRegistration, $tenantUrl));
             }
             catch (\Exception $e) {

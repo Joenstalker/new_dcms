@@ -32,12 +32,6 @@ class RegistrationStripeTest extends TestCase
             \Stancl\Tenancy\Events\TenantUpdated::class,
             \Stancl\Tenancy\Events\DatabaseCreated::class,
         ]);
-
-        // Force 'central' connection for SQLite tests
-        $this->app['db']->extend('central', function () {
-            return $this->app['db']->connection('sqlite');
-        });
-        config(['tenancy.database.auto_create' => false]);
     }
 
     /** @test */
@@ -76,7 +70,9 @@ class RegistrationStripeTest extends TestCase
                 'status' => 'complete',
                 'payment_status' => 'paid',
                 'subscription' => $mockSubscriptionId,
+                'payment_intent' => 'pi_test_123',
                 'amount_total' => 10000, // 100.00
+                'currency' => 'php',
                 'metadata' => (object)[
                     'pending_registration_id' => $pending->id
                 ]
@@ -84,7 +80,7 @@ class RegistrationStripeTest extends TestCase
 
             $sessionsService = Mockery::mock();
             $sessionsService->shouldReceive('retrieve')
-                ->with($mockSessionId)
+                ->with($mockSessionId, Mockery::any())
                 ->andReturn($session);
 
             $checkoutService = Mockery::mock();

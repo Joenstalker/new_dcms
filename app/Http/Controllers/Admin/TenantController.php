@@ -522,19 +522,26 @@ class TenantController extends Controller
             $clinicName = $tenant->name;
             $tenantId = $tenant->id;
 
-            // Log the action (must do before deletion since tenant record is gone)
-            AuditLog::record(
-                'tenant_deleted',
-                "Deleted clinic '{$clinicName}' and all associated data.",
-                'Tenant',
-                $tenantId,
-                ['clinic_name' => $clinicName]
-            );
-
-            // Stancl Tenancy automatically handles dropping the database 
+            // Stancl Tenancy automatically handles dropping the database
             // via the TenantDeleted event listener in TenancyServiceProvider.
             // Note: DROP DATABASE causes an implicit commit in MySQL, so we don't use transactions here.
-            $tenant->delete(); 
+            $tenant->delete();
+
+            // Log after delete; never fail the request if audit logging hits DB contention (e.g. SQLite + tests).
+            try {
+                AuditLog::record(
+                    'tenant_deleted',
+                    "Deleted clinic '{$clinicName}' and all associated data.",
+                    'Tenant',
+                    (string) $tenantId,
+                    ['clinic_name' => $clinicName]
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Audit log failed after tenant delete', [
+                    'tenant_id' => $tenantId,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
 
             return back()->with('success', 'Clinic and all associated data have been permanently deleted.');
         } catch (\Exception $e) {
@@ -723,8 +730,8 @@ class TenantController extends Controller
 
             DB::commit();
 
-            // Send approval email
-            $tenantUrl = config('app.url') . '/tenant/' . $pendingRegistration->subdomain;
+            // Send approval email (subdomain host matches live public site)
+            $tenantUrl = Tenant::publicWebsiteUrlForSubdomain($pendingRegistration->subdomain);
             Mail::to($pendingRegistration->email)->send(new TenantApproved($pendingRegistration, $tenantUrl));
 
             return back()->with('success', 'Registration approved successfully. The tenant has been notified.');
@@ -833,6 +840,9 @@ class TenantController extends Controller
                 'status' => 'active',
                 'subscription_status' => 'active',
                 'enabled_features' => $tenant->enabled_features ?? \App\Models\Tenant::getDefaultFeatures(),
+                'landing_page_config' => Tenant::mergeLandingPageConfig(
+                    is_array($tenant->landing_page_config) ? $tenant->landing_page_config : null
+                ),
             ]);
 
             AuditLog::record(
@@ -882,12 +892,8 @@ class TenantController extends Controller
                     if (tenancy()->initialized) tenancy()->end();
                 }
 
-                $appUrl = config('app.url');
-                $parsed = parse_url($appUrl);
-                $host = $parsed['host'] ?? str_replace(['http://', 'https://'], '', $appUrl);
-                $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
-                $tenantUrl = 'http://' . $tenant->id . '.' . $host . $port;
-                
+                $tenantUrl = Tenant::publicWebsiteUrlForSubdomain($tenant->id);
+
                 Mail::to($tenant->email)->send(new TenantApproved($registration, $tenantUrl));
             }
 

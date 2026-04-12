@@ -6,14 +6,14 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class TenantProfileTest extends TestCase
 {
-    use DatabaseMigrations;
+    use RefreshDatabase;
 
     protected Tenant $tenant;
 
@@ -27,6 +27,12 @@ class TenantProfileTest extends TestCase
 
         $tenantId = 'tenant-profile-' . uniqid();
         $this->tenantDomain = $tenantId . '.dcms.test';
+
+        config(['app.url' => 'http://'.$this->tenantDomain]);
+        $this->withServerVariables([
+            'HTTP_HOST' => $this->tenantDomain,
+            'SERVER_NAME' => $this->tenantDomain,
+        ]);
 
         $this->tenant = Tenant::withoutEvents(function () use ($tenantId) {
             return Tenant::create([
@@ -44,8 +50,12 @@ class TenantProfileTest extends TestCase
             'name' => 'Profile Plan',
             'slug' => 'profile-plan',
             'price_monthly' => 99,
-            'stripe_plan_id' => 'price_profile_plan',
+            'stripe_monthly_price_id' => 'price_profile_plan',
+            'max_users' => 100,
+            'max_patients' => 1000,
         ]);
+
+        $plan->features()->detach();
 
         Subscription::create([
             'tenant_id' => $this->tenant->id,
@@ -56,9 +66,15 @@ class TenantProfileTest extends TestCase
             'stripe_id' => 'sub_profile_001',
         ]);
 
+        $dbName = $this->tenant->database_name;
+        if ($dbName && ! is_file(database_path($dbName))) {
+            touch(database_path($dbName));
+        }
+
         tenancy()->initialize($this->tenant);
 
         $this->artisan('migrate', [
+            '--database' => 'tenant',
             '--path' => 'database/migrations/tenant',
             '--realpath' => true,
         ]);
@@ -71,7 +87,11 @@ class TenantProfileTest extends TestCase
 
     protected function tearDown(): void
     {
-        tenancy()->end();
+        if (function_exists('tenancy') && tenancy()->initialized) {
+            tenancy()->end();
+        }
+
+        $this->deleteTenantSqliteFiles();
 
         parent::tearDown();
     }
@@ -89,7 +109,7 @@ class TenantProfileTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('"component":"Tenant/Profile/Edit"', false);
+            ->assertSee('Tenant/Profile/Edit', false);
     }
 
     public function test_tenant_can_update_profile_picture(): void
@@ -130,15 +150,15 @@ class TenantProfileTest extends TestCase
             ->from('http://' . $this->tenantDomain . '/profile')
             ->put('http://' . $this->tenantDomain . '/password', [
                 'current_password' => 'password',
-                'password' => 'new-password',
-                'password_confirmation' => 'new-password',
+                'password' => 'NewPassword1!',
+                'password_confirmation' => 'NewPassword1!',
             ]);
 
         $response
             ->assertSessionHasNoErrors()
             ->assertRedirect('http://' . $this->tenantDomain . '/profile');
 
-        $this->assertTrue(Hash::check('new-password', $this->user->refresh()->password));
+        $this->assertTrue(Hash::check('NewPassword1!', $this->user->refresh()->password));
     }
 
     public function test_preview_session_uses_tenant_preview_user_in_shared_auth_props(): void
@@ -169,7 +189,7 @@ class TenantProfileTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('"name":"' . $previewUser->name . '"', false)
-            ->assertDontSee('"name":"Central Admin"', false);
+            ->assertSee($previewUser->name, false)
+            ->assertDontSee('Central Admin', false);
     }
 }

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Policies\SupportTicketPolicy;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
@@ -24,6 +25,58 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(StripeClient::class, function () {
             return new StripeClient(config('services.stripe.secret'));
         });
+
+        // Default + `central` often both use the same SQLite path (tests, local). Two PDOs to one
+        // file break migrations and RefreshDatabase; resolve `central` to the default connection.
+        $this->app->afterResolving('db', function (DatabaseManager $db): void {
+            $this->shareSqliteCentralConnectionWhenPathsMatch($db);
+        });
+    }
+
+    /**
+     * When both connections are sqlite and target the same database path, use one PDO.
+     */
+    private function shareSqliteCentralConnectionWhenPathsMatch(DatabaseManager $db): void
+    {
+        $defaultName = (string) config('database.default');
+        $defaultConfig = config("database.connections.{$defaultName}", []);
+        $centralConfig = config('database.connections.central', []);
+
+        if (($defaultConfig['driver'] ?? null) !== 'sqlite' || ($centralConfig['driver'] ?? null) !== 'sqlite') {
+            return;
+        }
+
+        $a = $this->normalizedSqliteDatabasePath($defaultConfig['database'] ?? null);
+        $b = $this->normalizedSqliteDatabasePath($centralConfig['database'] ?? null);
+
+        if ($a === '' || $b === '' || $a !== $b) {
+            return;
+        }
+
+        $db->extend('central', function ($config, $name) use ($db, $defaultName) {
+            return $db->connection($defaultName);
+        });
+
+        $db->purge('central');
+    }
+
+    private function normalizedSqliteDatabasePath(?string $database): string
+    {
+        if ($database === null || $database === '') {
+            return '';
+        }
+
+        if ($database === ':memory:' || str_contains($database, 'mode=memory')) {
+            return ':memory:';
+        }
+
+        $path = str_starts_with($database, DIRECTORY_SEPARATOR) || preg_match('/^[A-Za-z]:[\\\\\\/]/', $database)
+            ? $database
+            : base_path($database);
+
+        $real = @realpath($path);
+
+        return $real !== false ? $real : $path;
     }
 
     /**

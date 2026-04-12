@@ -9,7 +9,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\TenantFeatureUpdate;
 use App\Services\FeatureOTAUpdateService;
-use App\Mail\NewFeatureUpdateMail;
+use App\Mail\PlanFeatureUpdateMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -28,15 +28,6 @@ class FeatureOTAUpdateTest extends TestCase
             \Stancl\Tenancy\Events\TenantUpdated::class,
             \Stancl\Tenancy\Events\DatabaseCreated::class,
         ]);
-
-        // Force 'central' connection to be the EXACT SAME connection instance as 'sqlite'
-        // so they share the same memory SQLite database and tables.
-        $this->app['db']->extend('central', function () {
-            return $this->app['db']->connection('sqlite');
-        });
-        
-        // Prevent stancl/tenancy from trying to create physical databases during tests
-        config(['tenancy.database.auto_create' => false]);
     }
 
     /** @test */
@@ -68,6 +59,8 @@ class FeatureOTAUpdateTest extends TestCase
             'stripe_status' => 'active',
             'stripe_id' => 'sub_123',
         ]);
+
+        $this->provisionTenantSqliteAndMigrate($tenant);
 
         // 2. Create a new feature and assign it to the plan
         $feature = Feature::create([
@@ -188,6 +181,9 @@ class FeatureOTAUpdateTest extends TestCase
             'stripe_status' => 'active',
             'stripe_id' => 'sub_B123',
         ]);
+
+        $this->provisionTenantSqliteAndMigrate($tenantA);
+        $this->provisionTenantSqliteAndMigrate($tenantB);
 
         // 2. Act: Push updates manually
         $otaService = new FeatureOTAUpdateService();

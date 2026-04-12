@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Models\MedicalRecord;
+use App\Models\Tenant;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\TenantBrandingService;
@@ -16,10 +17,12 @@ class LandingController extends Controller
     public function index()
     {
         $tenant = tenant();
-        $landingConfig = TenantBrandingService::get('landing_page_config', $tenant->landing_page_config ?? []);
+        $rawLanding = TenantBrandingService::get('landing_page_config', $tenant->landing_page_config ?? []);
+        $landingConfig = Tenant::mergeLandingPageConfig(is_array($rawLanding) ? $rawLanding : null);
         $teamConfig = is_array($landingConfig['team'] ?? null) ? $landingConfig['team'] : [];
-        $teamSourceMode = in_array(($teamConfig['source_mode'] ?? 'auto_staff'), ['auto_staff', 'manual', 'hybrid'], true)
-            ? $teamConfig['source_mode']
+        $rawTeamSourceMode = $teamConfig['source_mode'] ?? 'auto_staff';
+        $teamSourceMode = in_array($rawTeamSourceMode, ['auto_staff', 'manual', 'hybrid'], true)
+            ? $rawTeamSourceMode
             : 'auto_staff';
         $includeOwner = (bool) ($teamConfig['include_owner'] ?? true);
         

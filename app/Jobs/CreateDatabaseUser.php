@@ -46,6 +46,12 @@ class CreateDatabaseUser implements ShouldQueue
             return;
         }
 
+        $centralConnection = (string) config('tenancy.database.central_connection', 'central');
+        $driver = \Illuminate\Support\Facades\DB::connection($centralConnection)->getDriverName();
+        if ($driver !== 'mysql' && $driver !== 'mariadb') {
+            return;
+        }
+
         $databaseName = $tenant->getTenantKey();
 
         try {
