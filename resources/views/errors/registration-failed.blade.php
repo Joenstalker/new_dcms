@@ -1,4 +1,4 @@
-@extends('errors.minimal')
+@extends('errors::minimal')
 
 @section('title', $title ?? 'Registration Error')
 @section('code', $code ?? '500')

@@ -20,7 +20,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['submit', 'cancel', 'delete']);
+const emit = defineEmits(['submit', 'cancel', 'delete', 'close-request']);
 
 const page = usePage();
 const primaryColor = page.props.branding?.primary_color || '#0ea5e9';
@@ -119,6 +119,11 @@ watch(() => [form.price_monthly, form.yearly_discount_percent], ([newMonthly, ne
         form.price_yearly = (baseYearly - discountAmount).toFixed(2);
     }
 });
+
+defineExpose({
+    form,
+    submit,
+});
 </script>
 
 <template>
@@ -134,7 +139,7 @@ watch(() => [form.price_monthly, form.yearly_discount_percent], ([newMonthly, ne
                 </h2>
                 <p class="text-xs text-base-content/50 mt-1">Configure pricing, limits, and system-wide features.</p>
             </div>
-            <button @click="$emit('cancel')" class="btn btn-ghost btn-sm btn-circle">
+            <button type="button" @click="$emit('close-request')" class="btn btn-ghost btn-sm btn-circle" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </header>

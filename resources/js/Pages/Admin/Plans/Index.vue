@@ -39,6 +39,39 @@ const closeEditModal = () => {
     selectedPlan.value = null;
 };
 
+const managePlanModalRef = ref(null);
+
+const handleEditModalClose = () => {
+    if (!isEditModalOpen.value) {
+        return;
+    }
+    const child = managePlanModalRef.value;
+    if (child?.form?.isDirty) {
+        Swal.fire({
+            target: document.body,
+            title: 'Unsaved changes',
+            text: 'You have unsaved changes to this plan. Save before closing?',
+            icon: 'warning',
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonText: 'Save Changes',
+            denyButtonText: 'Discard Changes',
+            cancelButtonText: 'Keep editing',
+            confirmButtonColor: primaryColor,
+            denyButtonColor: '#94a3b8',
+            cancelButtonColor: '#64748b',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                child.submit();
+            } else if (result.isDenied) {
+                closeEditModal();
+            }
+        });
+        return;
+    }
+    closeEditModal();
+};
+
 const handleCreateSubmit = (form) => {
     Swal.fire({
         target: document.querySelector('dialog[open]') || 'body',
@@ -402,13 +435,15 @@ const handleBatchPush = () => {
         </Modal>
 
         <!-- Manage Modal (Replaces Edit) -->
-        <Modal :show="isEditModalOpen" @close="closeEditModal" maxWidth="2xl">
+        <Modal :show="isEditModalOpen" @close="handleEditModalClose" maxWidth="2xl">
             <ManagePlanModal 
                 v-if="selectedPlan"
+                ref="managePlanModalRef"
                 :plan="selectedPlan" 
                 :all-features="allFeatures"
                 @submit="closeEditModal" 
                 @cancel="closeEditModal" 
+                @close-request="handleEditModalClose"
                 @delete="confirmDelete(selectedPlan)"
             />
         </Modal>

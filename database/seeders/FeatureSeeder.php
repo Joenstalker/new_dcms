@@ -2,19 +2,38 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\Feature;
 use App\Models\SubscriptionPlan;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 
 class FeatureSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     *
+     * Seeded features are always implementation-active and plan pivots are marked
+     * as pushed so local/dev databases match production “live” state without
+     * running Push Features from the admin UI.
      */
     public function run(): void
     {
-        $features = [
+        foreach ($this->featureDefinitions() as $definition) {
+            Feature::updateOrCreate(
+                ['key' => $definition['key']],
+                $this->withActiveImplementationStatus($definition)
+            );
+        }
+
+        $this->assignFeaturesToPlans();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function featureDefinitions(): array
+    {
+        return [
             // === CORE FEATURES (Available to All) ===
             [
                 'key' => 'qr_booking',
@@ -170,26 +189,48 @@ class FeatureSeeder extends Seeder
                 'is_active' => true,
             ],
         ];
-
-        // Create all features
-        foreach ($features as $featureData) {
-            Feature::updateOrCreate(
-                ['key' => $featureData['key']],
-                $featureData
-            );
-        }
-
-        // Now assign features to subscription plans
-        $this->assignFeaturesToPlans();
     }
 
     /**
-     * Assign feature values to subscription plans.
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
      */
+    private function withActiveImplementationStatus(array $attributes): array
+    {
+        return array_merge($attributes, [
+            'implementation_status' => Feature::STATUS_ACTIVE,
+        ]);
+    }
+
     private function assignFeaturesToPlans(): void
     {
-        // Define Plan Details (including limits and prices)
-        $plans = [
+        $pushedAt = Carbon::now();
+
+        foreach ($this->planDefinitions() as $name => $data) {
+            $plan = SubscriptionPlan::updateOrCreate(
+                ['name' => $name],
+                [
+                    'price_monthly' => $data['price_monthly'],
+                    'price_yearly' => $data['price_yearly'],
+                    'max_users' => $data['max_users'],
+                    'max_patients' => $data['max_patients'],
+                    'max_appointments' => $data['max_appointments'],
+                    'max_storage_mb' => $data['max_storage_mb'],
+                    'has_qr_booking' => $data['features']['qr_booking']['value_boolean'] ?? false,
+                    'has_sms' => $data['features']['sms_notifications']['value_boolean'] ?? false,
+                ]
+            );
+
+            $this->syncPlanFeatures($plan, $data['features'], $pushedAt);
+        }
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function planDefinitions(): array
+    {
+        return [
             'Basic' => [
                 'price_monthly' => 1499.00,
                 'price_yearly' => 14990.00,
@@ -214,7 +255,7 @@ class FeatureSeeder extends Seeder
                     'advanced_analytics' => ['value_boolean' => false],
                     'multi_branch' => ['value_boolean' => false],
                     'max_storage_mb' => ['value_numeric' => 500],
-                ]
+                ],
             ],
             'Pro' => [
                 'price_monthly' => 2499.00,
@@ -240,14 +281,14 @@ class FeatureSeeder extends Seeder
                     'advanced_analytics' => ['value_boolean' => false],
                     'multi_branch' => ['value_boolean' => false],
                     'max_storage_mb' => ['value_numeric' => 5000],
-                ]
+                ],
             ],
             'Ultimate' => [
                 'price_monthly' => 3999.00,
                 'price_yearly' => 39990.00,
-                'max_users' => 100, // Unlimited
-                'max_patients' => null, // Unlimited
-                'max_appointments' => null, // Unlimited
+                'max_users' => 100,
+                'max_patients' => null,
+                'max_appointments' => null,
                 'max_storage_mb' => 50000,
                 'features' => [
                     'qr_booking' => ['value_boolean' => true],
@@ -256,9 +297,9 @@ class FeatureSeeder extends Seeder
                     'billing_pos' => ['value_boolean' => true],
                     'clinic_setup' => ['value_boolean' => true],
                     'role_based_access' => ['value_boolean' => true],
-                    'max_users' => ['value_numeric' => null], // Unlimited
-                    'max_patients' => ['value_numeric' => null], // Unlimited
-                    'max_appointments' => ['value_numeric' => null], // Unlimited
+                    'max_users' => ['value_numeric' => null],
+                    'max_patients' => ['value_numeric' => null],
+                    'max_appointments' => ['value_numeric' => null],
                     'sms_notifications' => ['value_boolean' => true],
                     'custom_branding' => ['value_boolean' => true],
                     'priority_support' => ['value_boolean' => true],
@@ -266,41 +307,24 @@ class FeatureSeeder extends Seeder
                     'advanced_analytics' => ['value_boolean' => true],
                     'multi_branch' => ['value_boolean' => true],
                     'max_storage_mb' => ['value_numeric' => 50000],
-                ]
+                ],
             ],
         ];
-
-        foreach ($plans as $name => $data) {
-            $plan = SubscriptionPlan::updateOrCreate(
-                ['name' => $name],
-                [
-                    'price_monthly' => $data['price_monthly'],
-                    'price_yearly' => $data['price_yearly'],
-                    'max_users' => $data['max_users'],
-                    'max_patients' => $data['max_patients'],
-                    'max_appointments' => $data['max_appointments'],
-                    'max_storage_mb' => $data['max_storage_mb'],
-                    // Legacy sync for transition
-                    'has_qr_booking' => $data['features']['qr_booking']['value_boolean'] ?? false,
-                    'has_sms' => $data['features']['sms_notifications']['value_boolean'] ?? false,
-                ]
-            );
-
-            $this->syncPlanFeatures($plan, $data['features']);
-        }
     }
 
     /**
-     * Sync features to a specific plan.
+     * @param  array<string, array<string, mixed>>  $features
      */
-    private function syncPlanFeatures(SubscriptionPlan $plan, array $features): void
+    private function syncPlanFeatures(SubscriptionPlan $plan, array $features, Carbon $pushedAt): void
     {
         $syncData = [];
 
         foreach ($features as $key => $values) {
             $feature = Feature::where('key', $key)->first();
             if ($feature) {
-                $syncData[$feature->id] = $values;
+                $syncData[$feature->id] = array_merge($values, [
+                    'pushed_at' => $pushedAt,
+                ]);
             }
         }
 
