@@ -31,6 +31,8 @@ const isLoading = ref(false);
 const subdomainSuggestions = ref([]);
 const subdomainChecking = ref(false);
 const subdomainAvailable = ref(null);
+/** Client or API validation: full URL, domain suffix, spaces, etc. */
+const subdomainFormatMessage = ref(null);
 
 // Dynamic domain from backend config
 const clinicDomain = computed(() => {
@@ -195,8 +197,43 @@ const isStep1Valid = computed(() => {
 });
 
 const isStep2Valid = computed(() => {
-    return form.subdomain.length >= 3 && subdomainAvailable.value === true;
+    return (
+        !subdomainFormatMessage.value &&
+        form.subdomain.length >= 3 &&
+        subdomainAvailable.value === true
+    );
 });
+
+const subdomainFieldInvalid = computed(
+    () => Boolean(subdomainFormatMessage.value) || subdomainAvailable.value === false
+);
+
+/** First label only: strips protocol, path, port, spaces, and later hostname parts. */
+const extractFirstSubdomainLabel = (raw) => {
+    if (raw === undefined || raw === null) {
+        return '';
+    }
+    let t = String(raw).trim().toLowerCase();
+    t = t.replace(/^https?:\/\//, '');
+    t = (t.split('/')[0] || '').split(':')[0] || '';
+    t = (t.split('@')[0] || '');
+    const piece = (t.split(/[\s.]+/).filter(Boolean)[0] || '');
+    let s = piece.replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-');
+    s = s.replace(/^-+|-+$/g, '');
+    return s;
+};
+
+/** What the old sanitizer produced from pasted hostnames (merges labels) — differs from extract when user pasted a domain. */
+const naiveSanitizeHostlikeInput = (raw) => {
+    if (raw === undefined || raw === null) {
+        return '';
+    }
+    let t = String(raw).trim().toLowerCase();
+    t = t.replace(/^https?:\/\//, '');
+    t = (t.split('/')[0] || '').split(':')[0] || '';
+    t = (t.split('@')[0] || '');
+    return t.replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-').replace(/^-+|-+$/g, '');
+};
 
 const isStep3Valid = computed(() => {
     return isStep1Valid.value && isStep2Valid.value;
@@ -214,23 +251,35 @@ const debouncedCheck = debounce(() => {
     checkSubdomainAvailability();
 }, 500);
 
-// Sanitize and check subdomain on change
 watch(() => form.subdomain, (newVal) => {
-    if (!newVal) return;
-    
-    // Sanitize: Allow only lowercase letters, numbers, and hyphens
-    const sanitized = newVal.toLowerCase()
-        .replace(/[^a-z0-9-]/g, '') // Remove invalid chars
-        .replace(/-{2,}/g, '-');    // Remove double hyphens
-        
-    if (sanitized !== newVal) {
-        form.subdomain = sanitized;
+    const raw = newVal === undefined || newVal === null ? '' : String(newVal);
+    const label = extractFirstSubdomainLabel(raw);
+    const naive = naiveSanitizeHostlikeInput(raw);
+    const hasHostlikeSeparators = /[.\s:/@]|https?:\/\//i.test(raw.trim());
+    const pastedDomainOrMultipleTokens = hasHostlikeSeparators && naive !== label && raw.trim() !== '';
+
+    if (pastedDomainOrMultipleTokens) {
+        debouncedCheck.cancel();
+        subdomainFormatMessage.value = label
+            ? `Use only one name (for example "${label}"). Do not type ".${clinicDomain.value}", "https://", or spaces — we add the site address in the preview above.`
+            : `Enter a single short name (letters, numbers, hyphens). Do not paste your full address or "${clinicDomain.value}".`;
+        form.subdomain = label;
+        subdomainAvailable.value = null;
+        return;
     }
 
-    if (sanitized.length >= 3) {
+    subdomainFormatMessage.value = null;
+
+    const normalizedSingle = label;
+    if (normalizedSingle !== raw.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-').replace(/^-+|-+$/g, '')) {
+        form.subdomain = normalizedSingle;
+    }
+
+    if (normalizedSingle.length >= 3) {
         subdomainAvailable.value = null;
         debouncedCheck();
     } else {
+        debouncedCheck.cancel();
         subdomainAvailable.value = null;
     }
 });
@@ -261,11 +310,17 @@ const fetchSubdomainSuggestions = async () => {
 };
 
 const checkSubdomainAvailability = async () => {
-    if (form.subdomain.length < 3) return;
-    
+    if (subdomainFormatMessage.value) {
+        return;
+    }
+    if (form.subdomain.length < 3) {
+        return;
+    }
+
     subdomainChecking.value = true;
     subdomainAvailable.value = null;
-    
+    subdomainFormatMessage.value = null;
+
     try {
         const response = await fetch('/registration/check-subdomain', {
             method: 'POST',
@@ -277,15 +332,35 @@ const checkSubdomainAvailability = async () => {
             body: JSON.stringify({ subdomain: form.subdomain })
         });
         const data = await response.json();
+        if (!response.ok) {
+            subdomainFormatMessage.value =
+                data.message ||
+                (Array.isArray(data.errors?.subdomain) ? data.errors.subdomain[0] : null) ||
+                'This web name is not valid.';
+            subdomainAvailable.value = null;
+            return;
+        }
+        if (data.success === false && data.message) {
+            subdomainFormatMessage.value = data.message;
+            subdomainAvailable.value = false;
+            return;
+        }
+        subdomainFormatMessage.value = null;
         subdomainAvailable.value = data.available;
+        if (data.available === false && data.message) {
+            subdomainFormatMessage.value = data.message;
+        }
     } catch (error) {
         console.error('Failed to check subdomain:', error);
+        subdomainFormatMessage.value = 'Could not check availability. Please try again.';
+        subdomainAvailable.value = null;
     } finally {
         subdomainChecking.value = false;
     }
 };
 
 const selectSuggestion = (suggestion) => {
+    subdomainFormatMessage.value = null;
     form.subdomain = suggestion;
     checkSubdomainAvailability();
 };
@@ -326,9 +401,8 @@ const nextStep = async () => {
             isLoading.value = false;
         }
     } else if (currentStep.value === 2) {
-        // Validate step 2
         await checkSubdomainAvailability();
-        if (subdomainAvailable.value) {
+        if (!subdomainFormatMessage.value && subdomainAvailable.value) {
             currentStep.value = 3;
         }
     }
@@ -366,6 +440,8 @@ const closeModal = () => {
     currentStep.value = 1;
     form.reset();
     subdomainAvailable.value = null;
+    subdomainFormatMessage.value = null;
+    debouncedCheck.cancel();
     subdomainSuggestions.value = [];
     emit('close');
 };
@@ -585,6 +661,9 @@ const paymentMethods = [
                 <div>
                     <h3 class="text-lg font-semibold text-gray-900">Create Your Clinic's Web Identity</h3>
                     <p class="text-xs text-gray-500 mt-1">This is the unique address patients will use to book appointments online.</p>
+                    <p class="text-xs text-amber-800/90 mt-2 font-medium">
+                        Type <strong>one short name</strong> only (the part in bold in the preview). Do not add <span class="font-mono">.{{ clinicDomain }}</span>, <span class="font-mono">https://</span>, or spaces.
+                    </p>
                 </div>
                 
                 <div class="bg-gray-900 rounded-xl p-4 shadow-inner border border-gray-800">
@@ -612,15 +691,29 @@ const paymentMethods = [
                         <input
                             id="subdomain"
                             type="text"
-                            class="block w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-[#2B7CB3] focus:border-[#2B7CB3] sm:text-sm transition-all shadow-sm"
+                            :class="[
+                                'block w-full px-4 py-3 rounded-lg border sm:text-sm transition-all shadow-sm focus:ring-2',
+                                subdomainFieldInvalid
+                                    ? 'border-red-500 ring-red-200 focus:border-red-500 focus:ring-red-200'
+                                    : 'border-gray-300 focus:ring-[#2B7CB3] focus:border-[#2B7CB3]',
+                            ]"
                             v-model="form.subdomain"
                             placeholder="e.g., smile-dental"
+                            autocomplete="off"
+                            autocapitalize="off"
+                            spellcheck="false"
                         />
                     </div>
                     
                     <!-- Status Indicators -->
-                    <div class="mt-2 h-5">
-                        <span v-if="subdomainChecking" class="text-xs text-gray-500 flex items-center">
+                    <div class="mt-2 min-h-[1.25rem]">
+                        <span v-if="subdomainFormatMessage" class="text-xs text-red-600 font-medium flex items-start gap-1 leading-snug">
+                            <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>{{ subdomainFormatMessage }}</span>
+                        </span>
+                        <span v-else-if="subdomainChecking" class="text-xs text-gray-500 flex items-center">
                             <svg class="animate-spin h-3 w-3 mr-1" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -633,11 +726,11 @@ const paymentMethods = [
                             </svg>
                             Great choice! This name is available.
                         </span>
-                        <span v-else-if="subdomainAvailable === false" class="text-xs text-red-600 font-medium flex items-center">
-                            <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <span v-else-if="subdomainAvailable === false" class="text-xs text-red-600 font-medium flex items-start gap-1 leading-snug">
+                            <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
-                            This name is already taken. Try another?
+                            <span>This name is already taken. Try another, or pick a suggestion above.</span>
                         </span>
                     </div>
 

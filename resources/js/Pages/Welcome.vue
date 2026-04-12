@@ -8,6 +8,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 import RegistrationModal from '@/Components/RegistrationModal.vue';
 import PaymentModal from '@/Components/PaymentModal.vue';
+import PaymentSuccessModal from '@/Components/PaymentSuccessModal.vue';
 import ContactModal from '@/Components/ContactModal.vue';
 import Swal from 'sweetalert2';
 import axios from 'axios';
@@ -56,6 +57,9 @@ const isContactModalOpen = ref(false);
 const selectedPlan = ref(null);
 const registrationData = ref(null);
 const sessionId = ref(null);
+const isPaymentProcessingOverlay = ref(false);
+const showPaymentSuccessModal = ref(false);
+const paymentSuccessEmail = ref('');
 const googleButton = ref(null);
 const isGoogleLoading = ref(false);
 
@@ -205,6 +209,60 @@ const openContactModal = () => {
 
 const closeContactModal = () => {
     isContactModalOpen.value = false;
+};
+
+const closePaymentSuccessModal = () => {
+    showPaymentSuccessModal.value = false;
+    paymentSuccessEmail.value = '';
+};
+
+/**
+ * After Stripe redirects to /?payment=success&session_id=…, finalize via the same API as before (no extra full page load).
+ */
+const finalizeRegistrationAfterPayment = async (sid) => {
+    if (!sid) {
+        return;
+    }
+
+    isPaymentProcessingOverlay.value = true;
+    const started = Date.now();
+
+    try {
+        const { data } = await axios.post(route('registration.complete'), { session_id: sid });
+
+        const elapsed = Date.now() - started;
+        const minOverlayMs = 900;
+        if (elapsed < minOverlayMs) {
+            await new Promise((resolve) => setTimeout(resolve, minOverlayMs - elapsed));
+        }
+
+        isPaymentProcessingOverlay.value = false;
+
+        if (data.success) {
+            paymentSuccessEmail.value = data.registration?.email || '';
+            showPaymentSuccessModal.value = true;
+            sessionId.value = null;
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Could not complete registration',
+                text: data.message || 'Please try again or contact support.',
+                confirmButtonColor: '#2B7CB3',
+            });
+        }
+    } catch (e) {
+        isPaymentProcessingOverlay.value = false;
+        const msg =
+            e.response?.data?.message ||
+            e.message ||
+            'Could not verify payment. Please contact support if you were charged.';
+        Swal.fire({
+            icon: 'error',
+            title: 'Verification failed',
+            text: msg,
+            confirmButtonColor: '#2B7CB3',
+        });
+    }
 };
 
 const handleChoosePlan = (plan) => {
@@ -373,31 +431,6 @@ const handleScroll = () => {
     isScrolled.value = window.scrollY > 20;
 };
 
-// Check for payment success on page load
-onMounted(() => {
-    // Listen for reCAPTCHA loaded event from app.blade.php
-    window.addEventListener('recaptcha-loaded', () => {
-        if (isLoginModalOpen.value) {
-            initLoginRecaptcha();
-        }
-    });
-
-    // If already loaded
-    if (window.grecaptcha) {
-        initLoginRecaptcha();
-    }
-
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('payment') === 'success' && urlParams.get('session_id')) {
-        console.log('[Welcome] Detected payment success redirect. sessionId:', urlParams.get('session_id'));
-        sessionId.value = urlParams.get('session_id');
-        isPaymentModalOpen.value = true;
-        
-        // Clean up URL without triggering Inertia re-render (which would cause an infinite loop)
-        window.history.replaceState({}, '', window.location.pathname);
-    }
-});
-
 // Intersection Observer for scroll animations
 const observeElements = () => {
     const observer = new IntersectionObserver((entries) => {
@@ -471,20 +504,30 @@ const isPopular = (planName) => {
     return planName.toLowerCase().includes('pro') || planName.toLowerCase().includes('popular');
 };
 
-// Check for payment success/cancel on page load
 onMounted(() => {
+    window.addEventListener('recaptcha-loaded', () => {
+        if (isLoginModalOpen.value) {
+            initLoginRecaptcha();
+        }
+    });
+
+    if (window.grecaptcha) {
+        initLoginRecaptcha();
+    }
+
     window.addEventListener('scroll', handleScroll);
     handleScroll();
-    
-    // Init scroll animations after a tick
+
     setTimeout(observeElements, 100);
 
     const urlParams = new URLSearchParams(window.location.search);
-    
-    if (urlParams.get('session_id')) {
-        console.log('Payment session detected');
+
+    if (urlParams.get('payment') === 'success' && urlParams.get('session_id')) {
+        const sid = urlParams.get('session_id');
+        window.history.replaceState({}, '', window.location.pathname);
+        finalizeRegistrationAfterPayment(sid);
     }
-    
+
     if (urlParams.get('cancelled') === 'true') {
         alert('Payment was cancelled. You can try again anytime.');
         router.replace(window.location.pathname, { preserveState: true, preserveScroll: true, replace: true });
@@ -605,7 +648,7 @@ onUnmounted(() => {
             <!-- Dark overlay for text readability -->
             <div class="absolute inset-0 bg-gradient-to-r from-[#1B3A4B]/85 via-[#1B3A4B]/70 to-[#1B3A4B]/40 z-0"></div>
 
-            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-40 lg:pt-32 lg:pb-48 text-center lg:text-left flex flex-col lg:flex-row items-center z-10">
+            <div class="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-40 lg:pt-32 lg:pb-48 text-center lg:text-left flex flex-col lg:flex-row items-center">
                 <!-- Text Content -->
                 <div class="lg:w-1/2 lg:pr-12">
                     <h1 class="text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight drop-shadow-lg">
@@ -617,7 +660,11 @@ onUnmounted(() => {
                         Made by BSIT Students, for every Filipino Dentist.
                     </p>
                     <div class="mt-10">
-                        <button @click="openRegistrationModal()" class="bg-[#2B7CB3] hover:bg-[#24699A] text-white text-lg font-bold px-8 py-3.5 rounded-md shadow-lg shadow-[#2B7CB3]/30 transition-all hover:-translate-y-1 hover:shadow-xl">
+                        <button
+                            type="button"
+                            @click="openRegistrationModal()"
+                            class="inline-flex cursor-pointer items-center justify-center bg-[#2B7CB3] hover:bg-[#24699A] text-white text-lg font-bold px-8 py-3.5 rounded-md shadow-lg shadow-[#2B7CB3]/30 transition-all hover:-translate-y-1 hover:shadow-xl"
+                        >
                             GET STARTED
                         </button>
                         <p class="mt-3 text-xs text-green-200/70 italic">Join the future of dental practice management!</p>
@@ -631,7 +678,7 @@ onUnmounted(() => {
             </div>
             
             <!-- Curved Wave Graphic -->
-            <div class="absolute bottom-0 w-full leading-none z-10">
+            <div class="pointer-events-none absolute bottom-0 left-0 right-0 w-full leading-none z-10" aria-hidden="true">
                 <svg viewBox="0 0 1440 250" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto text-[#5EBD6A] block">
                     <path d="M0 120L48 135C96 150 192 180 288 185C384 190 480 170 576 135C672 100 768 50 864 35C960 20 1056 40 1152 65C1248 90 1344 120 1392 135L1440 150V250H1392C1344 250 1248 250 1152 250C1056 250 960 250 864 250C768 250 672 250 576 250C480 250 384 250 288 250C192 250 96 250 48 250H0V120Z" fill="currentColor"/>
                 </svg>
@@ -857,6 +904,41 @@ onUnmounted(() => {
         <ContactModal
             :show="isContactModalOpen"
             @close="closeContactModal"
+        />
+
+        <Teleport to="body">
+            <div
+                v-if="isPaymentProcessingOverlay"
+                class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#0f172a]/85 backdrop-blur-md px-6"
+                role="alertdialog"
+                aria-live="polite"
+                aria-busy="true"
+                aria-labelledby="payment-processing-title"
+            >
+                <div class="max-w-md w-full rounded-2xl bg-white p-8 shadow-2xl text-center border border-slate-100">
+                    <div class="mx-auto mb-6 relative w-16 h-16">
+                        <div class="absolute inset-0 rounded-full border-4 border-slate-100" />
+                        <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-[#2B7CB3] border-r-[#5EBD6A] animate-spin" />
+                    </div>
+                    <h2 id="payment-processing-title" class="text-xl font-black text-slate-900 mb-2">
+                        Processing your payment
+                    </h2>
+                    <p class="text-sm text-slate-600 leading-relaxed mb-6">
+                        Please wait while we confirm your payment and set up your registration. This usually takes just a moment.
+                    </p>
+                    <div class="flex justify-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#2B7CB3] animate-bounce" />
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#2B7CB3] animate-bounce [animation-delay:150ms]" />
+                        <span class="w-2.5 h-2.5 rounded-full bg-[#2B7CB3] animate-bounce [animation-delay:300ms]" />
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <PaymentSuccessModal
+            :show="showPaymentSuccessModal"
+            :email="paymentSuccessEmail"
+            @close="closePaymentSuccessModal"
         />
 
     </div>

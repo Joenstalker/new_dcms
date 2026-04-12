@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Feature extends Model
 {
     protected $connection = 'central';
+
     protected $fillable = [
         'key',
         'name',
@@ -40,9 +41,16 @@ class Feature extends Model
      * Default implementation status when creating a new feature.
      */
     public const STATUS_COMING_SOON = 'coming_soon';
+
     public const STATUS_IN_DEVELOPMENT = 'in_development';
+
+    public const STATUS_BETA = 'beta';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_DEPRECATED = 'deprecated';
+
+    public const STATUS_MAINTENANCE = 'maintenance';
 
     /**
      * Get the display label for implementation status.
@@ -50,12 +58,14 @@ class Feature extends Model
     public function getImplementationStatusLabelAttribute(): string
     {
         return match ($this->implementation_status) {
-                self::STATUS_COMING_SOON => 'Coming Soon',
-                self::STATUS_IN_DEVELOPMENT => 'In Development',
-                self::STATUS_ACTIVE => 'Active',
-                self::STATUS_DEPRECATED => 'Deprecated',
-                default => 'Unknown',
-            };
+            self::STATUS_COMING_SOON => 'Coming Soon',
+            self::STATUS_IN_DEVELOPMENT => 'In Development',
+            self::STATUS_BETA => 'Beta',
+            self::STATUS_ACTIVE => 'Active',
+            self::STATUS_DEPRECATED => 'Deprecated',
+            self::STATUS_MAINTENANCE => 'Under Maintenance',
+            default => 'Unknown',
+        };
     }
 
     /**
@@ -82,7 +92,7 @@ class Feature extends Model
      */
     public function plans(): BelongsToMany
     {
-        return $this->belongsToMany(SubscriptionPlan::class , 'plan_features')
+        return $this->belongsToMany(SubscriptionPlan::class, 'plan_features')
             ->withPivot('value_boolean', 'value_numeric', 'value_tier')
             ->withTimestamps();
     }
@@ -102,16 +112,16 @@ class Feature extends Model
     {
         $pivot = $this->plans()->where('subscription_plan_id', $plan->id)->first();
 
-        if (!$pivot) {
+        if (! $pivot) {
             return null;
         }
 
         return match ($this->type) {
-                'boolean' => $pivot->pivot->value_boolean,
-                'numeric' => $pivot->pivot->value_numeric,
-                'tiered' => $pivot->pivot->value_tier,
-                default => null,
-            };
+            'boolean' => $pivot->pivot->value_boolean,
+            'numeric' => $pivot->pivot->value_numeric,
+            'tiered' => $pivot->pivot->value_tier,
+            default => null,
+        };
     }
 
     /**
@@ -122,11 +132,11 @@ class Feature extends Model
         $value = $this->getValueForPlan($plan);
 
         return match ($this->type) {
-                'boolean' => !!$value,
-                'numeric' => $value !== null,
-                'tiered' => $value !== null,
-                default => false,
-            };
+            'boolean' => (bool) $value,
+            'numeric' => $value !== null,
+            'tiered' => $value !== null,
+            default => false,
+        };
     }
 
     /**
@@ -175,11 +185,11 @@ class Feature extends Model
     public function getTypeLabelAttribute(): string
     {
         return match ($this->type) {
-                'boolean' => 'Yes/No',
-                'numeric' => 'Number',
-                'tiered' => 'Tiered',
-                default => 'Unknown',
-            };
+            'boolean' => 'Yes/No',
+            'numeric' => 'Number',
+            'tiered' => 'Tiered',
+            default => 'Unknown',
+        };
     }
 
     /**
@@ -188,12 +198,12 @@ class Feature extends Model
     public function getCategoryLabelAttribute(): string
     {
         return match ($this->category) {
-                'core' => 'Core Features',
-                'limits' => 'Limits',
-                'addons' => 'Add-ons',
-                'reports' => 'Reports & Analytics',
-                'expansion' => 'Expansion',
-                default => 'Other',
-            };
+            'core' => 'Core Features',
+            'limits' => 'Limits',
+            'addons' => 'Add-ons',
+            'reports' => 'Reports & Analytics',
+            'expansion' => 'Expansion',
+            default => 'Other',
+        };
     }
 }

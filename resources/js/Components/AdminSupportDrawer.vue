@@ -54,14 +54,13 @@ onMounted(() => {
     if (window.Echo) {
         window.Echo.private('admin.support.tickets')
             .listen('.SupportTicketUpdated', (e) => {
-                console.log('Admin Received Support Event:', e);
-                // If it's already open and it's the SAME ticket, refresh SILENTLY
-                const isViewingThisTicket = supportState.isOpen && supportState.selectedTicket?.id === e.ticket.id;
-                
-                // Only open/fetch loudly if it's a DIFFERENT ticket or if the drawer is closed
-                supportState.viewTicket(e.ticket.id, isViewingThisTicket);
+                const ticketId = e.ticket_id ?? e.ticket?.id;
+                if (!ticketId) {
+                    return;
+                }
+                const isViewingThisTicket = supportState.isOpen && supportState.selectedTicket?.id === ticketId;
+                supportState.viewTicket(ticketId, isViewingThisTicket);
 
-                // Also reload page data if on the support index
                 if (route().current('admin.support.index')) {
                     router.reload({ only: ['tickets', 'stats'] });
                 }
@@ -85,8 +84,11 @@ const sendReply = () => {
     replyAttachments.value.forEach(f => formData.append('attachments[]', f));
 
     axios.post(route('admin.support.reply', supportState.selectedTicket.id), formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    }).then(({ data }) => {
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    }).then(() => {
         if (replyContent.value) replyContent.value.value = '';
         replyAttachments.value = [];
         // Refresh silently after reply to avoid spinner

@@ -13,19 +13,22 @@ export const supportState = reactive({
         }
         try {
             const { data } = await axios.get(route('admin.support.show', ticketId));
-            if (data.success) {
-                // If it's the same ticket, just update messages to avoid jumping if not needed
-                if (this.selectedTicket && this.selectedTicket.id === data.ticket.id) {
-                    this.selectedTicket.messages = data.ticket.messages;
-                    this.selectedTicket.status = data.ticket.status;
+            const payload = data?.success && data.data !== undefined ? data.data : data;
+            const ticket = payload?.ticket;
+            if (data?.success && ticket) {
+                if (this.selectedTicket && this.selectedTicket.id === ticket.id) {
+                    this.selectedTicket.messages = ticket.messages;
+                    this.selectedTicket.status = ticket.status;
                 } else {
-                    this.selectedTicket = data.ticket;
+                    this.selectedTicket = ticket;
                 }
             }
         } catch (e) {
             console.error('Failed to load ticket:', e);
         } finally {
-            if (!silent) this.loading = false;
+            if (!silent) {
+                this.loading = false;
+            }
         }
     },
 

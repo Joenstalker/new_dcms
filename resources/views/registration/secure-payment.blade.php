@@ -99,14 +99,16 @@
     <script>
         const clientSecret = @json($clientSecret);
         const sessionId    = @json($sessionId);
-        const successBase  = @json($successUrl);
+        {{-- Same return target as Stripe return_url: home + query (Welcome.vue shows processing + success modal) --}}
+        const paymentSuccessHome = @json(url('/?payment=success'));
 
         async function initStripe() {
             const stripe = Stripe(@json($stripeKey));
             const checkout = await stripe.initEmbeddedCheckout({
                 clientSecret,
                 onComplete() {
-                    window.location.href = successBase + '?session_id=' + sessionId;
+                    const sep = paymentSuccessHome.includes('?') ? '&' : '?';
+                    window.location.href = paymentSuccessHome + sep + 'session_id=' + encodeURIComponent(sessionId);
                 },
             });
             checkout.mount('#stripe-embedded-checkout');

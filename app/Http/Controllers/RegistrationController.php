@@ -154,14 +154,16 @@ class RegistrationController extends Controller
             'city' => 'required|string|max:100',
             'province' => 'required|string|max:100',
             'password' => 'required|string|min:8',
-            'subdomain' => 'required|string|max:63',
+            'subdomain' => ['required', 'string', 'min:3', 'max:63', 'regex:/^[a-z0-9][a-z0-9-]*[a-z0-9]$/'],
             'plan_id' => 'required|exists:subscription_plans,id',
             'billing_cycle' => 'required|in:monthly,yearly',
             'months' => 'nullable|integer|min:1|max:12',
         ]);
 
+        $validated['subdomain'] = strtolower($validated['subdomain']);
+
         // Check if subdomain is already registered
-        if (Domain::where('domain', strtolower($validated['subdomain']))->exists()) {
+        if (Domain::where('domain', $validated['subdomain'])->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'This subdomain is already taken.',
@@ -356,7 +358,6 @@ class RegistrationController extends Controller
             'sessionId' => $sessionId,
             'order' => $orderSummary,
             'stripeKey' => config('services.stripe.key'),
-            'successUrl' => route('registration.success'),
         ]);
     }
 
@@ -565,6 +566,7 @@ class RegistrationController extends Controller
                         'clinic_name' => $pendingRegistration->clinic_name,
                         'first_name' => $pendingRegistration->first_name,
                         'last_name' => $pendingRegistration->last_name,
+                        'email' => $pendingRegistration->email,
                         'amount_paid' => $pendingRegistration->amount_paid,
                         'expires_at' => $pendingRegistration->expires_at->timestamp * 1000,
                         'subdomain' => $pendingRegistration->subdomain,
@@ -579,6 +581,7 @@ class RegistrationController extends Controller
                     'clinic_name' => $pendingRegistration->clinic_name,
                     'first_name' => $pendingRegistration->first_name,
                     'last_name' => $pendingRegistration->last_name,
+                    'email' => $pendingRegistration->email,
                     'amount_paid' => $pendingRegistration->amount_paid,
                     'expires_at' => $pendingRegistration->expires_at->timestamp * 1000,
                     'subdomain' => $pendingRegistration->subdomain,

@@ -367,9 +367,9 @@ watch(() => page.props.flash, (flash) => {
 
         <!-- Sidebar -->
         <!-- Reduced z-index from z-[100] to z-40 so standard z-50 modals overlay it -->
-        <div class="drawer-side z-40 overflow-hidden custom-scrollbar">
+        <div class="drawer-side z-40 h-full min-h-0 lg:overflow-hidden">
             <label for="admin-sidebar" aria-label="close sidebar" class="drawer-overlay"></label>
-            <aside class="w-72 h-full bg-base-100 border-r border-base-300 flex flex-col shadow-xl lg:shadow-none overflow-hidden custom-scrollbar">
+            <aside class="w-72 min-h-0 h-full max-h-[100dvh] bg-base-100 border-r border-base-300 flex flex-col shadow-xl lg:shadow-none lg:min-h-0 max-lg:overflow-y-auto max-lg:overscroll-y-contain lg:overflow-hidden">
                 <!-- Sidebar Header -->
                 <div class="flex items-center px-4 h-16 bg-base-100/50 backdrop-blur-md border-b border-base-300 shrink-0">
                     <div class="flex items-center space-x-4 flex-1">
@@ -403,8 +403,8 @@ watch(() => page.props.flash, (flash) => {
                     </label>
                 </div>
 
-                <!-- Navigation -->
-                <nav class="flex-1 px-4 py-4 space-y-1 overflow-hidden">
+                <!-- Navigation: full sidebar scrolls on mobile; middle section only on lg+ -->
+                <nav class="shrink-0 px-4 py-4 space-y-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-y-contain">
                     <template v-for="item in menuItems" :key="item.name">
                         <!-- Active link (has route) -->
                         <Link
@@ -452,7 +452,7 @@ watch(() => page.props.flash, (flash) => {
                 </nav>
 
                 <!-- User Footer -->
-                <div class="p-4 bg-base-200/50 border-t border-base-300">
+                <div class="shrink-0 p-4 bg-base-200/50 border-t border-base-300">
                     <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center gap-4 min-w-0">
                             <div 

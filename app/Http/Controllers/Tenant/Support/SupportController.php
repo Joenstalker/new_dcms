@@ -13,6 +13,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SupportController extends Controller
 {
@@ -67,7 +68,11 @@ class SupportController extends Controller
             'attachments.*' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,pdf,doc,docx,zip',
         ]);
 
-        $tenantId = tenancy()->tenant->id;
+        $tenantModel = tenant();
+        if (! $tenantModel) {
+            return $this->respondError('Missing tenant context.', 422);
+        }
+        $tenantId = $tenantModel->getTenantKey();
         $userId = Auth::id();
         $sanitizer = app(SecuritySanitizationService::class);
 
@@ -92,7 +97,14 @@ class SupportController extends Controller
 
         $this->handleAttachments($request, $message);
 
-        broadcast(new SupportTicketUpdated($ticket, 'created'));
+        try {
+            broadcast(new SupportTicketUpdated($ticket, 'created'));
+        } catch (\Throwable $e) {
+            Log::warning('Support ticket created but broadcast failed.', [
+                'ticket_id' => $ticket->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
 
         return $this->respondSuccess([
             'ticket' => $this->transformTicket($ticket->load('messages.attachments')),
@@ -133,7 +145,14 @@ class SupportController extends Controller
         // Update ticket's last activity
         $ticket->touch();
 
-        broadcast(new SupportTicketUpdated($ticket, 'reply_added'));
+        try {
+            broadcast(new SupportTicketUpdated($ticket, 'reply_added'));
+        } catch (\Throwable $e) {
+            Log::warning('Support message saved but broadcast failed.', [
+                'ticket_id' => $ticket->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
 
         $message->load('attachments');
 

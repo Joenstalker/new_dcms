@@ -6,7 +6,6 @@ use App\Models\SupportTicket;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -16,6 +15,7 @@ class SupportTicketUpdated implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $ticket;
+
     public $action;
 
     /**
@@ -30,12 +30,12 @@ class SupportTicketUpdated implements ShouldBroadcastNow
     /**
      * Get the channels the event should broadcast on.
      *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('support.ticket.' . $this->ticket->id),
+            new PrivateChannel('support.ticket.'.$this->ticket->id),
             new PrivateChannel('admin.support.tickets'),
         ];
     }
@@ -46,5 +46,16 @@ class SupportTicketUpdated implements ShouldBroadcastNow
     public function broadcastAs(): string
     {
         return 'SupportTicketUpdated';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'action' => $this->action,
+            'ticket_id' => (int) $this->ticket->getKey(),
+        ];
     }
 }

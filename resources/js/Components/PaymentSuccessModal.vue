@@ -18,24 +18,25 @@ const emit = defineEmits(['close']);
         <div class="p-6">
             <!-- Success Icon -->
             <div class="flex justify-center mb-6">
-                <div class="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <svg class="w-10 h-10 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <div class="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center">
+                    <svg class="w-11 h-11 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
             </div>
 
             <!-- Header -->
-            <h2 class="text-2xl font-bold text-gray-900 text-center mb-4">
-                Registration Received!
+            <h2 class="text-2xl font-bold text-gray-900 text-center mb-2">
+                Payment received
             </h2>
+            <p class="text-center text-sm font-semibold text-teal-700 mb-4">
+                Registration received — you&apos;re almost there
+            </p>
 
             <!-- Message -->
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                <p class="text-sm text-yellow-800 text-center">
-                    <strong>Thank you for registering!</strong>
-                    <br><br>
-                    Your payment has been successfully processed. However, your clinic is currently pending verification by our administrators.
+            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
+                <p class="text-sm text-emerald-900 text-center leading-relaxed">
+                    <strong>Thank you!</strong> Your payment went through successfully. Your clinic is <strong>pending verification</strong> by our team; we&apos;ll email you when it&apos;s approved.
                 </p>
             </div>
 

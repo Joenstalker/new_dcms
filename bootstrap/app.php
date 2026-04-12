@@ -8,6 +8,7 @@ use App\Http\Middleware\EnsureTenantSessionIsolation;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ImpersonateTenantPreviewUser;
 use App\Http\Middleware\InitializeTenancyBySubdomainOrPreview;
+use App\Http\Middleware\InitializeTenancyForBroadcastingAuth;
 use App\Http\Middleware\PreventAccessFromCentralDomainsOrPreview;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetTenantUrl;
@@ -32,13 +33,22 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
-        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
         then: function () {
             if (file_exists(base_path('routes/tenant.php'))) {
                 Route::group([], base_path('routes/tenant.php'));
             }
         },
+    )
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        [
+            'middleware' => [
+                'web',
+                InitializeTenancyForBroadcastingAuth::class,
+                EnsureTenantSessionIsolation::class,
+            ],
+        ]
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
@@ -76,6 +86,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->priority([
             InitializeTenancyBySubdomainOrPreview::class,
+            InitializeTenancyForBroadcastingAuth::class,
             SetTenantUrl::class,
             PreventAccessFromCentralDomainsOrPreview::class,
             ImpersonateTenantPreviewUser::class,

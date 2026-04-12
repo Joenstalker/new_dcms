@@ -255,6 +255,14 @@ class SupportTicketController extends Controller
 
         broadcast(new SupportTicketUpdated($ticket, 'reply_added'));
 
+        if ($request->expectsJson()) {
+            return $this->respondSuccess([
+                'ticket' => $this->transformTicket(
+                    $ticket->fresh()->load(['messages.sender', 'messages.attachments', 'tenant'])
+                ),
+            ], 'Reply sent to tenant.');
+        }
+
         return back()->with('success', 'Reply sent to tenant.');
     }
 

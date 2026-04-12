@@ -30,6 +30,7 @@ const currentBottomOffset = ref(bubbleBottomOffset.value);
 const currentRightOffset = ref(bubbleRightOffset.value);
 
 const isOpen = ref(false);
+const chatPanelWidthPx = ref(380);
 const activeView = ref('list'); // 'list' | 'chat' | 'new'
 const tickets = ref([]);
 const activeTicket = ref(null);
@@ -53,12 +54,64 @@ const dragState = ref({
 });
 const suppressNextToggle = ref(false);
 let pollInterval = null;
-let currentEchoChannel = null;
+/** @type {Set<number|string>} */
+const subscribedSupportTicketIds = new Set();
 let bodyClassObserver = null;
 let layoutResizeObserver = null;
 let layoutMutationObserver = null;
 let clampFrame = null;
 const runtimePositionStoreKey = '__tenantSupportChatBubblePosition';
+
+/** Laravel `ApiResponse` wraps payloads as `{ success, data: { ticket, ... } }`. */
+const unwrapSupportApi = (axiosResponseData) => {
+    if (axiosResponseData && typeof axiosResponseData.success === 'boolean' && axiosResponseData.data !== undefined) {
+        return axiosResponseData.data;
+    }
+    return axiosResponseData || {};
+};
+
+const leaveAllSupportTicketEchoChannels = () => {
+    if (typeof window === 'undefined' || !window.Echo) {
+        subscribedSupportTicketIds.clear();
+        return;
+    }
+    [...subscribedSupportTicketIds].forEach((id) => {
+        window.Echo.leave(`support.ticket.${id}`);
+    });
+    subscribedSupportTicketIds.clear();
+};
+
+const syncSupportTicketEchoChannels = () => {
+    if (typeof window === 'undefined' || !window.Echo || !canAccessSupportChat.value) {
+        leaveAllSupportTicketEchoChannels();
+        return;
+    }
+
+    const ids = new Set(tickets.value.map((t) => t.id));
+    if (activeTicket.value?.id) {
+        ids.add(activeTicket.value.id);
+    }
+
+    [...subscribedSupportTicketIds].forEach((id) => {
+        if (!ids.has(id)) {
+            window.Echo.leave(`support.ticket.${id}`);
+            subscribedSupportTicketIds.delete(id);
+        }
+    });
+
+    ids.forEach((id) => {
+        if (subscribedSupportTicketIds.has(id)) {
+            return;
+        }
+        window.Echo.private(`support.ticket.${id}`).listen('.SupportTicketUpdated', () => {
+            fetchTickets(true);
+            if (String(activeTicket.value?.id) === String(id)) {
+                fetchTicketMessages(id);
+            }
+        });
+        subscribedSupportTicketIds.add(id);
+    });
+};
 
 const bubbleLayerStyle = computed(() => ({
     zIndex: isModalOpen.value ? 120 : 9999,
@@ -99,7 +152,70 @@ const getElementHeight = (el) => {
     return Math.max(0, Math.round(el.getBoundingClientRect().height));
 };
 
-const getLayoutSafeBounds = (bubbleRect) => {
+const LG_BREAKPOINT = 1024;
+
+/**
+ * Bounding box used for viewport / sidebar clamping. When the chat surface is open,
+ * it extends left of the FAB; use a wider effective rect so the whole panel clears the sidebar.
+ */
+const getEffectiveBubbleRect = () => {
+    if (typeof window === 'undefined' || !bubbleAnchor.value) {
+        return {
+            width: 56,
+            height: 56,
+            left: 0,
+            top: 0,
+            right: 56,
+            bottom: 56,
+        };
+    }
+
+    const r = bubbleAnchor.value.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const padding = 16;
+
+    if (!isOpen.value) {
+        return {
+            width: r.width,
+            height: r.height,
+            left: r.left,
+            top: r.top,
+            right: r.right,
+            bottom: r.bottom,
+        };
+    }
+
+    const sidebar = document.getElementById('tenant-sidebar-panel');
+    let panelMax = Math.min(380, Math.max(260, vw - padding * 2));
+
+    if (vw >= LG_BREAKPOINT && sidebar) {
+        const sb = sidebar.getBoundingClientRect();
+        const visible = sb.width >= 40 && sb.right > 8 && sb.left < vw - 8;
+        if (visible) {
+            const centerSb = (sb.left + sb.right) / 2;
+            if (centerSb < vw / 2) {
+                panelMax = Math.min(panelMax, Math.max(240, vw - sb.right - padding - 12));
+            } else {
+                panelMax = Math.min(panelMax, Math.max(240, sb.left - padding - 12));
+            }
+        }
+    }
+
+    const effW = Math.max(r.width, panelMax);
+    const effL = r.right - effW;
+
+    return {
+        width: effW,
+        height: r.height,
+        left: effL,
+        top: r.top,
+        right: r.right,
+        bottom: r.bottom,
+    };
+};
+
+const getLayoutSafeBounds = () => {
+    const bubbleRect = getEffectiveBubbleRect();
     const padding = 16;
     const header = document.getElementById('tenant-top-header');
     const subnav = document.getElementById('tenant-subnav');
@@ -110,24 +226,26 @@ const getLayoutSafeBounds = (bubbleRect) => {
     const subnavHeight = getElementHeight(subnav);
     const footerHeight = getElementHeight(footer);
 
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
     let minLeft = padding;
-    let maxLeft = Math.round(window.innerWidth - bubbleRect.width - padding);
+    let maxLeft = Math.round(vw - bubbleRect.width - padding);
     const minTop = Math.round(padding + headerHeight + subnavHeight);
-    let maxTop = Math.round(window.innerHeight - bubbleRect.height - footerHeight - padding);
+    let maxTop = Math.round(vh - bubbleRect.height - footerHeight - padding);
 
-    if (window.innerWidth >= 1024 && sidebar) {
-        const sidebarRect = sidebar.getBoundingClientRect();
-        const sidebarWidth = Math.round(sidebarRect.width);
+    if (vw >= LG_BREAKPOINT && sidebar) {
+        const sb = sidebar.getBoundingClientRect();
+        const visible = sb.width >= 40 && sb.right > 8 && sb.left < vw - 8;
 
-        if (sidebarWidth > 0) {
-            const sideGap = 8;
-            const isLeftDocked = sidebarRect.left <= 4 && sidebarRect.right > 0;
-            const isRightDocked = sidebarRect.right >= window.innerWidth - 4;
+        if (visible) {
+            const sideGap = 12;
+            const centerSb = (sb.left + sb.right) / 2;
 
-            if (isLeftDocked) {
-                minLeft = Math.max(minLeft, Math.round(sidebarRect.right + sideGap));
-            } else if (isRightDocked) {
-                maxLeft = Math.min(maxLeft, Math.round(sidebarRect.left - bubbleRect.width - sideGap));
+            if (centerSb < vw / 2) {
+                minLeft = Math.max(minLeft, Math.round(sb.right + sideGap));
+            } else {
+                maxLeft = Math.min(maxLeft, Math.round(sb.left - bubbleRect.width - sideGap));
             }
         }
     }
@@ -157,18 +275,19 @@ const clampOffsetsToViewport = (rightOffset, bottomOffset) => {
     }
 
     const rect = bubbleAnchor.value.getBoundingClientRect();
-    const bounds = getLayoutSafeBounds(rect);
+    const eff = getEffectiveBubbleRect();
+    const bounds = getLayoutSafeBounds();
 
     const requestedRight = Number.isFinite(rightOffset) ? Math.round(rightOffset) : 24;
     const requestedBottom = Number.isFinite(bottomOffset) ? Math.round(bottomOffset) : 56;
 
-    const requestedLeft = Math.round(window.innerWidth - rect.width - requestedRight);
+    const requestedLeft = Math.round(window.innerWidth - eff.width - requestedRight);
     const requestedTop = Math.round(window.innerHeight - rect.height - requestedBottom);
 
     const clampedLeft = Math.min(bounds.maxLeft, Math.max(bounds.minLeft, requestedLeft));
     const clampedTop = Math.min(bounds.maxTop, Math.max(bounds.minTop, requestedTop));
 
-    const safeRight = Math.round(window.innerWidth - rect.width - clampedLeft);
+    const safeRight = Math.round(window.innerWidth - eff.width - clampedLeft);
     const safeBottom = Math.round(window.innerHeight - rect.height - clampedTop);
 
     return {
@@ -199,7 +318,7 @@ const observeLayoutTargets = () => {
         return;
     }
 
-    ['tenant-top-header', 'tenant-subnav', 'tenant-footer', 'tenant-sidebar-panel'].forEach((id) => {
+    ['tenant-top-header', 'tenant-subnav', 'tenant-footer', 'tenant-sidebar-panel', 'tenant-app-drawer'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
             layoutResizeObserver.observe(el);
@@ -341,6 +460,9 @@ const clampCurrentBubblePosition = () => {
     const clamped = clampOffsetsToViewport(currentRightOffset.value, currentBottomOffset.value);
     currentRightOffset.value = clamped.right;
     currentBottomOffset.value = clamped.bottom;
+    if (isOpen.value && typeof window !== 'undefined') {
+        chatPanelWidthPx.value = Math.max(260, Math.min(380, Math.round(getEffectiveBubbleRect().width)));
+    }
 };
 
 watch([bubbleBottomOffset, bubbleRightOffset], ([bottom, right]) => {
@@ -370,33 +492,18 @@ watch(currentSidebarPosition, (newSide, oldSide) => {
     clampCurrentBubblePosition();
 });
 
-watch(activeTicket, (newTicket, oldTicket) => {
-    if (window.Echo) {
-        // Only leave if the TICKET ID actually changed or we are closing
-        if (oldTicket && (!newTicket || oldTicket.id !== newTicket.id) && currentEchoChannel) {
-            window.Echo.leave('support.ticket.' + oldTicket.id);
-            currentEchoChannel = null;
-        }
-        
-        // Only join if we don't have a channel for THIS ticket yet
-        if (newTicket && !currentEchoChannel) {
-            currentEchoChannel = window.Echo.private('support.ticket.' + newTicket.id)
-                .listen('.SupportTicketUpdated', (e) => {
-                    console.log('Tenant Received Support Event:', e);
-                    // Silently refresh the messages
-                    fetchTicketMessages(newTicket.id);
-                    fetchTickets(true); // update list implicitly
-                });
-        }
-    }
-});
+watch([tickets, () => activeTicket.value?.id], () => {
+    syncSupportTicketEchoChannels();
+}, { deep: true });
 
 const fetchTicketMessages = async (ticketId) => {
     try {
         const { data } = await axios.get(route('tenant.support.show', ticketId));
-        if (data?.ticket && activeTicket.value && activeTicket.value.id === ticketId) {
-            activeTicket.value.messages = data.ticket.messages;
-            activeTicket.value.status = data.ticket.status;
+        const payload = unwrapSupportApi(data);
+        const ticket = payload?.ticket;
+        if (ticket && activeTicket.value && activeTicket.value.id === ticketId) {
+            activeTicket.value.messages = ticket.messages;
+            activeTicket.value.status = ticket.status;
         }
     } catch (e) {
         console.error('Failed to refresh messages', e);
@@ -419,6 +526,10 @@ watch(isOpen, (newVal) => {
     if (newVal && activeView.value === 'chat') {
         scrollToBottom();
     }
+    nextTick(() => {
+        clampCurrentBubblePosition();
+        scheduleBubbleAutoAdjust();
+    });
 });
 
 // New ticket form
@@ -463,8 +574,10 @@ const fetchTickets = async (silent = false) => {
     if (!silent) loading.value = true;
     try {
         const { data } = await axios.get(route('tenant.support.index'));
-        tickets.value = data.tickets || [];
+        const payload = unwrapSupportApi(data);
+        tickets.value = payload.tickets || [];
         unreadCount.value = tickets.value.filter(t => t.status === 'open' || t.status === 'in_progress').length;
+        syncSupportTicketEchoChannels();
     } catch (e) {
         console.error('Failed to fetch tickets', e);
     } finally {
@@ -480,7 +593,8 @@ const openTicket = async (ticket, silent = false) => {
     if (!silent) loading.value = true;
     try {
         const { data } = await axios.get(route('tenant.support.show', ticket.id));
-        activeTicket.value = data.ticket;
+        const payload = unwrapSupportApi(data);
+        activeTicket.value = payload.ticket;
     } catch (e) {
         console.error('Failed to load ticket', e);
     } finally {
@@ -503,7 +617,10 @@ const sendMessage = async () => {
             formData,
             { headers: { 'Content-Type': 'multipart/form-data' } }
         );
-        activeTicket.value.messages.push(data.message);
+        const payload = unwrapSupportApi(data);
+        if (payload.message) {
+            activeTicket.value.messages.push(payload.message);
+        }
         messageContent.value = '';
         attachments.value = [];
         scrollToBottom();
@@ -529,9 +646,13 @@ const createTicket = async () => {
         const { data } = await axios.post(route('tenant.support.store'), formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
-        tickets.value.unshift(data.ticket);
-        activeTicket.value = data.ticket;
-        activeView.value = 'chat';
+        const payload = unwrapSupportApi(data);
+        const ticket = payload.ticket;
+        if (ticket) {
+            tickets.value.unshift(ticket);
+            activeTicket.value = ticket;
+            activeView.value = 'chat';
+        }
         resetNewTicket();
     } catch (e) {
         console.error('Failed to create ticket', e);
@@ -633,6 +754,7 @@ onMounted(() => {
 
     if (typeof window !== 'undefined') {
         window.addEventListener('resize', scheduleBubbleAutoAdjust);
+        window.addEventListener('dcms-portal-layout-changed', scheduleBubbleAutoAdjust);
     }
 
     if (typeof ResizeObserver !== 'undefined') {
@@ -656,7 +778,9 @@ onMounted(() => {
         });
     }
 
-    // Polling removed in favor of real-time WebSockets (Echo)
+    if (canAccessSupportChat.value) {
+        fetchTickets(true);
+    }
 });
 
 onUnmounted(() => {
@@ -667,6 +791,7 @@ onUnmounted(() => {
 
     if (typeof window !== 'undefined') {
         window.removeEventListener('resize', scheduleBubbleAutoAdjust);
+        window.removeEventListener('dcms-portal-layout-changed', scheduleBubbleAutoAdjust);
     }
 
     if (layoutResizeObserver) {
@@ -686,7 +811,7 @@ onUnmounted(() => {
 
     onBubblePointerUp();
 
-    // Cleanup Echo listeners is handled by the activeTicket watcher
+    leaveAllSupportTicketEchoChannels();
 });
 </script>
 
@@ -740,7 +865,8 @@ onUnmounted(() => {
         >
             <div 
                 v-if="isOpen"
-                class="absolute bottom-20 right-0 w-[380px] max-h-[520px] bg-base-100 rounded-2xl shadow-2xl border border-base-300 overflow-hidden flex flex-col"
+                class="absolute bottom-20 right-0 max-h-[520px] bg-base-100 rounded-2xl shadow-2xl border border-base-300 overflow-hidden flex flex-col sm:min-w-[260px]"
+                :style="{ width: `${chatPanelWidthPx}px`, maxWidth: `${chatPanelWidthPx}px` }"
             >
                 <!-- Header -->
                 <div 

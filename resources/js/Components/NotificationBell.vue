@@ -46,10 +46,21 @@ const getRoute = () => {
 const fetchNotifications = async () => {
     loading.value = true;
     try {
-        const response = await fetch(getRoute().recent);
-        const data = await response.json();
-        notifications.value = data.notifications;
-        unreadCount.value = data.unread_count;
+        const response = await fetch(getRoute().recent, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+        const raw = await response.text();
+        if (!response.ok) {
+            console.error('Failed to fetch notifications:', response.status, raw.slice(0, 200));
+            return;
+        }
+        const data = JSON.parse(raw);
+        notifications.value = data.notifications ?? [];
+        unreadCount.value = data.unread_count ?? 0;
     } catch (error) {
         console.error('Failed to fetch notifications:', error);
     } finally {
