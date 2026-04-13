@@ -104,7 +104,7 @@ class PatientController extends Controller
             $query = Patient::query();
             \Log::info('Query builder created', [
                 'model' => Patient::class,
-                'connection' => $query->getConnection()->getName(),
+                'connection' => $query->getModel()->getConnectionName() ?? config('database.default'),
             ]);
             
             $patient = $query

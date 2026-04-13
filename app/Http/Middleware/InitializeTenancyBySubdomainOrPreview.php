@@ -29,7 +29,7 @@ class InitializeTenancyBySubdomainOrPreview
         Log::info('InitializeTenancyBySubdomainOrPreview middleware', [
             'host' => $host,
             'is_central_domain' => $isCentralDomain,
-            'has_tenant' => !!tenant(),
+            'has_tenant' => tenant() !== null,
         ]);
 
         if ($this->shouldInitializePreviewTenancy($request)) {

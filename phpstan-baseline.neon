@@ -913,12 +913,6 @@ parameters:
 			path: app/Http/Controllers/Tenant/Support/SupportController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\|Stancl\\Tenancy\\Contracts\\Tenant\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Tenant/Support/SupportController.php
-
-		-
 			message: '#^Relation ''latestMessage'' is not found in App\\Models\\SupportTicket model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
@@ -949,28 +943,10 @@ parameters:
 			path: app/Http/Middleware/CheckSubscription.php
 
 		-
-			message: '#^Access to undefined constant App\\Models\\Feature\:\:STATUS_MAINTENANCE\.$#'
-			identifier: classConstant.notFound
-			count: 1
-			path: app/Http/Middleware/CheckSubscription.php
-
-		-
 			message: '#^Relation ''plan'' is not found in App\\Models\\Subscription model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
 			path: app/Http/Middleware/CheckSubscription.php
-
-		-
-			message: '#^Access to undefined constant App\\Models\\Feature\:\:STATUS_BETA\.$#'
-			identifier: classConstant.notFound
-			count: 1
-			path: app/Http/Middleware/FeatureGate.php
-
-		-
-			message: '#^Access to undefined constant App\\Models\\Feature\:\:STATUS_MAINTENANCE\.$#'
-			identifier: classConstant.notFound
-			count: 1
-			path: app/Http/Middleware/FeatureGate.php
 
 		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
@@ -1235,12 +1211,6 @@ parameters:
 			identifier: class.notFound
 			count: 2
 			path: config/database.php
-
-		-
-			message: '#^Undefined variable\: \$matchesTenantContext$#'
-			identifier: variable.undefined
-			count: 6
-			path: routes/channels.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
