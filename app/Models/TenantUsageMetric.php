@@ -18,6 +18,9 @@ class TenantUsageMetric extends Model
         'request_count',
         'api_request_count',
         'public_request_count',
+        'file_used_bytes',
+        'db_used_bytes',
+        'total_used_bytes',
     ];
 
     protected $casts = [
@@ -26,6 +29,9 @@ class TenantUsageMetric extends Model
         'request_count' => 'integer',
         'api_request_count' => 'integer',
         'public_request_count' => 'integer',
+        'file_used_bytes' => 'integer',
+        'db_used_bytes' => 'integer',
+        'total_used_bytes' => 'integer',
     ];
 
     public function getConnectionName()

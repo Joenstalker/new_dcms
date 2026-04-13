@@ -2,6 +2,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Head, useForm, usePage, router } from '@inertiajs/vue3';
+import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const props = defineProps({
     stats: Object,
@@ -106,9 +108,51 @@ onUnmounted(() => {
 
 const updateStatus = (concern, newStatus) => {
     form.status = newStatus;
-    form.patch(route('tenant.concern.update', concern.id), {
+    // IMPORTANT: force tenant-relative URL; our Ziggy setup may otherwise append ?absolute=1 (central host)
+    form.patch(route('tenant.concern.update', { concern: concern.id }, false), {
         preserveScroll: true,
     });
+};
+
+const canViewConcerns = computed(() => isOwner.value || hasPermission('view concerns'));
+const canManageConcerns = computed(() => isOwner.value || hasPermission('manage concerns'));
+const canReplyConcerns = computed(() => isOwner.value || hasPermission('reply concerns'));
+
+const replyToConcern = async (concern) => {
+    const result = await Swal.fire({
+        title: 'Reply to patient',
+        input: 'textarea',
+        inputLabel: concern.subject ? `Subject: ${concern.subject}` : 'No subject',
+        inputPlaceholder: 'Type your reply…',
+        inputAttributes: { 'aria-label': 'Reply message' },
+        showCancelButton: true,
+        confirmButtonText: 'Send reply',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#0f766e',
+        preConfirm: (value) => {
+            const msg = String(value || '').trim();
+            if (msg.length < 2) {
+                Swal.showValidationMessage('Reply is too short.');
+                return false;
+            }
+            if (msg.length > 5000) {
+                Swal.showValidationMessage('Reply is too long.');
+                return false;
+            }
+            return msg;
+        },
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        // IMPORTANT: force tenant-relative URL; our Ziggy setup may otherwise append ?absolute=1 (central host)
+        await axios.post(route('tenant.concern.reply', { concern: concern.id }, false), { message: result.value });
+        await Swal.fire({ icon: 'success', title: 'Reply sent', timer: 1200, showConfirmButton: false });
+        router.reload({ only: ['concerns'], preserveScroll: true, preserveState: true });
+    } catch (e) {
+        await Swal.fire({ icon: 'error', title: 'Failed to send reply', text: e?.response?.data?.message || 'Please try again.' });
+    }
 };
 
 const firstName = computed(() => {
@@ -353,7 +397,7 @@ const openAction = (routeName) => {
                 </div>
 
                 <!-- Concerns Content -->
-                <div v-else-if="currentTab === 'concerns' && (isOwner || user.permissions.includes('view reports'))" class="animate-in slide-in-from-bottom duration-500 space-y-6">
+                <div v-else-if="currentTab === 'concerns' && canViewConcerns" class="animate-in slide-in-from-bottom duration-500 space-y-6">
                     <div class="bg-base-100 overflow-hidden shadow-sm rounded-3xl p-8 border border-base-300">
                         <div class="flex justify-between items-center mb-8">
                             <div>
@@ -396,11 +440,15 @@ const openAction = (routeName) => {
                                         </td>
                                         <td class="py-6 px-4 text-right">
                                             <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button v-if="isOwner || isAssistant" @click="updateStatus(concern, 'resolved')" title="Mark as Resolved" 
+                                                <button v-if="canReplyConcerns" @click="replyToConcern(concern)" title="Reply to patient"
+                                                    class="p-2 bg-teal-600/10 text-teal-700 rounded-lg hover:bg-teal-600/20 transition-colors">
+                                                    ✉️
+                                                </button>
+                                                <button v-if="canManageConcerns" @click="updateStatus(concern, 'resolved')" title="Mark as Resolved" 
                                                     class="p-2 bg-success/10 text-success rounded-lg hover:bg-success/20 transition-colors">
                                                     ✅
                                                 </button>
-                                                <button v-if="isOwner || isAssistant" @click="updateStatus(concern, 'in_progress')" title="Mark as In Progress" 
+                                                <button v-if="canManageConcerns" @click="updateStatus(concern, 'in_progress')" title="Mark as In Progress" 
                                                     class="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors">
                                                     ⏳
                                                 </button>

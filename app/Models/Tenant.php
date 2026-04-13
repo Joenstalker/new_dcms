@@ -47,7 +47,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'online_booking_enabled',
         'qr_code_path',
         'storage_used_bytes',
+        'db_used_bytes',
         'bandwidth_used_bytes',
+        'last_db_measured_at',
+        'last_storage_reconciled_at',
         'version',
     ];
 
@@ -63,7 +66,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'operating_hours' => 'json',
         'online_booking_enabled' => 'boolean',
         'storage_used_bytes' => 'integer',
+        'db_used_bytes' => 'integer',
         'bandwidth_used_bytes' => 'integer',
+        'last_db_measured_at' => 'datetime',
+        'last_storage_reconciled_at' => 'datetime',
         'version' => 'string',
     ];
 
@@ -97,7 +103,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             'operating_hours',
             'online_booking_enabled',
             'storage_used_bytes',
+            'db_used_bytes',
             'bandwidth_used_bytes',
+            'last_db_measured_at',
+            'last_storage_reconciled_at',
             'version',
         ];
     }

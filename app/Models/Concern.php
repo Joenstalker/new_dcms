@@ -15,6 +15,9 @@ class Concern extends Model
         'phone',
         'subject',
         'message',
+        'reply_message',
+        'replied_by',
+        'replied_at',
         'status',
     ];
 

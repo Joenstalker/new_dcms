@@ -25,6 +25,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage branches',
             'view reports',
             'access public booking',
+            'view concerns', 'manage concerns', 'reply concerns',
             
             // Services
             'view services', 'create services', 'edit services', 'delete services', 'approve services',

@@ -43,7 +43,10 @@ const isLoadingUsage = ref(false);
 const usageLoadedTenantId = ref(null);
 
 const usageData = ref({
-    storage_used_mb: props.tenant?.storage_used_mb || 0,
+    // storage metrics: total = files + DB
+    total_used_mb: props.tenant?.storage_used_mb || 0,
+    file_used_mb: 0,
+    db_used_mb: 0,
     max_storage_mb: props.tenant?.max_storage_mb || 500,
     bandwidth_used_mb: props.tenant?.bandwidth_used_mb || 0,
     bandwidth_month_mb: props.tenant?.bandwidth_used_mb || 0,
@@ -139,7 +142,9 @@ watch(() => props.tenant, (newTenant) => {
 
         // Also update usage data baseline
         usageData.value = {
-            storage_used_mb: newTenant.storage_used_mb || 0,
+            total_used_mb: newTenant.storage_used_mb || 0,
+            file_used_mb: 0,
+            db_used_mb: 0,
             max_storage_mb: newTenant.max_storage_mb || 500,
             bandwidth_used_mb: newTenant.bandwidth_used_bytes ? Math.round(newTenant.bandwidth_used_bytes / (1024 * 1024) * 100) / 100 : (newTenant.bandwidth_used_mb || 0),
             bandwidth_month_mb: newTenant.bandwidth_used_bytes ? Math.round(newTenant.bandwidth_used_bytes / (1024 * 1024) * 100) / 100 : (newTenant.bandwidth_used_mb || 0),
@@ -390,7 +395,7 @@ const formatCount = (value) => {
                                     <!-- Storage Details -->
                                     <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50 transition-all duration-300">
                                         <div class="flex justify-between items-center mb-4">
-                                            <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em]">Storage Metrics</h4>
+                                            <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em]">Total Storage</h4>
                                             <div v-if="isLoadingUsage" class="flex items-center gap-1.5">
                                                 <div class="w-1 h-1 rounded-full bg-teal-500 animate-bounce"></div>
                                                 <div class="w-1 h-1 rounded-full bg-teal-500 animate-bounce [animation-delay:0.2s]"></div>
@@ -400,7 +405,7 @@ const formatCount = (value) => {
                                         <div class="space-y-5">
                                             <div class="flex items-end justify-between">
                                                 <div>
-                                                    <span class="text-3xl font-black text-base-content">{{ usageData.storage_used_mb || 0 }}</span>
+                                                    <span class="text-3xl font-black text-base-content">{{ usageData.total_used_mb || 0 }}</span>
                                                     <span class="text-xs font-bold text-base-content/40 ml-1">MB</span>
                                                 </div>
                                                 <div class="text-[10px] font-black text-base-content/30 uppercase tracking-widest text-right">
@@ -410,13 +415,17 @@ const formatCount = (value) => {
                                             <div class="space-y-2">
                                                 <div class="w-full bg-base-300 h-3 rounded-full overflow-hidden">
                                                     <div class="h-full transition-all duration-1000 rounded-full" 
-                                                        :class="getStorageColorClass(getStoragePercentage(usageData.storage_used_mb, usageData.max_storage_mb))"
-                                                        :style="{ width: getStoragePercentage(usageData.storage_used_mb, usageData.max_storage_mb) + '%' }"
+                                                        :class="getStorageColorClass(getStoragePercentage(usageData.total_used_mb, usageData.max_storage_mb))"
+                                                        :style="{ width: getStoragePercentage(usageData.total_used_mb, usageData.max_storage_mb) + '%' }"
                                                     ></div>
                                                 </div>
                                                 <div class="flex justify-between text-[10px] font-black tracking-tighter">
-                                                    <span class="text-base-content/50 uppercase">{{ getStoragePercentage(usageData.storage_used_mb, usageData.max_storage_mb) }}% UTILIZED</span>
-                                                    <span class="text-success uppercase">{{ Math.max(0, (usageData.max_storage_mb || 500) - (usageData.storage_used_mb || 0)).toFixed(1) }} MB FREE</span>
+                                                    <span class="text-base-content/50 uppercase">{{ getStoragePercentage(usageData.total_used_mb, usageData.max_storage_mb) }}% UTILIZED</span>
+                                                    <span class="text-success uppercase">{{ Math.max(0, (usageData.max_storage_mb || 500) - (usageData.total_used_mb || 0)).toFixed(1) }} MB FREE</span>
+                                                </div>
+                                                <div class="text-[10px] font-bold text-base-content/50 flex justify-between">
+                                                    <span>Files: {{ (usageData.file_used_mb || 0).toFixed(2) }} MB</span>
+                                                    <span>DB: {{ (usageData.db_used_mb || 0).toFixed(2) }} MB</span>
                                                 </div>
                                             </div>
                                         </div>

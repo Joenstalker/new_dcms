@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\TenantPatientChanged;
 use App\Models\Patient;
 use App\Services\TenantNotificationService;
+use App\Services\TenantStorageUsageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
@@ -184,6 +185,7 @@ class PatientController extends Controller
         if ($request->hasFile('photo')) {
             // Delete old photo if exists and is a file path
             if ($patient->photo_path && !str_starts_with($patient->photo_path, 'data:image')) {
+                app(TenantStorageUsageService::class)->recordDelete('public', (string) $patient->photo_path);
                 Storage::Disk('public')->delete($patient->photo_path);
             }
             $file = $request->file('photo');

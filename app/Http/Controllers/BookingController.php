@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Services\TenantStorageUsageService;
 
 class BookingController extends Controller
 {
@@ -79,8 +80,10 @@ class BookingController extends Controller
         }
 
         if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('bookings/photos', 'public');
+            $file = $request->file('photo');
+            $path = $file->store('bookings/photos', 'public');
             $validated['photo_path'] = $path;
+            app(TenantStorageUsageService::class)->recordPut('public', $path, (int) $file->getSize());
 
             if ($existingPatient) {
                 $existingPatient->update(['photo_path' => $path]);

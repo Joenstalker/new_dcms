@@ -58,6 +58,7 @@ Route::middleware([
     Route::post('/concerns', [LandingController::class, 'submitConcern'])->name('tenant.concern.store');
     Route::post('/contact-support', [ContactController::class, 'submit'])->name('tenant.contact.submit');
     Route::patch('/concerns/{concern}', [ConcernController::class, 'update'])->name('tenant.concern.update');
+    Route::post('/concerns/{concern}/reply', [ConcernController::class, 'reply'])->name('tenant.concern.reply');
 
     // Public QR Booking Route (no auth required — patients scan QR code)
     Route::get('/book', [BookingController::class, 'create'])->name('tenant.book.create');

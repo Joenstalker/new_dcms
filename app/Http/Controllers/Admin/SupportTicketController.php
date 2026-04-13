@@ -9,6 +9,7 @@ use App\Models\SupportMessage;
 use App\Models\SupportTicket;
 use App\Models\User;
 use App\Traits\ApiResponse;
+use App\Services\TenantStorageUsageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -232,6 +233,7 @@ class SupportTicketController extends Controller
         ]);
 
         if ($request->hasFile('attachments')) {
+            $usage = app(TenantStorageUsageService::class);
             foreach ($request->file('attachments') as $file) {
                 $path = $file->store('support/attachments', 'support');
                 $message->attachments()->create([
@@ -240,6 +242,8 @@ class SupportTicketController extends Controller
                     'file_type' => $file->getClientMimeType(),
                     'file_size' => $file->getSize(),
                 ]);
+
+                $usage->recordPut('support', $path, (int) $file->getSize(), (string) $ticket->tenant_id);
             }
         }
 

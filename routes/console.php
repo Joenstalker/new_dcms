@@ -37,3 +37,12 @@ Schedule::command('appointments:send-reminders')->dailyAt('08:00');
 
 // Passive system updates checker
 Schedule::command('system:check-updates')->hourly();
+
+// Tenant storage usage tracking
+// - DB usage: computed (accurate) on a schedule
+// - File usage: reconciled periodically to correct drift
+// - Snapshots: persisted daily for reporting/graphs
+Schedule::command('tenants:measure-db-usage')->hourly()->withoutOverlapping();
+Schedule::command('tenants:reconcile-file-usage --disk=public')->dailyAt('02:10')->withoutOverlapping();
+Schedule::command('tenants:reconcile-file-usage --disk=support')->dailyAt('02:40')->withoutOverlapping();
+Schedule::command('tenants:snapshot-usage')->dailyAt('03:10')->withoutOverlapping();

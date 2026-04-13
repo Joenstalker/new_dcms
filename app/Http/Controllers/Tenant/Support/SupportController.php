@@ -8,6 +8,7 @@ use App\Models\SupportMessage;
 use App\Models\SupportTicket;
 use App\Models\User;
 use App\Services\SecuritySanitizationService;
+use App\Services\TenantStorageUsageService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
@@ -231,6 +232,9 @@ class SupportController extends Controller
     protected function handleAttachments(Request $request, SupportMessage $message)
     {
         if ($request->hasFile('attachments')) {
+            $tenantId = (string) (tenant()?->getTenantKey() ?? '');
+            $usage = app(TenantStorageUsageService::class);
+
             foreach ($request->file('attachments') as $file) {
                 $path = $file->store('support/attachments', 'support');
 
@@ -240,6 +244,10 @@ class SupportController extends Controller
                     'file_type' => $file->getClientMimeType(),
                     'file_size' => $file->getSize(),
                 ]);
+
+                if ($tenantId !== '') {
+                    $usage->recordPut('support', $path, (int) $file->getSize(), $tenantId);
+                }
             }
         }
     }

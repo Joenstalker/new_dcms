@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\TenantStorageUsageService;
 
 class ProfileController extends Controller
 {
@@ -52,9 +53,11 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+        $usage = app(TenantStorageUsageService::class);
         
         // Delete old picture if exists
         if ($user->profile_picture) {
+            $usage->recordDelete('public', (string) $user->profile_picture);
             Storage::disk('public')->delete($user->profile_picture);
         }
 
@@ -78,6 +81,7 @@ class ProfileController extends Controller
 
         $fileName = 'profile-pictures/' . $user->id . '-' . Str::random(10) . '.' . $type;
         Storage::disk('public')->put($fileName, $imageData);
+        $usage->recordPut('public', $fileName, strlen($imageData));
 
         $user->update(['profile_picture' => $fileName]);
 

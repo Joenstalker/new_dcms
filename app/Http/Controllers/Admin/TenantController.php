@@ -691,7 +691,12 @@ class TenantController extends Controller
         }
 
         return response()->json([
-            'storage_used_mb' => round($tenant->storage_used_bytes / (1024 * 1024), 2),
+            // File bytes (event-driven)
+            'file_used_mb' => round(((int) $tenant->storage_used_bytes) / (1024 * 1024), 2),
+            // Database bytes (scheduled measurement)
+            'db_used_mb' => round(((int) ($tenant->db_used_bytes ?? 0)) / (1024 * 1024), 2),
+            // Total bytes (files + DB)
+            'total_used_mb' => round((((int) $tenant->storage_used_bytes) + ((int) ($tenant->db_used_bytes ?? 0))) / (1024 * 1024), 2),
             'max_storage_mb' => $latestSubscription->plan->max_storage_mb ?? 500,
             // Legacy cumulative value for backward compatibility.
             'bandwidth_used_mb' => round($tenant->bandwidth_used_bytes / (1024 * 1024), 2),
