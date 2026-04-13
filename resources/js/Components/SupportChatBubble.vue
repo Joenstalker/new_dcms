@@ -712,6 +712,34 @@ const formatTime = (dateStr) => {
 };
 
 const isImage = (type) => type && type.startsWith('image/');
+const getAttachmentUrl = (msg, att) => {
+    const fp = att?.file_path || '';
+    if (!fp) return '';
+
+    // Tenant-side messages are stored on tenant-scoped disks (Stancl filesystem bootstrapper),
+    // so their physical files live under the tenant storage path and must be served via
+    // the tenant storage route.
+    if (msg?.sender_type === 'tenant') {
+        return `/tenant-storage/${fp}`.replaceAll('//', '/');
+    }
+
+    const fallback = `/storage/${fp}`.replaceAll('//', '/');
+    const raw = att?.url || '';
+    if (!raw) return fallback;
+
+    // Tenant portals run on per-tenant subdomains. If the backend generates absolute URLs
+    // using APP_URL (central host), force same-origin by converting to a relative path.
+    try {
+        if (raw.startsWith('http://') || raw.startsWith('https://')) {
+            const u = new URL(raw);
+            return `${u.pathname}${u.search}${u.hash}`;
+        }
+    } catch {
+        // ignore parsing issues and return raw below
+    }
+
+    return raw;
+};
 
 const getFileIcon = (type) => {
     if (type?.includes('pdf')) return '📄';
@@ -1043,15 +1071,15 @@ onUnmounted(() => {
                                             <template v-for="att in msg.attachments" :key="att.id">
                                                 <a 
                                                     v-if="isImage(att.file_type)" 
-                                                    :href="`/storage/${att.file_path}`" 
+                                                    :href="getAttachmentUrl(msg, att)" 
                                                     target="_blank"
                                                     class="block rounded-lg overflow-hidden border border-white/20"
                                                 >
-                                                    <img :src="`/storage/${att.file_path}`" :alt="att.file_name" class="w-full max-h-32 object-cover" />
+                                                    <img :src="getAttachmentUrl(msg, att)" :alt="att.file_name" class="w-full max-h-32 object-cover" />
                                                 </a>
                                                 <a 
                                                     v-else 
-                                                    :href="`/storage/${att.file_path}`" 
+                                                    :href="getAttachmentUrl(msg, att)" 
                                                     target="_blank"
                                                     class="flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg"
                                                     :class="msg.sender_type === 'tenant' ? 'text-white/80 bg-white/10 hover:bg-white/20' : 'text-base-content/60 bg-base-300 hover:bg-base-300/80'"

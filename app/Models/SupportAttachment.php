@@ -11,15 +11,30 @@ class SupportAttachment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'message_id',
+        'support_message_id',
         'file_path',
         'file_name',
         'file_type',
         'file_size',
     ];
 
+    protected $appends = [
+        'url',
+    ];
+
     public function message()
     {
-        return $this->belongsTo(SupportMessage::class , 'message_id');
+        return $this->belongsTo(SupportMessage::class, 'support_message_id');
+    }
+
+    public function getUrlAttribute(): string
+    {
+        $path = (string) ($this->file_path ?? '');
+        if ($path === '') {
+            return '';
+        }
+
+        // Use the current request host (tenant/central) to avoid CSP cross-origin blocks.
+        return asset('storage/'.ltrim($path, '/'));
     }
 }

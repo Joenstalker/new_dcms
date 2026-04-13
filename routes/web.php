@@ -261,12 +261,14 @@ $registerCentralRoutes = function ($withNames = false) {
         $supportR = Route::post('/support/{ticket}/reply', [SupportTicketController::class, 'reply']);
         $supportU = Route::put('/support/{ticket}/status', [SupportTicketController::class, 'updateStatus']);
         $supportD = Route::delete('/support/{ticket}', [SupportTicketController::class, 'destroy']);
+        $supportAtt = Route::get('/support/{ticket}/attachments/{attachment}', [SupportTicketController::class, 'attachment']);
         if ($withNames) {
             $supportI->name('support.index');
             $supportS->name('support.show');
             $supportR->name('support.reply');
             $supportU->name('support.updateStatus');
             $supportD->name('support.destroy');
+            $supportAtt->name('support.attachment');
         }
 
         // Notifications

@@ -130,6 +130,7 @@ const deleteTicket = () => {
 
 const formatTime = (d) => d ? new Date(d).toLocaleString() : '';
 const isImage = (type) => type?.startsWith('image/');
+const getAttachmentUrl = (att) => att?.url || (att?.file_path ? `/storage/${att.file_path}` : '');
 const getSenderName = (msg) => {
     if (msg?.sender_name) return msg.sender_name;
     if (msg?.sender?.name) return msg.sender.name;
@@ -242,10 +243,10 @@ const removeAttachment = (i) => replyAttachments.value.splice(i, 1);
                                         <p class="whitespace-pre-wrap break-words">{{ msg.content }}</p>
                                         <div v-if="msg.attachments?.length" class="mt-2 space-y-1">
                                             <template v-for="att in msg.attachments" :key="att.id">
-                                                <a v-if="isImage(att.file_type)" :href="`/storage/${att.file_path}`" target="_blank" class="block rounded-lg overflow-hidden border border-white/10">
-                                                    <img :src="`/storage/${att.file_path}`" class="w-full max-h-40 object-cover" />
+                                                <a v-if="isImage(att.file_type)" :href="getAttachmentUrl(att)" target="_blank" class="block rounded-lg overflow-hidden border border-white/10">
+                                                    <img :src="getAttachmentUrl(att)" class="w-full max-h-40 object-cover" />
                                                 </a>
-                                                <a v-else :href="`/storage/${att.file_path}`" target="_blank" class="flex items-center gap-1 text-[11px] opacity-70">📎 {{ att.file_name }}</a>
+                                                <a v-else :href="getAttachmentUrl(att)" target="_blank" class="flex items-center gap-1 text-[11px] opacity-70">📎 {{ att.file_name }}</a>
                                             </template>
                                         </div>
                                     </div>

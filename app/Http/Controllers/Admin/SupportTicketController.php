@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Events\SupportTicketUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\SupportAttachment;
 use App\Models\SupportMessage;
 use App\Models\SupportTicket;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Services\TenantStorageUsageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class SupportTicketController extends Controller
@@ -77,7 +79,97 @@ class SupportTicketController extends Controller
         $data['sender_name'] = $this->resolveSenderName($message, $ticket);
         $data['sender_avatar_url'] = $this->resolveSenderAvatarUrl($message, $ticket);
 
+        // Tenant-uploaded attachments live in tenant-isolated storage (filesystem tenancy),
+        // but admin pages run on the central domain. To keep CSP strict (img-src 'self'),
+        // we proxy tenant attachments through a central admin route.
+        if (! empty($data['attachments']) && is_array($data['attachments'])) {
+            $data['attachments'] = collect($data['attachments'])->map(function ($att) use ($message, $ticket) {
+                if (! is_array($att)) {
+                    return $att;
+                }
+
+                $path = (string) ($att['file_path'] ?? '');
+                if ($path === '') {
+                    return $att;
+                }
+
+                if ($message->sender_type === 'tenant') {
+                    $attachmentId = $att['id'] ?? null;
+                    if ($attachmentId) {
+                        $att['url'] = route('admin.support.attachment', [
+                            'ticket' => $ticket->id,
+                            'attachment' => $attachmentId,
+                        ], absolute: false);
+                        return $att;
+                    }
+                }
+
+                $att['url'] = asset('storage/'.ltrim($path, '/'));
+                return $att;
+            })->values()->all();
+        }
+
         return $data;
+    }
+
+    /**
+     * Serve a support attachment for admin UI.
+     *
+     * - Admin uploads are in central public storage and can be served directly via /storage.
+     * - Tenant uploads are stored under tenant-isolated storage; we initialize tenancy for the
+     *   ticket's tenant, read from the tenant's support disk, then end tenancy.
+     */
+    public function attachment(SupportTicket $ticket, SupportAttachment $attachment)
+    {
+        // Ensure the attachment belongs to this ticket (via message relationship).
+        $attachmentMessageId = (int) $attachment->support_message_id;
+        $belongs = SupportMessage::query()
+            ->where('id', $attachmentMessageId)
+            ->where('support_ticket_id', $ticket->id)
+            ->exists();
+
+        if (! $belongs) {
+            abort(404);
+        }
+
+        $path = (string) $attachment->file_path;
+        if ($path === '') {
+            abort(404);
+        }
+
+        // If this was an admin message, it's stored centrally on the support disk root.
+        // Serving through /storage is preferred, but we still support proxying here.
+        if ($attachment->message && $attachment->message->sender_type === 'admin') {
+            $disk = Storage::disk('support');
+            if (! $disk->exists($path)) {
+                abort(404);
+            }
+
+            return response($disk->get($path), 200, [
+                'Content-Type' => $disk->mimeType($path) ?: 'application/octet-stream',
+                'Cache-Control' => 'private, max-age=604800',
+            ]);
+        }
+
+        $tenant = $ticket->tenant;
+        if (! $tenant) {
+            abort(404);
+        }
+
+        tenancy()->initialize($tenant);
+        try {
+            $disk = Storage::disk('support');
+            if (! $disk->exists($path)) {
+                abort(404);
+            }
+
+            return response($disk->get($path), 200, [
+                'Content-Type' => $disk->mimeType($path) ?: 'application/octet-stream',
+                'Cache-Control' => 'private, max-age=604800',
+            ]);
+        } finally {
+            tenancy()->end();
+        }
     }
 
     protected function resolveSenderName(SupportMessage $message, SupportTicket $ticket): string
