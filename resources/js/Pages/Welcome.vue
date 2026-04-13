@@ -214,6 +214,10 @@ const closeContactModal = () => {
 const closePaymentSuccessModal = () => {
     showPaymentSuccessModal.value = false;
     paymentSuccessEmail.value = '';
+
+    // Force a clean landing URL without payment params/fragments.
+    const cleanLandingUrl = `${window.location.origin}${window.location.pathname}`;
+    window.location.replace(cleanLandingUrl);
 };
 
 /**

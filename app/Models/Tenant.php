@@ -423,7 +423,15 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         }
         $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
 
-        return $scheme . '://' . $subdomain . '.' . $host . $port;
+        // Avoid duplicating subdomain if already present (e.g., junjun-smile.localhost)
+        $hostParts = explode('.', $host);
+        if (strtolower($hostParts[0]) === strtolower($subdomain)) {
+            $finalHost = $host;
+        } else {
+            $finalHost = $subdomain . '.' . $host;
+        }
+
+        return $scheme . '://' . $finalHost . $port;
     }
 
     /**

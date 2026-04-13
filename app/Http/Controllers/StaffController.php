@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\TenantStaffChanged;
 use App\Events\UserAccessChanged;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -86,7 +87,10 @@ class StaffController extends Controller
         // Send Invitation Email
         try {
             $tenant = tenant();
-            $tenantUrl = request()->getScheme() . '://' . request()->getHost();
+            $tenantSubdomain = $tenant ? (string) $tenant->getTenantKey() : '';
+            $tenantUrl = $tenantSubdomain !== ''
+                ? Tenant::publicWebsiteUrlForSubdomain($tenantSubdomain)
+                : request()->getSchemeAndHttpHost();
             
             Mail::to($user->email)->send(new StaffInvitation(
                 name: $user->name,
