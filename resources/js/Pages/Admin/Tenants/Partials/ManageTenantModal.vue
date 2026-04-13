@@ -1,8 +1,11 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import axios from 'axios';
 import { brandingState } from '@/States/brandingState';
+
+const page = usePage();
 
 const props = defineProps({
     show: {
@@ -16,6 +19,10 @@ const props = defineProps({
     plans: {
         type: Array,
         default: () => [],
+    },
+    clinicSettings: {
+        type: Object,
+        default: () => ({}),
     },
 });
 
@@ -47,6 +54,53 @@ const usageData = ref({
     api_request_count_month: 0,
     public_request_count_month: 0,
 });
+
+const defaultClinicSettings = {
+    show_general_tab: true,
+    show_usage_tab: true,
+    show_billing_tab: true,
+    show_technical_tab: true,
+    show_contact_tab: true,
+    allow_updates: true,
+    allow_plan_reassignment: true,
+    allow_expiry_override: true,
+    allow_suspend_reactivate: true,
+    require_action_reason: true,
+};
+
+const userRoles = computed(() => page.props.auth?.user?.roles || []);
+const userPermissions = computed(() => page.props.auth?.user?.permissions || []);
+const userIsAdminFlag = computed(() => page.props.auth?.user?.is_admin === true);
+
+const effectiveClinicSettings = computed(() => ({
+    ...defaultClinicSettings,
+    ...(props.clinicSettings || {}),
+}));
+
+const hasClinicPermission = (permission) => {
+    if (userIsAdminFlag.value || userRoles.value.includes('System Root') || userRoles.value.includes('Admin')) {
+        return true;
+    }
+
+    const hasClinicPermissionModel = userPermissions.value.some((entry) => entry.startsWith('clinic.manage.'));
+    if (!hasClinicPermissionModel) {
+        return true;
+    }
+
+    return userPermissions.value.includes(permission);
+};
+
+const canViewGeneral = computed(() => effectiveClinicSettings.value.show_general_tab && hasClinicPermission('clinic.manage.general'));
+const canViewUsage = computed(() => effectiveClinicSettings.value.show_usage_tab && hasClinicPermission('clinic.manage.usage'));
+const canViewBilling = computed(() => effectiveClinicSettings.value.show_billing_tab && hasClinicPermission('clinic.manage.billing'));
+const canViewTechnical = computed(() => effectiveClinicSettings.value.show_technical_tab && hasClinicPermission('clinic.manage.technical'));
+const canViewContact = computed(() => effectiveClinicSettings.value.show_contact_tab && hasClinicPermission('clinic.manage.contact'));
+
+const canUpdate = computed(() => effectiveClinicSettings.value.allow_updates && hasClinicPermission('clinic.manage.update'));
+const canChangePlan = computed(() => effectiveClinicSettings.value.allow_plan_reassignment && hasClinicPermission('clinic.manage.plan'));
+const canOverrideExpiry = computed(() => effectiveClinicSettings.value.allow_expiry_override && hasClinicPermission('clinic.manage.expiry'));
+const canSuspend = computed(() => effectiveClinicSettings.value.allow_suspend_reactivate && hasClinicPermission('clinic.manage.suspend'));
+const requireActionReason = computed(() => effectiveClinicSettings.value.require_action_reason);
 
 const fetchUsageStats = async () => {
     if (!props.tenant?.id) return;
@@ -101,13 +155,23 @@ watch(() => props.tenant, (newTenant) => {
     }
 }, { immediate: true });
 
-const tabs = [
-    { id: 'general', label: 'General', icon: 'clipboard-list' },
-    { id: 'usage', label: 'Usage', icon: 'chart-bar' },
-    { id: 'billing', label: 'Billing', icon: 'credit-card' },
-    { id: 'advanced', label: 'Technical Details', icon: 'cpu-chip' },
-    { id: 'contact', label: 'Contact Info', icon: 'phone' },
-];
+const tabs = computed(() => ([
+    canViewGeneral.value ? { id: 'general', label: 'General', icon: 'clipboard-list' } : null,
+    canViewUsage.value ? { id: 'usage', label: 'Usage', icon: 'chart-bar' } : null,
+    canViewBilling.value ? { id: 'billing', label: 'Billing', icon: 'credit-card' } : null,
+    canViewTechnical.value ? { id: 'advanced', label: 'Technical Details', icon: 'cpu-chip' } : null,
+    canViewContact.value ? { id: 'contact', label: 'Contact Info', icon: 'phone' } : null,
+]).filter(Boolean));
+
+watch(tabs, (newTabs) => {
+    if (!newTabs.length) {
+        return;
+    }
+
+    if (!newTabs.some(tab => tab.id === activeTab.value)) {
+        activeTab.value = newTabs[0].id;
+    }
+}, { immediate: true });
 
 const primaryColor = computed(() => brandingState.primary_color || '#0ea5e9');
 const contrastColor = computed(() => brandingState.contrast_color || '#ffffff');
@@ -130,7 +194,7 @@ const reactivateButtonStyle = computed(() => ({
 }));
 
 const submit = () => {
-    if (!form.value.reason || form.value.reason.length < 5) {
+    if (requireActionReason.value && (!form.value.reason || form.value.reason.length < 5)) {
         Swal.fire({
             icon: 'error',
             title: 'Reason Required',
@@ -171,7 +235,7 @@ const submit = () => {
 };
 
 const confirmSuspend = () => {
-    if (!form.value.reason || form.value.reason.length < 5) {
+    if (requireActionReason.value && (!form.value.reason || form.value.reason.length < 5)) {
         Swal.fire({
             icon: 'error',
             title: 'Reason Required',
@@ -280,8 +344,12 @@ const formatCount = (value) => {
                     <!-- Tab Content -->
                     <div class="flex-grow overflow-y-auto p-6 bg-base-100">
                         <div v-if="tenant">
+                            <div v-if="tabs.length === 0" class="rounded-xl border border-base-300 bg-base-200/40 p-6 text-sm text-base-content/70">
+                                No clinic sections are available for your role under current Clinic Settings.
+                            </div>
+
                             <!-- Tab 1: General (Editable Fields) -->
-                            <div v-show="activeTab === 'general'" class="space-y-6">
+                            <div v-show="activeTab === 'general' && canViewGeneral" class="space-y-6">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                     <div class="space-y-1.5">
                                         <label class="block text-[10px] font-black text-base-content/50 uppercase tracking-widest">Clinic Name</label>
@@ -291,7 +359,7 @@ const formatCount = (value) => {
                                         <label class="block text-[10px] font-black text-base-content/50 uppercase tracking-widest">Owner Name</label>
                                         <input v-model="form.owner_name" type="text" class="block w-full rounded-lg border-base-300 bg-base-100 text-sm focus:border-primary focus:ring-primary shadow-sm" />
                                     </div>
-                                    <div class="space-y-1.5">
+                                    <div v-if="requireActionReason" class="space-y-1.5">
                                         <label class="block text-[10px] font-black text-base-content/50 uppercase tracking-widest">Action Reason <span class="text-error">*</span></label>
                                         <input v-model="form.reason" type="text" placeholder="Reason for changes..." class="block w-full rounded-lg border-base-300 bg-base-200/50 text-sm focus:border-primary focus:ring-primary shadow-sm" />
                                     </div>
@@ -302,13 +370,13 @@ const formatCount = (value) => {
                                             <span class="text-sm font-bold uppercase tracking-wider text-base-content">{{ form.status }}</span>
                                         </div>
                                     </div>
-                                    <div class="space-y-1.5">
+                                    <div v-if="canChangePlan" class="space-y-1.5">
                                         <label class="block text-[10px] font-black text-base-content/50 uppercase tracking-widest">Assigned Plan</label>
                                         <select v-model="form.plan_id" class="block w-full rounded-lg border-base-300 bg-base-100 text-sm focus:border-primary focus:ring-primary shadow-sm">
                                             <option v-for="plan in plans" :key="plan.id" :value="plan.id">{{ plan.name }}</option>
                                         </select>
                                     </div>
-                                    <div class="space-y-1.5">
+                                    <div v-if="canOverrideExpiry" class="space-y-1.5">
                                         <label class="block text-[10px] font-black text-base-content/50 uppercase tracking-widest">Override Expiry</label>
                                         <input v-model="form.expiry_date" type="date" class="block w-full rounded-lg border-base-300 bg-base-100 text-sm focus:border-primary focus:ring-primary shadow-sm" />
                                         <p class="text-[9px] text-base-content/40 italic">Leave blank for permanent (10 yr) access</p>
@@ -317,7 +385,7 @@ const formatCount = (value) => {
                             </div>
 
                             <!-- Tab 2: Usage -->
-                            <div v-show="activeTab === 'usage'" class="space-y-6">
+                            <div v-show="activeTab === 'usage' && canViewUsage" class="space-y-6">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                     <!-- Storage Details -->
                                     <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50 transition-all duration-300">
@@ -424,7 +492,7 @@ const formatCount = (value) => {
                             </div>
 
                             <!-- Tab 3: Billing -->
-                            <div v-show="activeTab === 'billing'" class="space-y-6">
+                            <div v-show="activeTab === 'billing' && canViewBilling" class="space-y-6">
                                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     <div class="bg-base-200/40 rounded-xl p-5 border border-base-300/50">
                                         <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-4">Subscription Overview</h4>
@@ -478,7 +546,7 @@ const formatCount = (value) => {
                             </div>
 
                             <!-- Tab 4: Technical Details -->
-                            <div v-show="activeTab === 'advanced'" class="space-y-6">
+                            <div v-show="activeTab === 'advanced' && canViewTechnical" class="space-y-6">
                                 <div class="bg-base-200/30 border border-base-300/60 rounded-xl divide-y divide-base-300/50">
                                     <div class="p-4 flex items-center justify-between">
                                         <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest">Public Domain</span>
@@ -499,7 +567,7 @@ const formatCount = (value) => {
                             </div>
 
                             <!-- Tab 5: Contact Info -->
-                            <div v-show="activeTab === 'contact'" class="space-y-4">
+                            <div v-show="activeTab === 'contact' && canViewContact" class="space-y-4">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div class="bg-primary/5 border border-primary/10 rounded-xl p-4">
                                         <label class="block text-[10px] font-black text-primary uppercase tracking-widest mb-1">Email Connection</label>
@@ -531,6 +599,7 @@ const formatCount = (value) => {
                     <div class="bg-base-200 px-6 py-4 flex flex-col sm:flex-row-reverse items-center justify-between gap-3 border-t border-base-300">
                         <div class="flex flex-row-reverse gap-3 w-full sm:w-auto">
                             <button
+                                v-if="canUpdate"
                                 @click="submit"
                                 class="flex-1 sm:flex-none inline-flex justify-center rounded-lg border border-transparent shadow-md px-6 py-2 text-sm font-black uppercase tracking-widest hover:brightness-110 transition-all focus:outline-none"
                                 :style="primaryActionStyle"
@@ -545,7 +614,7 @@ const formatCount = (value) => {
                             </button>
                         </div>
                         
-                        <div class="w-full sm:w-auto">
+                        <div v-if="canSuspend" class="w-full sm:w-auto">
                             <button
                                 @click="confirmSuspend"
                                 class="w-full sm:w-auto inline-flex justify-center items-center rounded-lg border shadow-sm px-5 py-2 text-xs font-black uppercase tracking-widest transition-all"

@@ -114,6 +114,7 @@ class HandleInertiaRequests extends Middleware
                     'id' => $resolvedUser->id,
                     'name' => $resolvedUser->name,
                     'email' => $resolvedUser->email,
+                    'is_admin' => (bool) ($resolvedUser->getAttribute('is_admin') ?? false),
                     'profile_picture_url' => $resolvedUser->profile_picture_url,
                     'roles' => $resolvedUser->getRoleNames()->toArray(),
                     'permissions' => $resolvedUser->getAllPermissions()->pluck('name')->toArray(),

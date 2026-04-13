@@ -643,12 +643,6 @@ parameters:
 			path: app/Http/Controllers/Api/TenantController.php
 
 		-
-			message: '#^Call to static method connection\(\) on an unknown class App\\Http\\Controllers\\Api\\DB\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Http/Controllers/Api/TenantController.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1

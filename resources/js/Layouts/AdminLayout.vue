@@ -50,7 +50,7 @@ const menuItems = [
         active: true 
     },
     { 
-        name: 'Tenants', 
+        name: 'Dental Clinics', 
         route: 'admin.tenants.index', 
         icon: 'building',
         badge: null,

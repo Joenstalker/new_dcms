@@ -124,7 +124,83 @@ class TenantController extends Controller
             'plans' => $plans,
             'filters' => ['status' => $status, 'search' => $search],
             'preview_tenant_id' => (string) config('tenancy.preview.tenant_id', 'preview-sandbox'),
+            'clinic_settings' => $this->getClinicSettings(),
         ]);
+    }
+
+    /**
+     * Update global clinic settings that control Manage Clinic UI visibility/actions.
+     */
+    public function updateClinicSettings(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'settings' => 'required|array',
+            'settings.show_general_tab' => 'required|boolean',
+            'settings.show_usage_tab' => 'required|boolean',
+            'settings.show_billing_tab' => 'required|boolean',
+            'settings.show_technical_tab' => 'required|boolean',
+            'settings.show_contact_tab' => 'required|boolean',
+            'settings.allow_updates' => 'required|boolean',
+            'settings.allow_plan_reassignment' => 'required|boolean',
+            'settings.allow_expiry_override' => 'required|boolean',
+            'settings.allow_suspend_reactivate' => 'required|boolean',
+            'settings.require_action_reason' => 'required|boolean',
+        ]);
+
+        $incoming = $validated['settings'];
+        $defaults = $this->clinicSettingsDefaults();
+
+        foreach ($defaults as $key => $defaultValue) {
+            $fullKey = 'clinic_settings.' . $key;
+
+            SystemSetting::updateOrCreate(
+                ['key' => $fullKey],
+                [
+                    'value' => ($incoming[$key] ?? $defaultValue) ? 'true' : 'false',
+                    'type' => 'boolean',
+                    'group' => 'clinic_management',
+                    'description' => 'Clinic management visibility and action control setting.',
+                ]
+            );
+        }
+
+        AuditLog::record(
+            'clinic_settings_updated',
+            'Updated global clinic settings controls.',
+            'SystemSetting',
+            null,
+            ['settings' => $incoming]
+        );
+
+        return back()->with('success', 'Clinic settings updated successfully.');
+    }
+
+    private function getClinicSettings(): array
+    {
+        $defaults = $this->clinicSettingsDefaults();
+        $settings = [];
+
+        foreach ($defaults as $key => $defaultValue) {
+            $settings[$key] = (bool) SystemSetting::get('clinic_settings.' . $key, $defaultValue);
+        }
+
+        return $settings;
+    }
+
+    private function clinicSettingsDefaults(): array
+    {
+        return [
+            'show_general_tab' => true,
+            'show_usage_tab' => true,
+            'show_billing_tab' => true,
+            'show_technical_tab' => true,
+            'show_contact_tab' => true,
+            'allow_updates' => true,
+            'allow_plan_reassignment' => true,
+            'allow_expiry_override' => true,
+            'allow_suspend_reactivate' => true,
+            'require_action_reason' => true,
+        ];
     }
 
     /**

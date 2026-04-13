@@ -115,6 +115,7 @@ $registerCentralRoutes = function ($withNames = false) {
         $tenantsUpd = Route::put('/tenants/{tenant}', [TenantController::class, 'update']);
         $tenantsD = Route::delete('/tenants/{tenant}', [TenantController::class, 'destroy']);
         $tenantsPreview = Route::post('/tenants/{tenant}/preview', [TenantController::class, 'startPreview']);
+        $tenantsSettingsUpdate = Route::post('/tenants/settings', [TenantController::class, 'updateClinicSettings']);
         $tenantPreviewOpen = Route::get('/tenant-preview/open', [TenantController::class, 'openIsolatedPreview']);
         $tenantPreviewStart = Route::post('/tenant-preview/start', [TenantController::class, 'startIsolatedPreview']);
         $tenantPreviewReset = Route::post('/tenant-preview/reset', [TenantController::class, 'resetIsolatedPreview']);
@@ -127,6 +128,7 @@ $registerCentralRoutes = function ($withNames = false) {
             $tenantsUpd->name('tenants.update');
             $tenantsD->name('tenants.destroy');
             $tenantsPreview->name('tenants.preview');
+            $tenantsSettingsUpdate->name('tenants.settings.update');
             $tenantPreviewOpen->name('tenant-preview.open');
             $tenantPreviewStart->name('tenant-preview.start');
             $tenantPreviewReset->name('tenant-preview.reset');
@@ -162,20 +164,16 @@ $registerCentralRoutes = function ($withNames = false) {
             $tenantApi->name('api.tenants.');
         }
         $tenantApi->group(function () use ($withNames) {
-            $preview = Route::post('/preview-database-name', [App\Http\Controllers\Api\TenantController::class, 'previewDatabaseName']);
             $list = Route::get('/', [App\Http\Controllers\Api\TenantController::class, 'index']);
             $show = Route::get('/{tenant}', [App\Http\Controllers\Api\TenantController::class, 'show']);
             $switch = Route::post('/{tenant}/switch', [App\Http\Controllers\Api\TenantController::class, 'switchDatabase']);
-            $store = Route::post('/', [App\Http\Controllers\Api\TenantController::class, 'store']);
             $update = Route::put('/{tenant}', [App\Http\Controllers\Api\TenantController::class, 'update']);
             $destroy = Route::delete('/{tenant}', [App\Http\Controllers\Api\TenantController::class, 'destroy']);
 
             if ($withNames) {
-                $preview->name('preview-database-name');
                 $list->name('list');
                 $show->name('show');
                 $switch->name('switch');
-                $store->name('store');
                 $update->name('update');
                 $destroy->name('destroy');
             }

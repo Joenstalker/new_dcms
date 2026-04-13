@@ -4,7 +4,6 @@ import { ref, watch, computed } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import debounce from 'lodash/debounce';
 import TenantsTable from './Partials/TenantsTable.vue';
-import CreateTenantModal from './Partials/CreateTenantModal.vue';
 import ManageTenantModal from './Partials/ManageTenantModal.vue';
 import Swal from 'sweetalert2';
 
@@ -16,6 +15,10 @@ const props = defineProps({
     tenants: Object,
     filters: Object,
     plans: Array,
+    clinic_settings: {
+        type: Object,
+        default: () => ({}),
+    },
     preview_tenant_id: {
         type: String,
         default: 'preview-sandbox',
@@ -24,16 +27,32 @@ const props = defineProps({
 
 const search = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');
+const showClinicSettingsModal = ref(false);
+
+const defaultClinicSettings = {
+    show_general_tab: true,
+    show_usage_tab: true,
+    show_billing_tab: true,
+    show_technical_tab: true,
+    show_contact_tab: true,
+    allow_updates: true,
+    allow_plan_reassignment: true,
+    allow_expiry_override: true,
+    allow_suspend_reactivate: true,
+    require_action_reason: true,
+};
+
+const clinicSettings = computed(() => ({
+    ...defaultClinicSettings,
+    ...(props.clinic_settings || {}),
+}));
+
+const clinicSettingsForm = ref({ ...clinicSettings.value });
 
 // Modal state
-const showCreateModal = ref(false);
 const showManageModal = ref(false);
 const showReviewModal = ref(false);
 const selectedTenant = ref(null);
-const newTenantName = ref('');
-const newTenantDomain = ref('');
-const databasePreview = ref(null);
-const isLoadingPreview = ref(false);
 const isApproving = ref(false);
 const isRejecting = ref(false);
 
@@ -68,36 +87,6 @@ const closeManageModal = () => {
     selectedTenant.value = null;
 };
 
-// Database preview function
-const previewDatabaseName = debounce(async () => {
-    if (!newTenantDomain.value || newTenantDomain.value.length < 2) {
-        databasePreview.value = null;
-        return;
-    }
-
-    isLoadingPreview.value = true;
-    try {
-        const response = await fetch(route('api.tenants.preview-database-name'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            },
-            body: JSON.stringify({
-                domain: newTenantDomain.value,
-            }),
-        });
-        const data = await response.json();
-        if (data.success) {
-            databasePreview.value = data.data;
-        }
-    } catch (error) {
-        console.error('Failed to preview database name:', error);
-    } finally {
-        isLoadingPreview.value = false;
-    }
-}, 500);
-
 const updateSearch = debounce(() => {
     router.get(
         route('admin.tenants.index'),
@@ -110,22 +99,24 @@ watch(statusFilter, () => {
     updateSearch();
 });
 
-watch([newTenantDomain], () => {
-    previewDatabaseName();
-});
-
-const openCreateModal = () => {
-    showCreateModal.value = true;
-    newTenantName.value = '';
-    newTenantDomain.value = '';
-    databasePreview.value = null;
+const openClinicSettings = () => {
+    clinicSettingsForm.value = { ...clinicSettings.value };
+    showClinicSettingsModal.value = true;
 };
 
-const closeCreateModal = () => {
-    showCreateModal.value = false;
-    newTenantName.value = '';
-    newTenantDomain.value = '';
-    databasePreview.value = null;
+const closeClinicSettingsModal = () => {
+    showClinicSettingsModal.value = false;
+};
+
+const saveClinicSettings = () => {
+    router.post(route('admin.tenants.settings.update'), {
+        settings: clinicSettingsForm.value,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showClinicSettingsModal.value = false;
+        },
+    });
 };
 
 // Approve pending tenant
@@ -212,34 +203,6 @@ const submitReject = () => {
     });
 };
 
-const createTenant = async () => {
-    if (!databasePreview.value) return;
-
-    try {
-        const response = await fetch(route('api.tenants.store'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            },
-            body: JSON.stringify({
-                name: newTenantName.value,
-                domain: newTenantDomain.value,
-            }),
-        });
-        const data = await response.json();
-        if (data.success) {
-            closeCreateModal();
-            router.reload({ only: ['tenants'] });
-        } else {
-            alert(data.message || 'Failed to create tenant');
-        }
-    } catch (error) {
-        console.error('Failed to create tenant:', error);
-        alert('Failed to create tenant');
-    }
-};
-
 const updateTenant = (formData) => {
     router.put(route('admin.tenants.update', selectedTenant.value.id), formData, {
         onSuccess: () => {
@@ -273,17 +236,13 @@ const deleteTenant = (tenant) => {
         },
     });
 };
-
-const isFormValid = computed(() => {
-    return newTenantName.value.length >= 2 && newTenantDomain.value.length >= 2 && databasePreview.value && !databasePreview.value.already_exists;
-});
 </script>
 
 <template>
-    <Head title="Tenants Management" />
+    <Head title="Dental Clinics Management" />
     <AdminLayout>
         <template #header>
-            <h1 class="text-xl font-bold text-base-content">Clinics Management</h1>
+            <h1 class="text-xl font-bold text-base-content">Dental Clinics Management</h1>
         </template>
 
         <div class="max-w-7xl mx-auto space-y-6">
@@ -319,16 +278,17 @@ const isFormValid = computed(() => {
 
                 </div>
 
-                <!-- Add Clinic Button -->
+                <!-- Clinic Settings Button -->
                 <button
-                    @click="openCreateModal"
+                    @click="openClinicSettings"
                     class="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-wider shadow-sm hover:brightness-110 transition ease-in-out duration-150 whitespace-nowrap"
                     :style="{ backgroundColor: primaryColor }"
                 >
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    Add Clinic
+                    Clinic Settings
                 </button>
             </div>
 
@@ -342,29 +302,83 @@ const isFormValid = computed(() => {
             />
         </div>
 
-        <!-- Create Tenant Modal -->
-        <CreateTenantModal
-            :show="showCreateModal"
-            :new-tenant-name="newTenantName"
-            :new-tenant-domain="newTenantDomain"
-            :database-preview="databasePreview"
-            :is-loading-preview="isLoadingPreview"
-            :is-form-valid="isFormValid"
-            @update:newTenantName="newTenantName = $event"
-            @update:newTenantDomain="newTenantDomain = $event"
-            @close="closeCreateModal"
-            @create="createTenant"
-        />
-
         <!-- Manage Tenant Modal -->
         <ManageTenantModal
             :show="showManageModal"
             :tenant="selectedTenant"
             :plans="plans"
+            :clinic-settings="clinicSettings"
             @close="closeManageModal"
             @update="updateTenant"
             @delete="deleteTenant"
         />
+
+        <!-- Clinic Settings Modal -->
+        <div v-if="showClinicSettingsModal" class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-neutral/80 backdrop-blur-sm transition-opacity" aria-hidden="true" @click="closeClinicSettingsModal"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                <div class="inline-block align-bottom bg-base-100 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full border border-base-300">
+                    <div class="bg-base-100 px-5 pt-5 pb-4 sm:p-6">
+                        <h3 class="text-lg font-bold text-base-content">Clinic Settings</h3>
+                        <p class="mt-1 text-sm text-base-content/60">Control what appears in Manage Clinic and what actions are allowed.</p>
+
+                        <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="flex items-center justify-between rounded-lg border border-base-300 px-3 py-2 text-sm">
+                                <span>Show General Tab</span>
+                                <input v-model="clinicSettingsForm.show_general_tab" type="checkbox" class="checkbox checkbox-sm" />
+                            </label>
+                            <label class="flex items-center justify-between rounded-lg border border-base-300 px-3 py-2 text-sm">
+                                <span>Show Usage Tab</span>
+                                <input v-model="clinicSettingsForm.show_usage_tab" type="checkbox" class="checkbox checkbox-sm" />
+                            </label>
+                            <label class="flex items-center justify-between rounded-lg border border-base-300 px-3 py-2 text-sm">
+                                <span>Show Billing Tab</span>
+                                <input v-model="clinicSettingsForm.show_billing_tab" type="checkbox" class="checkbox checkbox-sm" />
+                            </label>
+                            <label class="flex items-center justify-between rounded-lg border border-base-300 px-3 py-2 text-sm">
+                                <span>Show Technical Details Tab</span>
+                                <input v-model="clinicSettingsForm.show_technical_tab" type="checkbox" class="checkbox checkbox-sm" />
+                            </label>
+                            <label class="flex items-center justify-between rounded-lg border border-base-300 px-3 py-2 text-sm">
+                                <span>Show Contact Tab</span>
+                                <input v-model="clinicSettingsForm.show_contact_tab" type="checkbox" class="checkbox checkbox-sm" />
+                            </label>
+                            <label class="flex items-center justify-between rounded-lg border border-base-300 px-3 py-2 text-sm">
+                                <span>Allow Update Changes</span>
+                                <input v-model="clinicSettingsForm.allow_updates" type="checkbox" class="checkbox checkbox-sm" />
+                            </label>
+                            <label class="flex items-center justify-between rounded-lg border border-base-300 px-3 py-2 text-sm">
+                                <span>Allow Plan Reassignment</span>
+                                <input v-model="clinicSettingsForm.allow_plan_reassignment" type="checkbox" class="checkbox checkbox-sm" />
+                            </label>
+                            <label class="flex items-center justify-between rounded-lg border border-base-300 px-3 py-2 text-sm">
+                                <span>Allow Expiry Override</span>
+                                <input v-model="clinicSettingsForm.allow_expiry_override" type="checkbox" class="checkbox checkbox-sm" />
+                            </label>
+                            <label class="flex items-center justify-between rounded-lg border border-base-300 px-3 py-2 text-sm">
+                                <span>Allow Suspend/Reactivate</span>
+                                <input v-model="clinicSettingsForm.allow_suspend_reactivate" type="checkbox" class="checkbox checkbox-sm" />
+                            </label>
+                            <label class="flex items-center justify-between rounded-lg border border-base-300 px-3 py-2 text-sm">
+                                <span>Require Action Reason</span>
+                                <input v-model="clinicSettingsForm.require_action_reason" type="checkbox" class="checkbox checkbox-sm" />
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="bg-base-200 px-4 py-3 sm:px-6 flex justify-end gap-3 border-t border-base-300">
+                        <button @click="closeClinicSettingsModal" class="inline-flex justify-center rounded-md border border-base-300 shadow-sm px-4 py-2 bg-base-100 text-sm font-medium text-base-content hover:bg-base-200">
+                            Cancel
+                        </button>
+                        <button @click="saveClinicSettings" class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-sm font-medium text-white" :style="{ backgroundColor: primaryColor }">
+                            Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Review Pending Tenant Modal -->
         <div v-if="showReviewModal" class="fixed inset-0 z-50 overflow-y-auto">
