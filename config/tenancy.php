@@ -30,7 +30,7 @@ return [
         'dcms.test',
         'dcms.local',
         'lvh.me',
-        parse_url(env('APP_URL'), PHP_URL_HOST),
+        parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST),
         // Add current ngrok domain if present
         'unresisted-brittaney-rimfire.ngrok-free.de',
         'unresisted-brittaney-rimfire.ngrok-free.dev',

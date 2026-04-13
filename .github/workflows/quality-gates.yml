@@ -66,4 +66,6 @@ jobs:
           APP_ENV: testing
           DB_CONNECTION: sqlite
           DB_DATABASE: ':memory:'
+          APP_URL: http://localhost:8080
+          CENTRAL_DOMAIN: localhost
         run: composer test:coverage
