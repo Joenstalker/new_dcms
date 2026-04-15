@@ -31,19 +31,11 @@ class FeatureController extends Controller
             ->where('type', '!=', 'system_version')
             ->get();
 
-        $releaseFeatures = Feature::query()
-            ->notArchived()
-            ->where('type', 'system_version')
-            ->with('systemRelease')
-            ->orderByDesc('released_at')
-            ->get();
-
         $plans = SubscriptionPlan::orderBy('price_monthly')->get();
 
         return Inertia::render('Admin/Features/Index', [
             'features' => $features,
             'archivedFeatures' => $archivedFeatures,
-            'releaseFeatures' => $releaseFeatures,
             'plans' => $plans,
         ]);
     }

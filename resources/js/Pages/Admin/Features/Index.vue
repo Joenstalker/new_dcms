@@ -17,10 +17,6 @@ const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
 const props = defineProps({
     features: Object,
     archivedFeatures: Array,
-    releaseFeatures: {
-        type: Array,
-        default: () => [],
-    },
     plans: Array,
 });
 
@@ -296,12 +292,6 @@ const handleBatchFinished = () => {
         confirmButtonColor: '#0ea5e9',
     });
 };
-
-const formatDate = (isoDate) => {
-    if (!isoDate) return 'N/A';
-    const d = new Date(isoDate);
-    return Number.isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
-};
 </script>
 
 <template>
@@ -336,16 +326,6 @@ const formatDate = (isoDate) => {
                             {{ archivedFeatures.length }}
                         </span>
                     </button>
-                    <button
-                        @click="activeTab = 'releases'"
-                        class="tab tab-sm md:tab-md"
-                        :class="{ 'tab-active !bg-white !text-primary shadow-sm': activeTab === 'releases' }"
-                    >
-                        Releases
-                        <span v-if="releaseFeatures.length" class="ml-2 badge badge-sm">
-                            {{ releaseFeatures.length }}
-                        </span>
-                    </button>
                 </div>
 
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -353,18 +333,10 @@ const formatDate = (isoDate) => {
                         {{
                             activeTab === 'live'
                                 ? 'Manage subscription plan business features dynamically.'
-                                : activeTab === 'archived'
-                                    ? 'View and manage archived business features.'
-                                    : 'GitHub release versions and OTA release entries for tenants.'
+                                : 'View and manage archived business features.'
                         }}
                     </p>
                     <div class="flex items-center gap-2">
-                        <a
-                            :href="route('admin.features.adoption')"
-                            class="btn btn-sm btn-outline"
-                        >
-                            Release Adoption
-                        </a>
                         <button
                             @click="openCreateModal"
                             class="btn btn-sm shrink-0 border-0 text-white hover:brightness-110 shadow-md transition-all"
@@ -417,46 +389,6 @@ const formatDate = (isoDate) => {
                         :is-archive="true"
                         @manage="openEditModal"
                     />
-                </div>
-
-                <!-- Release Entries -->
-                <div v-else>
-                    <div v-if="releaseFeatures.length === 0" class="card bg-base-100 border border-base-300 p-12 text-center">
-                        <svg class="w-16 h-16 mx-auto mb-4 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-3-3v6m9 2.25A2.25 2.25 0 0 1 18.75 21H5.25A2.25 2.25 0 0 1 3 18.75V5.25A2.25 2.25 0 0 1 5.25 3h7.5l5.25 5.25v10.5Z" />
-                        </svg>
-                        <h4 class="text-lg font-bold text-base-content/50">No release entries found</h4>
-                        <p class="text-sm text-base-content/40">Run release sync to import GitHub releases.</p>
-                    </div>
-
-                    <div v-else class="bg-base-100 border border-base-300 rounded-xl overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="table w-full">
-                                <thead>
-                                    <tr>
-                                        <th>Version</th>
-                                        <th>Name</th>
-                                        <th>Feature Key</th>
-                                        <th>Released</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="releaseFeature in releaseFeatures" :key="releaseFeature.id">
-                                        <td class="font-semibold">{{ releaseFeature.system_release?.version || 'N/A' }}</td>
-                                        <td>{{ releaseFeature.name }}</td>
-                                        <td class="font-mono text-xs text-base-content/60">{{ releaseFeature.key }}</td>
-                                        <td>{{ formatDate(releaseFeature.released_at || releaseFeature.system_release?.released_at) }}</td>
-                                        <td>
-                                            <span class="badge badge-success badge-sm">
-                                                {{ releaseFeature.implementation_status?.replace('_', ' ') || 'active' }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
