@@ -574,7 +574,7 @@ const getSectionBackgroundPreviewUrl = (section) => {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="form-control">
                                 <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Background Type</span></label>
-                                <select v-model="form.landing_page_config.sections.hero.background_type" class="select select-sm select-bordered rounded-xl">
+                                <select v-model="form.landing_page_config.sections.hero.background_type" class="select select-bordered rounded-xl w-full max-w-[220px] h-10 min-h-10 text-xs leading-tight bg-base-100 text-base-content">
                                     <option value="color">Color</option>
                                     <option value="image">Image</option>
                                 </select>
@@ -632,7 +632,7 @@ const getSectionBackgroundPreviewUrl = (section) => {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="form-control">
                                 <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Background Type</span></label>
-                                <select v-model="form.landing_page_config.sections.content.background_type" class="select select-sm select-bordered rounded-xl">
+                                <select v-model="form.landing_page_config.sections.content.background_type" class="select select-bordered rounded-xl w-full max-w-[220px] h-10 min-h-10 text-xs leading-tight bg-base-100 text-base-content">
                                     <option value="color">Color</option>
                                     <option value="image">Image</option>
                                 </select>
@@ -717,7 +717,7 @@ const getSectionBackgroundPreviewUrl = (section) => {
                             </div>
                             <div class="form-control">
                                 <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Background Type</span></label>
-                                <select v-model="form.landing_page_config.sections.services.background_type" class="select select-sm select-bordered rounded-xl">
+                                <select v-model="form.landing_page_config.sections.services.background_type" class="select select-bordered rounded-xl w-full max-w-[220px] h-10 min-h-10 text-xs leading-tight bg-base-100 text-base-content">
                                     <option value="color">Color</option>
                                     <option value="image">Image</option>
                                 </select>
@@ -778,7 +778,7 @@ const getSectionBackgroundPreviewUrl = (section) => {
                             </div>
                             <div class="form-control">
                                 <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Background Type</span></label>
-                                <select v-model="form.landing_page_config.sections.team.background_type" class="select select-sm select-bordered rounded-xl">
+                                <select v-model="form.landing_page_config.sections.team.background_type" class="select select-bordered rounded-xl w-full max-w-[220px] h-10 min-h-10 text-xs leading-tight bg-base-100 text-base-content">
                                     <option value="color">Color</option>
                                     <option value="image">Image</option>
                                 </select>
@@ -907,7 +907,7 @@ const getSectionBackgroundPreviewUrl = (section) => {
                             </div>
                             <div class="form-control">
                                 <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Background Type</span></label>
-                                <select v-model="form.landing_page_config.sections.contact.background_type" class="select select-sm select-bordered rounded-xl">
+                                <select v-model="form.landing_page_config.sections.contact.background_type" class="select select-bordered rounded-xl w-full max-w-[220px] h-10 min-h-10 text-xs leading-tight bg-base-100 text-base-content">
                                     <option value="color">Color</option>
                                     <option value="image">Image</option>
                                 </select>
