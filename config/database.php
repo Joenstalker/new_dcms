@@ -203,4 +203,17 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Database Tools
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for database-related tools like mysqldump.
+    |
+    */
+
+    'tools' => [
+        'mysqldump_path' => env('MYSQLDUMP_PATH', ''),
+    ],
+
 ];

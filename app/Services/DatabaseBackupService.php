@@ -80,17 +80,7 @@ class DatabaseBackupService
         $fileName = 'central.sql';
         $filePath = $backupDir.'/'.$fileName;
 
-        $dumper = MySql::create()
-            ->setDbName(config('database.connections.mysql.database'))
-            ->setUserName(config('database.connections.mysql.username'))
-            ->setPassword(config('database.connections.mysql.password'))
-            ->setHost(config('database.connections.mysql.host'))
-            ->setPort(config('database.connections.mysql.port'));
-
-        if ($dumpPath = $this->getDumpBinaryPath()) {
-            $dumper->setDumpBinaryPath($dumpPath);
-        }
-
+        $dumper = $this->createDumper(config('database.connections.mysql.database'));
         $dumper->dumpToFile($filePath);
 
         return [
@@ -113,17 +103,7 @@ class DatabaseBackupService
                 $fileName = "tenant_{$tenant->id}.sql";
                 $filePath = $backupDir.'/'.$fileName;
 
-                $dumper = MySql::create()
-                    ->setDbName($tenant->database_name)
-                    ->setUserName(config('database.connections.mysql.username'))
-                    ->setPassword(config('database.connections.mysql.password'))
-                    ->setHost(config('database.connections.mysql.host'))
-                    ->setPort(config('database.connections.mysql.port'));
-
-                if ($dumpPath) {
-                    $dumper->setDumpBinaryPath($dumpPath);
-                }
-
+                $dumper = $this->createDumper($tenant->database_name, $dumpPath);
                 $dumper->dumpToFile($filePath);
 
                 return [
@@ -150,11 +130,46 @@ class DatabaseBackupService
     }
 
     /**
+     * Create database dumper.
+     */
+    protected function createDumper(string $dbName, ?string $dumpPath = null): MySql
+    {
+        /** @var MySql $dumper */
+        $dumper = MySql::create()
+            ->setDbName($dbName)
+            ->setUserName(config('database.connections.mysql.username'))
+            ->setPassword(config('database.connections.mysql.password'))
+            ->setHost(config('database.connections.mysql.host'))
+            ->setPort(config('database.connections.mysql.port'))
+            ->setSocket('');
+
+        if ($dumpPath ??= $this->getDumpBinaryPath()) {
+            $dumper->setDumpBinaryPath($dumpPath);
+        }
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $dumper->addExtraOption('--protocol=TCP');
+        }
+
+        return $dumper;
+    }
+
+    /**
      * Create ZIP file from backup directory
      */
     protected function getDumpBinaryPath(): string
     {
-        return trim((string) env('MYSQLDUMP_PATH', ''));
+        $path = trim((string) config('database.tools.mysqldump_path', ''));
+        if (! $path) {
+            return '';
+        }
+
+        // On Windows, append mysqldump.exe if directory is provided
+        if (PHP_OS_FAMILY === 'Windows' && is_dir($path)) {
+            $path = rtrim($path, '\\/').DIRECTORY_SEPARATOR.'mysqldump.exe';
+        }
+
+        return $path;
     }
 
     protected function createZipFile(string $sourceDir, string $zipFile): void
