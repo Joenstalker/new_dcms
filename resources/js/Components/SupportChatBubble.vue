@@ -114,8 +114,9 @@ const syncSupportTicketEchoChannels = () => {
 };
 
 const bubbleLayerStyle = computed(() => ({
-    zIndex: isModalOpen.value ? 120 : 9999,
+    zIndex: isModalOpen.value ? 1 : 9999,
     pointerEvents: isModalOpen.value ? 'none' : 'auto',
+    visibility: isModalOpen.value ? 'hidden' : 'visible',
 }));
 
 const syncModalState = () => {
@@ -124,7 +125,14 @@ const syncModalState = () => {
         return;
     }
 
-    isModalOpen.value = document.body.classList.contains('has-open-modal');
+    const hasFrameworkModalClass = document.body.classList.contains('has-open-modal');
+    const hasOpenDialog = Boolean(document.querySelector('dialog[open], .modal.modal-open'));
+    const hasAriaModalOverlay = Boolean(
+        document.querySelector('[role="dialog"][aria-modal="true"], [aria-modal="true"]')
+    );
+    const hasSweetAlert = Boolean(document.querySelector('.swal2-container'));
+
+    isModalOpen.value = hasFrameworkModalClass || hasOpenDialog || hasAriaModalOverlay || hasSweetAlert;
 };
 
 const getPointerPosition = (event) => {

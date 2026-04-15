@@ -57,7 +57,7 @@ watch(() => props.show, (newVal) => {
             form.patient_type = props.patient.patient_type || '';
             form.first_visit_at = props.patient.first_visit_at || '';
             form.last_recall_at = props.patient.last_recall_at || '';
-            form.initial_balance = props.patient.initial_balance || props.patient.balance || 0;
+            form.initial_balance = props.patient.initial_balance ?? props.patient.balance ?? 0;
             form.last_visit_time = props.patient.last_visit_time || '';
             form.tags = Array.isArray(props.patient.tags) ? [...props.patient.tags] : [];
             form.photo = null;

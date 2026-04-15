@@ -126,7 +126,7 @@ import PlaceholderTab from './partials/PlaceholderTab.vue';
 
 <template>
     <dialog class="modal" :class="{ 'modal-open': show }">
-        <div class="modal-box w-11/12 max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden bg-base-200">
+        <div class="modal-box w-[96vw] max-w-[1500px] h-[92vh] flex flex-col p-0 overflow-hidden bg-base-200">
             <!-- Header -->
             <div class="flex items-center justify-between p-4 bg-base-100 border-b border-base-300">
                 <h3 class="text-lg font-black text-base-content uppercase tracking-widest">Manage Patient</h3>

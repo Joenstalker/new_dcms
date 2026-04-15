@@ -9,6 +9,7 @@ use App\Services\TenantStorageUsageService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
@@ -18,6 +19,11 @@ class PatientController extends Controller
     public function index(Request $request)
     {
         $query = Patient::query();
+        $hasPatientType = $this->patientColumnExists('patient_type');
+        $hasTags = $this->patientColumnExists('tags');
+        $hasFirstVisitAt = $this->patientColumnExists('first_visit_at');
+        $hasLastRecallAt = $this->patientColumnExists('last_recall_at');
+        $hasLastVisitTime = $this->patientColumnExists('last_visit_time');
 
         $search = trim((string) $request->input('search', ''));
         $type = $request->input('type');
@@ -27,9 +33,19 @@ class PatientController extends Controller
 
         $connection = DB::connection();
         $driver = $connection->getDriverName();
+        $visitDateColumns = [];
+        if ($hasFirstVisitAt) {
+            $visitDateColumns[] = 'first_visit_at';
+        }
+        if ($hasLastVisitTime) {
+            $visitDateColumns[] = 'last_visit_time';
+        }
+        $visitDateColumns[] = 'created_at';
+
+        $visitDateExpression = 'COALESCE(' . implode(', ', $visitDateColumns) . ')';
         $visitYearExpression = $driver === 'sqlite'
-            ? "strftime('%Y', COALESCE(first_visit_at, last_visit_time, created_at))"
-            : 'YEAR(COALESCE(first_visit_at, last_visit_time, created_at))';
+            ? "strftime('%Y', {$visitDateExpression})"
+            : "YEAR({$visitDateExpression})";
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -42,7 +58,7 @@ class PatientController extends Controller
             });
         }
 
-        if (in_array($type, ['pedia', 'adult'], true)) {
+        if ($hasPatientType && in_array($type, ['pedia', 'adult'], true)) {
             $query->where('patient_type', $type);
         }
 
@@ -50,7 +66,7 @@ class PatientController extends Controller
             $query->whereRaw($visitYearExpression . ' = ?', [(string) ((int) $year)]);
         }
 
-        if (!empty($tag)) {
+        if ($hasTags && !empty($tag)) {
             if ($driver === 'sqlite') {
                 $query->whereRaw('EXISTS (SELECT 1 FROM json_each(tags) WHERE json_each.value = ?)', [$tag]);
             } else {
@@ -68,11 +84,19 @@ class PatientController extends Controller
 
                 break;
             case 'first_visit_desc':
-                $query->orderByDesc('first_visit_at')->orderByDesc('created_at');
+                if ($hasFirstVisitAt) {
+                    $query->orderByDesc('first_visit_at')->orderByDesc('created_at');
+                } else {
+                    $query->latest();
+                }
 
                 break;
             case 'last_recall_desc':
-                $query->orderByDesc('last_recall_at')->orderByDesc('created_at');
+                if ($hasLastRecallAt) {
+                    $query->orderByDesc('last_recall_at')->orderByDesc('created_at');
+                } else {
+                    $query->latest();
+                }
 
                 break;
             case 'balance_desc':
@@ -95,17 +119,19 @@ class PatientController extends Controller
             ->map(fn ($value) => (int) $value)
             ->values();
 
-        $availableTags = Patient::query()
-            ->whereNotNull('tags')
-            ->pluck('tags')
-            ->flatMap(function ($tags) {
-                return is_array($tags) ? $tags : [];
-            })
-            ->map(fn ($item) => trim((string) $item))
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values();
+        $availableTags = $hasTags
+            ? Patient::query()
+                ->whereNotNull('tags')
+                ->pluck('tags')
+                ->flatMap(function ($tags) {
+                    return is_array($tags) ? $tags : [];
+                })
+                ->map(fn ($item) => trim((string) $item))
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values()
+            : collect();
 
         return Inertia::render('Tenant/Patients/Index', [
             'patients' => $patients,
@@ -124,7 +150,7 @@ class PatientController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $rules = [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -143,16 +169,37 @@ class PatientController extends Controller
             'initial_balance' => 'nullable|numeric',
             'last_visit_time' => 'nullable|date',
             'photo' => 'nullable|image|max:2048',
-        ]);
+        ];
 
-        $validated['tags'] = collect($validated['tags'] ?? [])
-            ->map(fn ($item) => trim((string) $item))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+        if (!$this->patientColumnExists('patient_type')) {
+            unset($rules['patient_type']);
+        }
+        if (!$this->patientColumnExists('tags')) {
+            unset($rules['tags'], $rules['tags.*']);
+        }
+        if (!$this->patientColumnExists('first_visit_at')) {
+            unset($rules['first_visit_at']);
+        }
+        if (!$this->patientColumnExists('last_recall_at')) {
+            unset($rules['last_recall_at']);
+        }
 
-        if (empty($validated['patient_type']) && !empty($validated['date_of_birth'])) {
+        $validated = $request->validate($rules);
+
+        if ($this->patientColumnExists('tags')) {
+            $validated['tags'] = collect($validated['tags'] ?? [])
+                ->map(fn ($item) => trim((string) $item))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        if (
+            $this->patientColumnExists('patient_type')
+            && empty($validated['patient_type'])
+            && !empty($validated['date_of_birth'])
+        ) {
             $validated['patient_type'] = Carbon::parse((string) $validated['date_of_birth'])->age < 18 ? 'pedia' : 'adult';
         }
 
@@ -160,6 +207,8 @@ class PatientController extends Controller
             $file = $request->file('photo');
             $validated['photo_path'] = 'data:' . $file->getMimeType() . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
         }
+
+        $validated = $this->filterToExistingPatientColumns($validated);
 
         $patient = Patient::create($validated);
 
@@ -229,7 +278,7 @@ class PatientController extends Controller
 
         $patient->load('appointments', 'treatments', 'invoices');
 
-        if ($request->wantsJson() || $request->ajax()) {
+        if (!$request->header('X-Inertia') && ($request->wantsJson() || $request->ajax())) {
             return response()->json($patient);
         }
 
@@ -267,7 +316,7 @@ class PatientController extends Controller
             ->where('tenant_id', $tenantId)
             ->firstOrFail();
 
-        $validated = $request->validate([
+        $rules = [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -286,16 +335,37 @@ class PatientController extends Controller
             'initial_balance' => 'nullable|numeric',
             'last_visit_time' => 'nullable|date',
             'photo' => 'nullable|image|max:2048',
-        ]);
+        ];
 
-        $validated['tags'] = collect($validated['tags'] ?? [])
-            ->map(fn ($item) => trim((string) $item))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+        if (!$this->patientColumnExists('patient_type')) {
+            unset($rules['patient_type']);
+        }
+        if (!$this->patientColumnExists('tags')) {
+            unset($rules['tags'], $rules['tags.*']);
+        }
+        if (!$this->patientColumnExists('first_visit_at')) {
+            unset($rules['first_visit_at']);
+        }
+        if (!$this->patientColumnExists('last_recall_at')) {
+            unset($rules['last_recall_at']);
+        }
 
-        if (empty($validated['patient_type']) && !empty($validated['date_of_birth'])) {
+        $validated = $request->validate($rules);
+
+        if ($this->patientColumnExists('tags')) {
+            $validated['tags'] = collect($validated['tags'] ?? [])
+                ->map(fn ($item) => trim((string) $item))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        if (
+            $this->patientColumnExists('patient_type')
+            && empty($validated['patient_type'])
+            && !empty($validated['date_of_birth'])
+        ) {
             $validated['patient_type'] = Carbon::parse((string) $validated['date_of_birth'])->age < 18 ? 'pedia' : 'adult';
         }
 
@@ -309,12 +379,20 @@ class PatientController extends Controller
             $validated['photo_path'] = 'data:' . $file->getMimeType() . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
         }
 
+        $validated = $this->filterToExistingPatientColumns($validated);
+
         $patient->update($validated);
+
+        // Keep balance consistent when initial balance or financial context changes.
+        if ($this->patientColumnExists('balance') && $this->patientColumnExists('initial_balance')) {
+            $patient->recalculateBalance();
+            $patient->refresh();
+        }
         
         // Broadcast changes (with error handling)
         $this->broadcastPatientChange($patient, 'updated');
 
-        if ($request->wantsJson() || $request->ajax()) {
+        if (!$request->header('X-Inertia') && ($request->wantsJson() || $request->ajax())) {
             return response()->json([
                 'success' => true,
                 'message' => 'Patient updated successfully',
@@ -377,6 +455,7 @@ class PatientController extends Controller
             'last_recall_at' => $patient->last_recall_at,
             'last_visit_time' => $patient->last_visit_time,
             'balance' => $patient->balance,
+            'initial_balance' => $patient->initial_balance,
             'photo_path' => $patient->photo_path,
             'photo_url' => $patient->photo_url ?? null,
         ];
@@ -403,5 +482,21 @@ class PatientController extends Controller
                 'tenant_id' => tenant()->id,
             ]);
         }
+    }
+
+    private function patientColumnExists(string $column): bool
+    {
+        return Schema::connection(DB::connection()->getName())->hasColumn('patients', $column);
+    }
+
+    private function filterToExistingPatientColumns(array $attributes): array
+    {
+        $availableColumns = Schema::connection(DB::connection()->getName())->getColumnListing('patients');
+
+        return array_filter(
+            $attributes,
+            fn ($key) => in_array($key, $availableColumns, true),
+            ARRAY_FILTER_USE_KEY
+        );
     }
 }
