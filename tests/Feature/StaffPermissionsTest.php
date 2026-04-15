@@ -160,4 +160,34 @@ class StaffPermissionsTest extends TestCase
         // 3. Assert: Should not be 403 (it might fail other validation but not authorization)
         $this->assertNotEquals(403, $response->getStatusCode());
     }
+
+    #[Test]
+    public function staff_with_only_view_billing_permission_cannot_create_or_edit_billing(): void
+    {
+        $staff = User::factory()->create();
+        $staff->assignRole('Assistant');
+        $staff->syncPermissions(['view billing']);
+
+        $createResponse = $this->actingAsTenantUser($staff)->post('http://test-clinic.dcms.test/billing', [
+            'patient_id' => 1,
+            'items' => [],
+        ]);
+        $createResponse->assertStatus(403);
+
+        // Ensure an invoice exists so route model binding doesn't return 404 before auth runs.
+        $invoiceId = \Illuminate\Support\Facades\DB::table('invoices')->insertGetId([
+            'patient_id' => null,
+            'total_amount' => 0,
+            'amount_paid' => 0,
+            'status' => 'unpaid',
+            'due_date' => now()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $editResponse = $this->actingAsTenantUser($staff)->put("http://test-clinic.dcms.test/billing/{$invoiceId}", [
+            'items' => [],
+        ]);
+        $editResponse->assertStatus(403);
+    }
 }

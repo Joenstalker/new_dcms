@@ -190,12 +190,16 @@ Route::middleware([
         });
 
         // Billing
+        // IMPORTANT: View permission must not imply create/edit access.
         Route::middleware(['permission:view billing'])->group(function () {
             Route::get('billing', [BillingController::class, 'index'])->name('billing.index');
-            Route::post('billing', [BillingController::class, 'store'])->name('billing.store');
-            Route::put('billing/{invoice}', [BillingController::class, 'update'])->name('billing.update');
-        }
-        );
+        });
+        Route::post('billing', [BillingController::class, 'store'])
+            ->middleware(['permission:create billing'])
+            ->name('billing.store');
+        Route::put('billing/{invoice}', [BillingController::class, 'update'])
+            ->middleware(['permission:edit billing'])
+            ->name('billing.update');
 
         // Staff management — permission based for delegated access
         Route::get('staff', [StaffController::class, 'index'])

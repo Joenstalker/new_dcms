@@ -18,6 +18,7 @@ const branding = computed(() => page.props.branding || {});
 const pendingUpdatesCount = computed(() => page.props.pending_updates_count || 0);
 const liveEnabledFeatures = ref([...(page.props.tenant?.enabled_features || [])]);
 let tenantBrandingChannel = null;
+let userAccessChannel = null;
 
 // 1. Initial State from Server-Side Computation (Robust)
 // Initialize immediately before first render to prevent flickering
@@ -376,6 +377,34 @@ onMounted(() => {
             });
     }
 
+    const userId = user.value?.id;
+    if (window.Echo && userId) {
+        userAccessChannel = window.Echo.private(`App.Models.User.${userId}`)
+            .listen('.UserAccessChanged', async (event) => {
+                const shouldLogout = Boolean(event?.should_logout);
+                const message = event?.message || 'Your access changed. Updating your permissions now.';
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: shouldLogout ? 'warning' : 'info',
+                    title: 'Access updated',
+                    text: message,
+                    showConfirmButton: false,
+                    timer: 4000,
+                    timerProgressBar: true,
+                });
+
+                if (shouldLogout) {
+                    router.post(route('logout'));
+                    return;
+                }
+
+                // Refresh auth props so sidebar + guards reflect changes without a full page refresh.
+                router.reload({ only: ['auth'], preserveScroll: true, preserveState: true });
+            });
+    }
+
     // Only show if user is Owner or Admin
     const canManageUpdates = roles.value.includes('Owner') || user.value?.permissions?.includes('manage system updates');
     
@@ -414,6 +443,13 @@ onUnmounted(() => {
     }
 
     tenantBrandingChannel = null;
+
+    const userId = user.value?.id;
+    if (window.Echo && userId) {
+        window.Echo.leave(`App.Models.User.${userId}`);
+    }
+
+    userAccessChannel = null;
 });
 
 // Authorization Guard: Check if the current route is allowed for the user
