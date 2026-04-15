@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Tenant;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -9,7 +10,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Artisan::command('fix:tenant-domains', function () {
-    $tenants = \App\Models\Tenant::all();
+    $tenants = Tenant::all();
     $count = 0;
 
     foreach ($tenants as $tenant) {
@@ -46,3 +47,6 @@ Schedule::command('tenants:measure-db-usage')->hourly()->withoutOverlapping();
 Schedule::command('tenants:reconcile-file-usage --disk=public')->dailyAt('02:10')->withoutOverlapping();
 Schedule::command('tenants:reconcile-file-usage --disk=support')->dailyAt('02:40')->withoutOverlapping();
 Schedule::command('tenants:snapshot-usage')->dailyAt('03:10')->withoutOverlapping();
+
+// Database Backup Scheduler
+Schedule::command('backup:check-schedule')->everyMinute()->withoutOverlapping();

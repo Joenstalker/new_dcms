@@ -42,6 +42,16 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URL'),
     ],
 
+    'google_drive' => [
+        'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
+        'redirect_uri' => env('GOOGLE_DRIVE_REDIRECT_URI'),
+        'folder_id' => env('GOOGLE_DRIVE_FOLDER_ID'),
+        'service_account_json' => env('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON'),
+        'service_account_json_path' => env('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH'),
+        'service_account_impersonate' => env('GOOGLE_DRIVE_SERVICE_ACCOUNT_IMPERSONATE'),
+    ],
+
     'stripe' => [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),

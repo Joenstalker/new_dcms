@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Stancl\Tenancy\Database\Models\Tenant;
 
+/**
+ * @property-read Tenant|null $tenant
+ */
 class SupportTicket extends Model
 {
     protected $connection = 'central';

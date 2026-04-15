@@ -8,9 +8,11 @@ import BrandingSettings from './Partials/BrandingSettings.vue';
 import SecuritySettings from './Partials/SecuritySettings.vue';
 import MaintenanceSettings from './Partials/MaintenanceSettings.vue';
 import RegistrationSettings from './Partials/RegistrationSettings.vue';
+import BackupSettings from './Partials/BackupSettings.vue';
 
 const props = defineProps({
     settings: Object,
+    backupData: Object,
 });
 
 // Tab state
@@ -21,6 +23,7 @@ const tabs = [
     { id: 'branding', name: 'Branding', icon: 'paintbrush' },
     { id: 'security', name: 'Security', icon: 'shield-check' },
     { id: 'maintenance', name: 'Maintenance', icon: 'wrench' },
+    { id: 'backup', name: 'Backup', icon: 'cloud-upload' },
     { id: 'registrations', name: 'Registrations', icon: 'user-plus' },
 ];
 
@@ -29,11 +32,21 @@ const form = ref({});
 
 const initializeForm = () => {
     const formData = {};
+
     Object.keys(props.settings).forEach(group => {
         props.settings[group].forEach(setting => {
             formData[setting.key] = setting.value;
         });
     });
+
+    if (props.backupData?.settings) {
+        Object.entries(props.backupData.settings).forEach(([key, value]) => {
+            if (formData[key] === undefined) {
+                formData[key] = value;
+            }
+        });
+    }
+
     form.value = formData;
 };
 
@@ -132,6 +145,14 @@ const handleLogoDelete = () => {
             <MaintenanceSettings 
                 v-if="activeTab === 'maintenance'" 
                 :form="form" 
+                @save="saveGroup"
+            />
+
+            <!-- Backup Settings -->
+            <BackupSettings 
+                v-if="activeTab === 'backup'" 
+                :form="form" 
+                :backup-data="backupData"
                 @save="saveGroup"
             />
 

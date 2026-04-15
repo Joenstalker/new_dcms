@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\FeatureController;
+use App\Http\Controllers\Admin\GoogleDriveController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PendingRegistrationController;
 use App\Http\Controllers\Admin\PlanController;
@@ -298,6 +299,10 @@ $registerCentralRoutes = function ($withNames = false) {
         $sysSetT = Route::post('/system-settings/toggle', [SystemSettingsController::class, 'toggle']);
         $sysSetLogoU = Route::post('/system-settings/logo/upload', [SystemSettingsController::class, 'uploadLogo']);
         $sysSetLogoD = Route::delete('/system-settings/logo/delete', [SystemSettingsController::class, 'deleteLogo']);
+        // Backup routes
+        $backupIndex = Route::get('/system-settings/backup', [SystemSettingsController::class, 'backupIndex']);
+        $backupRun = Route::post('/system-settings/backup/run', [SystemSettingsController::class, 'runBackup']);
+        $backupUpdate = Route::post('/system-settings/backup/settings', [SystemSettingsController::class, 'updateBackupSettings']);
         if ($withNames) {
             $sysSetI->name('system-settings.index');
             $sysSetU->name('system-settings.update');
@@ -305,6 +310,21 @@ $registerCentralRoutes = function ($withNames = false) {
             $sysSetT->name('system-settings.toggle');
             $sysSetLogoU->name('system-settings.logo.upload');
             $sysSetLogoD->name('system-settings.logo.delete');
+            $backupIndex->name('system-settings.backup.index');
+            $backupRun->name('system-settings.backup.run');
+            $backupUpdate->name('system-settings.backup.update');
+        }
+
+        // Google Drive Backup
+        $driveConnect = Route::get('/drive/connect', [GoogleDriveController::class, 'connect']);
+        $driveCallback = Route::get('/drive/callback', [GoogleDriveController::class, 'callback']);
+        $driveDisconnect = Route::post('/drive/disconnect', [GoogleDriveController::class, 'disconnect']);
+        $driveStatus = Route::get('/drive/status', [GoogleDriveController::class, 'status']);
+        if ($withNames) {
+            $driveConnect->name('drive.connect');
+            $driveCallback->name('drive.callback');
+            $driveDisconnect->name('drive.disconnect');
+            $driveStatus->name('drive.status');
         }
     }
     );
