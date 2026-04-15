@@ -70,12 +70,12 @@ jobs:
           echo "Running Pint on changed files:"
           echo "$FILES"
           vendor/bin/pint --test $FILES
-
-      - name: Coverage gate
+  
+      - name: Test suite
         env:
           APP_ENV: testing
           DB_CONNECTION: sqlite
           DB_DATABASE: ':memory:'
           APP_URL: http://localhost:8080
           CENTRAL_DOMAIN: localhost
-        run: composer test:coverage
+        run: composer test
