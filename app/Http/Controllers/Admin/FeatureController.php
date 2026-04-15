@@ -5,8 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Feature;
 use App\Models\SubscriptionPlan;
-use App\Models\Tenant;
-use App\Models\TenantFeatureUpdate;
 use App\Services\FeatureOTAUpdateService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -37,62 +35,6 @@ class FeatureController extends Controller
             'features' => $features,
             'archivedFeatures' => $archivedFeatures,
             'plans' => $plans,
-        ]);
-    }
-
-    /**
-     * Display release adoption metrics per feature.
-     */
-    public function adoption(): Response
-    {
-        $previewTenantId = (string)config('tenancy.preview.tenant_id', 'preview-sandbox');
-        $totalLiveTenants = Tenant::where('id', '!=', $previewTenantId)->count();
-
-        $releasedFeatures = Feature::query()
-            ->notArchived()
-            ->whereNotNull('system_release_id')
-            ->with('systemRelease')
-            ->orderByDesc('released_at')
-            ->get();
-
-        $stats = TenantFeatureUpdate::query()
-            ->join('tenants', 'tenants.id', '=', 'tenant_feature_updates.tenant_id')
-            ->selectRaw('tenant_feature_updates.feature_id as feature_id, tenant_feature_updates.status as status, COUNT(*) as count')
-            ->where('tenants.id', '!=', $previewTenantId)
-            ->groupBy('feature_id', 'status')
-            ->get()
-            ->groupBy('feature_id');
-
-        $rows = $releasedFeatures->map(function (Feature $feature) use ($stats, $totalLiveTenants) {
-            $featureStats = $stats->get($feature->id, collect());
-
-            $pending = (int)optional($featureStats->firstWhere('status', TenantFeatureUpdate::STATUS_PENDING))->count;
-            $applied = (int)optional($featureStats->firstWhere('status', TenantFeatureUpdate::STATUS_APPLIED))->count;
-            $dismissed = (int)optional($featureStats->firstWhere('status', TenantFeatureUpdate::STATUS_DISMISSED))->count;
-            $targeted = $pending + $applied + $dismissed;
-
-            $adoptionRate = $targeted > 0
-                ? round(($applied / $targeted) * 100, 1)
-                : 0.0;
-
-            return [
-                'feature_id' => $feature->id,
-                'feature_key' => $feature->key,
-                'feature_name' => $feature->name,
-                'release_version' => $feature->systemRelease?->version,
-                'released_at' => optional($feature->released_at ?? $feature->systemRelease?->released_at)?->toIso8601String(),
-                'pending' => $pending,
-                'applied' => $applied,
-                'dismissed' => $dismissed,
-                'targeted_tenants' => $targeted,
-                'total_live_tenants' => $totalLiveTenants,
-                'adoption_rate' => $adoptionRate,
-            ];
-        })->values();
-
-        return Inertia::render('Admin/Features/Adoption', [
-            'rows' => $rows,
-            'total_live_tenants' => $totalLiveTenants,
         ]);
     }
 

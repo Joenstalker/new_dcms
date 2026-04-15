@@ -78,7 +78,7 @@ class TenantUpgradeRolloutService
 
     private function ensureRolloutSettingExists(): void
     {
-        SystemSetting::query()->updateOrCreate(
+        $setting = SystemSetting::query()->firstOrCreate(
             ['key' => self::AUTO_ROLLOUT_KEY],
             [
                 'value' => 'false',
@@ -87,5 +87,23 @@ class TenantUpgradeRolloutService
                 'description' => 'Automatically roll out tenant upgrades when new releases are detected.',
             ]
         );
+
+        $metaUpdates = [];
+
+        if ($setting->type !== 'boolean') {
+            $metaUpdates['type'] = 'boolean';
+        }
+
+        if ($setting->group !== 'maintenance') {
+            $metaUpdates['group'] = 'maintenance';
+        }
+
+        if ($setting->description !== 'Automatically roll out tenant upgrades when new releases are detected.') {
+            $metaUpdates['description'] = 'Automatically roll out tenant upgrades when new releases are detected.';
+        }
+
+        if (!empty($metaUpdates)) {
+            $setting->update($metaUpdates);
+        }
     }
 }
