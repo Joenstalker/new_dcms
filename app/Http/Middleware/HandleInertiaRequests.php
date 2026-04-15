@@ -194,6 +194,7 @@ class HandleInertiaRequests extends Middleware
                         'custom_branding' => $isPreviewTenant ? true : $tenant->hasPlanFeature('custom_branding'),
                         'advanced_analytics' => $isPreviewTenant ? true : $tenant->hasPlanFeature('advanced_analytics'),
                         'priority_support' => $isPreviewTenant ? true : $tenant->hasPlanFeature('priority_support'),
+                        'progress_notes' => $isPreviewTenant ? true : $tenant->hasPlanFeature('progress_notes'),
                         'qr_booking' => $isPreviewTenant ? true : $tenant->hasPlanFeature('qr_booking'),
                         'multi_branch' => $isPreviewTenant ? true : $tenant->hasPlanFeature('multi_branch'),
                         'enhanced_reports' => $isPreviewTenant ? true : $tenant->hasPlanFeature('enhanced_reports'),

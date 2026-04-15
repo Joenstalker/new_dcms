@@ -147,6 +147,15 @@ class FeatureSeeder extends Seeder
                 'sort_order' => 22,
                 'is_active' => true,
             ],
+            [
+                'key' => 'progress_notes',
+                'name' => 'Progress Notes',
+                'description' => 'Track patient progress notes directly inside the patient management workspace',
+                'type' => 'boolean',
+                'category' => 'addons',
+                'sort_order' => 23,
+                'is_active' => true,
+            ],
 
             // === REPORTS ===
             [
@@ -251,6 +260,7 @@ class FeatureSeeder extends Seeder
                     'sms_notifications' => ['value_boolean' => false],
                     'custom_branding' => ['value_boolean' => false],
                     'priority_support' => ['value_boolean' => false],
+                    'progress_notes' => ['value_boolean' => true],
                     'report_level' => ['value_tier' => 'basic'],
                     'advanced_analytics' => ['value_boolean' => false],
                     'multi_branch' => ['value_boolean' => false],
@@ -277,6 +287,7 @@ class FeatureSeeder extends Seeder
                     'sms_notifications' => ['value_boolean' => true],
                     'custom_branding' => ['value_boolean' => true],
                     'priority_support' => ['value_boolean' => false],
+                    'progress_notes' => ['value_boolean' => true],
                     'report_level' => ['value_tier' => 'enhanced'],
                     'advanced_analytics' => ['value_boolean' => false],
                     'multi_branch' => ['value_boolean' => false],
@@ -303,6 +314,7 @@ class FeatureSeeder extends Seeder
                     'sms_notifications' => ['value_boolean' => true],
                     'custom_branding' => ['value_boolean' => true],
                     'priority_support' => ['value_boolean' => true],
+                    'progress_notes' => ['value_boolean' => true],
                     'report_level' => ['value_tier' => 'advanced'],
                     'advanced_analytics' => ['value_boolean' => true],
                     'multi_branch' => ['value_boolean' => true],

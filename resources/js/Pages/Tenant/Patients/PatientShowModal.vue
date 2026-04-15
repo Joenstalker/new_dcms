@@ -16,6 +16,40 @@ const primaryColor = computed(() => brandingState.primary_color);
 const loading = ref(false);
 const patient = ref(null);
 const activeTab = ref('medical_history');
+const page = usePage();
+const progressNotesFeature = computed(() => page.props.subscription?.features?.progress_notes || null);
+const progressNotesStatus = computed(
+    () => progressNotesFeature.value?.implementation_status
+        || page.props.tenant_plan?.global_feature_statuses?.progress_notes
+        || 'coming_soon'
+);
+const progressNotesStatusLabel = computed(() => String(progressNotesStatus.value).replace(/_/g, ' ').toUpperCase());
+const progressNotesUpdateStatus = computed(() => progressNotesFeature.value?.update_status || null);
+const progressNotesIsApplied = computed(() => progressNotesFeature.value?.is_applied === true);
+const progressNotesIsEnabledForPlan = computed(() => progressNotesFeature.value?.is_enabled !== false);
+const requiresTenantUpdate = computed(() => {
+    if (progressNotesUpdateStatus.value === 'pending') {
+        return true;
+    }
+
+    if (progressNotesUpdateStatus.value === 'applied') {
+        return false;
+    }
+
+    // If no tenant update row exists, allow by default once central status is active.
+    return false;
+});
+
+const canUseProgressNotes = computed(() => {
+    return progressNotesStatus.value === 'active'
+        && progressNotesIsEnabledForPlan.value
+        && !requiresTenantUpdate.value
+        && (progressNotesIsApplied.value || progressNotesUpdateStatus.value !== 'pending');
+});
+
+const goToFeatureUpdates = () => {
+    router.get(route('settings.updates'));
+};
 
 const tabs = [
     { id: 'medical_history', label: 'Medical History' },
@@ -121,6 +155,7 @@ const deletePatient = () => {
 import MedicalHistory from './partials/MedicalHistory.vue';
 import PatientAppointments from './partials/PatientAppointments.vue';
 import PatientBilling from './partials/PatientBilling.vue';
+import ProgressNotes from './partials/ProgressNotes.vue';
 import PlaceholderTab from './partials/PlaceholderTab.vue';
 </script>
 
@@ -229,6 +264,41 @@ import PlaceholderTab from './partials/PlaceholderTab.vue';
                             
                             <!-- Medical History Content -->
                             <MedicalHistory v-if="activeTab === 'medical_history'" :patient="patient" />
+
+                            <!-- Progress Notes Content -->
+                            <ProgressNotes
+                                v-else-if="activeTab === 'progress_notes' && canUseProgressNotes"
+                                :patient="patient"
+                            />
+                            <div
+                                v-else-if="activeTab === 'progress_notes' && !canUseProgressNotes"
+                                class="h-full flex flex-col items-center justify-center p-12 text-center text-base-content/45"
+                            >
+                                <svg class="w-16 h-16 mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                <template v-if="requiresTenantUpdate && progressNotesStatus === 'active'">
+                                    <p class="text-sm font-black uppercase tracking-widest">Progress Notes Is Ready To Use</p>
+                                    <p class="text-xs mt-2 max-w-md">
+                                        Central admin has published this feature, but your clinic must apply updates first before usage.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        @click="goToFeatureUpdates"
+                                        class="btn btn-sm mt-4 rounded-xl border-0 text-white font-black uppercase tracking-widest"
+                                        :style="{ backgroundColor: primaryColor }"
+                                    >
+                                        Go To Settings Updates
+                                    </button>
+                                </template>
+                                <template v-else>
+                                    <p class="text-sm font-black uppercase tracking-widest">Progress Notes Unavailable</p>
+                                    <p class="text-xs mt-2 max-w-md">
+                                        This tab follows the central admin Implementation Phase Status.
+                                        Current status: {{ progressNotesStatusLabel }}.
+                                    </p>
+                                </template>
+                            </div>
 
                             <!-- Appointments Content -->
                             <PatientAppointments v-else-if="activeTab === 'appointments'" :patient="patient" />

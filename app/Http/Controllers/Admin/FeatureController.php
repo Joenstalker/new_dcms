@@ -248,7 +248,23 @@ class FeatureController extends Controller
         ]);
 
         $oldStatus = $feature->implementation_status;
+        $newStatus = $validated['implementation_status'] ?? $oldStatus;
+
+        // A status transition back to coming_soon marks a fresh rollout cycle.
+        if ($newStatus === Feature::STATUS_COMING_SOON && $oldStatus !== Feature::STATUS_COMING_SOON) {
+            $validated['announced_at'] = now();
+            $validated['released_at'] = null;
+        }
+
         $feature->update($validated);
+
+        $cycleMessage = null;
+
+        if ($newStatus === Feature::STATUS_COMING_SOON && $oldStatus !== Feature::STATUS_COMING_SOON) {
+            $otaService = app(FeatureOTAUpdateService::class);
+            $cycle = $otaService->resetUpdateCycleForEligibleTenants($feature);
+            $cycleMessage = " New rollout cycle prepared for {$cycle['eligible']} tenants ({$cycle['reset']} reset, {$cycle['created']} created).";
+        }
 
         // If status changed to active, update released_at
         if (isset($validated['implementation_status']) &&
@@ -273,7 +289,7 @@ class FeatureController extends Controller
         );
 
         return redirect()->route('admin.features.index')
-            ->with('success', 'Feature updated successfully.');
+            ->with('success', 'Feature updated successfully.'.($cycleMessage ?? ''));
     }
 
     /**

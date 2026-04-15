@@ -75,6 +75,70 @@ class FeatureOTAUpdateService
     }
 
     /**
+     * Reset the OTA update lifecycle for a feature so tenants can receive it again as a new version.
+     *
+     * This sets existing eligible tenant records back to pending and creates missing records.
+     */
+    public function resetUpdateCycleForEligibleTenants(Feature $feature): array
+    {
+        // Safety Guard: Don't republish archived features
+        if ($feature->archived_at) {
+            return ['created' => 0, 'reset' => 0, 'eligible' => 0];
+        }
+
+        $tenantIds = Subscription::whereHas('plan.features', function ($query) use ($feature) {
+            $query->where('features.id', $feature->id);
+        })->where('stripe_status', 'active')
+            ->pluck('tenant_id')
+            ->unique()
+            ->values();
+
+        $createdCount = 0;
+        $resetCount = 0;
+
+        foreach ($tenantIds as $tenantId) {
+            $existing = TenantFeatureUpdate::where('tenant_id', $tenantId)
+                ->where('feature_id', $feature->id)
+                ->first();
+
+            if (! $existing) {
+                TenantFeatureUpdate::create([
+                    'tenant_id' => $tenantId,
+                    'feature_id' => $feature->id,
+                    'status' => TenantFeatureUpdate::STATUS_PENDING,
+                ]);
+                $createdCount++;
+                continue;
+            }
+
+            if ($existing->status !== TenantFeatureUpdate::STATUS_PENDING || $existing->applied_at !== null) {
+                $existing->update([
+                    'status' => TenantFeatureUpdate::STATUS_PENDING,
+                    'applied_at' => null,
+                ]);
+                $resetCount++;
+            }
+        }
+
+        foreach ($tenantIds as $tenantId) {
+            Cache::forget("tenant_{$tenantId}_pending_updates_count");
+        }
+
+        Log::info("Reset OTA update cycle for feature [{$feature->key}]", [
+            'feature_id' => $feature->id,
+            'eligible_tenants' => $tenantIds->count(),
+            'created' => $createdCount,
+            'reset' => $resetCount,
+        ]);
+
+        return [
+            'created' => $createdCount,
+            'reset' => $resetCount,
+            'eligible' => $tenantIds->count(),
+        ];
+    }
+
+    /**
      * Apply/update feature for a tenant (when they click Update button)
      */
     public function applyUpdate(string $tenantId, array $featureIds): array

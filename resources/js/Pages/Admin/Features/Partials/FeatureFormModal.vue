@@ -149,7 +149,7 @@ const submitForm = () => {
                                 <label class="label">
                                     <span class="label-text font-bold text-base-content/70">Type</span>
                                 </label>
-                                <select v-model="form.type" class="select select-bordered w-full">
+                                <select v-model="form.type" class="select select-bordered w-full themed-select">
                                     <option value="boolean">Yes/No (Boolean)</option>
                                     <option value="numeric">Number (Numeric)</option>
                                     <option value="tiered">Tiered (Levels)</option>
@@ -160,7 +160,7 @@ const submitForm = () => {
                                 <label class="label">
                                     <span class="label-text font-bold text-base-content/70">Category</span>
                                 </label>
-                                <select v-model="form.category" class="select select-bordered w-full">
+                                <select v-model="form.category" class="select select-bordered w-full themed-select">
                                     <option value="core">Core Features</option>
                                     <option value="limits">Limits</option>
                                     <option value="addons">Add-ons</option>
@@ -187,7 +187,7 @@ const submitForm = () => {
                             <label class="label">
                                 <span class="label-text font-bold text-base-content/70">Placement (Sort Order)</span>
                             </label>
-                            <select v-model.number="form.sort_order" class="select select-bordered w-full">
+                            <select v-model.number="form.sort_order" class="select select-bordered w-full themed-select">
                                 <option :value="0">Top of list (First)</option>
                                 <option v-for="feat in categoryFeatures" :key="feat.id" :value="feat.sort_order + 1">
                                     After {{ feat.name }}
@@ -204,7 +204,7 @@ const submitForm = () => {
                             <label class="label">
                                 <span class="label-text font-bold text-base-content/70">Implementation Phase</span>
                             </label>
-                            <select v-model="form.implementation_status" class="select select-bordered w-full">
+                            <select v-model="form.implementation_status" class="select select-bordered w-full themed-select">
                                 <option value="coming_soon">Coming Soon</option>
                                 <option value="in_development">In Development</option>
                                 <option value="beta">Beta</option>
@@ -213,6 +213,11 @@ const submitForm = () => {
                                 <option value="maintenance">Under Maintenance</option>
                             </select>
                             <p class="mt-1 text-xs text-base-content/50">Controls how the feature is perceived by the routing engine.</p>
+
+                            <div v-if="editingFeature" class="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-base-content/80">
+                                Setting a feature back to <span class="font-semibold">Coming Soon</span> now starts a fresh OTA rollout cycle.
+                                Existing tenant update records for this feature are reset to <span class="font-semibold">Pending</span>, so tenants will receive it again as a new update.
+                            </div>
                         </div>
 
                         <div class="bg-base-200/30 p-4 rounded-xl border border-base-200 space-y-4">
@@ -296,3 +301,22 @@ const submitForm = () => {
         </div>
     </Modal>
 </template>
+
+<style scoped>
+.themed-select {
+    background-color: hsl(var(--b1));
+    color: hsl(var(--bc));
+}
+
+.themed-select option,
+.themed-select optgroup {
+    background-color: hsl(var(--b1));
+    color: hsl(var(--bc));
+}
+
+.themed-select option:checked,
+.themed-select option:hover {
+    background-color: hsl(var(--b2));
+    color: hsl(var(--bc));
+}
+</style>
