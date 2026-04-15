@@ -18,7 +18,10 @@ class RevenueController extends Controller
             ->get();
 
         $mrr = $activeSubscriptions->sum(function ($sub) {
-            if (!$sub->plan) return 0;
+            if (! $sub->plan) {
+                return 0;
+            }
+
             return $sub->billing_cycle === 'yearly'
                 ? $sub->plan->price_yearly / 12
                 : $sub->plan->price_monthly;
@@ -42,33 +45,33 @@ class RevenueController extends Controller
                 ->count();
             $avgPrice = $activeSubscriptions->avg(fn ($sub) => $sub->plan?->price_monthly ?? 0);
             $monthlyRevenue[] = [
-                'month'   => $label,
+                'month' => $label,
                 'revenue' => round($count * $avgPrice, 2),
-                'count'   => $count,
+                'count' => $count,
             ];
         }
 
         $statusBreakdown = [
-            'active'    => Subscription::where('stripe_status', 'active')->count(),
-            'past_due'  => Subscription::where('stripe_status', 'past_due')->count(),
-            'canceled'  => Subscription::where('stripe_status', 'canceled')->count(),
-            'trialing'  => Subscription::where('stripe_status', 'trialing')->count(),
+            'active' => Subscription::where('stripe_status', 'active')->count(),
+            'past_due' => Subscription::where('stripe_status', 'past_due')->count(),
+            'canceled' => Subscription::where('stripe_status', 'canceled')->count(),
+            'trialing' => Subscription::where('stripe_status', 'trialing')->count(),
         ];
 
         $recentSubscriptions = Subscription::with(['plan', 'tenant.domains'])
             ->latest()
             ->take(10)
             ->get()
-            ->map(function ($sub) {
+            ->map(function (Subscription $sub): array {
                 return [
-                    'id'            => $sub->id,
-                    'tenant_id'     => $sub->tenant_id,
-                    'domain'        => $sub->tenant?->domains?->first()?->domain ?? 'N/A',
-                    'plan'          => $sub->plan?->name ?? 'Unknown',
+                    'id' => $sub->id,
+                    'tenant_id' => $sub->tenant_id,
+                    'domain' => data_get($sub->tenant?->domains?->first(), 'domain', 'N/A'),
+                    'plan' => $sub->plan?->name ?? 'Unknown',
                     'billing_cycle' => $sub->billing_cycle,
                     'stripe_status' => $sub->stripe_status,
-                    'amount'        => $sub->stripe_price,
-                    'created_at'    => $sub->created_at?->toDateString(),
+                    'amount' => $sub->stripe_price,
+                    'created_at' => $sub->created_at?->toDateString(),
                 ];
             });
 
@@ -79,15 +82,15 @@ class RevenueController extends Controller
 
         return Inertia::render('Admin/Revenue/Index', [
             'stats' => [
-                'mrr'                  => round($mrr, 2),
-                'arr'                  => round($arr, 2),
+                'mrr' => round($mrr, 2),
+                'arr' => round($arr, 2),
                 'active_subscriptions' => $activeSubscriptions->count(),
-                'churn_this_month'     => $churnThisMonth,
+                'churn_this_month' => $churnThisMonth,
             ],
-            'plan_distribution'    => $planDistribution,
-            'monthly_revenue'      => $monthlyRevenue,
-            'status_breakdown'     => $statusBreakdown,
-            'recent_subscriptions'  => $recentSubscriptions,
+            'plan_distribution' => $planDistribution,
+            'monthly_revenue' => $monthlyRevenue,
+            'status_breakdown' => $statusBreakdown,
+            'recent_subscriptions' => $recentSubscriptions,
         ]);
     }
 }

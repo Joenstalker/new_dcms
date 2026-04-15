@@ -38,20 +38,15 @@ watch(() => page.props.tenant, (tenant) => {
 
     liveEnabledFeatures.value = [...(tenant.enabled_features || [])];
 
-    brandingState.setPortalBackgroundType(tenant.portal_background_type || 'color');
-    brandingState.setPortalBackgroundColor(tenant.portal_background_color || null);
     brandingState.setPortalBackgroundImage(tenant.portal_background_image || null);
     brandingState.setPortalBackgroundOverlayOpacity(tenant.portal_background_overlay_opacity ?? 0);
     brandingState.setUiTokens({
         ui_sidebar_text_color: tenant.ui_sidebar_text_color || null,
         ui_sidebar_text_size: tenant.ui_sidebar_text_size ?? 12,
-        ui_sidebar_background_color: tenant.ui_sidebar_background_color || null,
-        ui_subnav_background_color: tenant.ui_subnav_background_color || null,
         ui_header_title_color: tenant.ui_header_title_color || null,
         ui_header_title_size: tenant.ui_header_title_size ?? 20,
         ui_footer_text_color: tenant.ui_footer_text_color || null,
         ui_footer_text_size: tenant.ui_footer_text_size ?? 10,
-        ui_footer_background_color: tenant.ui_footer_background_color || null,
         ui_main_text_color: tenant.ui_main_text_color || null,
         ui_main_text_size: tenant.ui_main_text_size ?? 14,
         ui_card_background_color: tenant.ui_card_background_color || null,
@@ -138,24 +133,12 @@ const fonts = computed(() => {
     return { ...defaults, ...tenantFonts };
 });
 
-const portalBackgroundType = computed(() => {
-    return shouldApplyBranding.value
-        ? (brandingState.portal_background_type || page.props.tenant?.portal_background_type || 'color')
-        : (page.props.tenant?.portal_background_type || 'color');
-});
-
-const portalBackgroundColor = computed(() => {
-    return shouldApplyBranding.value
-        ? (brandingState.portal_background_color ?? page.props.tenant?.portal_background_color ?? null)
-        : (page.props.tenant?.portal_background_color ?? null);
-});
-
 const portalBackgroundImage = computed(() => {
     return shouldApplyBranding.value
         ? (brandingState.portal_background_image || page.props.tenant?.portal_background_image || null)
         : (page.props.tenant?.portal_background_image || null);
 });
-const hasImageBackground = computed(() => portalBackgroundType.value === 'image' && !!portalBackgroundImage.value);
+const hasImageBackground = computed(() => !!portalBackgroundImage.value);
 
 const portalBackgroundOverlayOpacity = computed(() => {
     return shouldApplyBranding.value
@@ -173,18 +156,6 @@ const uiSidebarTextSize = computed(() => {
     return shouldApplyBranding.value
         ? Number(brandingState.ui_sidebar_text_size ?? page.props.tenant?.ui_sidebar_text_size ?? 12)
         : Number(page.props.tenant?.ui_sidebar_text_size ?? 12);
-});
-
-const uiSidebarBackgroundColor = computed(() => {
-    return shouldApplyBranding.value
-        ? (brandingState.ui_sidebar_background_color ?? page.props.tenant?.ui_sidebar_background_color ?? null)
-        : (page.props.tenant?.ui_sidebar_background_color ?? null);
-});
-
-const uiSubnavBackgroundColor = computed(() => {
-    return shouldApplyBranding.value
-        ? (brandingState.ui_subnav_background_color ?? page.props.tenant?.ui_subnav_background_color ?? null)
-        : (page.props.tenant?.ui_subnav_background_color ?? null);
 });
 
 const uiHeaderTitleColor = computed(() => {
@@ -209,12 +180,6 @@ const uiFooterTextSize = computed(() => {
     return shouldApplyBranding.value
         ? Number(brandingState.ui_footer_text_size ?? page.props.tenant?.ui_footer_text_size ?? 10)
         : Number(page.props.tenant?.ui_footer_text_size ?? 10);
-});
-
-const uiFooterBackgroundColor = computed(() => {
-    return shouldApplyBranding.value
-        ? (brandingState.ui_footer_background_color ?? page.props.tenant?.ui_footer_background_color ?? null)
-        : (page.props.tenant?.ui_footer_background_color ?? null);
 });
 
 const uiMainTextColor = computed(() => {
@@ -264,13 +229,7 @@ const contentBackgroundStyle = computed(() => {
         };
     }
 
-    if (!portalBackgroundColor.value) {
-        return {};
-    }
-
-    return {
-        backgroundColor: portalBackgroundColor.value,
-    };
+    return {};
 });
 
 // Platform info
@@ -788,13 +747,13 @@ const brandStyle = computed(() => {
             --pc: ${content};
             --tenant-sidebar-text-color: ${uiSidebarTextColor.value || 'inherit'};
             --tenant-sidebar-text-size: ${uiSidebarTextSize.value}px;
-            --tenant-sidebar-bg-color: ${uiSidebarBackgroundColor.value || 'hsl(var(--b1))'};
-            --tenant-subnav-bg-color: ${uiSubnavBackgroundColor.value || 'hsl(var(--b1))'};
+            --tenant-sidebar-bg-color: hsl(var(--b1));
+            --tenant-subnav-bg-color: hsl(var(--b1));
             --tenant-header-title-color: ${uiHeaderTitleColor.value || 'inherit'};
             --tenant-header-title-size: ${uiHeaderTitleSize.value}px;
             --tenant-footer-text-color: ${uiFooterTextColor.value || 'inherit'};
             --tenant-footer-text-size: ${uiFooterTextSize.value}px;
-            --tenant-footer-bg-color: ${uiFooterBackgroundColor.value || 'hsl(var(--b1))'};
+            --tenant-footer-bg-color: hsl(var(--b1));
             --tenant-main-text-color: ${uiMainTextColor.value || 'inherit'};
             --tenant-main-text-size: ${uiMainTextSize.value}px;
             --tenant-card-bg-color: ${uiCardBackgroundColor.value || 'hsl(var(--b1) / 0.86)'};
@@ -834,25 +793,30 @@ const brandStyle = computed(() => {
         }
 
         .tenant-subnav-panel {
-            background-color: transparent !important;
+            background-color: hsl(var(--b1) / 0.45) !important;
+            border: 1px solid hsl(var(--b3) / 0.75) !important;
+            border-radius: 9999px !important;
+            backdrop-filter: blur(4px);
         }
 
         .tenant-subnav-pill {
-            background-color: var(--tenant-subnav-bg-color) !important;
-            border: 1px solid hsl(var(--b3) / 0.95) !important;
-            color: hsl(var(--bc) / 0.68) !important;
+            background-color: hsl(var(--b1) / 0.82) !important;
+            border: 1px solid hsl(var(--b3) / 0.72) !important;
+            color: hsl(var(--bc) / 0.74) !important;
+            box-shadow: 0 1px 2px hsl(var(--bc) / 0.04);
         }
 
         .tenant-subnav-pill:hover {
-            color: hsl(var(--bc) / 0.9) !important;
-            border-color: hsl(var(--b3) / 0.8) !important;
+            background-color: hsl(var(--b1) / 0.97) !important;
+            color: hsl(var(--bc) / 0.92) !important;
+            border-color: hsl(var(--b3) / 0.9) !important;
         }
 
         .tenant-subnav-pill-active {
+            background-color: hsl(var(--p) / 0.14) !important;
             color: hsl(var(--bc)) !important;
             border-color: ${color} !important;
-            box-shadow: 0 1px 0 hsl(var(--bc) / 0.04), 0 0 0 1px hsl(var(--b1) / 0.35) inset;
-            filter: brightness(0.94);
+            box-shadow: 0 6px 16px hsl(var(--p) / 0.16), 0 0 0 1px hsl(var(--p) / 0.18) inset;
         }
 
         .tenant-footer-panel {

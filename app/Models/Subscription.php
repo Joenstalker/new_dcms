@@ -2,12 +2,33 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $id
+ * @property string $tenant_id
+ * @property int $subscription_plan_id
+ * @property string|null $stripe_id
+ * @property string|null $stripe_status
+ * @property float|null $stripe_price
+ * @property Carbon|null $trial_ends_at
+ * @property Carbon|null $ends_at
+ * @property string|null $billing_cycle
+ * @property string|null $payment_method
+ * @property string|null $payment_status
+ * @property Carbon|null $billing_cycle_end
+ * @property-read SubscriptionPlan|null $plan
+ * @property-read Tenant|null $tenant
+ */
 class Subscription extends Model
 {
     protected $connection = 'central';
+
     protected $fillable = [
         'tenant_id',
         'subscription_plan_id',
@@ -39,39 +60,49 @@ class Subscription extends Model
     ];
 
     /**
-     * Get the subscription plan
+     * Get the subscription plan.
      */
-    public function plan()
+    public function plan(): BelongsTo
     {
-        return $this->belongsTo(SubscriptionPlan::class , 'subscription_plan_id');
+        return $this->belongsTo(SubscriptionPlan::class, 'subscription_plan_id');
     }
 
     /**
-     * Get the tenant
+     * Get the tenant.
      */
-    public function tenant()
+    public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
     }
 
+    public function paymentHistories(): HasMany
+    {
+        return $this->hasMany(PaymentHistory::class);
+    }
+
+    public function latestPaymentHistory(): HasOne
+    {
+        return $this->hasOne(PaymentHistory::class)->latestOfMany('paid_at');
+    }
+
     /**
-     * Get days remaining until billing cycle ends
+     * Get days remaining until billing cycle ends.
      */
     public function getDaysRemainingAttribute(): int
     {
         $endDate = $this->billing_cycle_end ?? $this->ends_at;
 
-        if (!$endDate) {
-            // Calculate based on billing cycle
+        if (! $endDate) {
+            // Calculate based on billing cycle.
             $days = $this->billing_cycle === 'yearly' ? 365 : 30;
             $endDate = $this->created_at->addDays($days);
         }
 
-        return max(0, (int)ceil(Carbon::now()->diffInHours($endDate, false) / 24));
+        return max(0, (int) ceil(Carbon::now()->diffInHours($endDate, false) / 24));
     }
 
     /**
-     * Check if subscription is active
+     * Check if subscription is active.
      */
     public function isActive(): bool
     {
@@ -79,7 +110,7 @@ class Subscription extends Model
     }
 
     /**
-     * Check if subscription is past due
+     * Check if subscription is past due.
      */
     public function isPastDue(): bool
     {
@@ -87,7 +118,7 @@ class Subscription extends Model
     }
 
     /**
-     * Check if subscription is cancelled
+     * Check if subscription is cancelled.
      */
     public function isCancelled(): bool
     {
@@ -95,27 +126,27 @@ class Subscription extends Model
     }
 
     /**
-     * Toggle payment method status
+     * Toggle payment method status.
      */
     public function togglePaymentMethod(string $method): bool
     {
-        $field = $method . '_enabled';
+        $field = $method.'_enabled';
 
-        if (!in_array($field, ['stripe_enabled', 'gcash_enabled', 'paymaya_enabled', 'bank_transfer_enabled'])) {
+        if (! in_array($field, ['stripe_enabled', 'gcash_enabled', 'paymaya_enabled', 'bank_transfer_enabled'])) {
             return false;
         }
 
-        return $this->update([$field => !$this->$field]);
+        return $this->update([$field => ! $this->$field]);
     }
 
     /**
-     * Enable a payment method
+     * Enable a payment method.
      */
     public function enablePaymentMethod(string $method): bool
     {
-        $field = $method . '_enabled';
+        $field = $method.'_enabled';
 
-        if (!in_array($field, ['stripe_enabled', 'gcash_enabled', 'paymaya_enabled', 'bank_transfer_enabled'])) {
+        if (! in_array($field, ['stripe_enabled', 'gcash_enabled', 'paymaya_enabled', 'bank_transfer_enabled'])) {
             return false;
         }
 
@@ -123,13 +154,13 @@ class Subscription extends Model
     }
 
     /**
-     * Disable a payment method
+     * Disable a payment method.
      */
     public function disablePaymentMethod(string $method): bool
     {
-        $field = $method . '_enabled';
+        $field = $method.'_enabled';
 
-        if (!in_array($field, ['stripe_enabled', 'gcash_enabled', 'paymaya_enabled', 'bank_transfer_enabled'])) {
+        if (! in_array($field, ['stripe_enabled', 'gcash_enabled', 'paymaya_enabled', 'bank_transfer_enabled'])) {
             return false;
         }
 
@@ -137,7 +168,7 @@ class Subscription extends Model
     }
 
     /**
-     * Extend billing cycle
+     * Extend billing cycle.
      */
     public function extendBillingCycle(int $days): bool
     {
@@ -151,7 +182,9 @@ class Subscription extends Model
     }
 
     /**
-     * Get all enabled payment methods
+     * Get all enabled payment methods.
+     *
+     * @return array<int, string>
      */
     public function getEnabledPaymentMethodsAttribute(): array
     {
@@ -174,26 +207,26 @@ class Subscription extends Model
     }
 
     /**
-     * Scope for active subscriptions
+     * Scope for active subscriptions.
      */
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('stripe_status', 'active')
             ->where('payment_status', 'paid');
     }
 
     /**
-     * Scope for past due subscriptions
+     * Scope for past due subscriptions.
      */
-    public function scopePastDue($query)
+    public function scopePastDue(Builder $query): Builder
     {
         return $query->whereIn('stripe_status', ['past_due', 'unpaid']);
     }
 
     /**
-     * Scope for cancelled subscriptions
+     * Scope for cancelled subscriptions.
      */
-    public function scopeCancelled($query)
+    public function scopeCancelled(Builder $query): Builder
     {
         return $query->where('stripe_status', 'canceled');
     }

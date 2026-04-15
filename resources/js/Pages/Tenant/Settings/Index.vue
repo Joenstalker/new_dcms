@@ -10,6 +10,10 @@ const props = defineProps({
     payment_method: String,
     stripe_id: String,
     plans: Array,
+    payment_history: {
+        type: Array,
+        default: () => []
+    }
 });
 
 const page = usePage();
@@ -55,6 +59,40 @@ const planGradients = {
 const planBadge = {
     Pro: '🚀 Most Popular',
     Ultimate: '👑 Best Value',
+};
+
+const paymentHistory = computed(() => props.payment_history || []);
+
+const formatDate = (value) => {
+    if (!value) return '-';
+
+    return new Intl.DateTimeFormat('en-PH', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(new Date(value));
+};
+
+const paymentStatusClass = (status) => {
+    const normalized = (status || '').toLowerCase();
+
+    if (normalized === 'success') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (normalized === 'failed') return 'bg-red-100 text-red-700 border-red-200';
+    if (normalized === 'refund') return 'bg-amber-100 text-amber-700 border-amber-200';
+
+    return 'bg-gray-100 text-gray-700 border-gray-200';
+};
+
+const formatStatus = (status) => {
+    const normalized = (status || '').toLowerCase();
+
+    if (normalized === 'success') return 'Success';
+    if (normalized === 'failed') return 'Failed';
+    if (normalized === 'refund') return 'Refund';
+
+    return status || 'Unknown';
 };
 </script>
 
@@ -187,6 +225,77 @@ const planBadge = {
                 </div>
             </div>
 
+            <!-- ==================== PAYMENT HISTORY ==================== -->
+            <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b bg-gray-50">
+                    <h3 class="text-lg font-bold text-gray-900">Payment History</h3>
+                    <p class="text-sm text-gray-500 mt-1">All your transactions with DCMS including registration, upgrades, downgrades, and renewals.</p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Date</th>
+                                <th class="px-4 py-3 text-left">ID</th>
+                                <th class="px-4 py-3 text-left">Plan</th>
+                                <th class="px-4 py-3 text-left">Payment Method</th>
+                                <th class="px-4 py-3 text-right">Amount</th>
+                                <th class="px-4 py-3 text-left">Status</th>
+                                <th class="px-4 py-3 text-left">Receipt</th>
+                                <th class="px-4 py-3 text-left">Invoice</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr v-if="paymentHistory.length === 0">
+                                <td colspan="8" class="px-4 py-6 text-center text-gray-500">No payment history yet.</td>
+                            </tr>
+
+                            <tr v-for="entry in paymentHistory" :key="entry.id" class="hover:bg-gray-50/70">
+                                <td class="px-4 py-3 text-gray-700 whitespace-nowrap">{{ formatDate(entry.date) }}</td>
+                                <td class="px-4 py-3">
+                                    <span class="font-mono text-xs font-semibold text-gray-800">{{ entry.transaction_code }}</span>
+                                </td>
+                                <td class="px-4 py-3 text-gray-700 whitespace-nowrap">{{ entry.plan_name || subscription?.plan_name || '-' }}</td>
+                                <td class="px-4 py-3 text-gray-700">{{ entry.payment_method || 'Card payment' }}</td>
+                                <td class="px-4 py-3 text-right font-bold text-gray-900">
+                                    {{ formatPrice(entry.amount || 0) }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span :class="['inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border', paymentStatusClass(entry.status)]">
+                                        {{ formatStatus(entry.status) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <a
+                                        :href="entry.receipt_download_url"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                                        title="Download Receipt"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5v-9m0 9l-3-3m3 3l3-3M3 16.125V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18v-1.875" />
+                                        </svg>
+                                    </a>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <a
+                                        v-if="entry.status === 'success' && entry.invoice_download_url"
+                                        :href="entry.invoice_download_url"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                                        title="Download Invoice"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125V5.625A3.375 3.375 0 0010.125 2.25H8.25m.75 12l3 3m0 0l3-3m-3 3V9M5.625 20.25h12.75A1.875 1.875 0 0020.25 18.375V8.25a1.875 1.875 0 00-.55-1.325L13.325.55A1.875 1.875 0 0012 0H5.625A1.875 1.875 0 003.75 1.875v16.5a1.875 1.875 0 001.875 1.875z" />
+                                        </svg>
+                                    </a>
+                                    <span v-else class="text-xs text-gray-400">-</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- ==================== UPGRADE PLANS ==================== -->
             <div v-if="upgradePlans.length > 0">
                 <div class="mb-4">
@@ -257,5 +366,6 @@ const planBadge = {
                 <p class="text-sm text-gray-500 mt-1">You have access to all premium features.</p>
             </div>
         </div>
+
     </AuthenticatedLayout>
 </template>

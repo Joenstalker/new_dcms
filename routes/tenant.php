@@ -24,6 +24,7 @@ use App\Http\Controllers\Tenant\ConcernController;
 use App\Http\Controllers\Tenant\LandingController;
 use App\Http\Controllers\Tenant\MedicalRecordController;
 use App\Http\Controllers\Tenant\NotificationController;
+use App\Http\Controllers\Tenant\PaymentHistoryController;
 use App\Http\Controllers\Tenant\SettingsController;
 use App\Http\Controllers\Tenant\StaffSettingsController;
 use App\Http\Controllers\Tenant\Support\SupportController;
@@ -293,6 +294,13 @@ Route::middleware([
             Route::get('billing-portal', [BillingPortalController::class, 'redirect'])
                 ->middleware('permission:access billing portal')
                 ->name('billing.portal');
+
+            Route::get('settings/payment-history/{id}/receipt/download', [PaymentHistoryController::class, 'downloadReceipt'])
+                ->middleware('permission:manage settings')
+                ->name('settings.payment-history.receipt.download');
+            Route::get('settings/payment-history/{id}/invoice/download', [PaymentHistoryController::class, 'downloadInvoice'])
+                ->middleware('permission:manage settings')
+                ->name('settings.payment-history.invoice.download');
         });
 
         // Custom Branding — permission-based delegation

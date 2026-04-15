@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Feature;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\TenantPaymentHistory;
 use App\Models\User;
 use App\Services\FeatureOTAUpdateService;
 use App\Services\TenantBrandingService;
@@ -50,12 +51,44 @@ class SettingsController extends Controller
                 ];
             });
 
+        $paymentHistory = TenantPaymentHistory::query()
+            ->latest('paid_at')
+            ->latest('id')
+            ->limit(50)
+            ->get()
+            ->map(function (TenantPaymentHistory $entry) use ($subscription) {
+                return [
+                    'id' => $entry->id,
+                    'date' => optional($entry->paid_at)->toDateTimeString() ?? optional($entry->created_at)->toDateTimeString(),
+                    'transaction_code' => $entry->transaction_code,
+                    'payment_method' => $entry->payment_method_label,
+                    'plan_name' => $entry->plan_name ?? $subscription?->plan?->name,
+                    'amount' => (float) $entry->amount,
+                    'currency' => strtoupper((string) ($entry->currency ?? 'PHP')),
+                    'status' => $entry->status,
+                    'transaction_type' => $entry->transaction_type,
+                    'description' => $entry->description,
+                    'billed_to_name' => $entry->billed_to_name,
+                    'billed_to_email' => $entry->billed_to_email,
+                    'billed_to_address' => $entry->billed_to_address,
+                    'stripe_payment_intent_id' => $entry->stripe_payment_intent_id,
+                    'stripe_charge_id' => $entry->stripe_charge_id,
+                    'stripe_invoice_id' => $entry->stripe_invoice_id,
+                    'receipt_download_url' => route('settings.payment-history.receipt.download', ['id' => $entry->id]),
+                    'invoice_download_url' => $entry->status === 'success'
+                        ? route('settings.payment-history.invoice.download', ['id' => $entry->id])
+                        : null,
+                ];
+            })
+            ->values();
+
         return Inertia::render('Tenant/Settings/Index', [
             'days_remaining' => $subscription ? $subscription->days_remaining : null,
             'current_plan_id' => $subscription?->subscription_plan_id,
             'payment_method' => $subscription?->payment_method,
             'stripe_id' => $subscription?->stripe_id,
             'plans' => $plans,
+            'payment_history' => $paymentHistory,
         ]);
     }
 
@@ -153,9 +186,9 @@ class SettingsController extends Controller
                         'is_enabled' => (bool) $planFeature,
                         'has_pending_update' => in_array($feature->id, $pendingUpdates),
                         'value' => $planFeature ? match ($feature->type) {
-                            'boolean' => (bool) $planFeature->pivot->value_boolean,
-                            'numeric' => (int) $planFeature->pivot->value_numeric,
-                            'tiered' => $planFeature->pivot->value_tier,
+                            'boolean' => (bool) data_get($planFeature, 'pivot.value_boolean'),
+                            'numeric' => (int) data_get($planFeature, 'pivot.value_numeric'),
+                            'tiered' => data_get($planFeature, 'pivot.value_tier'),
                             default => null
                         } : null,
                     ];
@@ -254,9 +287,9 @@ class SettingsController extends Controller
                         'is_enabled' => (bool) $planFeature,
                         'has_pending_update' => in_array($feature->id, $pendingUpdates),
                         'value' => $planFeature ? match ($feature->type) {
-                            'boolean' => (bool) $planFeature->pivot->value_boolean,
-                            'numeric' => (int) $planFeature->pivot->value_numeric,
-                            'tiered' => $planFeature->pivot->value_tier,
+                            'boolean' => (bool) data_get($planFeature, 'pivot.value_boolean'),
+                            'numeric' => (int) data_get($planFeature, 'pivot.value_numeric'),
+                            'tiered' => data_get($planFeature, 'pivot.value_tier'),
                             default => null
                         } : null,
                     ];
@@ -667,7 +700,7 @@ class SettingsController extends Controller
             }
 
             return [
-                'id' => is_string($card['id'] ?? null) ? $card['id'] : ('manual-' . $index),
+                'id' => is_string($card['id'] ?? null) ? $card['id'] : ('manual-'.$index),
                 'name' => is_string($card['name'] ?? null) ? $card['name'] : '',
                 'role' => is_string($card['role'] ?? null) ? $card['role'] : '',
                 'bio' => is_string($card['bio'] ?? null) ? $card['bio'] : '',
@@ -808,7 +841,7 @@ class SettingsController extends Controller
             if ($safeCardId === '') {
                 return response()->json(['error' => 'Invalid team card identifier.'], 422);
             }
-            $storageKey = 'landing_team_card_' . $safeCardId;
+            $storageKey = 'landing_team_card_'.$safeCardId;
         } else {
             $storageKey = $keyMap[$field];
         }
@@ -967,6 +1000,7 @@ class SettingsController extends Controller
 
         $updates = $pendingUpdates->map(function ($u) {
             $feature = $u->feature;
+
             return [
                 'id' => $feature->id ?? null,
                 'name' => $feature->name ?? 'Unknown Feature',

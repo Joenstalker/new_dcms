@@ -150,9 +150,6 @@ const handleFileChange = async (e, field) => {
         logoPreviews.value[field] = result.url;
 
         if (field === 'portal_background') {
-            // Auto-switch to image mode and apply instantly in layout preview.
-            props.form.portal_background_type = 'image';
-            brandingState.setPortalBackgroundType('image');
             brandingState.setPortalBackgroundImage(result.url);
         }
 
@@ -222,8 +219,6 @@ const handleDeleteLogo = async (field) => {
 
         if (field === 'portal_background') {
             brandingState.setPortalBackgroundImage(null);
-            props.form.portal_background_type = 'color';
-            brandingState.setPortalBackgroundType('color');
         }
 
         Swal.fire({
@@ -384,23 +379,7 @@ const getLogoUrl = (path, field) => {
                     </div>
 
                     <div class="space-y-4 p-4 rounded-2xl border border-base-300 bg-base-200/40">
-                        <div class="form-control">
-                            <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Portal Background Type</span></label>
-                            <select v-model="form.portal_background_type" class="select select-bordered w-full rounded-2xl border-base-300 bg-base-100 focus:border-primary">
-                                <option value="color">Solid Color</option>
-                                <option value="image">Background Image</option>
-                            </select>
-                        </div>
-
-                        <div v-if="form.portal_background_type === 'color'" class="form-control">
-                            <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Portal Background Color</span></label>
-                            <div class="flex items-center gap-4 bg-base-100 p-3 rounded-2xl border border-base-300">
-                                <input type="color" v-model="form.portal_background_color" :disabled="!is_premium" class="w-12 h-12 rounded-xl border-none cursor-pointer bg-transparent">
-                                <input type="text" v-model="form.portal_background_color" :disabled="!is_premium" class="input input-sm border-none bg-transparent font-mono text-xs w-full focus:ring-0 uppercase">
-                            </div>
-                        </div>
-
-                        <div v-else class="form-control bg-base-100 p-4 rounded-2xl border border-dashed border-base-300 hover:border-primary transition-colors relative group"
+                        <div class="form-control bg-base-100 p-4 rounded-2xl border border-dashed border-base-300 hover:border-primary transition-colors relative group"
                             :class="{ 'pointer-events-none': uploading.portal_background }">
                             <label class="label mb-2"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-50">Portal Background Image</span></label>
                             <div class="h-32 w-full flex flex-col items-center justify-center gap-2 relative rounded-xl overflow-hidden bg-base-200/60">
@@ -423,7 +402,7 @@ const getLogoUrl = (path, field) => {
                             </div>
                         </div>
 
-                        <div v-if="form.portal_background_type === 'image'" class="form-control">
+                        <div class="form-control">
                             <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Image Overlay Intensity (%)</span></label>
                             <div class="flex items-center gap-3 bg-base-100 p-3 rounded-2xl border border-base-300">
                                 <input
@@ -463,22 +442,6 @@ const getLogoUrl = (path, field) => {
                             </div>
 
                             <div class="form-control">
-                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Sidebar Background Color</span></label>
-                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
-                                    <input type="color" v-model="form.ui_sidebar_background_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
-                                    <input type="text" v-model="form.ui_sidebar_background_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
-                                </div>
-                            </div>
-
-                            <div class="form-control">
-                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Subnav Background Color</span></label>
-                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
-                                    <input type="color" v-model="form.ui_subnav_background_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
-                                    <input type="text" v-model="form.ui_subnav_background_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
-                                </div>
-                            </div>
-
-                            <div class="form-control">
                                 <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Header Title Color</span></label>
                                 <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
                                     <input type="color" v-model="form.ui_header_title_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
@@ -500,14 +463,6 @@ const getLogoUrl = (path, field) => {
                             <div class="form-control">
                                 <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Footer Text Size (px)</span></label>
                                 <input type="range" min="8" max="18" step="1" v-model.number="form.ui_footer_text_size" class="range range-primary range-sm">
-                            </div>
-
-                            <div class="form-control md:col-span-2">
-                                <label class="label"><span class="label-text font-bold text-[10px] uppercase tracking-widest opacity-50">Footer Background Color</span></label>
-                                <div class="flex items-center gap-3 bg-base-100 p-2 rounded-xl border border-base-300">
-                                    <input type="color" v-model="form.ui_footer_background_color" class="w-9 h-9 rounded-lg border-none bg-transparent">
-                                    <input type="text" v-model="form.ui_footer_background_color" placeholder="#RRGGBB" class="input input-sm border-none bg-transparent font-mono text-xs w-full">
-                                </div>
                             </div>
 
                             <div class="form-control">
@@ -597,9 +552,9 @@ const getLogoUrl = (path, field) => {
                     <div class="w-full rounded-2xl mt-4 border border-base-300 overflow-hidden">
                         <div
                             class="h-20"
-                            :style="form.portal_background_type === 'image' && getLogoUrl(tenant.portal_background_image, 'portal_background')
+                            :style="getLogoUrl(tenant.portal_background_image, 'portal_background')
                                 ? { backgroundImage: `url(${getLogoUrl(tenant.portal_background_image, 'portal_background')})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                                : { backgroundColor: form.portal_background_color || '#e5e7eb' }"
+                                : {}"
                         ></div>
                     </div>
                 </div>

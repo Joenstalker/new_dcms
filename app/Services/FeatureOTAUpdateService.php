@@ -2,13 +2,20 @@
 
 namespace App\Services;
 
+use App\Jobs\ProcessTenantFeatureUpdateJob;
+use App\Mail\NewFeatureUpdateMail;
 use App\Models\Feature;
 use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
+use App\Models\Tenant;
 use App\Models\TenantFeatureUpdate;
-use App\Mail\NewFeatureUpdateMail;
+use App\Models\User;
+use Illuminate\Bus\PendingBatch;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Cache;
 
 class FeatureOTAUpdateService
 {
@@ -41,7 +48,7 @@ class FeatureOTAUpdateService
                 ->where('feature_id', $feature->id)
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 TenantFeatureUpdate::create([
                     'tenant_id' => $tenantId,
                     'feature_id' => $feature->id,
@@ -53,7 +60,7 @@ class FeatureOTAUpdateService
         }
 
         // Trigger Email notifications for new records
-        if (!empty($tenantIdsToNotify)) {
+        if (! empty($tenantIdsToNotify)) {
             $this->notifyTenantsViaEmail($feature, $tenantIdsToNotify);
         }
 
@@ -87,7 +94,7 @@ class FeatureOTAUpdateService
                 if ($feature->type === 'system_version' && $feature->system_release_id) {
                     $release = $feature->systemRelease;
                     if ($release) {
-                        $tenant = \App\Models\Tenant::find($tenantId);
+                        $tenant = Tenant::find($tenantId);
                         if ($tenant) {
                             $currentVersion = $tenant->version ?: 'v1.0.0';
                             $newVersion = $release->version;
@@ -104,8 +111,8 @@ class FeatureOTAUpdateService
 
                             // Trigger per-tenant migration if required
                             if ($release->requires_db_update) {
-                                \Illuminate\Support\Facades\Artisan::call('tenants:migrate', [
-                                    '--tenants' => [$tenantId]
+                                Artisan::call('tenants:migrate', [
+                                    '--tenants' => [$tenantId],
                                 ]);
                                 Log::info("Executed per-tenant migration for tenant [{$tenantId}] as part of version [{$release->version}] update.");
                             }
@@ -119,7 +126,7 @@ class FeatureOTAUpdateService
         }
 
         // Synchronize the tenant's features after applying updates
-        if (!empty($applied)) {
+        if (! empty($applied)) {
             $this->syncTenantFeatures($tenantId);
             Cache::forget("tenant_{$tenantId}_pending_updates_count");
         }
@@ -133,11 +140,12 @@ class FeatureOTAUpdateService
      */
     public function syncTenantFeatures(string $tenantId): void
     {
-        $tenant = \App\Models\Tenant::find($tenantId);
-        if (!$tenant)
+        $tenant = Tenant::find($tenantId);
+        if (! $tenant) {
             return;
+        }
 
-        $defaultFeatures = \App\Models\Tenant::getDefaultFeatures();
+        $defaultFeatures = Tenant::getDefaultFeatures();
 
         $appliedFeatureKeys = TenantFeatureUpdate::where('tenant_id', $tenantId)
             ->where('status', TenantFeatureUpdate::STATUS_APPLIED)
@@ -150,9 +158,8 @@ class FeatureOTAUpdateService
 
         $tenant->update(['enabled_features' => $allEnabled]);
 
-        Log::info("Synced enabled_features for tenant [{$tenantId}]: " . json_encode($allEnabled));
+        Log::info("Synced enabled_features for tenant [{$tenantId}]: ".json_encode($allEnabled));
     }
-
 
     /**
      * Get pending updates for a tenant
@@ -162,8 +169,8 @@ class FeatureOTAUpdateService
         return TenantFeatureUpdate::where('tenant_id', $tenantId)
             ->pending()
             ->whereHas('feature', function ($query) {
-            $query->notArchived()->where('is_active', true);
-        })
+                $query->notArchived()->where('is_active', true);
+            })
             ->with('feature.systemRelease')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -175,17 +182,20 @@ class FeatureOTAUpdateService
     public function notifyTenantsViaEmail(Feature $feature, array $tenantIds): void
     {
         foreach ($tenantIds as $tenantId) {
-            $tenant = \App\Models\Tenant::find($tenantId);
-            if (!$tenant)
+            $tenant = Tenant::find($tenantId);
+            if (! $tenant) {
                 continue;
+            }
 
             $adminEmail = $tenant->email ?? null;
-            if (!$adminEmail)
+            if (! $adminEmail) {
                 continue;
+            }
 
-            $admin = \App\Models\User::where('email', $adminEmail)->first();
-            if (!$admin)
+            $admin = User::where('email', $adminEmail)->first();
+            if (! $admin) {
                 continue;
+            }
 
             Mail::to($admin->email)->queue(new NewFeatureUpdateMail($feature, $tenant, $admin));
         }
@@ -195,7 +205,7 @@ class FeatureOTAUpdateService
      * Push all staged features for a specific Subscription Plan.
      * This notifies ALL tenants in the system asynchronously.
      */
-    public function pushPlanUpdates(\App\Models\SubscriptionPlan $plan): \Illuminate\Bus\PendingBatch
+    public function pushPlanUpdates(SubscriptionPlan $plan): PendingBatch
     {
         // 1. Get all features attached to the plan that haven't been pushed yet
         $features = $plan->features()->wherePivotNull('pushed_at')->get();
@@ -203,7 +213,7 @@ class FeatureOTAUpdateService
             throw new \Exception("No staged features found for plan [{$plan->name}].");
         }
 
-        $allTenants = \App\Models\Tenant::all();
+        $allTenants = Tenant::all();
         $jobs = [];
 
         foreach ($allTenants as $tenant) {
@@ -212,12 +222,12 @@ class FeatureOTAUpdateService
                 ->where('stripe_status', 'active')
                 ->exists();
 
-            $jobs[] = new \App\Jobs\ProcessTenantFeatureUpdateJob(
-                $tenant instanceof \App\Models\Tenant ? $tenant : \App\Models\Tenant::find($tenant->id),
+            $jobs[] = new ProcessTenantFeatureUpdateJob(
+                $tenant instanceof Tenant ? $tenant : Tenant::find($tenant->id),
                 $plan,
                 $features->all(),
-                !$isSubscribedToPlan
-                );
+                ! $isSubscribedToPlan
+            );
         }
 
         // 2. Mark features as pushed immediately (so UI reflects "Live" status)
@@ -225,14 +235,14 @@ class FeatureOTAUpdateService
             $plan->features()->updateExistingPivot($feature->id, ['pushed_at' => now()]);
         }
 
-        return \Illuminate\Support\Facades\Bus::batch($jobs)
+        return Bus::batch($jobs)
             ->name("Plan Push: {$plan->name}");
     }
 
     /**
      * Push a specific feature to all eligible tenants asynchronously.
      */
-    public function pushFeatureUpdates(Feature $feature): \Illuminate\Bus\PendingBatch
+    public function pushFeatureUpdates(Feature $feature): PendingBatch
     {
         // 1. Get all active subscriptions for plans that have this feature
         $subscriptions = Subscription::whereHas('plan.features', function ($query) use ($feature) {
@@ -245,19 +255,23 @@ class FeatureOTAUpdateService
 
         foreach ($subscriptions as $subscription) {
             $tenant = $subscription->tenant;
-            $jobs[] = new \App\Jobs\ProcessTenantFeatureUpdateJob(
-                $tenant instanceof \App\Models\Tenant ? $tenant : \App\Models\Tenant::find($tenant->id),
+            if (! $tenant) {
+                continue;
+            }
+
+            $jobs[] = new ProcessTenantFeatureUpdateJob(
+                $tenant instanceof Tenant ? $tenant : Tenant::find($tenant->id),
                 $subscription->plan,
-            [$feature],
+                [$feature],
                 false // Not an advertisement
-                );
+            );
         }
 
         if (empty($jobs)) {
             throw new \Exception("No eligible tenants found for feature [{$feature->name}].");
         }
 
-        return \Illuminate\Support\Facades\Bus::batch($jobs)
+        return Bus::batch($jobs)
             ->name("Feature Push: {$feature->name}");
     }
 
@@ -265,18 +279,19 @@ class FeatureOTAUpdateService
      * Push ALL features for a specific plan to a SINGLE tenant.
      * Used when an administrator manually updates a tenant's plan.
      */
-    public function pushTenantPlanUpdates(\App\Models\Tenant $tenant, \App\Models\SubscriptionPlan $plan): void
+    public function pushTenantPlanUpdates(Tenant $tenant, SubscriptionPlan $plan): void
     {
         // 1. Get all features attached to the plan
         $features = $plan->getLoadedFeatures();
         if ($features->isEmpty()) {
             Log::warning("No features found for plan [{$plan->name}] while updating tenant [{$tenant->id}].");
+
             return;
         }
 
         // 2. Dispatch a job for this specific tenant
         // We do this sync if it's a single tenant to ensure immediate availability
-        \App\Jobs\ProcessTenantFeatureUpdateJob::dispatch(
+        ProcessTenantFeatureUpdateJob::dispatch(
             $tenant,
             $plan,
             $features->all(),

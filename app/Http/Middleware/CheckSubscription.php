@@ -2,13 +2,17 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Appointment;
 use App\Models\Feature;
+use App\Models\Patient;
 use App\Models\Subscription;
 use App\Models\TenantFeatureUpdate;
+use App\Models\User;
 use App\Services\TenantFeatureGateService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -40,15 +44,15 @@ class CheckSubscription
         $tenant = tenant();
 
         // If not in a tenant context, pass through
-        if (!$tenant) {
+        if (! $tenant) {
             return $next($request);
         }
 
-        if ($this->isDedicatedPreviewTenant((string)$tenant->getTenantKey())) {
+        if ($this->isDedicatedPreviewTenant((string) $tenant->getTenantKey())) {
             return $next($request);
         }
 
-        if ($this->isTenantPreviewActive($request, (string)$tenant->getTenantKey())) {
+        if ($this->isTenantPreviewActive($request, (string) $tenant->getTenantKey())) {
             return $next($request);
         }
 
@@ -56,16 +60,16 @@ class CheckSubscription
         $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
             ->where('stripe_status', 'active')
             ->where(function ($query) {
-            // If billing_cycle_end is set, it must be in the future
-            $query->whereNull('billing_cycle_end')
-                ->orWhere('billing_cycle_end', '>', now());
-        })
+                // If billing_cycle_end is set, it must be in the future
+                $query->whereNull('billing_cycle_end')
+                    ->orWhere('billing_cycle_end', '>', now());
+            })
             ->with('plan')
             ->latest()
             ->first();
 
         // No active subscription — block access
-        if (!$subscription || !$subscription->plan) {
+        if (! $subscription || ! $subscription->plan) {
             Log::warning('CheckSubscription: no active subscription found for tenant.', [
                 'tenant_id' => $tenant->getTenantKey(),
             ]);
@@ -90,9 +94,9 @@ class CheckSubscription
 
             // 1. Check for numeric limit first (e.g. max_users)
             $limitChecks = [
-                'max_patients' => fn() => \App\Models\Patient::count(),
-                'max_users' => fn() => \App\Models\User::count(),
-                'max_appointments' => fn() => \App\Models\Appointment::count(),
+                'max_patients' => fn () => Patient::count(),
+                'max_users' => fn () => User::count(),
+                'max_appointments' => fn () => Appointment::count(),
             ];
 
             if (isset($limitChecks[$feature])) {
@@ -101,28 +105,28 @@ class CheckSubscription
                 // null/empty means unlimited
                 if ($max !== null && $max !== '') {
                     $current = $limitChecks[$feature]();
-                    if ($current >= (int)$max) {
-                        return $this->limitReached($request, $feature, (int)$max, $plan->name);
+                    if ($current >= (int) $max) {
+                        return $this->limitReached($request, $feature, (int) $max, $plan->name);
                     }
                 }
             }
             // 2. Check for boolean feature (qr_booking, has_sms, etc.)
             else {
-                $enabledFeatureKey = collect($featureCandidates)->first(fn(string $candidate) => $plan->hasFeature($candidate));
+                $enabledFeatureKey = collect($featureCandidates)->first(fn (string $candidate) => $plan->hasFeature($candidate));
 
-                if (!$enabledFeatureKey) {
+                if (! $enabledFeatureKey) {
                     $featureModel = collect($featureCandidates)
-                        ->map(fn(string $candidate) => $plan->getFeature($candidate))
+                        ->map(fn (string $candidate) => $plan->getFeature($candidate))
                         ->first();
 
-                    if (!$featureModel || $featureModel->implementation_status !== \App\Models\Feature::STATUS_MAINTENANCE) {
+                    if (! $featureModel || $featureModel->implementation_status !== Feature::STATUS_MAINTENANCE) {
                         return $this->featureNotAvailable($request, $feature, $plan->name);
                     }
                 }
 
                 // Acknowledgment logic for OTA updates (only for dynamic features)
                 $dynamicFeature = collect($featureCandidates)
-                    ->map(fn(string $candidate) => $plan->getFeature($candidate))
+                    ->map(fn (string $candidate) => $plan->getFeature($candidate))
                     ->first();
 
                 if ($dynamicFeature && $dynamicFeature->requiresAcknowledgment()) {
@@ -130,7 +134,7 @@ class CheckSubscription
                         ->where('feature_id', $dynamicFeature->id)
                         ->first();
 
-                    if (!$tenantUpdate || !$tenantUpdate->isApplied()) {
+                    if (! $tenantUpdate || ! $tenantUpdate->isApplied()) {
                         Log::info("CheckSubscription: feature '{$feature}' blocked until tenant applies update.");
 
                         return $this->updateNotApplied($request, $feature);
@@ -140,12 +144,16 @@ class CheckSubscription
         }
 
         // Share plan info with Inertia so the frontend can conditionally show/hide features
-        if (class_exists(\Inertia\Inertia::class)) {
+        if (class_exists(Inertia::class)) {
             // Get dynamic features with their status
-            $features = $plan->features()->ordered()->get();
+            $features = $plan->features()->orderBy('sort_order')->orderBy('name')->get();
             $featureStatus = [];
 
             foreach ($features as $feature) {
+                if (! $feature instanceof Feature) {
+                    continue;
+                }
+
                 $updateStatus = null;
                 $isApplied = false;
 
@@ -168,7 +176,7 @@ class CheckSubscription
                 ];
             }
 
-            \Inertia\Inertia::share('subscription', [
+            Inertia::share('subscription', [
                 'plan_name' => $plan->name,
                 'has_qr_booking' => $plan->hasFeature('qr_booking'),
                 'has_sms' => $plan->hasFeature('sms_notifications'),
@@ -255,16 +263,16 @@ class CheckSubscription
 
         return is_array($preview)
             && ($preview['active'] ?? false) === true
-            && (string)($preview['tenant_id'] ?? '') === $tenantId;
+            && (string) ($preview['tenant_id'] ?? '') === $tenantId;
     }
-
 
     /**
      * Dedicated preview tenant should never be plan-gated.
      */
     private function isDedicatedPreviewTenant(string $tenantId): bool
     {
-        $previewTenantId = (string)config('tenancy.preview.tenant_id', 'preview-sandbox');
+        $previewTenantId = (string) config('tenancy.preview.tenant_id', 'preview-sandbox');
+
         return $tenantId === $previewTenantId;
     }
 }

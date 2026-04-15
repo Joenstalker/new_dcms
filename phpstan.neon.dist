@@ -10,6 +10,7 @@ parameters:
     excludePaths:
         - app/Database/IdGenerators/DomainBasedIdGenerator.php
     level: 5
+    reportUnmatchedIgnoredErrors: false
     tmpDir: storage/framework/phpstan
     checkModelProperties: true
     treatPhpDocTypesAsCertain: false

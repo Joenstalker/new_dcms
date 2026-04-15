@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\RegistrationPending;
+use App\Models\PaymentHistory;
 use App\Models\PendingRegistration;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
@@ -11,8 +12,10 @@ use App\Models\SystemSetting;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Services\PaymentHistoryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -500,6 +503,22 @@ class RegistrationController extends Controller
                     }
                     break;
 
+                case 'invoice.paid':
+                    $invoice = $event->data->object;
+                    $this->handleInvoicePaid($invoice, $event->id, $event->type);
+                    break;
+
+                case 'invoice.payment_failed':
+                    $invoice = $event->data->object;
+                    $this->handleInvoicePaymentFailed($invoice, $event->id, $event->type);
+                    break;
+
+                case 'refund.created':
+                case 'charge.refunded':
+                    $refundObject = $event->data->object;
+                    $this->handleRefundEvent($refundObject, $event->id, $event->type);
+                    break;
+
                 case 'customer.subscription.updated':
                     $subscriptionObj = $event->data->object;
                     $this->handleSubscriptionUpdated($subscriptionObj);
@@ -660,7 +679,7 @@ class RegistrationController extends Controller
                 ? now()->addYear()
                 : now()->addMonths($monthsPaid);
 
-            $tenant->subscriptions()->updateOrCreate(
+            $subscription = $tenant->subscriptions()->updateOrCreate(
                 ['stripe_id' => $stripeSubscriptionId],
                 [
                     'tenant_id' => $tenantId, // Ensure tenant_id is set
@@ -700,6 +719,8 @@ class RegistrationController extends Controller
                 'description' => 'Tenant Registration Payment',
                 'paid_at' => now('UTC'),
             ]);
+
+            app(PaymentHistoryService::class)->recordRegistrationSuccess($pendingRegistration, $session, $subscription);
 
             DB::commit();
 
@@ -915,6 +936,16 @@ class RegistrationController extends Controller
             $isUpgradeOrDowngrade = $subscription->subscription_plan_id !== $plan->id;
             $status = $subscriptionObj->status;
 
+            if ($isUpgradeOrDowngrade) {
+                $oldPlan = $subscription->plan;
+                $oldPrice = $billingCycle === 'yearly' ? (float) ($oldPlan->price_yearly ?? 0) : (float) ($oldPlan->price_monthly ?? 0);
+                $newPrice = $billingCycle === 'yearly' ? (float) ($plan->price_yearly ?? 0) : (float) ($plan->price_monthly ?? 0);
+                $changeType = $newPrice >= $oldPrice ? 'upgrade' : 'downgrade';
+
+                // Persist short-lived context so invoice.paid/payment_failed can be accurately labeled.
+                Cache::put("stripe:plan_change_type:{$stripeSubscriptionId}", $changeType, now()->addMinutes(30));
+            }
+
             // Extract ends_at timestamp if provided
             $currentPeriodEnd = $subscriptionObj->current_period_end ?? null;
             $endsAt = $currentPeriodEnd ? Carbon::createFromTimestamp($currentPeriodEnd) : null;
@@ -1007,6 +1038,135 @@ class RegistrationController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Failed to handle subscription deleted: '.$e->getMessage());
+        }
+    }
+
+    protected function handleInvoicePaid(object $invoice, ?string $eventId = null, ?string $eventType = null): void
+    {
+        try {
+            $stripeSubscriptionId = is_string($invoice->subscription ?? null)
+                ? $invoice->subscription
+                : ($invoice->subscription->id ?? null);
+
+            if (! $stripeSubscriptionId) {
+                return;
+            }
+
+            $subscription = Subscription::where('stripe_id', $stripeSubscriptionId)->first();
+            if (! $subscription) {
+                return;
+            }
+
+            $historyService = app(PaymentHistoryService::class);
+            $transactionType = $historyService->inferTransactionTypeFromInvoice($invoice);
+
+            if ($transactionType === 'adjustment') {
+                $cachedType = Cache::pull("stripe:plan_change_type:{$stripeSubscriptionId}");
+                if (in_array($cachedType, ['upgrade', 'downgrade'], true)) {
+                    $transactionType = $cachedType;
+                }
+            }
+
+            $historyService->recordInvoiceEvent($subscription, $invoice, 'success', $eventId, $eventType, $transactionType);
+        } catch (\Exception $e) {
+            Log::error('Failed to handle invoice paid event: '.$e->getMessage());
+        }
+    }
+
+    protected function handleInvoicePaymentFailed(object $invoice, ?string $eventId = null, ?string $eventType = null): void
+    {
+        try {
+            $stripeSubscriptionId = is_string($invoice->subscription ?? null)
+                ? $invoice->subscription
+                : ($invoice->subscription->id ?? null);
+
+            if (! $stripeSubscriptionId) {
+                return;
+            }
+
+            $subscription = Subscription::where('stripe_id', $stripeSubscriptionId)->first();
+            if (! $subscription) {
+                return;
+            }
+
+            $historyService = app(PaymentHistoryService::class);
+            $transactionType = $historyService->inferTransactionTypeFromInvoice($invoice);
+
+            if ($transactionType === 'adjustment') {
+                $cachedType = Cache::pull("stripe:plan_change_type:{$stripeSubscriptionId}");
+                if (in_array($cachedType, ['upgrade', 'downgrade'], true)) {
+                    $transactionType = $cachedType;
+                }
+            }
+
+            $historyService->recordInvoiceEvent($subscription, $invoice, 'failed', $eventId, $eventType, $transactionType);
+        } catch (\Exception $e) {
+            Log::error('Failed to handle invoice payment failed event: '.$e->getMessage());
+        }
+    }
+
+    protected function handleRefundEvent(object $refundObject, ?string $eventId = null, ?string $eventType = null): void
+    {
+        try {
+            $chargeId = null;
+            $refundId = null;
+            $amount = 0;
+            $currency = 'PHP';
+            $reason = null;
+            $status = 'succeeded';
+
+            if ($eventType === 'charge.refunded') {
+                $chargeId = (string) ($refundObject->id ?? '');
+                $refundId = 'chr_'.$chargeId;
+                $amount = (int) ($refundObject->amount_refunded ?? 0);
+                $currency = strtoupper((string) ($refundObject->currency ?? 'PHP'));
+            } else {
+                $chargeId = is_string($refundObject->charge ?? null)
+                    ? $refundObject->charge
+                    : ($refundObject->charge->id ?? null);
+                $refundId = (string) ($refundObject->id ?? '');
+                $amount = (int) ($refundObject->amount ?? 0);
+                $currency = strtoupper((string) ($refundObject->currency ?? 'PHP'));
+                $reason = $refundObject->reason ?? null;
+                $status = $refundObject->status ?? 'succeeded';
+            }
+
+            if (! $chargeId) {
+                return;
+            }
+
+            $paymentIntentId = is_string($refundObject->payment_intent ?? null)
+                ? $refundObject->payment_intent
+                : ($refundObject->payment_intent->id ?? null);
+
+            $existingQuery = PaymentHistory::where('stripe_charge_id', $chargeId);
+            if ($paymentIntentId) {
+                $existingQuery->orWhere('stripe_payment_intent_id', $paymentIntentId);
+            }
+
+            $existing = $existingQuery->latest()->first();
+
+            if (! $existing?->subscription_id) {
+                return;
+            }
+
+            $subscription = Subscription::find($existing->subscription_id);
+            if (! $subscription) {
+                return;
+            }
+
+            $normalizedRefund = (object) [
+                'id' => $refundId,
+                'amount' => $amount,
+                'currency' => strtolower($currency),
+                'charge' => $chargeId,
+                'reason' => $reason,
+                'status' => $status,
+            ];
+
+            app(PaymentHistoryService::class)->recordRefund($subscription, $normalizedRefund, $eventId, $eventType);
+        } catch (\Exception $e) {
+            Log::error('Failed to handle refund event: '.$e->getMessage());
         }
     }
 

@@ -9,6 +9,7 @@ import debounce from 'lodash/debounce';
 
 const props = defineProps({
     subscriptions: Object,
+    paymentHistories: Object,
     filters: Object,
 });
 
@@ -70,7 +71,7 @@ const updateSearch = debounce(() => {
                 
                 <div class="hidden sm:block">
                     <!-- Placeholder for export button -->
-                    <button disabled class="bg-base-100 border border-base-300 text-base-content/30 px-4 py-2 flex items-center rounded-lg text-sm font-medium cursor-not-allowed hidden">
+                    <button disabled class="bg-base-100 border border-base-300 text-base-content/30 px-4 py-2 items-center rounded-lg text-sm font-medium cursor-not-allowed hidden">
                         <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         Export CSV
                     </button>
@@ -94,6 +95,9 @@ const updateSearch = debounce(() => {
                                 </th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">
                                     Billing Cycle Ends
+                                </th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+                                    Latest Payment
                                 </th>
                             </tr>
                         </thead>
@@ -128,9 +132,20 @@ const updateSearch = debounce(() => {
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-base-content/50">
                                     {{ sub.ends_at ? new Date(sub.ends_at).toLocaleDateString() : 'Auto-renews' }}
                                 </td>
+
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div v-if="sub.latest_payment_history" class="text-xs">
+                                        <div class="font-semibold text-base-content">{{ sub.latest_payment_history.transaction_code }}</div>
+                                        <div class="text-base-content/60">
+                                            {{ sub.latest_payment_history.plan_name || sub.plan?.name || '-' }} ·
+                                            {{ Number(sub.latest_payment_history.amount || 0).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }) }}
+                                        </div>
+                                    </div>
+                                    <span v-else class="text-xs text-base-content/40">No payment yet</span>
+                                </td>
                             </tr>
                             <tr v-if="subscriptions.data.length === 0">
-                                <td colspan="4" class="px-6 py-12 text-center text-base-content/30">
+                                <td colspan="5" class="px-6 py-12 text-center text-base-content/30">
                                     <svg class="mx-auto h-12 w-12 text-base-content/20 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                     </svg>
@@ -178,6 +193,90 @@ const updateSearch = debounce(() => {
                                     </template>
                                 </nav>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-base-100 rounded-xl shadow-sm border border-base-300 overflow-hidden">
+                <div class="px-6 py-4 border-b border-base-300 bg-base-200">
+                    <h2 class="text-sm font-semibold text-base-content/80 uppercase tracking-wide">Payment History (Tenants)</h2>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-base-300">
+                        <thead class="bg-base-200">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">Tenant</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">Transaction ID</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">Plan</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-base-content/60 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-4 text-right text-xs font-semibold text-base-content/60 uppercase tracking-wider">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-base-100 divide-y divide-base-300">
+                            <tr v-for="row in paymentHistories.data" :key="row.id" class="hover:bg-base-200 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-base-content/60">
+                                    {{ row.paid_at ? new Date(row.paid_at).toLocaleString() : new Date(row.created_at).toLocaleString() }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-base-content">{{ row.tenant_id }}</div>
+                                    <div class="text-xs text-base-content/50" v-if="row.subscription?.tenant?.domains?.length">
+                                        {{ row.subscription.tenant.domains[0].domain }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs font-mono text-base-content">{{ row.transaction_code }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-base-content/80">{{ row.plan_name || row.subscription?.plan?.name || '-' }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span v-if="row.status === 'success'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/20 text-success">Success</span>
+                                    <span v-else-if="row.status === 'failed'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/20 text-error">Failed</span>
+                                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/20 text-warning">{{ row.status }}</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-base-content">
+                                    {{ Number(row.amount || 0).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }) }}
+                                </td>
+                            </tr>
+                            <tr v-if="paymentHistories.data.length === 0">
+                                <td colspan="6" class="px-6 py-8 text-center text-base-content/40">No payment history records found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div v-if="paymentHistories.links && paymentHistories.links.length > 3" class="bg-base-100 px-4 py-3 border-t border-base-300 sm:px-6">
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-base-content/70">
+                                Showing <span class="font-medium">{{ paymentHistories.from || 0 }}</span> to <span class="font-medium">{{ paymentHistories.to || 0 }}</span> of <span class="font-medium">{{ paymentHistories.total }}</span> payment records
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                <template v-for="(link, i) in paymentHistories.links" :key="`history-${i}`">
+                                    <Link
+                                        v-if="link.url"
+                                        :href="link.url"
+                                        v-html="link.label"
+                                        class="relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-all"
+                                        :class="[
+                                            link.active ? 'z-10 text-white border-transparent' : 'bg-base-100 border-base-300 text-base-content/50 hover:bg-base-200',
+                                            i === 0 ? 'rounded-l-md' : '',
+                                            i === paymentHistories.links.length - 1 ? 'rounded-r-md' : ''
+                                        ]"
+                                        :style="link.active ? { backgroundColor: primaryColor, boxShadow: `0 4px 14px 0 ${primaryColor}33` } : {}"
+                                    />
+                                    <span
+                                        v-else
+                                        v-html="link.label"
+                                        class="relative inline-flex items-center px-4 py-2 border border-base-300 bg-base-100 text-sm font-medium text-base-content/20 cursor-not-allowed"
+                                        :class="[
+                                            i === 0 ? 'rounded-l-md' : '',
+                                            i === paymentHistories.links.length - 1 ? 'rounded-r-md' : ''
+                                        ]"
+                                    ></span>
+                                </template>
+                            </nav>
                         </div>
                     </div>
                 </div>
