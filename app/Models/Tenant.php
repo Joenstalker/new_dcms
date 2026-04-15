@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Helpers\TenantDatabaseHelper;
 use App\Services\TenantDatabaseNamingService;
+use App\Services\AppVersionService;
 use Illuminate\Support\Str;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDatabase;
@@ -221,9 +222,14 @@ class Tenant extends BaseTenant implements TenantWithDatabase
                 $tenant->enabled_features = self::getDefaultFeatures();
             }
 
-            // Set default initial system version
+            // Set default initial system version to latest GitHub release when possible
             if (empty($tenant->version)) {
-                $tenant->version = config('app_version.version', '1.0.0');
+                try {
+                    $tenant->version = AppVersionService::getVersion();
+                } catch (\Throwable $e) {
+                    // Graceful fallback to configured app version if GitHub check fails
+                    $tenant->version = config('app_version.version', '1.0.0');
+                }
             }
 
             // Ensure public landing page config is always complete (avoids errors before first branding save)

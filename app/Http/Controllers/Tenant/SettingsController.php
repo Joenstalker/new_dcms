@@ -643,6 +643,13 @@ class SettingsController extends Controller
         $team = is_array($config['team'] ?? null) ? $config['team'] : [];
         $manualCards = array_slice(is_array($team['manual_cards'] ?? null) ? $team['manual_cards'] : [], 0, 12);
 
+        // Normalize individual section arrays to avoid undefined index notices
+        $heroSection = is_array($sections['hero'] ?? null) ? $sections['hero'] : [];
+        $contentSection = is_array($sections['content'] ?? null) ? $sections['content'] : [];
+        $servicesSection = is_array($sections['services'] ?? null) ? $sections['services'] : [];
+        $teamSection = is_array($sections['team'] ?? null) ? $sections['team'] : [];
+        $contactSection = is_array($sections['contact'] ?? null) ? $sections['contact'] : [];
+
         $sanitizedCards = array_values(array_filter(array_map(function ($card, $index) {
             if (! is_array($card)) {
                 return null;
@@ -674,49 +681,49 @@ class SettingsController extends Controller
             'text_secondary' => is_string($config['text_secondary'] ?? null) ? $config['text_secondary'] : '#4b5563',
             'sections' => [
                 'hero' => [
-                    'active' => (bool) (($sections['hero']['active'] ?? true)),
-                    'background_type' => in_array(($sections['hero']['background_type'] ?? 'color'), ['color', 'image'], true) ? $sections['hero']['background_type'] : 'color',
-                    'background_color' => $sections['hero']['background_color'] ?? '#f9fafb',
-                    'background_image' => $sections['hero']['background_image'] ?? null,
-                    'badge_text' => $sections['hero']['badge_text'] ?? 'Expert Dental Care',
-                    'cta_text' => $sections['hero']['cta_text'] ?? 'Schedule Your Visit',
+                    'active' => (bool) ($heroSection['active'] ?? true),
+                    'background_type' => in_array(($heroSection['background_type'] ?? 'color'), ['color', 'image'], true) ? $heroSection['background_type'] : 'color',
+                    'background_color' => $heroSection['background_color'] ?? '#f9fafb',
+                    'background_image' => $heroSection['background_image'] ?? null,
+                    'badge_text' => $heroSection['badge_text'] ?? 'Expert Dental Care',
+                    'cta_text' => $heroSection['cta_text'] ?? 'Schedule Your Visit',
                 ],
                 'content' => [
-                    'active' => (bool) (($sections['content']['active'] ?? true)),
-                    'image' => $sections['content']['image'] ?? null,
-                    'title' => $sections['content']['title'] ?? 'Committed to Excellence in Dental Care',
-                    'subtitle' => $sections['content']['subtitle'] ?? 'Our clinic is dedicated to providing the best dental care in the region. Our team of experienced professionals is here to ensure your smile remains healthy and beautiful.',
-                    'highlights' => is_array($sections['content']['highlights'] ?? null) ? array_values(array_slice($sections['content']['highlights'], 0, 5)) : ['Modern Technology', 'Sterilized Environment', 'Compassionate Experts'],
-                    'background_type' => in_array(($sections['content']['background_type'] ?? 'color'), ['color', 'image'], true) ? $sections['content']['background_type'] : 'color',
-                    'background_color' => $sections['content']['background_color'] ?? '#f9fafb',
-                    'background_image' => $sections['content']['background_image'] ?? null,
+                    'active' => (bool) ($contentSection['active'] ?? true),
+                    'image' => $contentSection['image'] ?? null,
+                    'title' => $contentSection['title'] ?? 'Committed to Excellence in Dental Care',
+                    'subtitle' => $contentSection['subtitle'] ?? 'Our clinic is dedicated to providing the best dental care in the region. Our team of experienced professionals is here to ensure your smile remains healthy and beautiful.',
+                    'highlights' => is_array($contentSection['highlights'] ?? null) ? array_values(array_slice($contentSection['highlights'], 0, 5)) : ['Modern Technology', 'Sterilized Environment', 'Compassionate Experts'],
+                    'background_type' => in_array(($contentSection['background_type'] ?? 'color'), ['color', 'image'], true) ? $contentSection['background_type'] : 'color',
+                    'background_color' => $contentSection['background_color'] ?? '#f9fafb',
+                    'background_image' => $contentSection['background_image'] ?? null,
                 ],
                 'services' => [
-                    'active' => (bool) (($sections['services']['active'] ?? true)),
-                    'image' => $sections['services']['image'] ?? null,
-                    'title' => $sections['services']['title'] ?? 'Our Specialized Services',
-                    'subtitle' => $sections['services']['subtitle'] ?? 'We offer a wide range of dental treatments to keep your clinic healthy and your smile glowing.',
-                    'background_type' => in_array(($sections['services']['background_type'] ?? 'color'), ['color', 'image'], true) ? $sections['services']['background_type'] : 'color',
-                    'background_color' => $sections['services']['background_color'] ?? '#ffffff',
-                    'background_image' => $sections['services']['background_image'] ?? null,
+                    'active' => (bool) ($servicesSection['active'] ?? true),
+                    'image' => $servicesSection['image'] ?? null,
+                    'title' => $servicesSection['title'] ?? 'Our Specialized Services',
+                    'subtitle' => $servicesSection['subtitle'] ?? 'We offer a wide range of dental treatments to keep your clinic healthy and your smile glowing.',
+                    'background_type' => in_array(($servicesSection['background_type'] ?? 'color'), ['color', 'image'], true) ? $servicesSection['background_type'] : 'color',
+                    'background_color' => $servicesSection['background_color'] ?? '#ffffff',
+                    'background_image' => $servicesSection['background_image'] ?? null,
                 ],
                 'team' => [
-                    'active' => (bool) (($sections['team']['active'] ?? true)),
-                    'image' => $sections['team']['image'] ?? null,
-                    'title' => $sections['team']['title'] ?? 'Meet Our Specialist Team',
-                    'subtitle' => $sections['team']['subtitle'] ?? 'Expert dentists dedicated to provide world-class dental treatments with care.',
-                    'background_type' => in_array(($sections['team']['background_type'] ?? 'color'), ['color', 'image'], true) ? $sections['team']['background_type'] : 'color',
-                    'background_color' => $sections['team']['background_color'] ?? '#ffffff',
-                    'background_image' => $sections['team']['background_image'] ?? null,
+                    'active' => (bool) ($teamSection['active'] ?? true),
+                    'image' => $teamSection['image'] ?? null,
+                    'title' => $teamSection['title'] ?? 'Meet Our Specialist Team',
+                    'subtitle' => $teamSection['subtitle'] ?? 'Expert dentists dedicated to provide world-class dental treatments with care.',
+                    'background_type' => in_array(($teamSection['background_type'] ?? 'color'), ['color', 'image'], true) ? $teamSection['background_type'] : 'color',
+                    'background_color' => $teamSection['background_color'] ?? '#ffffff',
+                    'background_image' => $teamSection['background_image'] ?? null,
                 ],
                 'contact' => [
-                    'active' => (bool) (($sections['contact']['active'] ?? true)),
-                    'image' => $sections['contact']['image'] ?? null,
-                    'title' => $sections['contact']['title'] ?? "Have a Concern? We're Here to Help.",
-                    'subtitle' => $sections['contact']['subtitle'] ?? "Whether you're looking for an appointment or have a general inquiry, feel free to send us a message. Our team will respond as quickly as possible.",
-                    'background_type' => in_array(($sections['contact']['background_type'] ?? 'color'), ['color', 'image'], true) ? $sections['contact']['background_type'] : 'color',
-                    'background_color' => $sections['contact']['background_color'] ?? '#ffffff',
-                    'background_image' => $sections['contact']['background_image'] ?? null,
+                    'active' => (bool) ($contactSection['active'] ?? true),
+                    'image' => $contactSection['image'] ?? null,
+                    'title' => $contactSection['title'] ?? "Have a Concern? We're Here to Help.",
+                    'subtitle' => $contactSection['subtitle'] ?? "Whether you're looking for an appointment or have a general inquiry, feel free to send us a message. Our team will respond as quickly as possible.",
+                    'background_type' => in_array(($contactSection['background_type'] ?? 'color'), ['color', 'image'], true) ? $contactSection['background_type'] : 'color',
+                    'background_color' => $contactSection['background_color'] ?? '#ffffff',
+                    'background_image' => $contactSection['background_image'] ?? null,
                 ],
             ],
             'team' => [
@@ -958,9 +965,25 @@ class SettingsController extends Controller
         $otaService = app(FeatureOTAUpdateService::class);
         $pendingUpdates = $otaService->getPendingUpdates($tenant->getTenantKey());
 
+        $updates = $pendingUpdates->map(function ($u) {
+            $feature = $u->feature;
+            return [
+                'id' => $feature->id ?? null,
+                'name' => $feature->name ?? 'Unknown Feature',
+                'description' => $feature->description ?? '',
+                'type' => $feature->type ?? null,
+                'system_release' => $feature->system_release ? [
+                    'version' => $feature->system_release->version ?? null,
+                    'release_notes' => $feature->system_release->release_notes ?? null,
+                    'requires_db_update' => (bool) ($feature->system_release->requires_db_update ?? false),
+                ] : null,
+            ];
+        })->values();
+
         return response()->json([
-            'has_updates' => $pendingUpdates->count() > 0,
-            'count' => $pendingUpdates->count(),
+            'has_updates' => $updates->count() > 0,
+            'count' => $updates->count(),
+            'updates' => $updates,
         ]);
     }
 

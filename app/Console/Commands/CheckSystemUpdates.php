@@ -57,12 +57,13 @@ class CheckSystemUpdates extends Command
                 // Detect migration requirement
                 $requiresDb = str_contains(strtoupper($ghRelease['body'] ?? ''), '[MIGRATION]');
 
-                $systemRelease = SystemRelease::create([
-                    'version' => $version,
-                    'release_notes' => $ghRelease['body'] ?? '',
-                    'released_at' => $ghRelease['published_at'] ?? now(),
-                    'requires_db_update' => $requiresDb,
-                ]);
+                // Use ReleaseService to register the release (ensures cache is cleared)
+                $systemRelease = $releaseService->registerRelease(
+                    $version,
+                    $ghRelease['body'] ?? null,
+                    false,
+                    $requiresDb
+                );
 
                 // 2. Create/Update a Feature record for this version
                 $featureKey = 'system_version_'.str_replace('.', '_', $cleanVersion);

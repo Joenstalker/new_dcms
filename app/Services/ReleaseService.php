@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\SystemRelease;
+use App\Services\AppVersionService;
 use Illuminate\Support\Facades\Cache;
 
 class ReleaseService
@@ -22,9 +23,26 @@ class ReleaseService
     {
         return Cache::remember('latest_system_release', 3600, function () {
             // We order by ID desc as a fallback in case multiple share the same released_at
-            return SystemRelease::orderBy('released_at', 'desc')
+            $release = SystemRelease::orderBy('released_at', 'desc')
                 ->orderBy('id', 'desc')
                 ->first();
+
+            if (! $release) {
+                // If no SystemRelease exists in DB, attempt to fetch the latest GitHub release
+                try {
+                    $ghVersion = AppVersionService::getVersion();
+                    if (! empty($ghVersion)) {
+                        $release = SystemRelease::firstOrCreate(
+                            ['version' => $ghVersion],
+                            ['release_notes' => null, 'released_at' => now(), 'is_mandatory' => false, 'requires_db_update' => false]
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    // ignore and return null -- we still want the cached value to be null
+                }
+            }
+
+            return $release;
         });
     }
 

@@ -53,6 +53,72 @@ const selectAll = () => {
 
 const loadingProgress = ref(0);
 let loadingInterval = null;
+const isChecking = ref(false);
+
+const checkForUpdates = async () => {
+    if (isChecking.value) return;
+    isChecking.value = true;
+    try {
+        const res = await fetch(route('settings.updates.check'));
+        if (!res.ok) throw new Error('Network response was not ok');
+        const data = await res.json();
+
+        if (data.has_updates) {
+            const updates = data.updates || [];
+            const count = updates.length;
+
+            // Build HTML list of updates with release notes
+            let html = `<p>Found ${count} update(s):</p><div style="text-align:left; margin-top:8px;">`;
+            updates.forEach((u) => {
+                html += `<div style="margin-bottom:12px;"><strong>${u.name}</strong>`;
+                if (u.system_release && u.system_release.version) {
+                    html += ` <span style="color:#2563eb;">(${u.system_release.version})</span>`;
+                }
+                html += `<div style="margin-top:6px; color:#374151; font-size:13px;">${u.description || ''}</div>`;
+                if (u.system_release && u.system_release.release_notes) {
+                    html += `<details style="margin-top:8px;"><summary style="cursor:pointer; color:#6b7280; font-size:13px">Release notes</summary><div style="margin-top:6px; white-space:pre-wrap; color:#374151; font-size:13px">${u.system_release.release_notes}</div></details>`;
+                }
+                if (u.system_release && u.system_release.requires_db_update) {
+                    html += `<div style="margin-top:8px; padding:8px; background:#fff7ed; border-radius:6px; color:#92400e; font-size:13px">This update requires database changes.</div>`;
+                }
+                html += `</div>`;
+            });
+            html += `</div>`;
+
+            const result = await Swal.fire({
+                title: 'Updates Available',
+                html,
+                width: '720px',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'View Updates',
+                cancelButtonText: 'Later',
+            });
+
+            if (result.isConfirmed) {
+                // navigate to updates page so user can apply
+                window.location.href = route('settings.updates');
+            }
+        } else {
+            await Swal.fire({
+                title: "You're all up to date!",
+                text: 'No new updates are available at this time.',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            });
+        }
+    } catch (e) {
+        console.error(e);
+        await Swal.fire({
+            title: 'Check Failed',
+            text: 'Unable to check for updates. Please try again later.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+    } finally {
+        isChecking.value = false;
+    }
+};
 
 const applyUpdates = () => {
     if (form.feature_ids.length === 0) return;
@@ -149,9 +215,10 @@ const isApplyingFeature = (featureId) => {
                     No new updates available at this time. Check back later for new features.
                 </p>
                 <div class="mt-6">
-                    <a :href="route('settings.features')" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        View Your Features
-                    </a>
+                    <button @click.prevent="checkForUpdates" :disabled="isChecking" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <span v-if="isChecking" class="mr-2">Checking...</span>
+                        <span v-else>Check Updates</span>
+                    </button>
                 </div>
             </div>
 
