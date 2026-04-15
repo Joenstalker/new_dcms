@@ -28,10 +28,16 @@ const form = useForm({
     address: '',
     medical_history: '',
     operation_history: '',
+    patient_type: '',
+    tags: [],
+    first_visit_at: '',
+    last_recall_at: '',
     initial_balance: 0,
     last_visit_time: '',
     photo: null,
 });
+
+const tagsText = ref('');
 
 // Reset form when modal opens
 watch(() => props.show, (newVal) => {
@@ -48,14 +54,20 @@ watch(() => props.show, (newVal) => {
             form.address = props.patient.address || '';
             form.medical_history = props.patient.medical_history || '';
             form.operation_history = props.patient.operation_history || '';
+            form.patient_type = props.patient.patient_type || '';
+            form.first_visit_at = props.patient.first_visit_at || '';
+            form.last_recall_at = props.patient.last_recall_at || '';
             form.initial_balance = props.patient.initial_balance || props.patient.balance || 0;
             form.last_visit_time = props.patient.last_visit_time || '';
+            form.tags = Array.isArray(props.patient.tags) ? [...props.patient.tags] : [];
             form.photo = null;
+            tagsText.value = form.tags.join(', ');
             
             photoPreview.value = props.patient.photo_url || null;
         } else {
             form.reset();
             photoPreview.value = null;
+            tagsText.value = '';
         }
         form.clearErrors();
     }
@@ -67,6 +79,12 @@ const close = () => {
 
 const photoPreview = ref(null);
 
+const sanitizePhoneInput = (value) => String(value ?? '').replace(/\D/g, '').slice(0, 11);
+
+const handlePatientPhoneInput = (event) => {
+    form.phone = sanitizePhoneInput(event?.target?.value);
+};
+
 const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -76,6 +94,13 @@ const handlePhotoUpload = (e) => {
 };
 
 const submit = () => {
+    form.phone = sanitizePhoneInput(form.phone);
+
+    form.tags = tagsText.value
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+
     if (props.patient) {
         // Use PUT method for updating existing patient
         form.put(`/patients/${props.patient.id}`, {
@@ -168,7 +193,7 @@ const submit = () => {
                                 <input type="file" @change="handlePhotoUpload" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" />
                             </div>
                             <p v-if="form.errors.photo" class="text-error text-[10px] font-black uppercase tracking-widest mt-1">{{ form.errors.photo }}</p>
-                            <p v-else class="text-[10px] font-bold text-base-content/40 uppercase tracking-widest text-center mt-1">Profile Photo<br><span class="text-error">* Required</span></p>
+                            <p v-else class="text-[10px] font-bold text-base-content/40 uppercase tracking-widest text-center mt-1">Profile Photo (Optional)</p>
                         </div>
 
                         <!-- Core Info -->
@@ -189,8 +214,18 @@ const submit = () => {
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div class="form-control">
                                     <label class="label"><span class="label-text text-xs font-black uppercase tracking-widest text-base-content/50">Phone Number</span></label>
-                                    <input v-model="form.phone" type="tel" placeholder="e.g. 09123456789" class="input input-bordered rounded-xl bg-base-100" />
+                                    <input
+                                        v-model="form.phone"
+                                        @input="handlePatientPhoneInput"
+                                        type="tel"
+                                        inputmode="numeric"
+                                        maxlength="11"
+                                        pattern="\d{11}"
+                                        placeholder="e.g. 09123456789"
+                                        class="input input-bordered rounded-xl bg-base-100"
+                                    />
                                     <span v-if="form.errors.phone" class="text-error text-[10px] font-black uppercase mt-1 px-1">{{ form.errors.phone }}</span>
+                                    <span v-else-if="form.phone && form.phone.length !== 11" class="text-error text-[10px] font-black uppercase mt-1 px-1">Phone must be 11 digits</span>
                                 </div>
                                 <div class="form-control">
                                     <label class="label"><span class="label-text text-xs font-black uppercase tracking-widest text-base-content/50">Email Address</span></label>
@@ -223,11 +258,22 @@ const submit = () => {
                                         <option value="Other">Other</option>
                                     </select>
                                 </div>
+                                <div class="form-control">
+                                    <label class="label"><span class="label-text text-xs font-black uppercase tracking-widest text-base-content/50">Patient Type</span></label>
+                                    <select v-model="form.patient_type" class="select select-bordered rounded-xl bg-base-100">
+                                        <option value="">Auto / Unset</option>
+                                        <option value="pedia">Pedia</option>
+                                        <option value="adult">Adult</option>
+                                    </select>
+                                </div>
                                 <div class="form-control sm:col-span-2 lg:col-span-1">
                                     <label class="label"><span class="label-text text-xs font-black uppercase tracking-widest text-base-content/50">Initial Balance</span></label>
                                     <div class="relative">
-                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-base-content/40">₱</span>
-                                        <input v-model.number="form.initial_balance" type="number" step="0.01" min="0" class="input input-bordered w-full pl-8 rounded-xl bg-base-100" />
+                                        <span
+                                            class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-lg font-black leading-none text-base-content"
+                                            style="font-family: 'Segoe UI Symbol', 'Noto Sans', 'Arial Unicode MS', 'DejaVu Sans', sans-serif;"
+                                        >&#8369;</span>
+                                        <input v-model.number="form.initial_balance" type="number" step="0.01" min="0" class="input input-bordered w-full pl-9 rounded-xl bg-base-100" />
                                     </div>
                                 </div>
                             </div>
@@ -236,6 +282,48 @@ const submit = () => {
 
                     <!-- Expanded Info -->
                     <div class="space-y-4 border-t border-base-300 pt-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="form-control" style="--dp-input-padding: 0px 1rem; --dp-border-radius: 0.75rem; --dp-border-color: transparent;">
+                                <label class="label"><span class="label-text text-xs font-black uppercase tracking-widest text-base-content/50">First Visit</span></label>
+                                <VueDatePicker
+                                    v-model="form.first_visit_at"
+                                    :enable-time-picker="false"
+                                    auto-apply
+                                    format="yyyy-MM-dd"
+                                    value-format="yyyy-MM-dd"
+                                    placeholder="Select First Visit"
+                                    teleport="body"
+                                    position="bottom"
+                                    input-class-name="input input-bordered w-full rounded-xl bg-base-100 placeholder:text-base-content/50"
+                                />
+                            </div>
+                            <div class="form-control" style="--dp-input-padding: 0px 1rem; --dp-border-radius: 0.75rem; --dp-border-color: transparent;">
+                                <label class="label"><span class="label-text text-xs font-black uppercase tracking-widest text-base-content/50">Last Recall</span></label>
+                                <VueDatePicker
+                                    v-model="form.last_recall_at"
+                                    :enable-time-picker="false"
+                                    auto-apply
+                                    format="yyyy-MM-dd"
+                                    value-format="yyyy-MM-dd"
+                                    placeholder="Select Last Recall"
+                                    teleport="body"
+                                    position="bottom"
+                                    input-class-name="input input-bordered w-full rounded-xl bg-base-100 placeholder:text-base-content/50"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label"><span class="label-text text-xs font-black uppercase tracking-widest text-base-content/50">Tags</span></label>
+                            <input
+                                v-model="tagsText"
+                                type="text"
+                                placeholder="e.g. ortho, senior, high-priority"
+                                class="input input-bordered rounded-xl bg-base-100"
+                            />
+                            <p class="text-[10px] text-base-content/40 font-bold uppercase tracking-widest mt-1 px-1">Separate tags with comma</p>
+                        </div>
+
                         <div class="form-control">
                             <label class="label"><span class="label-text text-xs font-black uppercase tracking-widest text-base-content/50">Home Address</span></label>
                             <input v-model="form.address" type="text" placeholder="Full residential address" class="input input-bordered rounded-xl bg-base-100" />

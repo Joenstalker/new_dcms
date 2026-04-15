@@ -33,10 +33,16 @@ class Patient extends Model
         'gender',
         'address',
         'medical_history',
+        'operation_history',
         'allergies',
         'notes',
         'emergency_phone',
         'photo_path',
+        'patient_type',
+        'tags',
+        'first_visit_at',
+        'last_recall_at',
+        'last_visit_time',
         'balance',
         'initial_balance',
     ];
@@ -47,6 +53,9 @@ class Patient extends Model
     protected $casts = [
         'date_of_birth' => 'date',
         'last_visit_time' => 'datetime',
+        'first_visit_at' => 'date',
+        'last_recall_at' => 'date',
+        'tags' => 'array',
         'balance' => 'decimal:2',
         'initial_balance' => 'decimal:2',
     ];

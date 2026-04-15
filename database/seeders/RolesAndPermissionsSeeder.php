@@ -39,6 +39,9 @@ class RolesAndPermissionsSeeder extends Seeder
             // Treatments
             'view treatments', 'create treatments', 'edit treatments', 'delete treatments',
 
+            // Progress notes (separate RBAC controls from treatments)
+            'progress notes', 'view progress notes', 'create progress notes', 'edit progress notes', 'delete progress notes',
+
             // Medical records (booking/checklist templates)
             'view medical records', 'create medical records', 'edit medical records', 'delete medical records',
             

@@ -508,7 +508,7 @@ const menuCategories = computed(() => {
                         { name: 'Receipts', route: 'billing.index', routeParams: { tab: 'receipts' }, permissions: ['view billing'] },
                     ]
                 },
-                { name: 'Treatment Records', route: 'treatments.index', icon: 'calendar', feature: 'treatments', permissions: ['view treatments'] },
+                { name: 'Progress Notes', route: 'treatments.index', icon: 'calendar', feature: 'treatments', permissions: ['view progress notes'] },
                 { name: 'Medical Records', route: 'medical-records.index', icon: 'users', feature: 'medical_records', permissions: ['view medical records'] },
             ]
         },

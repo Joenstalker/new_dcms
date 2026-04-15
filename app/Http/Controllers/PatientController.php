@@ -6,7 +6,9 @@ use App\Events\TenantPatientChanged;
 use App\Models\Patient;
 use App\Services\TenantNotificationService;
 use App\Services\TenantStorageUsageService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
@@ -17,18 +19,101 @@ class PatientController extends Controller
     {
         $query = Patient::query();
 
-        if ($request->has('search')) {
-            $search = $request->input('search');
+        $search = trim((string) $request->input('search', ''));
+        $type = $request->input('type');
+        $year = $request->input('year');
+        $tag = $request->input('tag');
+        $sort = $request->input('sort', 'latest');
+
+        $connection = DB::connection();
+        $driver = $connection->getDriverName();
+        $visitYearExpression = $driver === 'sqlite'
+            ? "strftime('%Y', COALESCE(first_visit_at, last_visit_time, created_at))"
+            : 'YEAR(COALESCE(first_visit_at, last_visit_time, created_at))';
+
+        if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
                     ->orWhere('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%");
             });
         }
 
+        if (in_array($type, ['pedia', 'adult'], true)) {
+            $query->where('patient_type', $type);
+        }
+
+        if (!empty($year) && is_numeric($year)) {
+            $query->whereRaw($visitYearExpression . ' = ?', [(string) ((int) $year)]);
+        }
+
+        if (!empty($tag)) {
+            if ($driver === 'sqlite') {
+                $query->whereRaw('EXISTS (SELECT 1 FROM json_each(tags) WHERE json_each.value = ?)', [$tag]);
+            } else {
+                $query->whereJsonContains('tags', $tag);
+            }
+        }
+
+        switch ($sort) {
+            case 'name_asc':
+                $query->orderBy('last_name')->orderBy('first_name');
+
+                break;
+            case 'name_desc':
+                $query->orderByDesc('last_name')->orderByDesc('first_name');
+
+                break;
+            case 'first_visit_desc':
+                $query->orderByDesc('first_visit_at')->orderByDesc('created_at');
+
+                break;
+            case 'last_recall_desc':
+                $query->orderByDesc('last_recall_at')->orderByDesc('created_at');
+
+                break;
+            case 'balance_desc':
+                $query->orderByDesc('balance')->orderByDesc('created_at');
+
+                break;
+            default:
+                $query->latest();
+        }
+
+        $patients = $query->paginate(20)->withQueryString();
+
+        $availableYears = Patient::query()
+            ->selectRaw($visitYearExpression . ' as filter_year')
+            ->whereRaw($visitYearExpression . ' IS NOT NULL')
+            ->distinct()
+            ->orderByDesc('filter_year')
+            ->pluck('filter_year')
+            ->filter()
+            ->map(fn ($value) => (int) $value)
+            ->values();
+
+        $availableTags = Patient::query()
+            ->whereNotNull('tags')
+            ->pluck('tags')
+            ->flatMap(function ($tags) {
+                return is_array($tags) ? $tags : [];
+            })
+            ->map(fn ($item) => trim((string) $item))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
         return Inertia::render('Tenant/Patients/Index', [
-            'patients' => $query->latest()->get(),
-            'filters' => $request->only('search')
+            'patients' => $patients,
+            'filters' => $request->only(['search', 'type', 'year', 'tag', 'sort']),
+            'total_patients' => Patient::count(),
+            'filtered_total' => $patients->total(),
+            'available_years' => $availableYears,
+            'available_tags' => $availableTags,
         ]);
     }
 
@@ -43,17 +128,33 @@ class PatientController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'regex:/^\d{11}$/'],
             'date_of_birth' => 'nullable|date',
             'gender' => 'nullable|string',
             'address' => 'nullable|string',
             'medical_history' => 'nullable|string',
             'operation_history' => 'nullable|string',
+            'patient_type' => 'nullable|in:pedia,adult',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string|max:50',
+            'first_visit_at' => 'nullable|date',
+            'last_recall_at' => 'nullable|date',
             'balance' => 'nullable|numeric',
             'initial_balance' => 'nullable|numeric',
             'last_visit_time' => 'nullable|date',
             'photo' => 'nullable|image|max:2048',
         ]);
+
+        $validated['tags'] = collect($validated['tags'] ?? [])
+            ->map(fn ($item) => trim((string) $item))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($validated['patient_type']) && !empty($validated['date_of_birth'])) {
+            $validated['patient_type'] = Carbon::parse((string) $validated['date_of_birth'])->age < 18 ? 'pedia' : 'adult';
+        }
 
         if ($request->hasFile('photo')) {
             $file = $request->file('photo');
@@ -170,17 +271,33 @@ class PatientController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'regex:/^\d{11}$/'],
             'date_of_birth' => 'nullable|date',
             'gender' => 'nullable|string',
             'address' => 'nullable|string',
             'medical_history' => 'nullable|string',
             'operation_history' => 'nullable|string',
+            'patient_type' => 'nullable|in:pedia,adult',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string|max:50',
+            'first_visit_at' => 'nullable|date',
+            'last_recall_at' => 'nullable|date',
             'balance' => 'nullable|numeric',
             'initial_balance' => 'nullable|numeric',
             'last_visit_time' => 'nullable|date',
             'photo' => 'nullable|image|max:2048',
         ]);
+
+        $validated['tags'] = collect($validated['tags'] ?? [])
+            ->map(fn ($item) => trim((string) $item))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($validated['patient_type']) && !empty($validated['date_of_birth'])) {
+            $validated['patient_type'] = Carbon::parse((string) $validated['date_of_birth'])->age < 18 ? 'pedia' : 'adult';
+        }
 
         if ($request->hasFile('photo')) {
             // Delete old photo if exists and is a file path
@@ -253,6 +370,11 @@ class PatientController extends Controller
             'last_name' => $patient->last_name,
             'email' => $patient->email,
             'phone' => $patient->phone,
+            'address' => $patient->address,
+            'patient_type' => $patient->patient_type,
+            'tags' => $patient->tags,
+            'first_visit_at' => $patient->first_visit_at,
+            'last_recall_at' => $patient->last_recall_at,
             'last_visit_time' => $patient->last_visit_time,
             'balance' => $patient->balance,
             'photo_path' => $patient->photo_path,

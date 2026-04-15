@@ -51,7 +51,7 @@ class BookingController extends Controller
         $validated = $request->validate([
             'guest_first_name' => 'required|string|max:255',
             'guest_last_name' => 'required|string|max:255',
-            'guest_phone' => 'required|string|max:20',
+            'guest_phone' => ['required', 'regex:/^\d{11}$/'],
             'guest_email' => 'nullable|email|max:255',
             'guest_address' => 'nullable|string',
             'guest_medical_history' => 'nullable|array',
@@ -59,7 +59,7 @@ class BookingController extends Controller
             'service' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'dentist_id' => 'nullable|exists:users,id',
-            'photo' => 'required|image|max:5120', // 5MB max
+            'photo' => 'nullable|image|max:5120', // optional, 5MB max
         ]);
 
         // Generate a unique booking reference

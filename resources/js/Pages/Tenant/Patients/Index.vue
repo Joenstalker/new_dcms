@@ -1,42 +1,84 @@
 <script setup>
 import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage, Link } from '@inertiajs/vue3';
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
-import debounce from 'lodash/debounce';
 import PatientShowModal from './PatientShowModal.vue';
 import AddPatientModal from './AddPatientModal.vue';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
-    patients: Array,
+    patients: Object,
     filters: Object,
+    total_patients: Number,
+    filtered_total: Number,
+    available_years: Array,
+    available_tags: Array,
 });
 
 const primaryColor = computed(() => brandingState.primary_color);
 const tenantId = computed(() => usePage().props.tenant?.id || null);
-const livePatients = ref([...(props.patients || [])]);
+const livePatients = ref([...(props.patients?.data || [])]);
 let patientsChannel = null;
 
 watch(() => props.patients, (nextPatients) => {
-    livePatients.value = [...(nextPatients || [])];
+    livePatients.value = [...(nextPatients?.data || [])];
 }, { deep: true });
 
 const search = ref(props.filters?.search || '');
+const selectedType = ref(props.filters?.type || '');
+const selectedYear = ref(props.filters?.year || '');
+const selectedTag = ref(props.filters?.tag || '');
+const selectedSort = ref(props.filters?.sort || 'latest');
 
-// Debounced search watcher
-watch(search, debounce(function (value) {
-    router.get('/patients', { search: value }, {
+const hasActiveFilters = computed(() => {
+    return Boolean(
+        (search.value || '').trim() ||
+        selectedType.value ||
+        selectedYear.value ||
+        selectedTag.value ||
+        selectedSort.value !== 'latest'
+    );
+});
+
+const applyFilters = () => {
+    router.get(route('patients.index'), {
+        search: (search.value || '').trim() || undefined,
+        type: selectedType.value || undefined,
+        year: selectedYear.value || undefined,
+        tag: selectedTag.value || undefined,
+        sort: selectedSort.value || 'latest',
+        page: 1,
+    }, {
         preserveState: true,
-        replace: true
+        replace: true,
     });
-}, 300));
+};
+
+const clearFilters = () => {
+    search.value = '';
+    selectedType.value = '';
+    selectedYear.value = '';
+    selectedTag.value = '';
+    selectedSort.value = 'latest';
+
+    router.get(route('patients.index'), {}, {
+        preserveState: true,
+        replace: true,
+    });
+};
 
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
         year: 'numeric', month: 'short', day: 'numeric'
     });
+};
+
+const compactAddress = (address, maxLength = 58) => {
+    const text = String(address || '').trim();
+    if (!text) return 'N/A';
+    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 };
 
 onMounted(() => {
@@ -64,7 +106,10 @@ onMounted(() => {
                 return;
             }
 
-            livePatients.value = [incoming, ...livePatients.value];
+            const isFirstPage = (props.patients?.current_page || 1) === 1;
+            if (isFirstPage && !hasActiveFilters.value) {
+                livePatients.value = [incoming, ...livePatients.value].slice(0, props.patients?.per_page || 20);
+            }
         });
 });
 
@@ -131,6 +176,11 @@ const openAddModal = () => {
 const tenantLimits = computed(() => usePage().props.tenant_plan?.limits || {});
 const tenantUsage = computed(() => usePage().props.tenant_plan?.current_usage || {});
 
+const paginationLinks = computed(() => props.patients?.links || []);
+
+const totalPatients = computed(() => Number(props.total_patients || 0));
+const filteredTotal = computed(() => Number(props.filtered_total || livePatients.value.length || 0));
+
 const limitReached = computed(() => {
     const max = tenantLimits.value.max_patients;
     const current = tenantUsage.value.patients || livePatients.value.length || 0;
@@ -194,44 +244,187 @@ const checkLimitAndOpenAddModal = () => {
                 </div>
             </div>
 
-            <!-- Top Actions -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-100 p-6 rounded-2xl border border-base-300">
-                <div class="flex-1 w-full sm:max-w-md relative">
-                    <svg class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input 
-                        v-model="search" 
-                        type="text" 
-                        placeholder="Search by ID or Patient Name..." 
-                        class="input w-full pl-11 rounded-xl bg-base-200/50 border-transparent focus:border-primary focus:bg-base-100 text-sm font-medium transition-all"
-                    >
+            <!-- Top Actions + Count -->
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-base-100 p-6 rounded-2xl border border-base-300">
+                <div>
+                    <h3 class="text-sm font-black text-base-content/40 uppercase tracking-[0.2em]">Patient Registry</h3>
+                    <p class="text-sm font-bold text-base-content/70 mt-1">
+                        Showing {{ filteredTotal }} of {{ totalPatients }} patients
+                    </p>
                 </div>
-                <button 
-                    v-if="can('create patients')"
-                    @click="checkLimitAndOpenAddModal"
-                    class="btn rounded-xl border-0 text-white shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl transition-all w-full sm:w-auto text-xs font-black uppercase tracking-widest"
-                    :style="{ backgroundColor: primaryColor }"
-                >
-                    + Add Patient
-                </button>
+                <div class="flex items-center gap-3 w-full lg:w-auto">
+                    <button
+                        v-if="can('create patients')"
+                        @click="checkLimitAndOpenAddModal"
+                        class="btn rounded-xl border-0 text-white shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl transition-all w-full lg:w-auto text-xs font-black uppercase tracking-widest"
+                        :style="{ backgroundColor: primaryColor }"
+                    >
+                        + Add Patient
+                    </button>
+                </div>
             </div>
 
-            <!-- Patient List Table -->
-            <div class="bg-base-100 rounded-2xl border border-base-300 overflow-hidden shadow-sm">
-                <table class="table w-full">
+            <!-- Filter Strip -->
+            <div class="bg-base-100 p-6 rounded-2xl border border-base-300">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+                    <div class="xl:col-span-2 relative">
+                        <svg class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                            v-model="search"
+                            @keyup.enter="applyFilters"
+                            type="text"
+                            placeholder="Filter by ID, name, mobile, email"
+                            class="input w-full pl-11 rounded-xl bg-base-200/50 border-transparent focus:border-primary focus:bg-base-100 text-sm font-medium transition-all"
+                        >
+                    </div>
+
+                    <select v-model="selectedType" class="select rounded-xl bg-base-200/50 border-transparent focus:border-primary text-sm font-bold">
+                        <option value="">Patient Type</option>
+                        <option value="pedia">Pedia</option>
+                        <option value="adult">Adult</option>
+                    </select>
+
+                    <select v-model="selectedYear" class="select rounded-xl bg-base-200/50 border-transparent focus:border-primary text-sm font-bold">
+                        <option value="">Visit Year</option>
+                        <option v-for="yearOption in (available_years || [])" :key="`year-${yearOption}`" :value="String(yearOption)">
+                            {{ yearOption }}
+                        </option>
+                    </select>
+
+                    <select v-model="selectedTag" class="select rounded-xl bg-base-200/50 border-transparent focus:border-primary text-sm font-bold">
+                        <option value="">Tag</option>
+                        <option v-for="tagOption in (available_tags || [])" :key="`tag-${tagOption}`" :value="tagOption">
+                            {{ tagOption }}
+                        </option>
+                    </select>
+
+                    <select v-model="selectedSort" class="select rounded-xl bg-base-200/50 border-transparent focus:border-primary text-sm font-bold">
+                        <option value="latest">Sort: Latest</option>
+                        <option value="name_asc">Sort: Name A-Z</option>
+                        <option value="name_desc">Sort: Name Z-A</option>
+                        <option value="first_visit_desc">Sort: First Visit</option>
+                        <option value="last_recall_desc">Sort: Last Recall</option>
+                        <option value="balance_desc">Sort: Highest Balance</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-2 mt-4">
+                    <button
+                        @click="clearFilters"
+                        class="btn btn-sm btn-ghost rounded-xl text-[10px] font-black uppercase tracking-widest"
+                    >
+                        Clear
+                    </button>
+                    <button
+                        @click="applyFilters"
+                        class="btn btn-sm rounded-xl border-0 text-white text-[10px] font-black uppercase tracking-widest"
+                        :style="{ backgroundColor: primaryColor }"
+                    >
+                        Go
+                    </button>
+                </div>
+            </div>
+
+            <!-- Patient List (Responsive / No horizontal scroll) -->
+            <div class="bg-base-100 rounded-2xl border border-base-300 shadow-sm overflow-hidden">
+                <!-- Mobile / Small Tablet Cards -->
+                <div class="lg:hidden divide-y divide-base-200">
+                    <div
+                        v-for="patient in livePatients"
+                        :key="`card-${patient.id}`"
+                        class="p-4 space-y-3"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="h-11 w-11 rounded-full overflow-hidden bg-base-200 ring-2 ring-base-100 shrink-0 shadow-sm">
+                                    <img
+                                        v-if="patient.photo_url && !isPatientPhotoFailed(patient)"
+                                        :src="patient.photo_url"
+                                        class="h-full w-full object-cover"
+                                        @error="markPatientPhotoFailed(patient)"
+                                    >
+                                    <div v-else class="h-full w-full flex items-center justify-center text-base-content/20 bg-base-300">
+                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                    </div>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-black text-base-content truncate">{{ patient.first_name }} {{ patient.last_name }}</p>
+                                    <p class="text-[10px] font-black tracking-widest uppercase text-base-content/40">ID {{ patient.id }}</p>
+                                    <div class="flex items-center gap-1 mt-1">
+                                        <span v-if="patient.patient_type" class="badge badge-xs font-black uppercase tracking-widest" :class="patient.patient_type === 'pedia' ? 'badge-info' : 'badge-neutral'">
+                                            {{ patient.patient_type }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                @click="openManageModal(patient.id)"
+                                class="btn btn-xs h-7 min-h-0 px-2.5 text-[9px] font-black uppercase tracking-wide text-white shadow-sm rounded-lg border-0 shrink-0"
+                                :style="{ backgroundColor: primaryColor }"
+                            >
+                                Manage
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-base-200/40 rounded-lg px-2 py-1.5">
+                                <p class="text-[9px] font-black uppercase tracking-widest text-base-content/40">Mobile</p>
+                                <p class="font-bold text-base-content/70">{{ patient.phone || 'N/A' }}</p>
+                            </div>
+                            <div class="bg-base-200/40 rounded-lg px-2 py-1.5">
+                                <p class="text-[9px] font-black uppercase tracking-widest text-base-content/40">Balance</p>
+                                <p class="font-black" :class="patient.balance > 0 ? 'text-error' : 'text-base-content/60'">₱{{ Number(patient.balance || 0).toFixed(2) }}</p>
+                            </div>
+                            <div class="bg-base-200/40 rounded-lg px-2 py-1.5 col-span-2">
+                                <p class="text-[9px] font-black uppercase tracking-widest text-base-content/40">Address</p>
+                                <p class="font-semibold text-base-content/70 truncate">{{ compactAddress(patient.address, 48) }}</p>
+                            </div>
+                            <div class="bg-base-200/40 rounded-lg px-2 py-1.5">
+                                <p class="text-[9px] font-black uppercase tracking-widest text-base-content/40">First Visit</p>
+                                <p class="font-semibold text-base-content/70">{{ patient.first_visit_at ? formatDate(patient.first_visit_at) : (patient.last_visit_time ? formatDate(patient.last_visit_time) : 'N/A') }}</p>
+                            </div>
+                            <div class="bg-base-200/40 rounded-lg px-2 py-1.5">
+                                <p class="text-[9px] font-black uppercase tracking-widest text-base-content/40">Last Recall</p>
+                                <p class="font-semibold text-base-content/70">{{ patient.last_recall_at ? formatDate(patient.last_recall_at) : 'N/A' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="livePatients.length === 0" class="px-6 py-16 text-center">
+                        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-base-200 flex items-center justify-center">
+                            <svg class="w-8 h-8 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-sm font-black text-base-content/40 uppercase tracking-widest">No Patients Found</h3>
+                        <p class="text-xs text-base-content/30 mt-1">Try adjusting your search criteria.</p>
+                    </div>
+                </div>
+
+                <!-- Large Screens Table -->
+                <table class="hidden lg:table table-fixed w-full">
                     <thead>
                         <tr class="bg-base-200/50">
-                            <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 px-6 py-4">Patient Name</th>
-                            <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 px-6 py-4">Last Visit</th>
-                            <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 px-6 py-4 text-right">Balance</th>
-                            <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 px-6 py-4 text-center">Actions</th>
+                            <th class="w-[10%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">ID</th>
+                            <th class="w-[21%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Patient Name</th>
+                            <th class="w-[19%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Address</th>
+                            <th class="w-[12%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Mobile</th>
+                            <th class="w-[10%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">First Visit</th>
+                            <th class="hidden xl:table-cell w-[10%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Last Recall</th>
+                            <th class="w-[8%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4 text-right">Balance</th>
+                            <th class="w-[10%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4 text-center whitespace-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-base-200">
                         <tr v-for="patient in livePatients" :key="patient.id" class="hover:bg-base-200/30 transition-colors group">
+                            <td class="px-3 xl:px-5 py-5 align-middle text-xs font-black tracking-widest text-base-content/50">
+                                {{ patient.id }}
+                            </td>
+
                             <!-- Patient Details -->
-                            <td class="px-6 py-4">
+                            <td class="px-3 xl:px-5 py-5">
                                 <div class="flex items-center gap-4">
                                     <div class="h-12 w-12 rounded-full overflow-hidden bg-base-200 ring-2 ring-base-100 shrink-0 shadow-sm">
                                         <img
@@ -244,44 +437,67 @@ const checkLimitAndOpenAddModal = () => {
                                             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                                         </div>
                                     </div>
-                                    <div>
-                                        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-base-content/30 mb-0.5">
-                                            ID-{{ patient.id }}
-                                        </p>
-                                        <p class="text-sm font-black text-base-content">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-black text-base-content truncate">
                                             {{ patient.first_name }} {{ patient.last_name }}
                                         </p>
+                                        <div class="flex items-center gap-1 mt-1">
+                                            <span v-if="patient.patient_type" class="badge badge-xs font-black uppercase tracking-widest" :class="patient.patient_type === 'pedia' ? 'badge-info' : 'badge-neutral'">
+                                                {{ patient.patient_type }}
+                                            </span>
+                                            <span
+                                                v-for="tagValue in (patient.tags || []).slice(0, 2)"
+                                                :key="`p-tag-${patient.id}-${tagValue}`"
+                                                class="badge badge-xs badge-outline text-[9px] font-black"
+                                            >
+                                                {{ tagValue }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
 
-                            <!-- Last Visit -->
-                            <td class="px-6 py-4 align-middle">
-                                <span class="text-xs font-semibold text-base-content/60 bg-base-200/50 px-3 py-1.5 rounded-lg border border-base-200">
-                                    {{ patient.last_visit_time ? formatDate(patient.last_visit_time) : 'No recorded visits' }}
+                            <td class="px-3 xl:px-5 py-5 align-middle">
+                                <p class="text-xs font-semibold text-base-content/70 whitespace-normal leading-snug break-words">{{ compactAddress(patient.address, 58) }}</p>
+                            </td>
+
+                            <td class="px-3 xl:px-5 py-5 align-middle">
+                                <span class="text-xs font-semibold text-base-content/70 block whitespace-normal">{{ patient.phone || 'N/A' }}</span>
+                            </td>
+
+                            <td class="px-3 xl:px-5 py-5 align-middle">
+                                <span class="text-xs font-semibold text-base-content/70 bg-base-200/50 px-2 xl:px-3 py-1.5 rounded-lg border border-base-200 inline-block whitespace-normal">
+                                    {{ patient.first_visit_at ? formatDate(patient.first_visit_at) : (patient.last_visit_time ? formatDate(patient.last_visit_time) : 'N/A') }}
+                                </span>
+                            </td>
+
+                            <td class="hidden xl:table-cell px-3 xl:px-5 py-5 align-middle">
+                                <span class="text-xs font-semibold text-base-content/70 bg-base-200/50 px-3 py-1.5 rounded-lg border border-base-200 whitespace-normal">
+                                    {{ patient.last_recall_at ? formatDate(patient.last_recall_at) : 'N/A' }}
                                 </span>
                             </td>
 
                             <!-- Balance -->
-                            <td class="px-6 py-4 align-middle text-right">
+                            <td class="px-3 xl:px-5 py-5 align-middle text-right">
                                 <p class="text-sm font-black" :class="patient.balance > 0 ? 'text-error' : 'text-base-content/50'">
                                     ₱{{ Number(patient.balance || 0).toFixed(2) }}
                                 </p>
                             </td>
 
                             <!-- Actions -->
-                            <td class="px-6 py-4 align-middle text-center">
+                            <td class="px-3 xl:px-5 py-5 align-middle text-center whitespace-nowrap">
                                 <button 
                                     @click="openManageModal(patient.id)"
-                                    class="btn btn-sm text-[10px] font-black uppercase tracking-widest text-white shadow-sm hover:scale-[1.02] transition-transform rounded-xl border-0"
+                                    class="btn btn-xs h-7 min-h-0 px-2.5 text-[9px] font-black uppercase tracking-wide text-white shadow-sm hover:scale-[1.02] transition-transform rounded-lg border-0"
                                     :style="{ backgroundColor: primaryColor }"
                                 >
-                                    Manage
+                                    <span class="xl:hidden">Mng</span>
+                                    <span class="hidden xl:inline">Manage</span>
                                 </button>
                             </td>
                         </tr>
                         <tr v-if="livePatients.length === 0">
-                            <td colspan="4" class="px-6 py-16 text-center">
+                            <td colspan="8" class="px-6 py-16 text-center">
                                 <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-base-200 flex items-center justify-center">
                                     <svg class="w-8 h-8 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -293,6 +509,27 @@ const checkLimitAndOpenAddModal = () => {
                         </tr>
                     </tbody>
                 </table>
+
+                <div v-if="paginationLinks.length > 3" class="px-6 py-4 border-t border-base-200 bg-base-100 flex flex-wrap gap-2 justify-center md:justify-between items-center">
+                    <div class="text-xs font-bold text-base-content/50">
+                        Page {{ props.patients?.current_page || 1 }} of {{ props.patients?.last_page || 1 }}
+                    </div>
+                    <div class="join">
+                        <Link
+                            v-for="(link, i) in paginationLinks"
+                            :key="`patient-page-${i}`"
+                            :href="link.url || '#'"
+                            class="join-item btn btn-sm"
+                            :class="[
+                                link.active ? 'btn-primary text-white border-0' : 'btn-ghost',
+                                !link.url ? 'btn-disabled opacity-40 pointer-events-none' : ''
+                            ]"
+                            preserve-state
+                            preserve-scroll
+                            v-html="link.label"
+                        />
+                    </div>
+                </div>
             </div>
         </div>
 

@@ -48,6 +48,14 @@ const cameraStream = ref(null);
 const allowedPhotoTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const maxPhotoBytes = 5 * 1024 * 1024;
 
+const sanitizePhoneInput = (value) => String(value ?? '').replace(/\D/g, '').slice(0, 11);
+
+const handleGuestPhoneInput = (event) => {
+    form.guest_phone = sanitizePhoneInput(event?.target?.value);
+};
+
+const isGuestPhoneValid = computed(() => /^\d{11}$/.test(String(form.guest_phone || '')));
+
 const validatePhotoFile = (file) => {
     if (!allowedPhotoTypes.includes(file.type)) {
         return 'Please use a JPG, PNG, WEBP, or GIF image.';
@@ -239,6 +247,8 @@ const prevStep = () => {
 };
 
 const submit = () => {
+    form.guest_phone = sanitizePhoneInput(form.guest_phone);
+
     // Combine date and time
     const fullDateTime = `${form.appointment_date} ${form.appointment_time}`;
     
@@ -404,14 +414,26 @@ const timeSlots = [
                                 </div>
                                 <div>
                                     <label class="block text-sm font-bold text-gray-700 mb-2">Phone Number</label>
-                                    <input type="text" v-model="form.guest_phone" required class="w-full bg-gray-50 border-none rounded-2xl focus:ring-2 p-4 transition-all" :style="{ '--tw-ring-color': brandingColor }" placeholder="09XX XXX XXXX">
+                                    <input
+                                        type="text"
+                                        v-model="form.guest_phone"
+                                        @input="handleGuestPhoneInput"
+                                        required
+                                        inputmode="numeric"
+                                        maxlength="11"
+                                        pattern="\d{11}"
+                                        class="w-full bg-gray-50 border-none rounded-2xl focus:ring-2 p-4 transition-all"
+                                        :style="{ '--tw-ring-color': brandingColor }"
+                                        placeholder="09XX XXX XXXX"
+                                    >
+                                    <p v-if="form.guest_phone && !isGuestPhoneValid" class="mt-2 text-xs font-bold text-red-500">Phone number must be exactly 11 digits.</p>
                                 </div>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
                                 <div>
                                     <label class="block text-sm font-bold text-gray-700 mb-2">
                                         Facial Photo
-                                        <span class="text-red-500">*</span>
+                                        <span class="text-gray-400 text-xs font-semibold">(Optional)</span>
                                     </label>
                                     <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                                         <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
@@ -451,7 +473,7 @@ const timeSlots = [
                                             </button>
                                         </div>
                                     </div>
-                                    <p class="mt-2 text-xs text-gray-500">A clear facial photo is required to continue. Max size: 5MB.</p>
+                                    <p class="mt-2 text-xs text-gray-500">You may upload a facial photo if comfortable. Max size: 5MB.</p>
                                     <p v-if="photoClientError" class="mt-2 text-xs font-bold text-red-500">{{ photoClientError }}</p>
                                     <p v-if="form.errors.photo" class="mt-2 text-xs font-bold text-red-500">{{ form.errors.photo }}</p>
                                 </div>
@@ -627,7 +649,7 @@ const timeSlots = [
                             Back
                         </button>
                         <button v-if="step < 5" @click="nextStep" 
-                                :disabled="step === 1 && (!form.guest_first_name || !form.guest_last_name || !form.guest_phone || !form.photo)"
+                                :disabled="step === 1 && (!form.guest_first_name || !form.guest_last_name || !isGuestPhoneValid)"
                                 class="w-full sm:flex-1 py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50" 
                                 :style="{ backgroundColor: brandingColor }">
                             Continue

@@ -7,12 +7,15 @@ use App\Models\Treatment;
 use App\Models\Patient;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class TreatmentController extends Controller
 {
     public function index()
     {
+        Gate::authorize('view progress notes');
+
         $treatments = Treatment::with('patient', 'dentist')->latest()->get();
         $patients = Patient::select('id', 'first_name', 'last_name')->get();
 
@@ -24,6 +27,8 @@ class TreatmentController extends Controller
 
     public function store(Request $request)
     {
+        Gate::authorize('create progress notes');
+
         $validated = $request->validate([
             'patient_id' => 'required|exists:patients,id',
             'appointment_id' => 'nullable|exists:appointments,id',
@@ -43,11 +48,15 @@ class TreatmentController extends Controller
 
     public function show(Treatment $treatment)
     {
+        Gate::authorize('view progress notes');
+
         return response()->json($treatment->load('patient', 'dentist'));
     }
 
     public function update(Request $request, Treatment $treatment)
     {
+        Gate::authorize('edit progress notes');
+
         $validated = $request->validate([
             'patient_id' => 'required|exists:patients,id',
             'appointment_id' => 'nullable|exists:appointments,id',
@@ -65,6 +74,8 @@ class TreatmentController extends Controller
 
     public function destroy(Treatment $treatment)
     {
+        Gate::authorize('delete progress notes');
+
         $deletedPayload = [
             'id' => $treatment->id,
         ];

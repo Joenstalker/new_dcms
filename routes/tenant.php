@@ -171,13 +171,13 @@ Route::middleware([
             ->middleware('permission:delete appointments')
             ->name('appointments.destroy');
 
-        // Treatment records
-        Route::middleware(['permission:view treatments'])->group(function () {
+        // Progress notes (stored under treatment records)
+        Route::middleware(['permission:view progress notes'])->group(function () {
             Route::get('treatments', [TreatmentController::class, 'index'])->name('treatments.index');
-            Route::post('treatments', [TreatmentController::class, 'store'])->middleware('permission:create treatments')->name('treatments.store');
+            Route::post('treatments', [TreatmentController::class, 'store'])->middleware('permission:create progress notes')->name('treatments.store');
             Route::get('treatments/{treatment}', [TreatmentController::class, 'show'])->name('treatments.show');
-            Route::put('treatments/{treatment}', [TreatmentController::class, 'update'])->middleware('permission:edit treatments')->name('treatments.update');
-            Route::delete('treatments/{treatment}', [TreatmentController::class, 'destroy'])->middleware('permission:delete treatments')->name('treatments.destroy');
+            Route::put('treatments/{treatment}', [TreatmentController::class, 'update'])->middleware('permission:edit progress notes')->name('treatments.update');
+            Route::delete('treatments/{treatment}', [TreatmentController::class, 'destroy'])->middleware('permission:delete progress notes')->name('treatments.destroy');
         }
         );
 

@@ -24,9 +24,9 @@ watch(() => props.treatments, (nextTreatments) => {
 }, { deep: true });
 
 const permissions = computed(() => page.props.auth.user?.permissions || []);
-const canCreate = computed(() => permissions.value.includes('create treatments'));
-const canEdit = computed(() => permissions.value.includes('edit treatments'));
-const canDelete = computed(() => permissions.value.includes('delete treatments'));
+const canCreate = computed(() => permissions.value.includes('create progress notes'));
+const canEdit = computed(() => permissions.value.includes('edit progress notes'));
+const canDelete = computed(() => permissions.value.includes('delete progress notes'));
 
 // Modal states
 const showCreateModal = ref(false);
@@ -108,7 +108,7 @@ onUnmounted(() => {
     <AuthenticatedLayout>
         <template #header>
             <h2 class="text-xl font-black tracking-tight text-base-content normal-case">
-                Treatnent Management
+                Progress Notes Management
             </h2>
         </template>
 
@@ -117,7 +117,7 @@ onUnmounted(() => {
             <div class="flex justify-between items-center bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm">
                 <div>
                     <h3 class="text-sm font-black text-base-content/40 uppercase tracking-[0.2em]">Clinical Module</h3>
-                    <h2 class="text-xl font-black text-base-content uppercase tracking-tight">Treatment Records</h2>
+                    <h2 class="text-xl font-black text-base-content uppercase tracking-tight">Progress Notes</h2>
                 </div>
                 <button 
                     v-if="canCreate"
@@ -125,7 +125,7 @@ onUnmounted(() => {
                     class="btn rounded-xl border-0 text-white shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl transition-all font-black text-xs uppercase tracking-widest px-6"
                     :style="{ backgroundColor: primaryColor }"
                 >
-                    + Record Treatment
+                    + Add Progress Note
                 </button>
             </div>
 
