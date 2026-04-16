@@ -17,6 +17,7 @@ const roles = computed(() => user.value?.roles || []);
 const branding = computed(() => page.props.branding || {});
 const pendingUpdatesCount = computed(() => page.props.pending_updates_count || 0);
 const liveEnabledFeatures = ref([...(page.props.tenant?.enabled_features || [])]);
+const livePlatformLogo = ref(page.props.branding?.platform_logo || null);
 const normalizePortalConfig = (rawConfig) => {
     const config = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
     const apply_to = config.apply_to === 'specific' ? 'specific' : 'all';
@@ -46,6 +47,10 @@ watch(() => page.props.branding_computed, (newBranding) => {
     }
 }, { deep: true });
 
+watch(() => page.props.branding?.platform_logo, (logo) => {
+    livePlatformLogo.value = logo || null;
+});
+
 watch(() => page.props.tenant, (tenant) => {
     if (!tenant) return;
 
@@ -53,10 +58,14 @@ watch(() => page.props.tenant, (tenant) => {
     livePortalConfig.value = normalizePortalConfig(tenant.portal_config);
 
     brandingState.setPortalBackgroundImage(tenant.portal_background_image || null);
+    brandingState.setPortalBackgroundType(tenant.portal_background_type || 'color');
+    brandingState.setPortalBackgroundColor(tenant.portal_background_color || null);
     brandingState.setPortalBackgroundOverlayOpacity(tenant.portal_background_overlay_opacity ?? 0);
     brandingState.setUiTokens({
         ui_sidebar_text_color: tenant.ui_sidebar_text_color || null,
         ui_sidebar_text_size: tenant.ui_sidebar_text_size ?? 12,
+        ui_sidebar_background_color: tenant.ui_sidebar_background_color || null,
+        ui_subnav_background_color: tenant.ui_subnav_background_color || null,
         ui_header_title_color: tenant.ui_header_title_color || null,
         ui_header_title_size: tenant.ui_header_title_size ?? 20,
         ui_footer_text_color: tenant.ui_footer_text_color || null,
@@ -250,6 +259,8 @@ const contentBackgroundStyle = computed(() => {
 // Platform info
 const platformName = computed(() => page.props.tenant?.name || branding.value.platform_name || 'DCMS');
 const platformLogo = computed(() => {
+    if (livePlatformLogo.value) return livePlatformLogo.value;
+
     // Priority: Binary URL from shared 'branding' prop (Server-resolved)
     if (branding.value.platform_logo) return branding.value.platform_logo;
     
@@ -262,6 +273,9 @@ const platformLogo = computed(() => {
     
     // If it's a full URL (already resolved), use as-is
     if (logoFile.startsWith('http://') || logoFile.startsWith('https://')) return logoFile;
+
+    // Allow app-relative URLs like /settings/logo?key=...
+    if (logoFile.startsWith('/')) return logoFile;
 
     // Local filesystem paths
     if (logoFile.startsWith('branding/') || logoFile.startsWith('logos/')) return '/tenant-storage/' + logoFile;
@@ -351,6 +365,47 @@ onMounted(() => {
 
                 if (event?.portal_config && typeof event.portal_config === 'object') {
                     livePortalConfig.value = normalizePortalConfig(event.portal_config);
+                }
+
+                if (Object.prototype.hasOwnProperty.call(event, 'primary_color') && event.primary_color) {
+                    brandingState.setPrimaryColor(event.primary_color);
+                }
+
+                if (Object.prototype.hasOwnProperty.call(event, 'portal_background_type')) {
+                    brandingState.setPortalBackgroundType(event.portal_background_type || 'color');
+                }
+
+                if (Object.prototype.hasOwnProperty.call(event, 'portal_background_color')) {
+                    brandingState.setPortalBackgroundColor(event.portal_background_color || null);
+                }
+
+                if (Object.prototype.hasOwnProperty.call(event, 'portal_background_image')) {
+                    brandingState.setPortalBackgroundImage(event.portal_background_image || null);
+                }
+
+                if (Object.prototype.hasOwnProperty.call(event, 'portal_background_overlay_opacity')) {
+                    brandingState.setPortalBackgroundOverlayOpacity(event.portal_background_overlay_opacity ?? 0);
+                }
+
+                brandingState.setUiTokens({
+                    ui_sidebar_text_color: Object.prototype.hasOwnProperty.call(event, 'ui_sidebar_text_color') ? (event.ui_sidebar_text_color || null) : brandingState.ui_sidebar_text_color,
+                    ui_sidebar_text_size: Object.prototype.hasOwnProperty.call(event, 'ui_sidebar_text_size') ? event.ui_sidebar_text_size : brandingState.ui_sidebar_text_size,
+                    ui_sidebar_background_color: Object.prototype.hasOwnProperty.call(event, 'ui_sidebar_background_color') ? (event.ui_sidebar_background_color || null) : brandingState.ui_sidebar_background_color,
+                    ui_subnav_background_color: Object.prototype.hasOwnProperty.call(event, 'ui_subnav_background_color') ? (event.ui_subnav_background_color || null) : brandingState.ui_subnav_background_color,
+                    ui_header_title_color: Object.prototype.hasOwnProperty.call(event, 'ui_header_title_color') ? (event.ui_header_title_color || null) : brandingState.ui_header_title_color,
+                    ui_header_title_size: Object.prototype.hasOwnProperty.call(event, 'ui_header_title_size') ? event.ui_header_title_size : brandingState.ui_header_title_size,
+                    ui_footer_text_color: Object.prototype.hasOwnProperty.call(event, 'ui_footer_text_color') ? (event.ui_footer_text_color || null) : brandingState.ui_footer_text_color,
+                    ui_footer_text_size: Object.prototype.hasOwnProperty.call(event, 'ui_footer_text_size') ? event.ui_footer_text_size : brandingState.ui_footer_text_size,
+                    ui_footer_background_color: Object.prototype.hasOwnProperty.call(event, 'ui_footer_background_color') ? (event.ui_footer_background_color || null) : brandingState.ui_footer_background_color,
+                    ui_main_text_color: Object.prototype.hasOwnProperty.call(event, 'ui_main_text_color') ? (event.ui_main_text_color || null) : brandingState.ui_main_text_color,
+                    ui_main_text_size: Object.prototype.hasOwnProperty.call(event, 'ui_main_text_size') ? event.ui_main_text_size : brandingState.ui_main_text_size,
+                    ui_card_background_color: Object.prototype.hasOwnProperty.call(event, 'ui_card_background_color') ? (event.ui_card_background_color || null) : brandingState.ui_card_background_color,
+                    ui_card_border_color: Object.prototype.hasOwnProperty.call(event, 'ui_card_border_color') ? (event.ui_card_border_color || null) : brandingState.ui_card_border_color,
+                    ui_card_text_color: Object.prototype.hasOwnProperty.call(event, 'ui_card_text_color') ? (event.ui_card_text_color || null) : brandingState.ui_card_text_color,
+                });
+
+                if (Object.prototype.hasOwnProperty.call(event, 'portal_logo')) {
+                    livePlatformLogo.value = event.portal_logo || null;
                 }
             });
     }

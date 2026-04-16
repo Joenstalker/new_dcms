@@ -315,6 +315,16 @@ const goToSection = (sectionId) => {
     }
 };
 
+const applyTenantPatch = (patch = {}) => {
+    if (!tenant.value || typeof tenant.value !== 'object') return;
+
+    Object.keys(patch).forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(patch, key)) {
+            tenant.value[key] = patch[key];
+        }
+    });
+};
+
 onMounted(() => {
     if (!window.Echo || !tenant.value?.id) return;
 
@@ -333,6 +343,16 @@ onMounted(() => {
             if (Object.prototype.hasOwnProperty.call(event, 'online_booking_enabled')) {
                 onlineBookingEnabled.value = Boolean(event.online_booking_enabled);
             }
+
+            applyTenantPatch({
+                ...(Object.prototype.hasOwnProperty.call(event, 'clinic_name') ? { name: event.clinic_name || tenant.value?.name } : {}),
+                ...(Object.prototype.hasOwnProperty.call(event, 'email') ? { email: event.email || '' } : {}),
+                ...(Object.prototype.hasOwnProperty.call(event, 'phone') ? { phone: event.phone || '' } : {}),
+                ...(Object.prototype.hasOwnProperty.call(event, 'address') ? { street: event.address || '' } : {}),
+                ...(Object.prototype.hasOwnProperty.call(event, 'branding_color') ? { branding_color: event.branding_color || '#3b82f6' } : {}),
+                ...(Object.prototype.hasOwnProperty.call(event, 'font_family') ? { font_family: event.font_family || tenant.value?.font_family } : {}),
+                ...(Object.prototype.hasOwnProperty.call(event, 'logo_path') ? { logo_path: event.logo_path || null } : {}),
+            });
 
             if (event?.landing_page_config && typeof event.landing_page_config === 'object') {
                 liveLandingPageConfig.value = { ...event.landing_page_config };

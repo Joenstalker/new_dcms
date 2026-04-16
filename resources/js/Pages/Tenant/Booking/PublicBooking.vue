@@ -29,6 +29,16 @@ const handleClose = () => {
     router.visit(route('tenant.landing'));
 };
 
+const applyTenantPatch = (patch = {}) => {
+    if (!tenant.value || typeof tenant.value !== 'object') return;
+
+    Object.keys(patch).forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(patch, key)) {
+            tenant.value[key] = patch[key];
+        }
+    });
+};
+
 onMounted(() => {
     if (!window.Echo || !tenant.value?.id) return;
 
@@ -42,6 +52,14 @@ onMounted(() => {
 
     brandingChannel = window.Echo.channel(`tenant.${tenant.value.id}.branding`)
         .listen('.TenantBrandingUpdated', (event) => {
+            applyTenantPatch({
+                ...(Object.prototype.hasOwnProperty.call(event, 'clinic_name') ? { name: event.clinic_name || tenant.value?.name } : {}),
+                ...(Object.prototype.hasOwnProperty.call(event, 'branding_color') ? { branding_color: event.branding_color || tenant.value?.branding_color } : {}),
+                ...(Object.prototype.hasOwnProperty.call(event, 'font_family') ? { font_family: event.font_family || tenant.value?.font_family } : {}),
+                ...(Object.prototype.hasOwnProperty.call(event, 'logo_booking_path') ? { logo_booking_path: event.logo_booking_path || null } : {}),
+                ...(Object.prototype.hasOwnProperty.call(event, 'operating_hours') ? { operating_hours: event.operating_hours || {} } : {}),
+            });
+
             if (Object.prototype.hasOwnProperty.call(event, 'online_booking_enabled') && !Boolean(event.online_booking_enabled)) {
                 showBookingModal.value = false;
                 router.visit(route('tenant.book.create'), { replace: true, preserveScroll: true });

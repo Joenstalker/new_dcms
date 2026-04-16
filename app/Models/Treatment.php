@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -63,32 +64,50 @@ class Treatment extends Model
         'next_visit_at' => 'datetime',
     ];
 
-    public function patient()
+    /**
+     * @return BelongsTo<Patient, $this>
+     */
+    public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
     }
 
-    public function dentist()
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function dentist(): BelongsTo
     {
-        return $this->belongsTo(User::class , 'dentist_id');
+        return $this->belongsTo(User::class, 'dentist_id');
     }
 
-    public function appointment()
+    /**
+     * @return BelongsTo<Appointment, $this>
+     */
+    public function appointment(): BelongsTo
     {
         return $this->belongsTo(Appointment::class);
     }
 
-    public function service()
+    /**
+     * @return BelongsTo<Service, $this>
+     */
+    public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
     }
 
-    public function linkedTreatment()
+    /**
+     * @return BelongsTo<Treatment, $this>
+     */
+    public function linkedTreatment(): BelongsTo
     {
         return $this->belongsTo(Treatment::class, 'linked_treatment_id');
     }
 
-    public function nextVisitDentist()
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function nextVisitDentist(): BelongsTo
     {
         return $this->belongsTo(User::class, 'next_visit_dentist_id');
     }

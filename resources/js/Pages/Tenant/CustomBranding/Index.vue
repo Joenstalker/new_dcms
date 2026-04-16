@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed, watch, inject, ref } from 'vue';
+import { computed, watch, inject, ref, onMounted, onUnmounted, nextTick } from 'vue';
 import Swal from 'sweetalert2';
 
 import ClinicBranding from './Partials/ClinicBranding.vue';
@@ -147,6 +147,8 @@ watch(() => [
 
 const isSaving = ref(false);
 const hasUnsavedChanges = ref(false);
+const isApplyingRealtimeUpdate = ref(false);
+let brandingChannel = null;
 let saveTimeout = null;
 
 const autoSave = () => {
@@ -181,6 +183,8 @@ const autoSave = () => {
 };
 
 watch(() => form.data(), () => {
+    if (isApplyingRealtimeUpdate.value) return;
+
     hasUnsavedChanges.value = true;
     if (saveTimeout) clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => {
@@ -202,6 +206,66 @@ watch(() => usePage().props.flash, (flash) => {
         });
     }
 }, { immediate: true, deep: true });
+
+const applyRealtimeBranding = async (event) => {
+    isApplyingRealtimeUpdate.value = true;
+
+    if (Object.prototype.hasOwnProperty.call(event, 'clinic_name')) form.clinic_name = event.clinic_name || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'email')) form.email = event.email || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'phone')) form.phone = event.phone || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'address')) form.address = event.address || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'branding_color')) form.branding_color = event.branding_color || '#0ea5e9';
+    if (Object.prototype.hasOwnProperty.call(event, 'font_family') && event.font_family && typeof event.font_family === 'object') form.font_family = event.font_family;
+    if (Object.prototype.hasOwnProperty.call(event, 'enabled_features') && Array.isArray(event.enabled_features)) form.enabled_features = [...event.enabled_features];
+    if (Object.prototype.hasOwnProperty.call(event, 'landing_page_config') && event.landing_page_config && typeof event.landing_page_config === 'object') form.landing_page_config = { ...event.landing_page_config };
+    if (Object.prototype.hasOwnProperty.call(event, 'portal_config') && event.portal_config && typeof event.portal_config === 'object') form.portal_config = { ...event.portal_config };
+    if (Object.prototype.hasOwnProperty.call(event, 'operating_hours') && event.operating_hours && typeof event.operating_hours === 'object') form.operating_hours = { ...event.operating_hours };
+    if (Object.prototype.hasOwnProperty.call(event, 'online_booking_enabled')) form.online_booking_enabled = normalizeBoolean(event.online_booking_enabled, true);
+    if (Object.prototype.hasOwnProperty.call(event, 'sidebar_position')) form.sidebar_position = event.sidebar_position || 'left';
+    if (Object.prototype.hasOwnProperty.call(event, 'support_chat_bottom_offset')) form.support_chat_bottom_offset = Number(event.support_chat_bottom_offset ?? 56);
+    if (Object.prototype.hasOwnProperty.call(event, 'support_chat_right_offset')) form.support_chat_right_offset = Number(event.support_chat_right_offset ?? 24);
+    if (Object.prototype.hasOwnProperty.call(event, 'portal_background_overlay_opacity')) form.portal_background_overlay_opacity = Number(event.portal_background_overlay_opacity ?? 0);
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_sidebar_text_color')) form.ui_sidebar_text_color = event.ui_sidebar_text_color || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_sidebar_text_size')) form.ui_sidebar_text_size = Number(event.ui_sidebar_text_size ?? 12);
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_header_title_color')) form.ui_header_title_color = event.ui_header_title_color || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_header_title_size')) form.ui_header_title_size = Number(event.ui_header_title_size ?? 20);
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_footer_text_color')) form.ui_footer_text_color = event.ui_footer_text_color || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_footer_text_size')) form.ui_footer_text_size = Number(event.ui_footer_text_size ?? 10);
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_main_text_color')) form.ui_main_text_color = event.ui_main_text_color || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_main_text_size')) form.ui_main_text_size = Number(event.ui_main_text_size ?? 14);
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_card_background_color')) form.ui_card_background_color = event.ui_card_background_color || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_card_border_color')) form.ui_card_border_color = event.ui_card_border_color || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_card_text_color')) form.ui_card_text_color = event.ui_card_text_color || '';
+
+    if (Object.prototype.hasOwnProperty.call(event, 'primary_color') && event.primary_color) {
+        brandingState.setPrimaryColor(event.primary_color);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(event, 'portal_background_image')) {
+        brandingState.setPortalBackgroundImage(event.portal_background_image || null);
+    }
+
+    await nextTick();
+    isApplyingRealtimeUpdate.value = false;
+};
+
+onMounted(() => {
+    const tenantId = props.tenant?.id;
+    if (!window.Echo || !tenantId) return;
+
+    brandingChannel = window.Echo.channel(`tenant.${tenantId}.branding`)
+        .listen('.TenantBrandingUpdated', async (event) => {
+            await applyRealtimeBranding(event || {});
+        });
+});
+
+onUnmounted(() => {
+    const tenantId = props.tenant?.id;
+    if (window.Echo && tenantId) {
+        window.Echo.leave(`tenant.${tenantId}.branding`);
+    }
+    brandingChannel = null;
+});
 </script>
 
 <template>

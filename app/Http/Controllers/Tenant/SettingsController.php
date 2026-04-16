@@ -628,7 +628,33 @@ class SettingsController extends Controller
             }
         }
 
-        $shouldBroadcastBranding = isset($validated['enabled_features'])
+        $shouldBroadcastBranding = isset($validated['clinic_name'])
+            || isset($validated['email'])
+            || isset($validated['phone'])
+            || isset($validated['address'])
+            || isset($validated['branding_color'])
+            || isset($validated['font_family'])
+            || isset($validated['sidebar_position'])
+            || isset($validated['support_chat_bottom_offset'])
+            || isset($validated['support_chat_right_offset'])
+            || isset($validated['portal_background_type'])
+            || isset($validated['portal_background_color'])
+            || isset($validated['portal_background_overlay_opacity'])
+            || isset($validated['ui_sidebar_text_color'])
+            || isset($validated['ui_sidebar_text_size'])
+            || isset($validated['ui_sidebar_background_color'])
+            || isset($validated['ui_subnav_background_color'])
+            || isset($validated['ui_header_title_color'])
+            || isset($validated['ui_header_title_size'])
+            || isset($validated['ui_footer_text_color'])
+            || isset($validated['ui_footer_text_size'])
+            || isset($validated['ui_footer_background_color'])
+            || isset($validated['ui_main_text_color'])
+            || isset($validated['ui_main_text_size'])
+            || isset($validated['ui_card_background_color'])
+            || isset($validated['ui_card_border_color'])
+            || isset($validated['ui_card_text_color'])
+            || isset($validated['enabled_features'])
             || isset($validated['landing_page_config'])
             || isset($validated['portal_config'])
             || isset($validated['hero_title'])
@@ -638,29 +664,8 @@ class SettingsController extends Controller
             || array_key_exists('online_booking_enabled', $validated);
 
         if ($shouldBroadcastBranding) {
-            $latestBranding = TenantBrandingService::getAll();
-            $resolvedEnabledFeatures = $tenant->getResolvedEnabledFeaturesForUi($latestBranding);
-            $landingConfigPayload = $this->buildLandingConfigBroadcastPayload(
-                $latestBranding['landing_page_config'] ?? ($tenant->landing_page_config ?? [])
-            );
-
             try {
-                $resolvedPortalConfig = $this->normalizePortalConfig(
-                    is_array($latestBranding['portal_config'] ?? null)
-                        ? $latestBranding['portal_config']
-                        : (is_array($tenant->portal_config ?? null) ? $tenant->portal_config : [])
-                );
-
-                broadcast(new TenantBrandingUpdated((string) $tenant->getTenantKey(), [
-                    'enabled_features' => $resolvedEnabledFeatures,
-                    'landing_page_config' => $landingConfigPayload,
-                    'portal_config' => $resolvedPortalConfig,
-                    'hero_title' => $latestBranding['hero_title'] ?? $tenant->hero_title,
-                    'hero_subtitle' => $latestBranding['hero_subtitle'] ?? $tenant->hero_subtitle,
-                    'about_us_description' => $latestBranding['about_us_description'] ?? $tenant->about_us_description,
-                    'operating_hours' => $latestBranding['operating_hours'] ?? $tenant->getOperatingHoursWithDefaults(),
-                    'online_booking_enabled' => (bool) ($latestBranding['online_booking_enabled'] ?? $tenant->isOnlineBookingEnabled()),
-                ]));
+                $this->broadcastTenantBrandingUpdate($tenant);
             } catch (\Throwable $e) {
                 Log::warning('Tenant branding broadcast failed', [
                     'tenant_id' => (string) $tenant->getTenantKey(),
@@ -751,6 +756,18 @@ class SettingsController extends Controller
             'background_color' => is_string($config['background_color'] ?? null) ? $config['background_color'] : '#ffffff',
             'text_primary' => is_string($config['text_primary'] ?? null) ? $config['text_primary'] : '#111827',
             'text_secondary' => is_string($config['text_secondary'] ?? null) ? $config['text_secondary'] : '#4b5563',
+            'operating_hours_style' => [
+                'section_background' => is_string($config['operating_hours_style']['section_background'] ?? null) ? $config['operating_hours_style']['section_background'] : '#111827',
+                'section_title_color' => is_string($config['operating_hours_style']['section_title_color'] ?? null) ? $config['operating_hours_style']['section_title_color'] : '#ffffff',
+                'section_border_color' => is_string($config['operating_hours_style']['section_border_color'] ?? null) ? $config['operating_hours_style']['section_border_color'] : '#1f2937',
+                'card_open_background' => is_string($config['operating_hours_style']['card_open_background'] ?? null) ? $config['operating_hours_style']['card_open_background'] : '#1f2937',
+                'card_closed_background' => is_string($config['operating_hours_style']['card_closed_background'] ?? null) ? $config['operating_hours_style']['card_closed_background'] : '#111827',
+                'card_open_day_color' => is_string($config['operating_hours_style']['card_open_day_color'] ?? null) ? $config['operating_hours_style']['card_open_day_color'] : '#ffffff',
+                'card_closed_day_color' => is_string($config['operating_hours_style']['card_closed_day_color'] ?? null) ? $config['operating_hours_style']['card_closed_day_color'] : '#fca5a5',
+                'card_time_color' => is_string($config['operating_hours_style']['card_time_color'] ?? null) ? $config['operating_hours_style']['card_time_color'] : '#9ca3af',
+                'closed_label_color' => is_string($config['operating_hours_style']['closed_label_color'] ?? null) ? $config['operating_hours_style']['closed_label_color'] : '#fda4af',
+                'copyright_color' => is_string($config['operating_hours_style']['copyright_color'] ?? null) ? $config['operating_hours_style']['copyright_color'] : '#6b7280',
+            ],
             'sections' => [
                 'hero' => [
                     'active' => (bool) ($heroSection['active'] ?? true),
@@ -806,6 +823,72 @@ class SettingsController extends Controller
                 'manual_cards' => $sanitizedCards,
             ],
         ];
+    }
+
+    private function buildBrandingBroadcastPayload($tenant): array
+    {
+        $latestBranding = TenantBrandingService::getAll();
+        $resolvedEnabledFeatures = $tenant->getResolvedEnabledFeaturesForUi($latestBranding);
+        $landingConfigPayload = $this->buildLandingConfigBroadcastPayload(
+            $latestBranding['landing_page_config'] ?? ($tenant->landing_page_config ?? [])
+        );
+
+        $resolvedPortalConfig = $this->normalizePortalConfig(
+            is_array($latestBranding['portal_config'] ?? null)
+                ? $latestBranding['portal_config']
+                : (is_array($tenant->portal_config ?? null) ? $tenant->portal_config : [])
+        );
+
+        return [
+            'clinic_name' => $latestBranding['clinic_name'] ?? $tenant->name,
+            'email' => $latestBranding['clinic_email'] ?? $tenant->email,
+            'phone' => $latestBranding['clinic_phone'] ?? $tenant->phone,
+            'address' => $latestBranding['clinic_address'] ?? $tenant->street,
+            'primary_color' => $latestBranding['primary_color'] ?? ($tenant->branding_color ?: '#0ea5e9'),
+            'branding_color' => $latestBranding['primary_color'] ?? ($tenant->branding_color ?: '#0ea5e9'),
+            'font_family' => $latestBranding['font_family'] ?? $tenant->font_family,
+            'sidebar_position' => $latestBranding['sidebar_position'] ?? $tenant->sidebar_position,
+            'support_chat_bottom_offset' => (int) ($latestBranding['support_chat_bottom_offset'] ?? $tenant->support_chat_bottom_offset ?? 56),
+            'support_chat_right_offset' => (int) ($latestBranding['support_chat_right_offset'] ?? $tenant->support_chat_right_offset ?? 24),
+            'portal_background_type' => $latestBranding['portal_background_type'] ?? ($tenant->portal_background_type ?: 'color'),
+            'portal_background_color' => $latestBranding['portal_background_color'] ?? ($tenant->portal_background_color ?: null),
+            'portal_background_image' => $latestBranding['portal_background_image'] ?? ($tenant->portal_background_image ?: null),
+            'portal_background_overlay_opacity' => (int) ($latestBranding['portal_background_overlay_opacity'] ?? $tenant->portal_background_overlay_opacity ?? 0),
+            'ui_sidebar_text_color' => $latestBranding['ui_sidebar_text_color'] ?? ($tenant->ui_sidebar_text_color ?: null),
+            'ui_sidebar_text_size' => (int) ($latestBranding['ui_sidebar_text_size'] ?? $tenant->ui_sidebar_text_size ?? 12),
+            'ui_sidebar_background_color' => $latestBranding['ui_sidebar_background_color'] ?? ($tenant->ui_sidebar_background_color ?: null),
+            'ui_subnav_background_color' => $latestBranding['ui_subnav_background_color'] ?? ($tenant->ui_subnav_background_color ?: null),
+            'ui_header_title_color' => $latestBranding['ui_header_title_color'] ?? ($tenant->ui_header_title_color ?: null),
+            'ui_header_title_size' => (int) ($latestBranding['ui_header_title_size'] ?? $tenant->ui_header_title_size ?? 20),
+            'ui_footer_text_color' => $latestBranding['ui_footer_text_color'] ?? ($tenant->ui_footer_text_color ?: null),
+            'ui_footer_text_size' => (int) ($latestBranding['ui_footer_text_size'] ?? $tenant->ui_footer_text_size ?? 10),
+            'ui_footer_background_color' => $latestBranding['ui_footer_background_color'] ?? ($tenant->ui_footer_background_color ?: null),
+            'ui_main_text_color' => $latestBranding['ui_main_text_color'] ?? ($tenant->ui_main_text_color ?: null),
+            'ui_main_text_size' => (int) ($latestBranding['ui_main_text_size'] ?? $tenant->ui_main_text_size ?? 14),
+            'ui_card_background_color' => $latestBranding['ui_card_background_color'] ?? ($tenant->ui_card_background_color ?: null),
+            'ui_card_border_color' => $latestBranding['ui_card_border_color'] ?? ($tenant->ui_card_border_color ?: null),
+            'ui_card_text_color' => $latestBranding['ui_card_text_color'] ?? ($tenant->ui_card_text_color ?: null),
+            'enabled_features' => $resolvedEnabledFeatures,
+            'landing_page_config' => $landingConfigPayload,
+            'portal_config' => $resolvedPortalConfig,
+            'hero_title' => $latestBranding['hero_title'] ?? $tenant->hero_title,
+            'hero_subtitle' => $latestBranding['hero_subtitle'] ?? $tenant->hero_subtitle,
+            'about_us_description' => $latestBranding['about_us_description'] ?? $tenant->about_us_description,
+            'operating_hours' => $latestBranding['operating_hours'] ?? $tenant->getOperatingHoursWithDefaults(),
+            'online_booking_enabled' => (bool) ($latestBranding['online_booking_enabled'] ?? $tenant->isOnlineBookingEnabled()),
+            'logo_path' => $latestBranding['logo_base64'] ?? null,
+            'logo_login_path' => $latestBranding['logo_login_base64'] ?? null,
+            'logo_booking_path' => $latestBranding['logo_booking_base64'] ?? null,
+            'portal_logo' => $latestBranding['logo_base64'] ?? null,
+        ];
+    }
+
+    private function broadcastTenantBrandingUpdate($tenant): void
+    {
+        broadcast(new TenantBrandingUpdated(
+            (string) $tenant->getTenantKey(),
+            $this->buildBrandingBroadcastPayload($tenant)
+        ));
     }
 
     /**
@@ -909,6 +992,16 @@ class SettingsController extends Controller
             }
         }
 
+        try {
+            $this->broadcastTenantBrandingUpdate($tenant->fresh());
+        } catch (\Throwable $e) {
+            Log::warning('Tenant branding broadcast failed after logo upload', [
+                'tenant_id' => (string) $tenant->getTenantKey(),
+                'field' => $field,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'url' => route('settings.logo', ['key' => $storageKey]).'?v='.time(),
@@ -963,6 +1056,16 @@ class SettingsController extends Controller
                 DB::connection('central')->table('tenants')
                     ->where('id', $tenant->id)
                     ->update([$modelField => null]);
+            }
+
+            try {
+                $this->broadcastTenantBrandingUpdate($tenant->fresh());
+            } catch (\Throwable $e) {
+                Log::warning('Tenant branding broadcast failed after logo delete', [
+                    'tenant_id' => (string) $tenant->getTenantKey(),
+                    'field' => $field,
+                    'error' => $e->getMessage(),
+                ]);
             }
         } catch (\Exception $e) {
             // Ignore if row doesn't exist
