@@ -156,6 +156,18 @@ const landingConfig = computed(() => {
         sections: mergedSections,
         text_primary: config.text_primary || '#111827',
         text_secondary: config.text_secondary || '#4b5563',
+        operating_hours_style: {
+            section_background: config.operating_hours_style?.section_background || '#111827',
+            section_title_color: config.operating_hours_style?.section_title_color || '#ffffff',
+            section_border_color: config.operating_hours_style?.section_border_color || '#1f2937',
+            card_open_background: config.operating_hours_style?.card_open_background || '#1f2937',
+            card_closed_background: config.operating_hours_style?.card_closed_background || '#111827',
+            card_open_day_color: config.operating_hours_style?.card_open_day_color || '#ffffff',
+            card_closed_day_color: config.operating_hours_style?.card_closed_day_color || '#fca5a5',
+            card_time_color: config.operating_hours_style?.card_time_color || '#9ca3af',
+            closed_label_color: config.operating_hours_style?.closed_label_color || '#fda4af',
+            copyright_color: config.operating_hours_style?.copyright_color || '#6b7280',
+        },
     };
 });
 
@@ -372,9 +384,38 @@ const dayLabels = {
     thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun'
 };
 
-const hasOperatingHours = computed(() => {
-    return liveOperatingHours.value && Object.keys(liveOperatingHours.value).length > 0;
+const normalizeEnabled = (value, fallback = false) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+        if (['0', 'false', 'no', 'off', ''].includes(normalized)) return false;
+    }
+    return fallback;
+};
+
+const operatingDayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+const orderedOperatingHours = computed(() => {
+    const source = liveOperatingHours.value && typeof liveOperatingHours.value === 'object'
+        ? liveOperatingHours.value
+        : {};
+
+    return operatingDayOrder.map((day) => {
+        const schedule = source[day] || {};
+        const enabled = normalizeEnabled(schedule.enabled, !['saturday', 'sunday'].includes(day));
+
+        return {
+            day,
+            enabled,
+            open: schedule.open || '08:00',
+            close: schedule.close || '17:00',
+        };
+    });
 });
+
+const operatingHoursDesign = computed(() => landingConfig.value.operating_hours_style || {});
 </script>
 
 <template>
@@ -611,61 +652,29 @@ const hasOperatingHours = computed(() => {
         </section>
 
         <!-- Footer / Contact -->
-        <footer id="contact" class="bg-gray-900 text-white py-20">
+        <footer id="contact" class="py-20" :style="{ backgroundColor: operatingHoursDesign.section_background }">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-                    <div class="lg:col-span-2">
-                        <h2 class="text-3xl font-black mb-6">{{ tenant.name }}</h2>
-                        <p class="text-gray-400 max-w-sm mb-8">
-                            Your health and smile are our top priorities. Join our community of happy patients today.
-                        </p>
-                    </div>
-                    <div>
-                        <h4 class="text-lg font-bold mb-6">Contact Us</h4>
-                        <ul class="space-y-4 text-gray-400">
-                            <li class="flex items-start gap-3">
-                                <span class="text-lg">📍</span>
-                                <span>{{ formattedAddress }}</span>
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <span class="text-lg">📞</span>
-                                <span>{{ tenant.phone || '(Contact Not Provided)' }}</span>
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <span class="text-lg">✉️</span>
-                                <span>{{ tenant.email || '(Email Not Provided)' }}</span>
-                            </li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 class="text-lg font-bold mb-6">Quick Links</h4>
-                        <ul class="space-y-4 text-gray-400">
-                            <li><button @click="openBookingFlow" class="hover:text-white transition-colors">Book Now</button></li>
-                           <li><button @click="showLoginModal = true" class="hover:text-white transition-colors">Login</button></li>
-                        </ul>
-                    </div>
-                </div>
-            <div class="border-t border-gray-800 pt-8">
+                <div class="pt-8" :style="{ borderTop: `1px solid ${operatingHoursDesign.section_border_color}` }">
                     <!-- Operating Hours -->
-                    <div v-if="hasOperatingHours" class="mb-8">
-                        <h4 class="text-lg font-bold mb-4">Operating Hours</h4>
+                    <div class="mb-8">
+                        <h4 class="text-lg font-bold mb-4" :style="{ color: operatingHoursDesign.section_title_color }">Operating Hours</h4>
                         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                             <div 
-                                v-for="(schedule, day) in liveOperatingHours" 
-                                :key="day"
+                                v-for="schedule in orderedOperatingHours" 
+                                :key="schedule.day"
                                 class="text-center p-3 rounded-xl"
-                                :class="schedule.enabled ? 'bg-gray-800' : 'bg-gray-800/30'"
+                                :style="{ backgroundColor: schedule.enabled ? operatingHoursDesign.card_open_background : operatingHoursDesign.card_closed_background }"
                             >
-                                <p class="text-xs font-bold uppercase tracking-wider mb-1" :class="schedule.enabled ? 'text-white' : 'text-gray-600'">{{ dayLabels[day] || day }}</p>
-                                <p v-if="schedule.enabled" class="text-[10px] text-gray-400">
+                                <p class="text-xs font-bold uppercase tracking-wider mb-1" :style="{ color: schedule.enabled ? operatingHoursDesign.card_open_day_color : operatingHoursDesign.card_closed_day_color }">{{ dayLabels[schedule.day] || schedule.day }}</p>
+                                <p v-if="schedule.enabled" class="text-[10px]" :style="{ color: operatingHoursDesign.card_time_color }">
                                     {{ formatTime(schedule.open) }}<br>{{ formatTime(schedule.close) }}
                                 </p>
-                                <p v-else class="text-[10px] text-gray-600">Closed</p>
+                                <p v-else class="text-[10px] font-black uppercase tracking-wider" :style="{ color: operatingHoursDesign.closed_label_color }">Closed</p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
+                    <div class="flex flex-col md:flex-row justify-between items-center text-sm" :style="{ color: operatingHoursDesign.copyright_color }">
                         <p>&copy; 2026 {{ tenant.name }}. All rights reserved.</p>
                     </div>
                 </div>

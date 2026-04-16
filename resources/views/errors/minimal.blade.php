@@ -44,9 +44,9 @@
             }
         </style>
     </head>
-    <body class="antialiased min-h-screen flex items-center justify-center p-4 sm:p-6">
+    <body class="antialiased flex items-center justify-center p-3 sm:p-4">
         <div
-            class="max-w-md w-full animate-fade-in animate-zoom-in"
+            class="max-w-sm w-full animate-fade-in animate-zoom-in"
             role="alertdialog"
             aria-labelledby="error-code"
             aria-describedby="error-message"
@@ -66,14 +66,14 @@
                     </div>
                 </div>
 
-                <p id="error-message" class="text-slate-800 text-base sm:text-lg font-medium leading-relaxed mb-8 max-w-sm mx-auto">
+                <p id="error-message" class="text-slate-800 text-sm sm:text-base font-medium leading-relaxed mb-6 max-w-xs mx-auto">
                     @yield('message')
                 </p>
 
                 <button
                     type="button"
                     id="error-ok-btn"
-                    class="w-full max-w-sm mx-auto rounded-2xl py-3.5 px-6 font-bold text-base text-white bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 shadow-lg shadow-red-600/30 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                    class="w-full max-w-xs mx-auto rounded-xl py-3 px-5 font-bold text-sm text-white bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 shadow-lg shadow-red-600/30 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
                 >
                     {{ __('Ok') }}
                 </button>
@@ -83,6 +83,17 @@
         <script>
             (function () {
                 function dismissAppError() {
+                    if (window.parent && window.parent !== window) {
+                        try {
+                            window.parent.postMessage({ type: 'dcms:error-dismiss' }, window.location.origin);
+                        } catch (e) {}
+
+                        try {
+                            window.parent.history.back();
+                            return;
+                        } catch (e) {}
+                    }
+
                     if (window.history.length > 1) {
                         window.history.back();
                         return;

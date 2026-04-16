@@ -27,10 +27,40 @@ class Treatment extends Model
         'patient_id',
         'dentist_id',
         'appointment_id',
+        'service_id',
         'diagnosis',
         'procedure',
         'notes',
         'cost',
+        'payment_account',
+        'discount',
+        'total_amount_due',
+        'amount_paid',
+        'is_last_visit',
+        'linked_treatment_id',
+        'commission_deductions',
+        'commission_percentage',
+        'commission_net',
+        'commission_use_percentage',
+        'schedule_next_visit',
+        'next_visit_at',
+        'next_visit_procedure',
+        'next_visit_dentist_id',
+        'next_visit_remarks',
+    ];
+
+    protected $casts = [
+        'cost' => 'decimal:2',
+        'discount' => 'decimal:2',
+        'total_amount_due' => 'decimal:2',
+        'amount_paid' => 'decimal:2',
+        'commission_deductions' => 'decimal:2',
+        'commission_percentage' => 'decimal:2',
+        'commission_net' => 'decimal:2',
+        'is_last_visit' => 'boolean',
+        'commission_use_percentage' => 'boolean',
+        'schedule_next_visit' => 'boolean',
+        'next_visit_at' => 'datetime',
     ];
 
     public function patient()
@@ -46,5 +76,20 @@ class Treatment extends Model
     public function appointment()
     {
         return $this->belongsTo(Appointment::class);
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
+    }
+
+    public function linkedTreatment()
+    {
+        return $this->belongsTo(Treatment::class, 'linked_treatment_id');
+    }
+
+    public function nextVisitDentist()
+    {
+        return $this->belongsTo(User::class, 'next_visit_dentist_id');
     }
 }

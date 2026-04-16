@@ -10,6 +10,10 @@ import Swal from 'sweetalert2';
 const props = defineProps({
     show: Boolean,
     treatment: Object,
+    renderInPlace: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const emit = defineEmits(['close']);
@@ -42,7 +46,7 @@ const close = () => {
 </script>
 
 <template>
-    <Modal :show="show" @close="close" maxWidth="md">
+    <Modal :show="show" @close="close" maxWidth="md" :teleport-to-body="!renderInPlace">
         <div class="p-6">
             <h2 class="text-lg font-black text-base-content uppercase tracking-tight">
                 Delete Treatment Record

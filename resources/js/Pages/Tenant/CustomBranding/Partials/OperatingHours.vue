@@ -18,18 +18,49 @@ const days = [
     { key: 'sunday', label: 'Sunday', short: 'Sun' },
 ];
 
+const normalizeEnabled = (value, fallback = false) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+        if (['0', 'false', 'no', 'off', ''].includes(normalized)) return false;
+    }
+    return fallback;
+};
+
+const isDayEnabled = (dayKey) => {
+    const fallback = !['saturday', 'sunday'].includes(dayKey);
+    return normalizeEnabled(props.form.operating_hours?.[dayKey]?.enabled, fallback);
+};
+
 // Ensure operating_hours data structure exists
 const initHours = () => {
     if (!props.form.operating_hours) {
         props.form.operating_hours = {};
     }
     days.forEach(day => {
-        if (!props.form.operating_hours[day.key]) {
+        const fallbackEnabled = !['saturday', 'sunday'].includes(day.key);
+        if (!props.form.operating_hours[day.key] || typeof props.form.operating_hours[day.key] !== 'object') {
             props.form.operating_hours[day.key] = {
-                enabled: !['saturday', 'sunday'].includes(day.key),
+                enabled: fallbackEnabled,
                 open: '08:00',
                 close: '17:00'
             };
+            return;
+        }
+
+        props.form.operating_hours[day.key].enabled = normalizeEnabled(
+            props.form.operating_hours[day.key].enabled,
+            fallbackEnabled
+        );
+
+        if (!props.form.operating_hours[day.key].open) {
+            props.form.operating_hours[day.key].open = '08:00';
+        }
+
+        if (!props.form.operating_hours[day.key].close) {
+            props.form.operating_hours[day.key].close = '17:00';
         }
     });
 };
@@ -55,7 +86,7 @@ const todayKey = computed(() => {
 
 const todaySchedule = computed(() => {
     const schedule = props.form.operating_hours?.[todayKey.value];
-    if (!schedule || !schedule.enabled) return null;
+    if (!schedule || !normalizeEnabled(schedule.enabled, false)) return null;
     return schedule;
 });
 
@@ -76,7 +107,7 @@ const formatTime = (time) => {
 };
 
 const openDaysCount = computed(() => {
-    return days.filter(d => props.form.operating_hours?.[d.key]?.enabled).length;
+    return days.filter(d => isDayEnabled(d.key)).length;
 });
 </script>
 
@@ -128,7 +159,7 @@ const openDaysCount = computed(() => {
                 v-for="day in days" 
                 :key="day.key"
                 class="bg-base-100 rounded-2xl border border-base-300 p-5 transition-all"
-                :class="form.operating_hours[day.key].enabled ? 'shadow-sm' : 'opacity-60'"
+                :class="isDayEnabled(day.key) ? 'shadow-sm' : 'opacity-60'"
             >
                 <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                     <!-- Day Name & Toggle -->
@@ -136,24 +167,24 @@ const openDaysCount = computed(() => {
                         <div class="flex items-center gap-3">
                             <div 
                                 class="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black transition-colors"
-                                :class="form.operating_hours[day.key].enabled 
+                                :class="isDayEnabled(day.key) 
                                     ? 'bg-primary/10 text-primary' 
                                     : 'bg-base-200 text-base-content/30'"
                             >
                                 {{ day.short }}
                             </div>
-                            <span class="font-bold text-sm hidden sm:block" :class="form.operating_hours[day.key].enabled ? 'text-base-content' : 'text-base-content/40'">{{ day.label }}</span>
+                            <span class="font-bold text-sm hidden sm:block" :class="isDayEnabled(day.key) ? 'text-base-content' : 'text-base-content/40'">{{ day.label }}</span>
                         </div>
                         <input 
                             type="checkbox" 
                             v-model="form.operating_hours[day.key].enabled" 
-                            class="toggle toggle-primary toggle-sm"
+                            class="toggle toggle-sm operating-hours-toggle"
                         >
                     </div>
 
                     <!-- Time Inputs -->
                     <div 
-                        v-if="form.operating_hours[day.key].enabled" 
+                        v-if="isDayEnabled(day.key)" 
                         class="flex items-center gap-3 flex-1"
                     >
                         <div class="form-control flex-1">
@@ -210,3 +241,17 @@ const openDaysCount = computed(() => {
         </div>
     </div>
 </template>
+
+<style scoped>
+.operating-hours-toggle {
+    border-color: #ef4444;
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.operating-hours-toggle:checked {
+    border-color: #16a34a;
+    background-color: #22c55e;
+    color: #ffffff;
+}
+</style>

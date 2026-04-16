@@ -547,6 +547,8 @@ const permissionGroups = computed(() => {
         'appointments': 'Appointments Module',
         'billing': 'Billing & POS Module',
         'treatments': 'Treatment Records Module',
+        'progress notes': 'Progress Notes Module',
+        'progress note': 'Progress Notes Module',
         'medical records': 'Medical Records Module',
         'services': 'Service & Pricing Module',
         'staff': 'Staff Management Module',

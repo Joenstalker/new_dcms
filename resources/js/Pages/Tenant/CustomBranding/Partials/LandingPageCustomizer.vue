@@ -49,6 +49,29 @@ const initConfig = () => {
     if (!props.form.landing_page_config.text_secondary) {
         props.form.landing_page_config.text_secondary = '#4b5563';
     }
+
+    if (!props.form.landing_page_config.operating_hours_style || typeof props.form.landing_page_config.operating_hours_style !== 'object') {
+        props.form.landing_page_config.operating_hours_style = {};
+    }
+
+    const operatingHoursDefaults = {
+        section_background: '#111827',
+        section_title_color: '#ffffff',
+        section_border_color: '#1f2937',
+        card_open_background: '#1f2937',
+        card_closed_background: '#111827',
+        card_open_day_color: '#ffffff',
+        card_closed_day_color: '#fca5a5',
+        card_time_color: '#9ca3af',
+        closed_label_color: '#fda4af',
+        copyright_color: '#6b7280',
+    };
+
+    Object.entries(operatingHoursDefaults).forEach(([key, value]) => {
+        if (!props.form.landing_page_config.operating_hours_style[key]) {
+            props.form.landing_page_config.operating_hours_style[key] = value;
+        }
+    });
     
     const defaultsBySection = {
         hero: {
@@ -548,6 +571,91 @@ const getSectionBackgroundPreviewUrl = (section) => {
                         </div>
                     </div>
                     <p class="mt-4 text-[9px] font-black uppercase tracking-widest opacity-30 text-center">Live Contrast Preview</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="space-y-6 pt-6 border-t border-base-200">
+            <h4 class="text-xs font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-primary"></span>
+                Footer Operating Hours Designer
+            </h4>
+
+            <div class="p-6 bg-base-100 rounded-3xl border border-base-300 space-y-5 shadow-sm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Footer Background</span></label>
+                        <div class="flex items-center gap-3 bg-base-200 p-2 rounded-xl border border-base-300">
+                            <input type="color" v-model="form.landing_page_config.operating_hours_style.section_background" class="w-8 h-8 rounded border-none bg-transparent" />
+                            <input type="text" v-model="form.landing_page_config.operating_hours_style.section_background" class="input input-xs border-none bg-transparent font-mono" />
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Section Title Color</span></label>
+                        <div class="flex items-center gap-3 bg-base-200 p-2 rounded-xl border border-base-300">
+                            <input type="color" v-model="form.landing_page_config.operating_hours_style.section_title_color" class="w-8 h-8 rounded border-none bg-transparent" />
+                            <input type="text" v-model="form.landing_page_config.operating_hours_style.section_title_color" class="input input-xs border-none bg-transparent font-mono" />
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Top Border Color</span></label>
+                        <div class="flex items-center gap-3 bg-base-200 p-2 rounded-xl border border-base-300">
+                            <input type="color" v-model="form.landing_page_config.operating_hours_style.section_border_color" class="w-8 h-8 rounded border-none bg-transparent" />
+                            <input type="text" v-model="form.landing_page_config.operating_hours_style.section_border_color" class="input input-xs border-none bg-transparent font-mono" />
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Copyright Text Color</span></label>
+                        <div class="flex items-center gap-3 bg-base-200 p-2 rounded-xl border border-base-300">
+                            <input type="color" v-model="form.landing_page_config.operating_hours_style.copyright_color" class="w-8 h-8 rounded border-none bg-transparent" />
+                            <input type="text" v-model="form.landing_page_config.operating_hours_style.copyright_color" class="input input-xs border-none bg-transparent font-mono" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Open Day Card Background</span></label>
+                        <div class="flex items-center gap-3 bg-base-200 p-2 rounded-xl border border-base-300">
+                            <input type="color" v-model="form.landing_page_config.operating_hours_style.card_open_background" class="w-8 h-8 rounded border-none bg-transparent" />
+                            <input type="text" v-model="form.landing_page_config.operating_hours_style.card_open_background" class="input input-xs border-none bg-transparent font-mono" />
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Closed Day Card Background</span></label>
+                        <div class="flex items-center gap-3 bg-base-200 p-2 rounded-xl border border-base-300">
+                            <input type="color" v-model="form.landing_page_config.operating_hours_style.card_closed_background" class="w-8 h-8 rounded border-none bg-transparent" />
+                            <input type="text" v-model="form.landing_page_config.operating_hours_style.card_closed_background" class="input input-xs border-none bg-transparent font-mono" />
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Open Day Label Color</span></label>
+                        <div class="flex items-center gap-3 bg-base-200 p-2 rounded-xl border border-base-300">
+                            <input type="color" v-model="form.landing_page_config.operating_hours_style.card_open_day_color" class="w-8 h-8 rounded border-none bg-transparent" />
+                            <input type="text" v-model="form.landing_page_config.operating_hours_style.card_open_day_color" class="input input-xs border-none bg-transparent font-mono" />
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Closed Day Label Color</span></label>
+                        <div class="flex items-center gap-3 bg-base-200 p-2 rounded-xl border border-base-300">
+                            <input type="color" v-model="form.landing_page_config.operating_hours_style.card_closed_day_color" class="w-8 h-8 rounded border-none bg-transparent" />
+                            <input type="text" v-model="form.landing_page_config.operating_hours_style.card_closed_day_color" class="input input-xs border-none bg-transparent font-mono" />
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Open Time Text Color</span></label>
+                        <div class="flex items-center gap-3 bg-base-200 p-2 rounded-xl border border-base-300">
+                            <input type="color" v-model="form.landing_page_config.operating_hours_style.card_time_color" class="w-8 h-8 rounded border-none bg-transparent" />
+                            <input type="text" v-model="form.landing_page_config.operating_hours_style.card_time_color" class="input input-xs border-none bg-transparent font-mono" />
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-bold text-[9px] uppercase tracking-widest opacity-40">Closed Badge Color</span></label>
+                        <div class="flex items-center gap-3 bg-base-200 p-2 rounded-xl border border-base-300">
+                            <input type="color" v-model="form.landing_page_config.operating_hours_style.closed_label_color" class="w-8 h-8 rounded border-none bg-transparent" />
+                            <input type="text" v-model="form.landing_page_config.operating_hours_style.closed_label_color" class="input input-xs border-none bg-transparent font-mono" />
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

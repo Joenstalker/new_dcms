@@ -117,6 +117,7 @@ const bubbleLayerStyle = computed(() => ({
     zIndex: isModalOpen.value ? 1 : 9999,
     pointerEvents: isModalOpen.value ? 'none' : 'auto',
     visibility: isModalOpen.value ? 'hidden' : 'visible',
+    opacity: isModalOpen.value ? 0 : 1,
 }));
 
 const syncModalState = () => {

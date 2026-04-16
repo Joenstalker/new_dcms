@@ -14,6 +14,10 @@ const props = defineProps({
     show: Boolean,
     treatment: Object,
     patients: Array,
+    renderInPlace: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const emit = defineEmits(['close']);
@@ -62,7 +66,7 @@ const close = () => {
 </script>
 
 <template>
-    <Modal :show="show" @close="close">
+    <Modal :show="show" @close="close" :teleport-to-body="!renderInPlace">
         <div class="p-6">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-black text-base-content uppercase tracking-tight">Edit Treatment</h2>

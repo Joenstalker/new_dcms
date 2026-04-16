@@ -204,13 +204,6 @@ const quickActions = computed(() => {
             allowed: hasPermission('view patients') || hasPermission('create patients') || isOwner.value,
         },
         {
-            key: 'treatment',
-            label: 'Record Treatment',
-            description: 'Update treatment records',
-            route: 'treatments.index',
-            allowed: hasPermission('view treatments') || hasPermission('create treatments') || isOwner.value,
-        },
-        {
             key: 'billing',
             label: 'Open Billing',
             description: 'Track payments and POS',

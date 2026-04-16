@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 use App\Services\TenantStorageUsageService;
 
 class BookingController extends Controller
@@ -61,6 +62,43 @@ class BookingController extends Controller
             'dentist_id' => 'nullable|exists:users,id',
             'photo' => 'nullable|image|max:5120', // optional, 5MB max
         ]);
+
+        $appointmentAt = Carbon::parse($validated['appointment_date']);
+        $dayKey = strtolower($appointmentAt->format('l'));
+        $operatingHours = tenant()?->getOperatingHoursWithDefaults() ?? [];
+        $schedule = is_array($operatingHours) ? ($operatingHours[$dayKey] ?? null) : null;
+
+        $isDayOpen = is_array($schedule) && (bool) ($schedule['enabled'] ?? false);
+        if (! $isDayOpen) {
+            return back()
+                ->withErrors([
+                    'appointment_date' => 'Selected date is outside clinic operating days.',
+                ])
+                ->withInput();
+        }
+
+        $open = (string) ($schedule['open'] ?? '');
+        $close = (string) ($schedule['close'] ?? '');
+        $hasValidWindow = preg_match('/^\d{2}:\d{2}$/', $open) === 1
+            && preg_match('/^\d{2}:\d{2}$/', $close) === 1
+            && $close > $open;
+
+        if (! $hasValidWindow) {
+            return back()
+                ->withErrors([
+                    'appointment_time' => 'Clinic operating hours are not configured correctly. Please contact the clinic.',
+                ])
+                ->withInput();
+        }
+
+        $appointmentTime = $appointmentAt->format('H:i');
+        if ($appointmentTime < $open || $appointmentTime >= $close) {
+            return back()
+                ->withErrors([
+                    'appointment_time' => 'Selected time is outside clinic operating hours.',
+                ])
+                ->withInput();
+        }
 
         // Generate a unique booking reference
         $validated['booking_reference'] = 'BK-' . strtoupper(Str::random(8));

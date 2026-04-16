@@ -11,6 +11,8 @@ import DeleteTreatment from './DeleteTreatment.vue';
 const props = defineProps({
     treatments: Array,
     patients: Array,
+    services: Array,
+    dentists: Array,
 });
 
 const page = usePage();
@@ -50,7 +52,34 @@ const openDeleteModal = (treatment) => {
     showDeleteModal.value = true;
 };
 
+const queryParams = computed(() => {
+    const raw = page.url || '';
+    const query = raw.includes('?') ? raw.split('?')[1] : '';
+    return new URLSearchParams(query);
+});
+
+const requestedAction = computed(() => queryParams.value.get('action'));
+const requestedTreatmentId = computed(() => Number(queryParams.value.get('treatment') || 0));
+const requestedPatientId = computed(() => Number(queryParams.value.get('patient_id') || 0));
+
 onMounted(() => {
+    if (requestedAction.value === 'create' && canCreate.value) {
+        showCreateModal.value = true;
+    }
+
+    if ((requestedAction.value === 'edit' || requestedAction.value === 'delete') && requestedTreatmentId.value > 0) {
+        const target = liveTreatments.value.find((item) => item.id === requestedTreatmentId.value) || null;
+        if (target) {
+            if (requestedAction.value === 'edit' && canEdit.value) {
+                openEditModal(target);
+            }
+
+            if (requestedAction.value === 'delete' && canDelete.value) {
+                openDeleteModal(target);
+            }
+        }
+    }
+
     if (!window.Echo || !tenantId.value) return;
 
     treatmentsChannel = window.Echo.private(`tenant.${tenantId.value}.treatments`)
@@ -231,6 +260,9 @@ onUnmounted(() => {
         <CreateTreatment 
             :show="showCreateModal" 
             :patients="patients" 
+            :services="services"
+            :dentists="dentists"
+            :initial-patient-id="requestedPatientId"
             @close="showCreateModal = false" 
         />
 

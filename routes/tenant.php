@@ -172,14 +172,13 @@ Route::middleware([
             ->name('appointments.destroy');
 
         // Progress notes (stored under treatment records)
-        Route::middleware(['permission:view progress notes'])->group(function () {
-            Route::get('treatments', [TreatmentController::class, 'index'])->name('treatments.index');
-            Route::post('treatments', [TreatmentController::class, 'store'])->middleware('permission:create progress notes')->name('treatments.store');
-            Route::get('treatments/{treatment}', [TreatmentController::class, 'show'])->name('treatments.show');
-            Route::put('treatments/{treatment}', [TreatmentController::class, 'update'])->middleware('permission:edit progress notes')->name('treatments.update');
-            Route::delete('treatments/{treatment}', [TreatmentController::class, 'destroy'])->middleware('permission:delete progress notes')->name('treatments.destroy');
-        }
-        );
+        // Authorization is enforced in TreatmentController with Owner override.
+        Route::get('treatments', [TreatmentController::class, 'index'])->name('treatments.index');
+        Route::get('treatments/options', [TreatmentController::class, 'options'])->name('treatments.options');
+        Route::post('treatments', [TreatmentController::class, 'store'])->name('treatments.store');
+        Route::get('treatments/{treatment}', [TreatmentController::class, 'show'])->name('treatments.show');
+        Route::put('treatments/{treatment}', [TreatmentController::class, 'update'])->name('treatments.update');
+        Route::delete('treatments/{treatment}', [TreatmentController::class, 'destroy'])->name('treatments.destroy');
 
         // Medical records (master checklist for booking and clinical intake)
         Route::middleware(['permission:view medical records'])->group(function () {

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\StaffInvitation;
 use App\Services\TenantBrandingService;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\PermissionRegistrar;
 
 class StaffController extends Controller
 {
@@ -22,7 +23,18 @@ class StaffController extends Controller
 
     public function index(Request $request)
     {
-        Permission::firstOrCreate(['name' => 'access support chat']);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        foreach ([
+            'progress notes',
+            'view progress notes',
+            'create progress notes',
+            'edit progress notes',
+            'delete progress notes',
+            'access support chat',
+        ] as $permissionName) {
+            Permission::firstOrCreate(['name' => $permissionName]);
+        }
 
         $staff = User::role(['Dentist', 'Assistant'])->with(['roles', 'permissions'])->get();
         $defaultPermissionMap = $this->resolveDefaultPermissionMap();

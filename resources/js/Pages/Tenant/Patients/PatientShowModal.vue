@@ -58,7 +58,7 @@ const tabs = [
     { id: 'dental_chart', label: 'Dental Chart' },
     { id: 'forms', label: 'Forms' },
     { id: 'appointments', label: 'Appointments' },
-    { id: 'billing', label: 'Billing & Balance' },
+    { id: 'billing', label: 'Balance' },
 ];
 
 watch(() => props.show, async (newVal) => {
