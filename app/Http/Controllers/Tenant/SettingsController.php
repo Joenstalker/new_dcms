@@ -422,6 +422,9 @@ class SettingsController extends Controller
             'enabled_features' => 'nullable|array',
             'landing_page_config' => 'nullable|array',
             'portal_config' => 'nullable|array',
+            'portal_config.apply_to' => 'nullable|in:all,specific',
+            'portal_config.selected_staff' => 'nullable|array',
+            'portal_config.selected_staff.*' => 'integer|exists:users,id',
             'operating_hours' => 'nullable|array',
             'online_booking_enabled' => 'nullable|boolean',
             'sidebar_position' => 'nullable|in:left,right',
@@ -445,6 +448,10 @@ class SettingsController extends Controller
             'ui_card_border_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'ui_card_text_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ]);
+
+        if (isset($validated['portal_config']) && is_array($validated['portal_config'])) {
+            $validated['portal_config'] = $this->normalizePortalConfig($validated['portal_config']);
+        }
 
         // Store branding settings in tenant database (Primary Source for Visuals)
         if (isset($validated['clinic_name'])) {
@@ -623,6 +630,7 @@ class SettingsController extends Controller
 
         $shouldBroadcastBranding = isset($validated['enabled_features'])
             || isset($validated['landing_page_config'])
+            || isset($validated['portal_config'])
             || isset($validated['hero_title'])
             || isset($validated['hero_subtitle'])
             || isset($validated['about_us_description'])
@@ -637,9 +645,16 @@ class SettingsController extends Controller
             );
 
             try {
+                $resolvedPortalConfig = $this->normalizePortalConfig(
+                    is_array($latestBranding['portal_config'] ?? null)
+                        ? $latestBranding['portal_config']
+                        : (is_array($tenant->portal_config ?? null) ? $tenant->portal_config : [])
+                );
+
                 broadcast(new TenantBrandingUpdated((string) $tenant->getTenantKey(), [
                     'enabled_features' => $resolvedEnabledFeatures,
                     'landing_page_config' => $landingConfigPayload,
+                    'portal_config' => $resolvedPortalConfig,
                     'hero_title' => $latestBranding['hero_title'] ?? $tenant->hero_title,
                     'hero_subtitle' => $latestBranding['hero_subtitle'] ?? $tenant->hero_subtitle,
                     'about_us_description' => $latestBranding['about_us_description'] ?? $tenant->about_us_description,
@@ -655,6 +670,30 @@ class SettingsController extends Controller
         }
 
         return redirect()->back()->with('success', 'Clinic settings updated successfully.');
+    }
+
+    private function normalizePortalConfig(array $portalConfig): array
+    {
+        $applyTo = ($portalConfig['apply_to'] ?? 'all') === 'specific' ? 'specific' : 'all';
+
+        $selectedStaff = $portalConfig['selected_staff'] ?? [];
+        if (! is_array($selectedStaff)) {
+            $selectedStaff = [];
+        }
+
+        $selectedStaff = array_values(array_unique(array_map(
+            fn ($id) => (int) $id,
+            array_filter($selectedStaff, fn ($id) => is_numeric($id))
+        )));
+
+        if ($applyTo === 'all') {
+            $selectedStaff = [];
+        }
+
+        return [
+            'apply_to' => $applyTo,
+            'selected_staff' => $selectedStaff,
+        ];
     }
 
     private function buildLandingConfigBroadcastPayload($rawConfig): array

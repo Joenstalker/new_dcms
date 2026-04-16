@@ -17,6 +17,19 @@ const roles = computed(() => user.value?.roles || []);
 const branding = computed(() => page.props.branding || {});
 const pendingUpdatesCount = computed(() => page.props.pending_updates_count || 0);
 const liveEnabledFeatures = ref([...(page.props.tenant?.enabled_features || [])]);
+const normalizePortalConfig = (rawConfig) => {
+    const config = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
+    const apply_to = config.apply_to === 'specific' ? 'specific' : 'all';
+    const selected_staff = Array.isArray(config.selected_staff)
+        ? Array.from(new Set(config.selected_staff.map((id) => String(id))))
+        : [];
+
+    return {
+        apply_to,
+        selected_staff: apply_to === 'all' ? [] : selected_staff,
+    };
+};
+const livePortalConfig = ref(normalizePortalConfig(page.props.tenant?.portal_config));
 let tenantBrandingChannel = null;
 let userAccessChannel = null;
 
@@ -37,6 +50,7 @@ watch(() => page.props.tenant, (tenant) => {
     if (!tenant) return;
 
     liveEnabledFeatures.value = [...(tenant.enabled_features || [])];
+    livePortalConfig.value = normalizePortalConfig(tenant.portal_config);
 
     brandingState.setPortalBackgroundImage(tenant.portal_background_image || null);
     brandingState.setPortalBackgroundOverlayOpacity(tenant.portal_background_overlay_opacity ?? 0);
@@ -81,12 +95,13 @@ const shouldApplyBranding = computed(() => {
     // If Admin/Owner, always apply branding
     if (roles.value.includes('Owner') || roles.value.includes('Admin')) return true;
     
-    const config = page.props.tenant?.portal_config || { apply_to: 'all', selected_staff: [] };
+    const config = livePortalConfig.value;
+    const currentUserId = user.value?.id != null ? String(user.value.id) : null;
     
     if (config.apply_to === 'all') return true;
     
     if (config.apply_to === 'specific') {
-        return (config.selected_staff || []).includes(user.value?.id);
+        return currentUserId ? (config.selected_staff || []).includes(currentUserId) : false;
     }
     
     return true; // Default to true if config is missing
@@ -332,6 +347,10 @@ onMounted(() => {
             .listen('.TenantBrandingUpdated', (event) => {
                 if (Array.isArray(event?.enabled_features)) {
                     liveEnabledFeatures.value = [...event.enabled_features];
+                }
+
+                if (event?.portal_config && typeof event.portal_config === 'object') {
+                    livePortalConfig.value = normalizePortalConfig(event.portal_config);
                 }
             });
     }

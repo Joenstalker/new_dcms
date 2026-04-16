@@ -16,12 +16,32 @@ const props = defineProps({
     }
 });
 
+const normalizePortalConfig = () => {
+    if (!props.form.portal_config || typeof props.form.portal_config !== 'object') {
+        props.form.portal_config = { apply_to: 'all', selected_staff: [] };
+    }
+
+    if (!['all', 'specific'].includes(props.form.portal_config.apply_to)) {
+        props.form.portal_config.apply_to = 'all';
+    }
+
+    if (!Array.isArray(props.form.portal_config.selected_staff)) {
+        props.form.portal_config.selected_staff = [];
+    }
+};
+
+normalizePortalConfig();
+
+const toComparableId = (id) => String(id);
+
 const isSelected = (staffId) => {
-    return props.form.portal_config.selected_staff.includes(staffId);
+    const targetId = toComparableId(staffId);
+    return props.form.portal_config.selected_staff.some((id) => toComparableId(id) === targetId);
 };
 
 const toggleStaff = (staffId) => {
-    const index = props.form.portal_config.selected_staff.indexOf(staffId);
+    const targetId = toComparableId(staffId);
+    const index = props.form.portal_config.selected_staff.findIndex((id) => toComparableId(id) === targetId);
     if (index === -1) {
         props.form.portal_config.selected_staff.push(staffId);
     } else {
@@ -36,6 +56,19 @@ const selectAll = () => {
 const clearAll = () => {
     props.form.portal_config.selected_staff = [];
 };
+
+const selectedStaffCount = computed(() => {
+    const uniqueIds = new Set(
+        props.form.portal_config.selected_staff.map((id) => toComparableId(id))
+    );
+    return uniqueIds.size;
+});
+
+const isSpecificWithNoSelection = computed(() => {
+    return props.form.portal_config.apply_to === 'specific'
+        && props.staff.length > 0
+        && selectedStaffCount.value === 0;
+});
 </script>
 
 <template>
@@ -65,7 +98,13 @@ const clearAll = () => {
                         <h5 class="font-black text-sm uppercase tracking-widest">Apply to All Staff</h5>
                         <p class="text-[10px] opacity-50 mt-1">Every staff member will see the clinic's custom branding.</p>
                     </div>
-                    <input type="radio" class="radio radio-primary" :checked="form.portal_config.apply_to === 'all'">
+                    <div
+                        class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
+                        :class="form.portal_config.apply_to === 'all' ? 'border-primary bg-primary text-white' : 'border-base-content/40 bg-base-100 text-transparent'"
+                        aria-hidden="true"
+                    >
+                        <span class="text-[11px] font-black leading-none">✓</span>
+                    </div>
                 </div>
 
                 <!-- Apply to Specific -->
@@ -81,7 +120,13 @@ const clearAll = () => {
                         <h5 class="font-black text-sm uppercase tracking-widest">Specific Selection</h5>
                         <p class="text-[10px] opacity-50 mt-1">Only selected staff members will see the custom branding suite.</p>
                     </div>
-                    <input type="radio" class="radio radio-primary" :checked="form.portal_config.apply_to === 'specific'">
+                    <div
+                        class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
+                        :class="form.portal_config.apply_to === 'specific' ? 'border-primary bg-primary text-white' : 'border-base-content/40 bg-base-100 text-transparent'"
+                        aria-hidden="true"
+                    >
+                        <span class="text-[11px] font-black leading-none">✓</span>
+                    </div>
                 </div>
             </div>
         </section>
@@ -98,6 +143,19 @@ const clearAll = () => {
                     <button type="button" @click="clearAll" class="btn btn-ghost btn-xs font-black uppercase text-[8px] tracking-widest text-error">Clear</button>
                 </div>
             </div>
+
+            <div class="flex items-center justify-between rounded-xl border border-base-300 bg-base-200/40 px-4 py-2">
+                <p class="text-[10px] font-black uppercase tracking-widest text-base-content/60">
+                    Selected Staff: {{ selectedStaffCount }}
+                </p>
+                <p class="text-[10px] text-base-content/50">
+                    Custom branding applies only to selected users.
+                </p>
+            </div>
+
+            <p v-if="isSpecificWithNoSelection" class="text-xs font-bold text-warning">
+                Specific Selection is active but no staff is selected. No staff portal will receive custom branding until you choose at least one member.
+            </p>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div 
@@ -117,7 +175,13 @@ const clearAll = () => {
                         <p class="font-bold text-xs truncate">{{ s.name }}</p>
                         <p class="text-[9px] uppercase tracking-widest opacity-40">{{ isSelected(s.id) ? 'Custom Branding Active' : 'Default Styling' }}</p>
                     </div>
-                    <input type="checkbox" :checked="isSelected(s.id)" class="checkbox checkbox-primary checkbox-sm rounded-lg">
+                    <div
+                        class="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all"
+                        :class="isSelected(s.id) ? 'border-primary bg-primary text-white' : 'border-base-content/40 bg-base-100 text-transparent'"
+                        aria-hidden="true"
+                    >
+                        <span class="text-[11px] font-black leading-none">✓</span>
+                    </div>
                 </div>
             </div>
             
