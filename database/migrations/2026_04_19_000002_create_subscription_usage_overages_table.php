@@ -17,8 +17,9 @@ return new class extends Migration
             $table->foreignId('subscription_id')->constrained('subscriptions')->cascadeOnDelete();
             $table->string('metric', 20)->index(); // storage | bandwidth
 
-            $table->timestamp('billing_period_start')->index();
-            $table->timestamp('billing_period_end')->index();
+            // Use datetime to avoid MySQL timestamp implicit default edge cases.
+            $table->dateTime('billing_period_start')->index();
+            $table->dateTime('billing_period_end')->index();
 
             $table->unsignedBigInteger('included_bytes')->default(0);
             $table->unsignedBigInteger('used_bytes')->default(0);
