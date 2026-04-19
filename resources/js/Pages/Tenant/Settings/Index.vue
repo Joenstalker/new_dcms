@@ -18,6 +18,10 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    prepaid_context: {
+        type: Object,
+        default: null,
+    },
 });
 
 const page = usePage();
@@ -67,6 +71,7 @@ const planBadge = {
 
 const paymentHistory = computed(() => props.payment_history || []);
 const usageLimits = computed(() => props.usage_limits || null);
+const prepaidContext = computed(() => props.prepaid_context || null);
 
 const usageCards = computed(() => {
     if (!usageLimits.value) return [];
@@ -247,7 +252,26 @@ const formatStatus = (status) => {
                 </div>
             </div>
 
-            <!-- ==================== DAYS REMAINING ==================== -->
+            <div v-if="prepaidContext && prepaidContext.multiplier > 1" class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <p class="text-sm font-bold text-indigo-900">Prepaid Multi-Month Boost</p>
+                        <p class="text-xs text-indigo-700 mt-1">
+                            Appointments, storage, and bandwidth limits are boosted by
+                            <strong>{{ prepaidContext.multiplier }}x</strong>
+                            <span v-if="prepaidContext.ends_at"> until {{ formatDate(prepaidContext.ends_at) }}</span>.
+                        </p>
+                    </div>
+                    <span
+                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border"
+                        :class="prepaidContext.active ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-700 border-gray-200'"
+                    >
+                        {{ prepaidContext.active ? 'Active' : 'Expired' }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- ==================== USAGE & LIMITS ==================== -->
             <div v-if="usageCards.length" class="bg-white rounded-2xl border shadow-sm overflow-hidden">
                 <div class="px-5 py-4 border-b bg-gray-50">
                     <h3 class="text-lg font-bold text-gray-900">Usage and Limits</h3>

@@ -6,12 +6,14 @@ use App\Models\Appointment;
 use App\Models\Feature;
 use App\Models\Tenant;
 use App\Models\Patient;
+use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\SystemSetting;
 use App\Models\TenantFeatureUpdate;
 use App\Models\TenantNotification;
 use App\Models\User;
 use App\Services\AppVersionService;
+use App\Services\TenantEffectiveLimitService;
 use App\Services\TenantBrandingService;
 use Detection\MobileDetect;
 use Illuminate\Http\Request;
@@ -185,6 +187,15 @@ class HandleInertiaRequests extends Middleware
                     return null;
                 }
 
+                $subscription = Subscription::query()
+                    ->where('tenant_id', (string) $tenant->getTenantKey())
+                    ->where('stripe_status', 'active')
+                    ->with('plan')
+                    ->latest()
+                    ->first();
+                $plan = $subscription?->plan;
+                $effective = app(TenantEffectiveLimitService::class);
+
                 $previewTenantId = (string) config('tenancy.preview.tenant_id', 'preview-sandbox');
                 $isPreviewTenant = (string) $tenant->getTenantKey() === $previewTenantId;
 
@@ -202,15 +213,30 @@ class HandleInertiaRequests extends Middleware
                     ],
                     'feature_requirements' => SubscriptionPlan::getFeatureRequirementMap(),
                     'limits' => [
-                        'max_users' => $isPreviewTenant ? null : $tenant->getPlanLimit('max_users'),
-                        'max_patients' => $isPreviewTenant ? null : $tenant->getPlanLimit('max_patients'),
-                        'max_appointments' => $isPreviewTenant ? null : $tenant->getPlanLimit('max_appointments'),
+                        'max_users' => $isPreviewTenant
+                            ? null
+                            : $effective->resolveEffectiveLimit($subscription, 'users', $plan?->getFeatureValue('max_users')),
+                        'max_patients' => $isPreviewTenant
+                            ? null
+                            : $effective->resolveEffectiveLimit($subscription, 'patients', $plan?->getFeatureValue('max_patients')),
+                        'max_appointments' => $isPreviewTenant
+                            ? null
+                            : $effective->resolveEffectiveLimit($subscription, 'appointments', $plan?->getFeatureValue('max_appointments')),
+                        'max_storage_mb' => $isPreviewTenant
+                            ? null
+                            : $effective->resolveEffectiveLimit($subscription, 'storage_mb', $plan?->getFeatureValue('max_storage_mb')),
+                        'max_bandwidth_mb' => $isPreviewTenant
+                            ? null
+                            : $effective->resolveEffectiveLimit($subscription, 'bandwidth_mb', $plan?->getFeatureValue('max_bandwidth_mb')),
                     ],
                     'current_usage' => [
                         'users' => User::count(),
                         'patients' => Patient::count(),
                         'appointments' => Appointment::count(),
+                        'storage_mb' => round(((int) ($tenant->storage_used_bytes ?? 0) + (int) ($tenant->db_used_bytes ?? 0)) / 1048576, 4),
+                        'bandwidth_mb' => round(((int) ($tenant->bandwidth_used_bytes ?? 0)) / 1048576, 4),
                     ],
+                    'prepaid' => $effective->getPrepaidContext($subscription),
                     // Global mapping of all feature keys to their implementation statuses
                     'global_feature_statuses' => Feature::pluck('implementation_status', 'key'),
                 ];

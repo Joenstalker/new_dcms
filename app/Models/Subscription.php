@@ -22,6 +22,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $payment_method
  * @property string|null $payment_status
  * @property Carbon|null $billing_cycle_end
+ * @property int $prepaid_months
+ * @property int $limit_multiplier
+ * @property Carbon|null $prepaid_started_at
+ * @property Carbon|null $prepaid_ends_at
  * @property-read SubscriptionPlan|null $plan
  * @property-read Tenant|null $tenant
  */
@@ -47,12 +51,20 @@ class Subscription extends Model
         'bank_transfer_enabled',
         // Billing cycle management
         'billing_cycle_end',
+        'prepaid_months',
+        'limit_multiplier',
+        'prepaid_started_at',
+        'prepaid_ends_at',
     ];
 
     protected $casts = [
         'trial_ends_at' => 'datetime',
         'ends_at' => 'datetime',
         'billing_cycle_end' => 'datetime',
+        'prepaid_started_at' => 'datetime',
+        'prepaid_ends_at' => 'datetime',
+        'prepaid_months' => 'integer',
+        'limit_multiplier' => 'integer',
         'stripe_enabled' => 'boolean',
         'gcash_enabled' => 'boolean',
         'paymaya_enabled' => 'boolean',

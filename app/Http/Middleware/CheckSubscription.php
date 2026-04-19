@@ -10,6 +10,7 @@ use App\Models\TenantFeatureUpdate;
 use App\Models\User;
 use App\Services\TenantLimitOverageService;
 use App\Services\TenantFeatureGateService;
+use App\Services\TenantEffectiveLimitService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -101,7 +102,16 @@ class CheckSubscription
             ];
 
             if (isset($limitChecks[$feature])) {
-                $max = $plan->getFeatureValue($feature);
+                $metricKeyMap = [
+                    'max_users' => 'users',
+                    'max_patients' => 'patients',
+                    'max_appointments' => 'appointments',
+                ];
+
+                $metricKey = $metricKeyMap[$feature] ?? '';
+                $baseMax = $plan->getFeatureValue($feature);
+                $max = app(TenantEffectiveLimitService::class)
+                    ->resolveEffectiveLimit($subscription, $metricKey, $baseMax);
 
                 // null/empty means unlimited
                 if ($max !== null && $max !== '') {

@@ -31,6 +31,8 @@ const isLoading = ref(false);
 const subdomainSuggestions = ref([]);
 const subdomainChecking = ref(false);
 const subdomainAvailable = ref(null);
+const emailChecking = ref(false);
+const emailAvailable = ref(null);
 /** Client or API validation: full URL, domain suffix, spaces, etc. */
 const subdomainFormatMessage = ref(null);
 
@@ -173,6 +175,20 @@ const fullAdminName = computed(() => {
     return `${form.first_name} ${form.last_name}`.trim();
 });
 
+const sanitizePhoneInput = (value) => String(value ?? '').replace(/\D/g, '').slice(0, 11);
+
+const handlePhoneInput = (event) => {
+    form.phone = sanitizePhoneInput(event?.target?.value);
+};
+
+const isPhoneValid = computed(() => /^\d{11}$/.test(form.phone));
+
+const isEmailFormatValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(form.email ?? '').trim()));
+
+const requiredStarClass = (value) => {
+    return String(value ?? '').trim().length > 0 ? 'text-gray-900' : 'text-red-500';
+};
+
 // Generate random password
 const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
@@ -187,8 +203,10 @@ const generatePassword = () => {
 const isStep1Valid = computed(() => {
     return form.first_name.length >= 2 &&
            form.last_name.length >= 2 &&
-           form.email.includes('@') &&
-           form.phone.length >= 10 &&
+           isEmailFormatValid.value &&
+           emailAvailable.value === true &&
+           !emailChecking.value &&
+           isPhoneValid.value &&
            form.street.length >= 3 &&
            form.barangay.length >= 2 &&
            form.city.length >= 2 &&
@@ -250,6 +268,73 @@ watch(() => form.clinic_name, (newVal) => {
 const debouncedCheck = debounce(() => {
     checkSubdomainAvailability();
 }, 500);
+
+const checkEmailAvailability = async () => {
+    const email = String(form.email ?? '').trim();
+    if (!isEmailFormatValid.value) {
+        emailAvailable.value = null;
+        emailChecking.value = false;
+        return;
+    }
+
+    emailChecking.value = true;
+    emailAvailable.value = null;
+
+    try {
+        const response = await fetch('/registration/check-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            emailAvailable.value = false;
+            form.setError('email', data?.message || 'Unable to validate email right now.');
+            return;
+        }
+
+        emailAvailable.value = data.available === true;
+
+        if (emailAvailable.value) {
+            form.clearErrors('email');
+        } else {
+            form.setError('email', data.message || 'This email is already registered. Please use another email.');
+        }
+    } catch (error) {
+        console.error('Failed to check email:', error);
+        emailAvailable.value = null;
+    } finally {
+        emailChecking.value = false;
+    }
+};
+
+const debouncedEmailCheck = debounce(() => {
+    checkEmailAvailability();
+}, 400);
+
+watch(() => form.email, () => {
+    form.clearErrors('email');
+    emailAvailable.value = null;
+    emailChecking.value = false;
+
+    if (!String(form.email ?? '').trim()) {
+        debouncedEmailCheck.cancel();
+        return;
+    }
+
+    if (!isEmailFormatValid.value) {
+        debouncedEmailCheck.cancel();
+        return;
+    }
+
+    debouncedEmailCheck();
+});
 
 watch(() => form.subdomain, (newVal) => {
     const raw = newVal === undefined || newVal === null ? '' : String(newVal);
@@ -369,6 +454,7 @@ const nextStep = async () => {
     if (currentStep.value === 1) {
         // Validate step 1
         isLoading.value = true;
+        form.clearErrors();
         try {
             const response = await fetch('/registration/validate-account', {
                 method: 'POST',
@@ -392,6 +478,16 @@ const nextStep = async () => {
                 })
             });
             const data = await response.json();
+            if (!response.ok) {
+                if (data?.errors && typeof data.errors === 'object') {
+                    const mappedErrors = {};
+                    Object.entries(data.errors).forEach(([key, value]) => {
+                        mappedErrors[key] = Array.isArray(value) ? value[0] : value;
+                    });
+                    form.setError(mappedErrors);
+                }
+                return;
+            }
             if (data.success) {
                 currentStep.value = 2;
             }
@@ -501,7 +597,9 @@ const paymentMethods = [
                 <!-- Name and Phone Fields -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                        <InputLabel for="first_name" value="First Name *" />
+                        <InputLabel for="first_name">
+                            First Name <span :class="requiredStarClass(form.first_name)">*</span>
+                        </InputLabel>
                         <TextInput
                             id="first_name"
                             type="text"
@@ -514,7 +612,9 @@ const paymentMethods = [
                         <InputError class="mt-1" :message="form.errors.first_name" />
                     </div>
                     <div>
-                        <InputLabel for="last_name" value="Last Name *" />
+                        <InputLabel for="last_name">
+                            Last Name <span :class="requiredStarClass(form.last_name)">*</span>
+                        </InputLabel>
                         <TextInput
                             id="last_name"
                             type="text"
@@ -526,15 +626,22 @@ const paymentMethods = [
                         <InputError class="mt-1" :message="form.errors.last_name" />
                     </div>
                     <div>
-                        <InputLabel for="phone" value="Phone Number *" />
+                        <InputLabel for="phone">
+                            Phone Number <span :class="requiredStarClass(form.phone)">*</span>
+                        </InputLabel>
                         <TextInput
                             id="phone"
                             type="tel"
                             class="mt-1 block w-full"
                             v-model="form.phone"
+                            @input="handlePhoneInput"
+                            maxlength="11"
+                            inputmode="numeric"
+                            pattern="\d{11}"
                             placeholder="09xxxxxxxxx"
                             required
                         />
+                        <p v-if="form.phone && !isPhoneValid" class="mt-1 text-xs font-medium text-red-500">Phone number must be exactly 11 digits.</p>
                         <InputError class="mt-1" :message="form.errors.phone" />
                     </div>
                 </div>
@@ -542,7 +649,9 @@ const paymentMethods = [
                 <!-- Email and Clinic Name -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <InputLabel for="email" value="Email Address *" />
+                        <InputLabel for="email">
+                            Email Address <span :class="requiredStarClass(form.email)">*</span>
+                        </InputLabel>
                         <TextInput
                             id="email"
                             type="email"
@@ -551,10 +660,14 @@ const paymentMethods = [
                             placeholder="juan@clinic.com"
                             required
                         />
+                        <p v-if="emailChecking" class="mt-1 text-xs text-gray-500">Checking email availability...</p>
+                        <p v-else-if="emailAvailable === true" class="mt-1 text-xs font-medium text-green-600">Email is available.</p>
                         <InputError class="mt-1" :message="form.errors.email" />
                     </div>
                     <div>
-                        <InputLabel for="clinic_name" value="Clinic Name *" />
+                        <InputLabel for="clinic_name">
+                            Clinic Name <span :class="requiredStarClass(form.clinic_name)">*</span>
+                        </InputLabel>
                         <TextInput
                             id="clinic_name"
                             type="text"
@@ -571,7 +684,9 @@ const paymentMethods = [
                 <div class="space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                            <InputLabel for="region" value="Region *" />
+                            <InputLabel for="region">
+                                Region <span :class="requiredStarClass(form.region)">*</span>
+                            </InputLabel>
                             <select
                                 id="region"
                                 v-model="selectedRegionCode"
@@ -587,7 +702,9 @@ const paymentMethods = [
                             <InputError class="mt-1" :message="form.errors.region" />
                         </div>
                         <div>
-                            <InputLabel for="province" value="Province *" />
+                            <InputLabel for="province">
+                                Province <span :class="requiredStarClass(form.province)">*</span>
+                            </InputLabel>
                             <select
                                 id="province"
                                 v-model="selectedProvinceCode"
@@ -604,7 +721,9 @@ const paymentMethods = [
                             <InputError class="mt-1" :message="form.errors.province" />
                         </div>
                         <div>
-                            <InputLabel for="city" value="City / Municipality *" />
+                            <InputLabel for="city">
+                                City / Municipality <span :class="requiredStarClass(form.city)">*</span>
+                            </InputLabel>
                             <select
                                 id="city"
                                 v-model="selectedCityCode"
@@ -624,7 +743,9 @@ const paymentMethods = [
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                            <InputLabel for="barangay" value="Barangay *" />
+                            <InputLabel for="barangay">
+                                Barangay <span :class="requiredStarClass(form.barangay)">*</span>
+                            </InputLabel>
                             <select
                                 id="barangay"
                                 v-model="selectedBarangayCode"
@@ -641,7 +762,9 @@ const paymentMethods = [
                             <InputError class="mt-1" :message="form.errors.barangay" />
                         </div>
                         <div class="sm:col-span-2">
-                            <InputLabel for="street" value="Street Address *" />
+                            <InputLabel for="street">
+                                Street Address <span :class="requiredStarClass(form.street)">*</span>
+                            </InputLabel>
                             <TextInput
                                 id="street"
                                 type="text"
@@ -686,7 +809,9 @@ const paymentMethods = [
                 </div>
 
                 <div>
-                    <InputLabel for="subdomain" value="Your Personalized Web Name *" />
+                    <InputLabel for="subdomain">
+                        Your Personalized Web Name <span :class="requiredStarClass(form.subdomain)">*</span>
+                    </InputLabel>
                     <div class="mt-2">
                         <input
                             id="subdomain"

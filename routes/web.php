@@ -62,6 +62,7 @@ $registerCentralRoutes = function ($withNames = false) {
     }
     $reg->group(function () use ($withNames) {
         $v = Route::post('/validate-account', [RegistrationController::class, 'validateAccount']);
+        $e = Route::post('/check-email', [RegistrationController::class, 'checkEmail']);
         $c = Route::post('/check-subdomain', [RegistrationController::class, 'checkSubdomain']);
         $s = Route::post('/suggest-subdomain', [RegistrationController::class, 'suggestSubdomain']);
         $p = Route::get('/plans', [RegistrationController::class, 'getPlans']);
@@ -75,6 +76,7 @@ $registerCentralRoutes = function ($withNames = false) {
 
         if ($withNames) {
             $v->name('validate');
+            $e->name('check-email');
             $c->name('check-subdomain');
             $s->name('suggest-subdomain');
             $p->name('plans');

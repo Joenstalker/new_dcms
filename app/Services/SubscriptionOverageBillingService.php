@@ -52,8 +52,20 @@ class SubscriptionOverageBillingService
         $tenantId = (string) $subscription->tenant_id;
         $usage = $this->resolveUsageForPeriod($tenantId, $periodStart, $periodEnd, (int) $tenant->storage_used_bytes, (int) $tenant->db_used_bytes);
 
-        $storageIncludedBytes = max(0, ((int) ($plan->max_storage_mb ?? config('billing.overage.default_max_storage_mb', 500))) * self::BYTES_PER_MB);
-        $bandwidthIncludedBytes = max(0, ((int) ($plan->max_bandwidth_mb ?? config('billing.overage.default_max_bandwidth_mb', 2048))) * self::BYTES_PER_MB);
+        $effective = app(TenantEffectiveLimitService::class);
+        $effectiveStorageMb = (int) $effective->resolveEffectiveLimit(
+            $subscription,
+            'storage_mb',
+            (int) ($plan->max_storage_mb ?? config('billing.overage.default_max_storage_mb', 500))
+        );
+        $effectiveBandwidthMb = (int) $effective->resolveEffectiveLimit(
+            $subscription,
+            'bandwidth_mb',
+            (int) ($plan->max_bandwidth_mb ?? config('billing.overage.default_max_bandwidth_mb', 2048))
+        );
+
+        $storageIncludedBytes = max(0, $effectiveStorageMb * self::BYTES_PER_MB);
+        $bandwidthIncludedBytes = max(0, $effectiveBandwidthMb * self::BYTES_PER_MB);
 
         $currency = strtoupper((string) ($invoice->currency ?? 'PHP'));
 

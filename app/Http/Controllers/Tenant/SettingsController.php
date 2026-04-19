@@ -12,6 +12,7 @@ use App\Models\TenantPaymentHistory;
 use App\Models\User;
 use App\Services\FeatureOTAUpdateService;
 use App\Services\TenantBrandingService;
+use App\Services\TenantEffectiveLimitService;
 use App\Services\TenantFeatureGateService;
 use App\Services\TenantLimitOverageService;
 use App\Services\TenantSecuritySettingsService;
@@ -41,6 +42,7 @@ class SettingsController extends Controller
         $usageLimits = null;
         if ($subscription && $subscription->plan) {
             $limitService = app(TenantLimitOverageService::class);
+            $effectiveService = app(TenantEffectiveLimitService::class);
             $plan = $subscription->plan;
 
             $usersCurrent = User::count();
@@ -53,8 +55,17 @@ class SettingsController extends Controller
             $storageUsedMb = round($storageUsedBytes / 1048576, 4);
             $bandwidthUsedMb = round($bandwidthUsedBytes / 1048576, 4);
 
-            $maxStorageMb = (int) ($plan->max_storage_mb ?? config('billing.overage.default_max_storage_mb', 500));
-            $maxBandwidthMb = (int) ($plan->max_bandwidth_mb ?? config('billing.overage.default_max_bandwidth_mb', 2048));
+            $maxStorageMb = (int) $effectiveService->resolveEffectiveLimit(
+                $subscription,
+                'storage_mb',
+                $plan->max_storage_mb ?? config('billing.overage.default_max_storage_mb', 500)
+            );
+            $maxBandwidthMb = (int) $effectiveService->resolveEffectiveLimit(
+                $subscription,
+                'bandwidth_mb',
+                $plan->max_bandwidth_mb ?? config('billing.overage.default_max_bandwidth_mb', 2048)
+            );
+            $maxAppointments = (int) $effectiveService->resolveEffectiveLimit($subscription, 'appointments', (int) ($plan->max_appointments ?? 0));
 
             $buildMetric = function (string $metric, float|int $current, float|int $limit, float $unitPrice, string $unit) use ($limitService, $subscription) {
                 $limitNumeric = (float) $limit;
@@ -81,7 +92,7 @@ class SettingsController extends Controller
             $usageLimits = [
                 'users' => $buildMetric('users', $usersCurrent, (int) ($plan->max_users ?? 0), $limitService->getCountMetricPrice('users'), 'count'),
                 'patients' => $buildMetric('patients', $patientsCurrent, (int) ($plan->max_patients ?? 0), $limitService->getCountMetricPrice('patients'), 'count'),
-                'appointments' => $buildMetric('appointments', $appointmentsCurrent, (int) ($plan->max_appointments ?? 0), $limitService->getCountMetricPrice('appointments'), 'count'),
+                'appointments' => $buildMetric('appointments', $appointmentsCurrent, $maxAppointments, $limitService->getCountMetricPrice('appointments'), 'count'),
                 'storage' => $buildMetric('storage', $storageUsedMb, $maxStorageMb, (float) ($plan->storage_overage_price_per_gb ?? 0), 'MB'),
                 'bandwidth' => $buildMetric('bandwidth', $bandwidthUsedMb, $maxBandwidthMb, (float) ($plan->bandwidth_overage_price_per_gb ?? 0), 'MB'),
             ];
@@ -140,6 +151,7 @@ class SettingsController extends Controller
             'plans' => $plans,
             'payment_history' => $paymentHistory,
             'usage_limits' => $usageLimits,
+            'prepaid_context' => app(TenantEffectiveLimitService::class)->getPrepaidContext($subscription),
         ]);
     }
 

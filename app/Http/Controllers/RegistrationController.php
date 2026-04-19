@@ -36,8 +36,18 @@ class RegistrationController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'admin_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
-            'phone' => 'required|string|max:20',
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    if ($this->isEmailTakenForRegistration($value)) {
+                        $fail('This email is already registered. Please use another email.');
+                    }
+                },
+            ],
+            'phone' => ['required', 'string', 'regex:/^\d{11}$/'],
             'street' => 'required|string|max:255',
             'region' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
@@ -50,6 +60,26 @@ class RegistrationController extends Controller
             'success' => true,
             'message' => 'Account details validated',
             'data' => $validated,
+        ]);
+    }
+
+    /**
+     * Check email availability for registration (central DB users table).
+     */
+    public function checkEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|string|email|max:255',
+        ]);
+
+        $email = mb_strtolower(trim($request->input('email')));
+
+        $exists = $this->isEmailTakenForRegistration($email);
+
+        return response()->json([
+            'success' => true,
+            'available' => ! $exists,
+            'message' => $exists ? 'This email is already registered. Please use another email.' : 'Email is available.',
         ]);
     }
 
@@ -150,8 +180,18 @@ class RegistrationController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'admin_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
-            'phone' => 'required|string|max:20',
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    if ($this->isEmailTakenForRegistration($value)) {
+                        $fail('This email is already registered. Please use another email.');
+                    }
+                },
+            ],
+            'phone' => ['required', 'string', 'regex:/^\d{11}$/'],
             'street' => 'required|string|max:255',
             'region' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
@@ -640,7 +680,9 @@ class RegistrationController extends Controller
 
         // Check if tenant already exists for this subdomain — more reliable than just status check
         $tenantId = strtolower(trim($pendingRegistration->subdomain));
-        if ($pendingRegistration->stripe_payment_intent_id && Tenant::where('id', $tenantId)->exists()) {
+        if (Tenant::where('id', $tenantId)->exists()) {
+            $this->dispatchPendingRegistrationNotificationsOnce($pendingRegistration, $session, $tenantId);
+
             return ['success' => true, 'already_processed' => true, 'registration' => $pendingRegistration];
         }
 
@@ -684,6 +726,9 @@ class RegistrationController extends Controller
             $billingCycleEnd = $pendingRegistration->billing_cycle === 'yearly'
                 ? now()->addYear()
                 : now()->addMonths($monthsPaid);
+            $prepaidMultiplier = ($pendingRegistration->billing_cycle === 'monthly' && $monthsPaid > 1)
+                ? $monthsPaid
+                : 1;
 
             $subscription = $tenant->subscriptions()->updateOrCreate(
                 ['stripe_id' => $stripeSubscriptionId],
@@ -697,6 +742,10 @@ class RegistrationController extends Controller
                     'payment_status' => 'paid',
                     'billing_cycle_end' => $billingCycleEnd,
                     'ends_at' => $billingCycleEnd,
+                    'prepaid_months' => max(1, $monthsPaid),
+                    'limit_multiplier' => max(1, $prepaidMultiplier),
+                    'prepaid_started_at' => now(),
+                    'prepaid_ends_at' => $billingCycleEnd,
                 ]
             );
 
@@ -730,33 +779,26 @@ class RegistrationController extends Controller
 
             DB::commit();
 
-            // Notify admins (moved outside transaction)
-            try {
-                $notificationService = app(NotificationService::class);
-                $notificationService->notifyAdmins(
-                    'new_pending_tenant',
-                    'New Tenant Pending Review',
-                    "A new clinic '{$pendingRegistration->clinic_name}' has registered and payment received. Please review.",
-                    [
-                        'tenant_id' => $tenantId,
-                        'clinic_name' => $pendingRegistration->clinic_name,
-                        'subdomain' => $pendingRegistration->subdomain,
-                        'admin_email' => $pendingRegistration->email,
-                        'amount_paid' => $session->amount_total / 100,
-                    ],
-                    'both'
-                );
-
-                // Send pending registration email
-                Mail::to($pendingRegistration->email)->send(new RegistrationPending($pendingRegistration));
-            } catch (\Exception $e) {
-                Log::warning('Post-registration notification failed: '.$e->getMessage());
-                // Don't fail the whole request just because an email failed
-            }
+            $this->dispatchPendingRegistrationNotificationsOnce($pendingRegistration, $session, $tenantId);
 
             return ['success' => true, 'already_processed' => false, 'registration' => $pendingRegistration];
         } catch (\Exception $e) {
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
+            // If another callback/request already finalized this tenant, treat as success.
+            if (Tenant::where('id', $tenantId)->exists()) {
+                Log::warning('Registration finalize race detected; treating as already processed.', [
+                    'tenant_id' => $tenantId,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $this->dispatchPendingRegistrationNotificationsOnce($pendingRegistration, $session, $tenantId);
+
+                return ['success' => true, 'already_processed' => true, 'registration' => $pendingRegistration];
+            }
+
             Log::error('Tenant creation failed in processSuccessfulRegistration: '.$e->getMessage());
 
             return ['success' => false, 'error' => 'server_error', 'message' => 'Failed to finalize your setup: '.$e->getMessage()];
@@ -1209,5 +1251,72 @@ class RegistrationController extends Controller
     protected function getStripeClient(): StripeClient
     {
         return app(StripeClient::class);
+    }
+
+    /**
+     * Determine if an email is already in use for registration-related records.
+     */
+    private function isEmailTakenForRegistration(string $email): bool
+    {
+        $normalizedEmail = mb_strtolower(trim($email));
+
+        $existsInUsers = User::query()
+            ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
+            ->exists();
+
+        if ($existsInUsers) {
+            return true;
+        }
+
+        $existsInTenants = Tenant::query()
+            ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
+            ->exists();
+
+        if ($existsInTenants) {
+            return true;
+        }
+
+        return PendingRegistration::query()
+            ->whereIn('status', [
+                PendingRegistration::STATUS_PENDING,
+                PendingRegistration::STATUS_APPROVED,
+            ])
+            ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
+            ->exists();
+    }
+
+    /**
+     * Send pending-registration notifications exactly once per registration/session pair.
+     */
+    private function dispatchPendingRegistrationNotificationsOnce(PendingRegistration $pendingRegistration, object $session, string $tenantId): void
+    {
+        $sessionId = (string) ($session->id ?? 'unknown-session');
+        $dedupeKey = sprintf('registration:pending-notify:%s:%s', $pendingRegistration->id, $sessionId);
+
+        if (! Cache::add($dedupeKey, true, now()->addDay())) {
+            return;
+        }
+
+        try {
+            $notificationService = app(NotificationService::class);
+            $notificationService->notifyAdmins(
+                'new_pending_tenant',
+                'New Tenant Pending Review',
+                "A new clinic '{$pendingRegistration->clinic_name}' has registered and payment received. Please review.",
+                [
+                    'tenant_id' => $tenantId,
+                    'clinic_name' => $pendingRegistration->clinic_name,
+                    'subdomain' => $pendingRegistration->subdomain,
+                    'admin_email' => $pendingRegistration->email,
+                    'amount_paid' => ($session->amount_total ?? 0) / 100,
+                ],
+                'both'
+            );
+
+            Mail::to($pendingRegistration->email)->send(new RegistrationPending($pendingRegistration));
+        } catch (\Exception $e) {
+            Cache::forget($dedupeKey);
+            Log::warning('Post-registration notification failed: '.$e->getMessage());
+        }
     }
 }
