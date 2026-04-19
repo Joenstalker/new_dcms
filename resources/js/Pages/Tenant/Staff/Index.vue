@@ -542,16 +542,24 @@ const checkLimitAndOpenAddStaff = () => {
     if (maxUsers !== undefined && maxUsers !== null && currentUsers >= maxUsers) {
         Swal.fire({
             title: 'Staff Limit Reached',
-            text: `Your plan allows up to ${maxUsers} staff members. You currently have ${currentUsers}. Please upgrade to grow your team.`,
+            html: `Your plan allows up to ${maxUsers} staff members. You currently have ${currentUsers}.<br><br>Continue anyway and add overage to next renewal bill?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#111827',
             cancelButtonColor: '#94a3b8',
-            confirmButtonText: 'View Upgrades',
+            confirmButtonText: 'Continue and Bill Next Renewal',
             cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
-                router.get(route('settings.features'));
+                router.post(route('overage.consent.grant'), {
+                    metric: 'users',
+                }, {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onSuccess: () => {
+                        showingAddModal.value = true;
+                    },
+                });
             }
         });
         return;

@@ -253,6 +253,7 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                     'success' => $request->session()->get('success'),
                     'error' => $request->session()->get('error'),
+                    'limit_payload' => $request->session()->get('limit_payload'),
                 ],
             'preview_mode' => function () use ($request) {
                 $tenant = tenant();

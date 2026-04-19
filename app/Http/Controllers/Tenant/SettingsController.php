@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\FeatureOTAUpdateService;
 use App\Services\TenantBrandingService;
 use App\Services\TenantFeatureGateService;
+use App\Services\TenantLimitOverageService;
 use App\Services\TenantSecuritySettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,55 @@ class SettingsController extends Controller
             ->with(['plan.features'])
             ->latest()
             ->first();
+
+        $usageLimits = null;
+        if ($subscription && $subscription->plan) {
+            $limitService = app(TenantLimitOverageService::class);
+            $plan = $subscription->plan;
+
+            $usersCurrent = User::count();
+            $patientsCurrent = DB::table('patients')->count();
+            $appointmentsCurrent = DB::table('appointments')->count();
+
+            $storageUsedBytes = (int) (($tenant->storage_used_bytes ?? 0) + ($tenant->db_used_bytes ?? 0));
+            $bandwidthUsedBytes = (int) ($tenant->bandwidth_used_bytes ?? 0);
+
+            $storageUsedMb = round($storageUsedBytes / 1048576, 4);
+            $bandwidthUsedMb = round($bandwidthUsedBytes / 1048576, 4);
+
+            $maxStorageMb = (int) ($plan->max_storage_mb ?? config('billing.overage.default_max_storage_mb', 500));
+            $maxBandwidthMb = (int) ($plan->max_bandwidth_mb ?? config('billing.overage.default_max_bandwidth_mb', 2048));
+
+            $buildMetric = function (string $metric, float|int $current, float|int $limit, float $unitPrice, string $unit) use ($limitService, $subscription) {
+                $limitNumeric = (float) $limit;
+                $currentNumeric = (float) $current;
+                $remaining = $limitNumeric > 0 ? max(0.0, $limitNumeric - $currentNumeric) : null;
+                $overage = $limitNumeric > 0 ? max(0.0, $currentNumeric - $limitNumeric) : 0.0;
+
+                return [
+                    'metric' => $metric,
+                    'unit' => $unit,
+                    'current' => $currentNumeric,
+                    'limit' => $limitNumeric,
+                    'remaining' => $remaining,
+                    'overage' => $overage,
+                    'percent_used' => $limitNumeric > 0 ? min(100, round(($currentNumeric / $limitNumeric) * 100, 2)) : null,
+                    'unit_price' => $unitPrice,
+                    'projected_overage_amount' => round($overage * $unitPrice, 2),
+                    'consent_granted' => in_array($metric, ['users', 'patients', 'appointments'], true)
+                        ? $limitService->hasConsent($subscription, $metric)
+                        : true,
+                ];
+            };
+
+            $usageLimits = [
+                'users' => $buildMetric('users', $usersCurrent, (int) ($plan->max_users ?? 0), $limitService->getCountMetricPrice('users'), 'count'),
+                'patients' => $buildMetric('patients', $patientsCurrent, (int) ($plan->max_patients ?? 0), $limitService->getCountMetricPrice('patients'), 'count'),
+                'appointments' => $buildMetric('appointments', $appointmentsCurrent, (int) ($plan->max_appointments ?? 0), $limitService->getCountMetricPrice('appointments'), 'count'),
+                'storage' => $buildMetric('storage', $storageUsedMb, $maxStorageMb, (float) ($plan->storage_overage_price_per_gb ?? 0), 'MB'),
+                'bandwidth' => $buildMetric('bandwidth', $bandwidthUsedMb, $maxBandwidthMb, (float) ($plan->bandwidth_overage_price_per_gb ?? 0), 'MB'),
+            ];
+        }
 
         // All available plans for upgrade comparison
         $plans = SubscriptionPlan::with('features')
@@ -89,7 +139,45 @@ class SettingsController extends Controller
             'stripe_id' => $subscription?->stripe_id,
             'plans' => $plans,
             'payment_history' => $paymentHistory,
+            'usage_limits' => $usageLimits,
         ]);
+    }
+
+    public function grantOverageConsent(Request $request)
+    {
+        $validated = $request->validate([
+            'metric' => ['required', 'in:users,patients,appointments'],
+        ]);
+
+        $tenant = tenant();
+        $subscription = Subscription::where('tenant_id', $tenant->getTenantKey())
+            ->where('stripe_status', 'active')
+            ->latest()
+            ->first();
+
+        if (! $subscription) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No active subscription found for this tenant.',
+                ], 422);
+            }
+
+            return back()->with('error', 'No active subscription found for this tenant.');
+        }
+
+        app(TenantLimitOverageService::class)
+            ->grantConsent($subscription, $validated['metric'], optional($request->user())->id);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Overage consent granted for this billing cycle.',
+                'metric' => $validated['metric'],
+            ]);
+        }
+
+        return back()->with('success', 'Overage consent granted for this billing cycle.');
     }
 
     /**

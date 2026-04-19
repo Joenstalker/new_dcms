@@ -300,13 +300,13 @@ defineExpose({
                                 </div>
                                 <div>
                                     <InputLabel for="storage_overage_price_per_gb" value="Storage Overage Price" class="text-sm font-bold text-base-content/80" />
-                                    <p class="text-[10px] text-base-content/50">Automatically billed on next renewal per GB over cap</p>
+                                    <p class="text-[10px] text-base-content/50">Automatically billed on next renewal per MB over cap</p>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2">
                                 <span class="text-xs font-bold text-base-content/40">PHP</span>
                                 <TextInput id="storage_overage_price_per_gb" type="number" min="0" step="0.01" class="w-28 text-center font-bold bg-base-100 border-base-300" v-model="form.storage_overage_price_per_gb" required />
-                                <span class="text-xs font-bold text-base-content/40">/ GB</span>
+                                <span class="text-xs font-bold text-base-content/40">/ MB</span>
                             </div>
                         </div>
 
@@ -317,13 +317,13 @@ defineExpose({
                                 </div>
                                 <div>
                                     <InputLabel for="bandwidth_overage_price_per_gb" value="Bandwidth Overage Price" class="text-sm font-bold text-base-content/80" />
-                                    <p class="text-[10px] text-base-content/50">Automatically billed on next renewal per GB over cap</p>
+                                    <p class="text-[10px] text-base-content/50">Automatically billed on next renewal per MB over cap</p>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2">
                                 <span class="text-xs font-bold text-base-content/40">PHP</span>
                                 <TextInput id="bandwidth_overage_price_per_gb" type="number" min="0" step="0.01" class="w-28 text-center font-bold bg-base-100 border-base-300" v-model="form.bandwidth_overage_price_per_gb" required />
-                                <span class="text-xs font-bold text-base-content/40">/ GB</span>
+                                <span class="text-xs font-bold text-base-content/40">/ MB</span>
                             </div>
                         </div>
                     </div>

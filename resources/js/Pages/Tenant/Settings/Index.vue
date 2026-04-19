@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -13,7 +13,11 @@ const props = defineProps({
     payment_history: {
         type: Array,
         default: () => []
-    }
+    },
+    usage_limits: {
+        type: Object,
+        default: null,
+    },
 });
 
 const page = usePage();
@@ -62,6 +66,48 @@ const planBadge = {
 };
 
 const paymentHistory = computed(() => props.payment_history || []);
+const usageLimits = computed(() => props.usage_limits || null);
+
+const usageCards = computed(() => {
+    if (!usageLimits.value) return [];
+
+    return [
+        usageLimits.value.users,
+        usageLimits.value.patients,
+        usageLimits.value.appointments,
+        usageLimits.value.storage,
+        usageLimits.value.bandwidth,
+    ].filter(Boolean);
+});
+
+const formatMetricName = (metric) => {
+    const map = {
+        users: 'Users',
+        patients: 'Patients',
+        appointments: 'Appointments',
+        storage: 'Storage',
+        bandwidth: 'Bandwidth',
+    };
+
+    return map[metric] || metric;
+};
+
+const formatMetricValue = (value, unit) => {
+    if (unit === 'count') {
+        return Number(value || 0).toLocaleString();
+    }
+
+    return `${Number(value || 0).toFixed(2)} ${unit}`;
+};
+
+const grantOverageConsent = (metric) => {
+    router.post(route('overage.consent.grant'), {
+        metric,
+    }, {
+        preserveScroll: true,
+        preserveState: true,
+    });
+};
 
 const formatDate = (value) => {
     if (!value) return '-';
@@ -202,6 +248,68 @@ const formatStatus = (status) => {
             </div>
 
             <!-- ==================== DAYS REMAINING ==================== -->
+            <div v-if="usageCards.length" class="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b bg-gray-50">
+                    <h3 class="text-lg font-bold text-gray-900">Usage and Limits</h3>
+                    <p class="text-sm text-gray-500 mt-1">Track remaining capacity and projected overage charges before next renewal.</p>
+                </div>
+
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div
+                        v-for="item in usageCards"
+                        :key="item.metric"
+                        class="border rounded-xl p-4"
+                        :class="item.overage > 0 ? 'border-red-200 bg-red-50/40' : 'border-gray-200 bg-white'"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">{{ formatMetricName(item.metric) }}</p>
+                                <p class="mt-1 text-sm text-gray-700">
+                                    {{ formatMetricValue(item.current, item.unit) }} / {{ formatMetricValue(item.limit, item.unit) }}
+                                </p>
+                                <p v-if="item.remaining !== null" class="text-xs text-gray-500 mt-1">
+                                    Remaining: {{ formatMetricValue(item.remaining, item.unit) }}
+                                </p>
+                            </div>
+                            <span
+                                class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border"
+                                :class="item.overage > 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'"
+                            >
+                                {{ item.overage > 0 ? 'Over Limit' : 'Within Limit' }}
+                            </span>
+                        </div>
+
+                        <div class="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
+                            <div
+                                class="h-full rounded-full"
+                                :class="item.overage > 0 ? 'bg-red-500' : 'bg-blue-500'"
+                                :style="{ width: Math.min(100, item.percent_used || 0) + '%' }"
+                            ></div>
+                        </div>
+
+                        <div v-if="item.overage > 0" class="mt-3 text-xs text-red-700">
+                            Estimated next bill add-on: {{ formatPrice(item.projected_overage_amount || 0) }}
+                        </div>
+
+                        <button
+                            v-if="['users', 'patients', 'appointments'].includes(item.metric) && !item.consent_granted"
+                            type="button"
+                            class="mt-3 inline-flex items-center px-3 py-2 rounded-lg text-xs font-bold text-white bg-gray-900 hover:bg-black transition-colors"
+                            @click="grantOverageConsent(item.metric)"
+                        >
+                            Continue Beyond Limit (Bill Next Renewal)
+                        </button>
+
+                        <p
+                            v-else-if="['users', 'patients', 'appointments'].includes(item.metric)"
+                            class="mt-3 text-xs text-emerald-700 font-semibold"
+                        >
+                            Overage continuation is enabled for this billing cycle.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <div v-if="subscription && daysRemaining !== null" class="flex items-center gap-4 p-4 bg-white rounded-2xl border shadow-sm">
                 <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
                     <svg class="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

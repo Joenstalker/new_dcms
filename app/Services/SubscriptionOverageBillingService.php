@@ -13,8 +13,6 @@ class SubscriptionOverageBillingService
 {
     private const BYTES_PER_MB = 1048576;
 
-    private const BYTES_PER_GB = 1073741824;
-
     private StripeClient $stripe;
 
     public function __construct()
@@ -67,7 +65,7 @@ class SubscriptionOverageBillingService
             periodEnd: $periodEnd,
             includedBytes: $storageIncludedBytes,
             usedBytes: $usage['storage_peak_bytes'],
-            unitPricePerGb: (float) ($plan->storage_overage_price_per_gb ?? 0),
+            unitPricePerMb: (float) ($plan->storage_overage_price_per_gb ?? 0),
             currency: $currency,
             eventId: $eventId,
             eventType: $eventType,
@@ -81,7 +79,18 @@ class SubscriptionOverageBillingService
             periodEnd: $periodEnd,
             includedBytes: $bandwidthIncludedBytes,
             usedBytes: $usage['bandwidth_bytes'],
-            unitPricePerGb: (float) ($plan->bandwidth_overage_price_per_gb ?? 0),
+            unitPricePerMb: (float) ($plan->bandwidth_overage_price_per_gb ?? 0),
+            unitLabel: 'MB',
+            currency: $currency,
+            eventId: $eventId,
+            eventType: $eventType,
+        );
+
+        $this->syncPendingCountOverages(
+            subscription: $subscription,
+            invoice: $invoice,
+            periodStart: $periodStart,
+            periodEnd: $periodEnd,
             currency: $currency,
             eventId: $eventId,
             eventType: $eventType,
@@ -162,14 +171,17 @@ class SubscriptionOverageBillingService
         Carbon $periodEnd,
         int $includedBytes,
         int $usedBytes,
-        float $unitPricePerGb,
+        float $unitPricePerMb,
         string $currency,
         ?string $eventId,
-        ?string $eventType
+        ?string $eventType,
+        string $unitLabel = 'MB'
     ): void {
         $overageBytes = max(0, $usedBytes - $includedBytes);
-        $billableGb = $this->calculateBillableGb($overageBytes);
-        $amount = round($billableGb * max(0, $unitPricePerGb), 2);
+        $billableMb = $unitLabel === 'unit'
+            ? (float) $overageBytes
+            : $this->calculateBillableMb($overageBytes);
+        $amount = round($billableMb * max(0, $unitPricePerMb), 2);
 
         $periodStartSql = $periodStart->copy()->utc()->toDateTimeString();
         $periodEndSql = $periodEnd->copy()->utc()->toDateTimeString();
@@ -181,13 +193,14 @@ class SubscriptionOverageBillingService
             'billing_period_end' => $periodEndSql,
         ]);
 
+        // Keep legacy *_gb column names for backward compatibility while storing MB-based values.
         $entry->fill([
             'tenant_id' => (string) $subscription->tenant_id,
             'included_bytes' => $includedBytes,
             'used_bytes' => $usedBytes,
             'overage_bytes' => $overageBytes,
-            'billable_quantity_gb' => $billableGb,
-            'unit_price_per_gb' => max(0, $unitPricePerGb),
+            'billable_quantity_gb' => $billableMb,
+            'unit_price_per_gb' => max(0, $unitPricePerMb),
             'amount' => $amount,
             'currency' => strtoupper($currency),
             'stripe_invoice_id' => is_string($invoice->id ?? null) ? $invoice->id : null,
@@ -197,10 +210,11 @@ class SubscriptionOverageBillingService
                 'period_start' => $periodStart->toIso8601String(),
                 'period_end' => $periodEnd->toIso8601String(),
                 'stripe_subscription_id' => $subscription->stripe_id,
+                'pricing_unit' => $unitLabel,
             ],
         ]);
 
-        if ($overageBytes <= 0 || $unitPricePerGb <= 0 || $amount <= 0) {
+        if ($overageBytes <= 0 || $unitPricePerMb <= 0 || $amount <= 0) {
             $entry->status = 'skipped';
             $entry->save();
 
@@ -239,11 +253,13 @@ class SubscriptionOverageBillingService
         }
 
         $description = sprintf(
-            '%s overage: %.4f GB x %.2f %s/GB (%s to %s)',
+            '%s overage: %.4f %s x %.2f %s/%s (%s to %s)',
             ucfirst($metric),
-            $billableGb,
-            $unitPricePerGb,
+            $billableMb,
+            $unitLabel,
+            $unitPricePerMb,
             strtoupper($currency),
+            $unitLabel,
             $periodStart->toDateString(),
             $periodEnd->toDateString(),
         );
@@ -290,13 +306,50 @@ class SubscriptionOverageBillingService
         }
     }
 
-    private function calculateBillableGb(int $bytes): float
+    private function calculateBillableMb(int $bytes): float
     {
         if ($bytes <= 0) {
             return 0.0;
         }
 
-        return ceil(($bytes / self::BYTES_PER_GB) * 10000) / 10000;
+        return ceil(($bytes / self::BYTES_PER_MB) * 10000) / 10000;
+    }
+
+    private function syncPendingCountOverages(
+        Subscription $subscription,
+        object $invoice,
+        Carbon $periodStart,
+        Carbon $periodEnd,
+        string $currency,
+        ?string $eventId,
+        ?string $eventType
+    ): void {
+        $periodStartSql = $periodStart->copy()->utc()->toDateTimeString();
+        $periodEndSql = $periodEnd->copy()->utc()->toDateTimeString();
+
+        $rows = SubscriptionUsageOverage::query()
+            ->where('subscription_id', $subscription->id)
+            ->whereIn('metric', ['users', 'patients', 'appointments'])
+            ->where('billing_period_start', $periodStartSql)
+            ->where('billing_period_end', $periodEndSql)
+            ->get();
+
+        foreach ($rows as $row) {
+            $this->upsertMetricInvoiceItem(
+                metric: (string) $row->metric,
+                subscription: $subscription,
+                invoice: $invoice,
+                periodStart: $periodStart,
+                periodEnd: $periodEnd,
+                includedBytes: (int) $row->included_bytes,
+                usedBytes: (int) $row->used_bytes,
+                unitPricePerMb: (float) $row->unit_price_per_gb,
+                unitLabel: 'unit',
+                currency: $currency,
+                eventId: $eventId,
+                eventType: $eventType,
+            );
+        }
     }
 
     private function extractId(mixed $value): ?string

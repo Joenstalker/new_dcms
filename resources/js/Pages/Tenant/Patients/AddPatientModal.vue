@@ -17,6 +17,9 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved']);
 
 const primaryColor = computed(() => brandingState.primary_color);
+const page = usePage();
+const tenantLimits = computed(() => page.props.tenant_plan?.limits || {});
+const tenantUsage = computed(() => page.props.tenant_plan?.current_usage || {});
 
 const form = useForm({
     first_name: '',
@@ -130,8 +133,7 @@ const submit = () => {
             }
         });
     } else {
-        // Use POST method for creating new patient
-        form.post('/patients', {
+        const createPatient = () => form.post('/patients', {
             preserveScroll: true,
             onSuccess: () => {
                 Swal.fire({
@@ -157,6 +159,36 @@ const submit = () => {
                 });
             }
         });
+
+        const maxPatients = tenantLimits.value.max_patients;
+        const currentPatients = tenantUsage.value.patients || 0;
+
+        if (maxPatients !== null && maxPatients !== undefined && maxPatients !== -1 && currentPatients >= maxPatients) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Patient Limit Reached',
+                html: `You reached your patient limit (${maxPatients}).<br><br>Continue anyway and add overage to next renewal bill?`,
+                showCancelButton: true,
+                confirmButtonText: 'Continue and Bill Next Renewal',
+                cancelButtonText: 'Cancel',
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+
+                router.post(route('overage.consent.grant'), {
+                    metric: 'patients',
+                }, {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onSuccess: () => createPatient(),
+                });
+            });
+
+            return;
+        }
+
+        createPatient();
     }
 };
 </script>

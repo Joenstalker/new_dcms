@@ -101,6 +101,9 @@ Route::middleware([
         // Password update (tenant-scoped)
         Route::put('password', [PasswordController::class, 'update'])->name('tenant.password.update');
 
+        Route::post('overage/consent', [SettingsController::class, 'grantOverageConsent'])
+            ->name('overage.consent.grant');
+
         // Staff Settings (personal, permission-gated per section — NOT inside Owner block)
         Route::get('my-settings', [StaffSettingsController::class, 'index'])->name('staff-settings.index');
         Route::put('my-settings/calendar-color', [StaffSettingsController::class, 'updateCalendarColor'])->name('staff-settings.calendar-color');

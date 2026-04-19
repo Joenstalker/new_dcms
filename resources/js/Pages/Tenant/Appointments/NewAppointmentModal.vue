@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Modal.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     show: Boolean,
@@ -16,6 +17,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close']);
+const page = usePage();
+const tenantLimits = computed(() => page.props.tenant_plan?.limits || {});
+const tenantUsage = computed(() => page.props.tenant_plan?.current_usage || {});
 
 const form = useForm({
     patient_id: '',
@@ -40,7 +44,7 @@ const selectPatient = (patient) => {
 };
 
 const submit = () => {
-    form.post('/appointments', {
+    const createAppointment = () => form.post('/appointments', {
         preserveScroll: true,
         onSuccess: () => {
             form.reset();
@@ -48,6 +52,36 @@ const submit = () => {
             emit('close');
         },
     });
+
+    const maxAppointments = tenantLimits.value.max_appointments;
+    const currentAppointments = tenantUsage.value.appointments || 0;
+
+    if (maxAppointments !== null && maxAppointments !== undefined && maxAppointments !== -1 && currentAppointments >= maxAppointments) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Appointment Limit Reached',
+            html: `You reached your appointment limit (${maxAppointments}).<br><br>Continue anyway and add overage to next renewal bill?`,
+            showCancelButton: true,
+            confirmButtonText: 'Continue and Bill Next Renewal',
+            cancelButtonText: 'Cancel',
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            router.post(route('overage.consent.grant'), {
+                metric: 'appointments',
+            }, {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => createAppointment(),
+            });
+        });
+
+        return;
+    }
+
+    createAppointment();
 };
 
 const closeModal = () => {

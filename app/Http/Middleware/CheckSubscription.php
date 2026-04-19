@@ -8,6 +8,7 @@ use App\Models\Patient;
 use App\Models\Subscription;
 use App\Models\TenantFeatureUpdate;
 use App\Models\User;
+use App\Services\TenantLimitOverageService;
 use App\Services\TenantFeatureGateService;
 use Closure;
 use Illuminate\Http\Request;
@@ -106,7 +107,19 @@ class CheckSubscription
                 if ($max !== null && $max !== '') {
                     $current = $limitChecks[$feature]();
                     if ($current >= (int) $max) {
-                        return $this->limitReached($request, $feature, (int) $max, $plan->name);
+                        $metric = str_replace('max_', '', $feature);
+                        $overage = app(TenantLimitOverageService::class);
+
+                        if ($overage->hasConsent($subscription, $metric)) {
+                            // Track each over-limit create attempt as billable next-cycle count overage.
+                            $overage->registerCountOverageAttempt($subscription, $metric, (int) $max, (int) $current);
+
+                            return $next($request);
+                        }
+
+                        $quote = $overage->quoteCountMetric($metric, (int) $current, (int) $max);
+
+                        return $this->limitReached($request, $feature, (int) $max, (int) $current, $plan->name, $quote);
                     }
                 }
             }
@@ -220,20 +233,31 @@ class CheckSubscription
     /**
      * Return a "plan limit reached" response.
      */
-    private function limitReached(Request $request, string $limit, int $max, string $planName): Response
+    private function limitReached(Request $request, string $limit, int $max, int $current, string $planName, array $quote): Response
     {
         $label = str_replace('max_', '', $limit);
 
         Log::info("CheckSubscription: limit '{$limit}' ({$max}) reached on plan '{$planName}'.");
 
+        $payload = [
+            'metric' => $label,
+            'limit' => $max,
+            'current' => $current,
+            'plan_name' => $planName,
+            'quote' => $quote,
+        ];
+
         if ($request->expectsJson()) {
             return response()->json([
                 'error' => 'limit_reached',
-                'message' => "You have reached the maximum number of {$label} ({$max}) allowed on your current plan ({$planName}). Please upgrade to add more.",
-            ], 403);
+                'message' => "You have reached the maximum number of {$label} ({$max}) allowed on your current plan ({$planName}).",
+                'limit_payload' => $payload,
+            ], 409);
         }
 
-        return back()->with('error', "You have reached the maximum number of {$label} ({$max}) allowed on your current plan ({$planName}). Please upgrade to add more.");
+        return back()
+            ->with('error', "You have reached the maximum number of {$label} ({$max}) allowed on your current plan ({$planName}).")
+            ->with('limit_payload', $payload);
     }
 
     /**
