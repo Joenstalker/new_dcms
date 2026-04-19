@@ -225,6 +225,9 @@ class FeatureSeeder extends Seeder
                     'max_patients' => $data['max_patients'],
                     'max_appointments' => $data['max_appointments'],
                     'max_storage_mb' => $data['max_storage_mb'],
+                    'max_bandwidth_mb' => $data['max_bandwidth_mb'],
+                    'storage_overage_price_per_gb' => $data['storage_overage_price_per_gb'],
+                    'bandwidth_overage_price_per_gb' => $data['bandwidth_overage_price_per_gb'],
                     'has_qr_booking' => $data['features']['qr_booking']['value_boolean'] ?? false,
                     'has_sms' => $data['features']['sms_notifications']['value_boolean'] ?? false,
                 ]
@@ -247,6 +250,9 @@ class FeatureSeeder extends Seeder
                 'max_patients' => 150,
                 'max_appointments' => 500,
                 'max_storage_mb' => 500,
+                'max_bandwidth_mb' => 2048,
+                'storage_overage_price_per_gb' => 0,
+                'bandwidth_overage_price_per_gb' => 0,
                 'features' => [
                     'qr_booking' => ['value_boolean' => true],
                     'appointment_scheduling' => ['value_boolean' => true],
@@ -274,6 +280,9 @@ class FeatureSeeder extends Seeder
                 'max_patients' => 1000,
                 'max_appointments' => 2000,
                 'max_storage_mb' => 5000,
+                'max_bandwidth_mb' => 10240,
+                'storage_overage_price_per_gb' => 0,
+                'bandwidth_overage_price_per_gb' => 0,
                 'features' => [
                     'qr_booking' => ['value_boolean' => true],
                     'appointment_scheduling' => ['value_boolean' => true],
@@ -301,6 +310,9 @@ class FeatureSeeder extends Seeder
                 'max_patients' => null,
                 'max_appointments' => null,
                 'max_storage_mb' => 50000,
+                'max_bandwidth_mb' => 51200,
+                'storage_overage_price_per_gb' => 0,
+                'bandwidth_overage_price_per_gb' => 0,
                 'features' => [
                     'qr_booking' => ['value_boolean' => true],
                     'appointment_scheduling' => ['value_boolean' => true],

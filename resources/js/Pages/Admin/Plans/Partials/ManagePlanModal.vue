@@ -47,6 +47,9 @@ const form = useForm({
     max_patients: props.plan.max_patients === null ? 0 : props.plan.max_patients,
     max_appointments: props.plan.max_appointments === null ? 0 : props.plan.max_appointments,
     max_storage_mb: props.plan.max_storage_mb ?? 500,
+    max_bandwidth_mb: props.plan.max_bandwidth_mb ?? 2048,
+    storage_overage_price_per_gb: props.plan.storage_overage_price_per_gb ?? 0,
+    bandwidth_overage_price_per_gb: props.plan.bandwidth_overage_price_per_gb ?? 0,
     has_qr_booking: Boolean(props.plan.has_qr_booking),
     has_sms: Boolean(props.plan.has_sms),
     has_branding: Boolean(props.plan.has_branding),
@@ -271,6 +274,56 @@ defineExpose({
                             <div class="flex items-center space-x-2">
                                 <TextInput id="max_storage_mb" type="number" min="1" class="w-24 text-center font-bold bg-base-100 border-base-300" v-model="form.max_storage_mb" required />
                                 <span class="text-xs font-bold text-base-content/40">MB</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-base-200/30 rounded-xl border border-base-300 hover:border-primary/30 transition-colors group">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                                    <svg class="w-5 h-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                                </div>
+                                <div>
+                                    <InputLabel for="max_bandwidth_mb" value="Bandwidth Capacity" class="text-sm font-bold text-base-content/80" />
+                                    <p class="text-[10px] text-base-content/50">Monthly transfer cap for subscription entitlement</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <TextInput id="max_bandwidth_mb" type="number" min="0" class="w-24 text-center font-bold bg-base-100 border-base-300" v-model="form.max_bandwidth_mb" required />
+                                <span class="text-xs font-bold text-base-content/40">MB</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-base-200/30 rounded-xl border border-base-300 hover:border-primary/30 transition-colors group">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-lg bg-error/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                                    <svg class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.333 0-2 .667-2 2s.667 2 2 2 2 .667 2 2-.667 2-2 2m0-10V6m0 12v-2m9-4a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                </div>
+                                <div>
+                                    <InputLabel for="storage_overage_price_per_gb" value="Storage Overage Price" class="text-sm font-bold text-base-content/80" />
+                                    <p class="text-[10px] text-base-content/50">Automatically billed on next renewal per GB over cap</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-bold text-base-content/40">PHP</span>
+                                <TextInput id="storage_overage_price_per_gb" type="number" min="0" step="0.01" class="w-28 text-center font-bold bg-base-100 border-base-300" v-model="form.storage_overage_price_per_gb" required />
+                                <span class="text-xs font-bold text-base-content/40">/ GB</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-base-200/30 rounded-xl border border-base-300 hover:border-primary/30 transition-colors group">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                                    <svg class="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                </div>
+                                <div>
+                                    <InputLabel for="bandwidth_overage_price_per_gb" value="Bandwidth Overage Price" class="text-sm font-bold text-base-content/80" />
+                                    <p class="text-[10px] text-base-content/50">Automatically billed on next renewal per GB over cap</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-bold text-base-content/40">PHP</span>
+                                <TextInput id="bandwidth_overage_price_per_gb" type="number" min="0" step="0.01" class="w-28 text-center font-bold bg-base-100 border-base-300" v-model="form.bandwidth_overage_price_per_gb" required />
+                                <span class="text-xs font-bold text-base-content/40">/ GB</span>
                             </div>
                         </div>
                     </div>

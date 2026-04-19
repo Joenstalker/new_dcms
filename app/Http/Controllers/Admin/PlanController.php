@@ -90,7 +90,11 @@ class PlanController extends Controller
                 'name' => $plan->name, 
                 'price_monthly' => $plan->price_monthly,
                 'price_yearly' => $plan->price_yearly,
-                'yearly_discount' => $plan->yearly_discount_percent
+                'yearly_discount' => $plan->yearly_discount_percent,
+                'max_storage_mb' => $plan->max_storage_mb,
+                'max_bandwidth_mb' => $plan->max_bandwidth_mb,
+                'storage_overage_price_per_gb' => $plan->storage_overage_price_per_gb,
+                'bandwidth_overage_price_per_gb' => $plan->bandwidth_overage_price_per_gb,
             ]
         );
 
@@ -309,11 +313,18 @@ class PlanController extends Controller
             'has_multi_branch' => 'boolean',
             'report_level' => 'required|string|in:basic,enhanced,advanced',
             'max_storage_mb' => 'nullable|integer|min:0',
+            'max_bandwidth_mb' => 'nullable|integer|min:0',
+            'storage_overage_price_per_gb' => 'nullable|numeric|min:0',
+            'bandwidth_overage_price_per_gb' => 'nullable|numeric|min:0',
         ]);
 
         // Transform 0 to null (unlimited) for specific input fields
         $validated['max_patients'] = ((isset($validated['max_patients']) && $validated['max_patients'] === 0) || !isset($validated['max_patients'])) ? null : $validated['max_patients'];
         $validated['max_appointments'] = ((isset($validated['max_appointments']) && $validated['max_appointments'] === 0) || !isset($validated['max_appointments'])) ? null : $validated['max_appointments'];
+        $validated['max_storage_mb'] = isset($validated['max_storage_mb']) ? (int) $validated['max_storage_mb'] : (int) config('billing.overage.default_max_storage_mb', 500);
+        $validated['max_bandwidth_mb'] = isset($validated['max_bandwidth_mb']) ? (int) $validated['max_bandwidth_mb'] : (int) config('billing.overage.default_max_bandwidth_mb', 2048);
+        $validated['storage_overage_price_per_gb'] = isset($validated['storage_overage_price_per_gb']) ? (float) $validated['storage_overage_price_per_gb'] : 0.0;
+        $validated['bandwidth_overage_price_per_gb'] = isset($validated['bandwidth_overage_price_per_gb']) ? (float) $validated['bandwidth_overage_price_per_gb'] : 0.0;
 
         return $validated;
     }

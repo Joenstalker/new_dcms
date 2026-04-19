@@ -51,7 +51,7 @@ const usageData = ref({
     bandwidth_used_mb: props.tenant?.bandwidth_used_mb || 0,
     bandwidth_month_mb: props.tenant?.bandwidth_used_mb || 0,
     bandwidth_today_mb: 0,
-    max_bandwidth_mb: props.tenant?.max_bandwidth_mb || 2048,
+    max_bandwidth_mb: props.tenant?.max_bandwidth_mb ?? 0,
     request_count_today: 0,
     request_count_month: 0,
     api_request_count_month: 0,
@@ -149,7 +149,7 @@ watch(() => props.tenant, (newTenant) => {
             bandwidth_used_mb: newTenant.bandwidth_used_bytes ? Math.round(newTenant.bandwidth_used_bytes / (1024 * 1024) * 100) / 100 : (newTenant.bandwidth_used_mb || 0),
             bandwidth_month_mb: newTenant.bandwidth_used_bytes ? Math.round(newTenant.bandwidth_used_bytes / (1024 * 1024) * 100) / 100 : (newTenant.bandwidth_used_mb || 0),
             bandwidth_today_mb: 0,
-            max_bandwidth_mb: newTenant.max_bandwidth_mb || 2048,
+            max_bandwidth_mb: newTenant.max_bandwidth_mb ?? 0,
             request_count_today: 0,
             request_count_month: 0,
             api_request_count_month: 0,
@@ -460,7 +460,7 @@ const formatCount = (value) => {
                                                 </div>
                                                 <div class="flex justify-between text-[10px] font-black tracking-tighter">
                                                     <span class="text-base-content/50 uppercase">{{ getStoragePercentage(usageData.bandwidth_month_mb, usageData.max_bandwidth_mb) }}% CONSUMED</span>
-                                                    <span class="uppercase" :style="{ color: primaryColor }">{{ Math.max(0, ((usageData.max_bandwidth_mb || 2048) - (usageData.bandwidth_month_mb || 0)) / 1024).toFixed(2) }} GB LEFT</span>
+                                                    <span class="uppercase" :style="{ color: primaryColor }">{{ Math.max(0, ((usageData.max_bandwidth_mb || 0) - (usageData.bandwidth_month_mb || 0)) / 1024).toFixed(2) }} GB LEFT</span>
                                                 </div>
                                             </div>
                                         </div>

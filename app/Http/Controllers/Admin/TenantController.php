@@ -91,16 +91,18 @@ class TenantController extends Controller
                 $tenant->ends_at = $expiry ? $expiry->toDateString() : null; // YYYY-MM-DD for frontend input
                 
                 // Storage & Bandwidth
-                $tenant->max_storage_mb = $latestSubscription->plan->max_storage_mb ?? 500;
+                $tenant->max_storage_mb = $latestSubscription->plan->max_storage_mb
+                    ?? (int) config('billing.overage.default_max_storage_mb', 500);
                 $tenant->storage_used_mb = round($tenant->storage_used_bytes / (1024 * 1024), 2);
-                $tenant->max_bandwidth_mb = $latestSubscription->plan->max_bandwidth_mb ?? 2048;
+                $tenant->max_bandwidth_mb = $latestSubscription->plan->max_bandwidth_mb
+                    ?? (int) config('billing.overage.default_max_bandwidth_mb', 2048);
                 $tenant->bandwidth_used_mb = round($tenant->bandwidth_used_bytes / (1024 * 1024), 2);
             } else {
                 $tenant->days_left = 0;
                 $tenant->storage_used_mb = round($tenant->storage_used_bytes / (1024 * 1024), 2);
-                $tenant->max_storage_mb = 500;
+                $tenant->max_storage_mb = (int) config('billing.overage.default_max_storage_mb', 500);
                 $tenant->bandwidth_used_mb = round($tenant->bandwidth_used_bytes / (1024 * 1024), 2);
-                $tenant->max_bandwidth_mb = 2048;
+                $tenant->max_bandwidth_mb = (int) config('billing.overage.default_max_bandwidth_mb', 2048);
                 $tenant->payment_method = 'N/A';
             }
 
@@ -697,12 +699,14 @@ class TenantController extends Controller
             'db_used_mb' => round(((int) ($tenant->db_used_bytes ?? 0)) / (1024 * 1024), 2),
             // Total bytes (files + DB)
             'total_used_mb' => round((((int) $tenant->storage_used_bytes) + ((int) ($tenant->db_used_bytes ?? 0))) / (1024 * 1024), 2),
-            'max_storage_mb' => $latestSubscription->plan->max_storage_mb ?? 500,
+            'max_storage_mb' => $latestSubscription->plan->max_storage_mb
+                ?? (int) config('billing.overage.default_max_storage_mb', 500),
             // Legacy cumulative value for backward compatibility.
             'bandwidth_used_mb' => round($tenant->bandwidth_used_bytes / (1024 * 1024), 2),
             'bandwidth_today_mb' => round($metrics['bandwidth_today_bytes'] / (1024 * 1024), 2),
             'bandwidth_month_mb' => round($metrics['bandwidth_month_bytes'] / (1024 * 1024), 2),
-            'max_bandwidth_mb' => $latestSubscription->plan->max_bandwidth_mb ?? 2048,
+            'max_bandwidth_mb' => $latestSubscription->plan->max_bandwidth_mb
+                ?? (int) config('billing.overage.default_max_bandwidth_mb', 2048),
             'request_count_today' => $metrics['request_count_today'],
             'request_count_month' => $metrics['request_count_month'],
             'api_request_count_month' => $metrics['api_request_count_month'],

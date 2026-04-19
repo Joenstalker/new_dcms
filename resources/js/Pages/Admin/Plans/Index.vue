@@ -188,7 +188,7 @@ const forceSync = (plan) => {
 const legacyKeys = [
     'qr_booking', 'sms_notifications', 'custom_branding', 'advanced_analytics', 
     'priority_support', 'multi_branch', 'max_users', 'max_patients', 
-    'max_appointments', 'report_level', 'max_storage_mb'
+    'max_appointments', 'report_level', 'max_storage_mb', 'max_bandwidth_mb'
 ];
 
 const getDynamicFeatures = (plan) => {
@@ -346,6 +346,18 @@ const handleBatchPush = () => {
                             <li class="flex items-center">
                                 <svg class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 <strong>{{ plan.max_storage_mb >= 1024 ? (plan.max_storage_mb / 1024).toFixed(1) + ' GB' : plan.max_storage_mb + ' MB' }}</strong> &nbsp;Storage
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <strong>{{ (plan.max_bandwidth_mb ?? 0) >= 1024 ? ((plan.max_bandwidth_mb ?? 0) / 1024).toFixed(1) + ' GB' : (plan.max_bandwidth_mb ?? 0) + ' MB' }}</strong> &nbsp;Bandwidth / month
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <strong>PHP {{ Number(plan.storage_overage_price_per_gb ?? 0).toFixed(2) }}/GB</strong> &nbsp;Storage Overage
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="h-5 w-5 text-success mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <strong>PHP {{ Number(plan.bandwidth_overage_price_per_gb ?? 0).toFixed(2) }}/GB</strong> &nbsp;Bandwidth Overage
                             </li>
 
                             <!-- Tier Features -->

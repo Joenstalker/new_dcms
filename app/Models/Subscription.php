@@ -80,6 +80,11 @@ class Subscription extends Model
         return $this->hasMany(PaymentHistory::class);
     }
 
+    public function usageOverages(): HasMany
+    {
+        return $this->hasMany(SubscriptionUsageOverage::class);
+    }
+
     public function latestPaymentHistory(): HasOne
     {
         return $this->hasOne(PaymentHistory::class)->latestOfMany('paid_at');

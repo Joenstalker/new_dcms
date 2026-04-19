@@ -32,6 +32,8 @@ class SubscriptionPlan extends Model
         'report_level',
         'max_storage_mb',
         'max_bandwidth_mb',
+        'storage_overage_price_per_gb',
+        'bandwidth_overage_price_per_gb',
     ];
 
     /** @deprecated Use dynamic features pivot instead */
@@ -79,6 +81,8 @@ class SubscriptionPlan extends Model
         'has_multi_branch' => 'boolean',
         'max_storage_mb' => 'integer',
         'max_bandwidth_mb' => 'integer',
+        'storage_overage_price_per_gb' => 'decimal:2',
+        'bandwidth_overage_price_per_gb' => 'decimal:2',
     ];
 
     /**

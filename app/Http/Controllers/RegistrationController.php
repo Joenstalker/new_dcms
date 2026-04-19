@@ -13,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\NotificationService;
 use App\Services\PaymentHistoryService;
+use App\Services\SubscriptionOverageBillingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -506,6 +507,11 @@ class RegistrationController extends Controller
                 case 'invoice.paid':
                     $invoice = $event->data->object;
                     $this->handleInvoicePaid($invoice, $event->id, $event->type);
+                    break;
+
+                case 'invoice.upcoming':
+                    $invoice = $event->data->object;
+                    $this->handleInvoiceUpcoming($invoice, $event->id, $event->type);
                     break;
 
                 case 'invoice.payment_failed':
@@ -1070,6 +1076,32 @@ class RegistrationController extends Controller
             $historyService->recordInvoiceEvent($subscription, $invoice, 'success', $eventId, $eventType, $transactionType);
         } catch (\Exception $e) {
             Log::error('Failed to handle invoice paid event: '.$e->getMessage());
+        }
+    }
+
+    protected function handleInvoiceUpcoming(object $invoice, ?string $eventId = null, ?string $eventType = null): void
+    {
+        try {
+            $stripeSubscriptionId = is_string($invoice->subscription ?? null)
+                ? $invoice->subscription
+                : ($invoice->subscription->id ?? null);
+
+            if (! $stripeSubscriptionId) {
+                return;
+            }
+
+            $subscription = Subscription::where('stripe_id', $stripeSubscriptionId)
+                ->with(['plan', 'tenant'])
+                ->first();
+
+            if (! $subscription || ! $subscription->plan || ! $subscription->tenant) {
+                return;
+            }
+
+            app(SubscriptionOverageBillingService::class)
+                ->applyUpcomingInvoiceOverages($subscription, $invoice, $eventId, $eventType);
+        } catch (\Throwable $e) {
+            Log::error('Failed to handle invoice upcoming event: '.$e->getMessage());
         }
     }
 

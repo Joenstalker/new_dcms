@@ -28,6 +28,10 @@ const form = useForm({
     max_users: props.plan?.max_users ?? 1,
     max_patients: props.plan?.max_patients === null ? 0 : (props.plan?.max_patients ?? 0),
     max_appointments: props.plan?.max_appointments === null ? 0 : (props.plan?.max_appointments ?? 0),
+    max_storage_mb: props.plan?.max_storage_mb ?? 500,
+    max_bandwidth_mb: props.plan?.max_bandwidth_mb ?? 2048,
+    storage_overage_price_per_gb: props.plan?.storage_overage_price_per_gb ?? 0,
+    bandwidth_overage_price_per_gb: props.plan?.bandwidth_overage_price_per_gb ?? 0,
     has_qr_booking: props.plan ? Boolean(props.plan.has_qr_booking) : true,
     has_sms: props.plan ? Boolean(props.plan.has_sms) : false,
     has_branding: props.plan ? Boolean(props.plan.has_branding) : false,
@@ -128,6 +132,39 @@ const submit = () => {
                             <p class="text-[10px] text-base-content/50">0 for unlimited</p>
                         </div>
                         <TextInput id="max_appointments" type="number" min="0" class="w-24 text-sm bg-base-100 border-base-300 focus:border-primary focus:ring-primary" v-model="form.max_appointments" required />
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 bg-base-200/30 rounded-lg border border-base-300">
+                        <div>
+                            <InputLabel for="max_storage_mb" value="Storage Capacity" class="text-xs font-semibold text-base-content/70" />
+                            <p class="text-[10px] text-base-content/50">Included file storage in MB</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <TextInput id="max_storage_mb" type="number" min="0" class="w-24 text-sm bg-base-100 border-base-300 focus:border-primary focus:ring-primary" v-model="form.max_storage_mb" required />
+                            <span class="text-[10px] text-base-content/50 font-semibold">MB</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 bg-base-200/30 rounded-lg border border-base-300">
+                        <div>
+                            <InputLabel for="max_bandwidth_mb" value="Bandwidth Capacity" class="text-xs font-semibold text-base-content/70" />
+                            <p class="text-[10px] text-base-content/50">Included monthly transfer in MB</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <TextInput id="max_bandwidth_mb" type="number" min="0" class="w-24 text-sm bg-base-100 border-base-300 focus:border-primary focus:ring-primary" v-model="form.max_bandwidth_mb" required />
+                            <span class="text-[10px] text-base-content/50 font-semibold">MB</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-base-200/30 rounded-lg border border-base-300">
+                        <div>
+                            <InputLabel for="storage_overage_price_per_gb" value="Storage Overage (PHP/GB)" class="text-xs font-semibold text-base-content/70" />
+                            <TextInput id="storage_overage_price_per_gb" type="number" step="0.01" min="0" class="mt-1 block w-full text-sm bg-base-100 border-base-300 focus:border-primary focus:ring-primary" v-model="form.storage_overage_price_per_gb" required />
+                        </div>
+                        <div>
+                            <InputLabel for="bandwidth_overage_price_per_gb" value="Bandwidth Overage (PHP/GB)" class="text-xs font-semibold text-base-content/70" />
+                            <TextInput id="bandwidth_overage_price_per_gb" type="number" step="0.01" min="0" class="mt-1 block w-full text-sm bg-base-100 border-base-300 focus:border-primary focus:ring-primary" v-model="form.bandwidth_overage_price_per_gb" required />
+                        </div>
                     </div>
                 </div>
             </section>
