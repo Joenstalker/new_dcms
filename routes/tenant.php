@@ -63,6 +63,8 @@ Route::middleware([
 
     // Public QR Booking Route (no auth required — patients scan QR code)
     Route::get('/book', [BookingController::class, 'create'])->name('tenant.book.create');
+    Route::get('/book/check-existing-patient', [BookingController::class, 'checkExistingPatientName'])
+        ->name('tenant.book.check-existing-patient');
     Route::post('/book', [BookingController::class, 'store'])
         ->middleware('check.subscription:max_appointments')
         ->name('tenant.book.store');

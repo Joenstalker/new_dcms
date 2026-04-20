@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Service;
 use App\Models\Patient;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -45,14 +46,47 @@ class BookingController extends Controller
     }
 
     /**
+     * Check if a patient exists by exact first + last name for existing-patient booking flow.
+     */
+    public function checkExistingPatientName(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+        ]);
+
+        $firstName = mb_strtolower(trim((string) $validated['first_name']));
+        $lastName = mb_strtolower(trim((string) ($validated['last_name'] ?? '')));
+
+        $firstNameExists = Patient::query()
+            ->whereRaw('LOWER(first_name) = ?', [$firstName])
+            ->exists();
+
+        $fullNameExists = false;
+        if ($lastName !== '') {
+            $fullNameExists = Patient::query()
+                ->whereRaw('LOWER(first_name) = ?', [$firstName])
+                ->whereRaw('LOWER(last_name) = ?', [$lastName])
+                ->exists();
+        }
+
+        return response()->json([
+            'first_name_exists' => $firstNameExists,
+            'full_name_exists' => $fullNameExists,
+            'exists' => $fullNameExists,
+        ]);
+    }
+
+    /**
      * Store the guest appointment booking.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'patient_type' => 'required|in:new,existing',
             'guest_first_name' => 'required|string|max:255',
             'guest_last_name' => 'required|string|max:255',
-            'guest_phone' => ['required', 'regex:/^\d{11}$/'],
+            'guest_phone' => ['nullable', 'regex:/^\d{11}$/'],
             'guest_email' => 'nullable|email|max:255',
             'guest_address' => 'nullable|string',
             'guest_medical_history' => 'nullable|array',
@@ -62,6 +96,14 @@ class BookingController extends Controller
             'dentist_id' => 'nullable|exists:users,id',
             'photo' => 'nullable|image|max:5120', // optional, 5MB max
         ]);
+
+        if ($validated['patient_type'] === 'new' && empty($validated['guest_phone'])) {
+            return back()
+                ->withErrors([
+                    'guest_phone' => 'Phone number is required for new patients.',
+                ])
+                ->withInput();
+        }
 
         $appointmentAt = Carbon::parse($validated['appointment_date']);
         $dayKey = strtolower($appointmentAt->format('l'));
@@ -103,17 +145,25 @@ class BookingController extends Controller
         // Generate a unique booking reference
         $validated['booking_reference'] = 'BK-' . strtoupper(Str::random(8));
 
-        // Find existing patient by email or phone (returning patient logic)
+        // Existing patient path: validate by exact first + last name from tenant patient table.
         $existingPatient = null;
-        if (!empty($validated['guest_email'])) {
-            $existingPatient = Patient::where('email', $validated['guest_email'])->first();
-        }
+        if ($validated['patient_type'] === 'existing') {
+            $firstName = mb_strtolower(trim((string) $validated['guest_first_name']));
+            $lastName = mb_strtolower(trim((string) $validated['guest_last_name']));
 
-        if (!$existingPatient && !empty($validated['guest_phone'])) {
-            $existingPatient = Patient::where('phone', $validated['guest_phone'])->first();
-        }
+            $existingPatient = Patient::query()
+                ->whereRaw('LOWER(first_name) = ?', [$firstName])
+                ->whereRaw('LOWER(last_name) = ?', [$lastName])
+                ->first();
 
-        if ($existingPatient) {
+            if (!$existingPatient) {
+                return back()
+                    ->withErrors([
+                        'guest_last_name' => 'We could not find an existing patient with this first and last name. Please choose New Patient if this is your first appointment.',
+                    ])
+                    ->withInput();
+            }
+
             $validated['patient_id'] = $existingPatient->id;
         }
 
@@ -136,6 +186,7 @@ class BookingController extends Controller
         broadcast(new OnlineBookingCreated((string)tenant()->getTenantKey(), [
             'id' => $appointment->id,
             'patient_id' => $appointment->patient_id,
+            'patient_type' => $validated['patient_type'],
             'dentist_id' => $appointment->dentist_id,
             'guest_first_name' => $appointment->guest_first_name,
             'guest_last_name' => $appointment->guest_last_name,

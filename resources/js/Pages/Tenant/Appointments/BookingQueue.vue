@@ -46,6 +46,10 @@ const getAppointmentAvatar = (appointment) => {
     return null;
 };
 
+const isExistingPatientBooking = (appointment) => {
+    return Boolean(appointment?.patient_id || appointment?.patient?.id);
+};
+
 const failedAvatarKeys = ref({});
 
 const appointmentAvatarKey = (appointment) => `appointment-${appointment?.id ?? 'unknown'}`;
@@ -168,6 +172,14 @@ const handleReject = (id) => {
                                     {{ appointment.guest_first_name }} {{ appointment.guest_last_name }}
                                 </template>
                             </p>
+                            <div class="mt-1">
+                                <span
+                                    class="badge badge-xs font-black uppercase tracking-widest"
+                                    :class="isExistingPatientBooking(appointment) ? 'badge-info' : 'badge-warning'"
+                                >
+                                    {{ isExistingPatientBooking(appointment) ? 'Existing' : 'New' }}
+                                </span>
+                            </div>
                             <p class="text-[10px] uppercase tracking-widest text-base-content/30 font-bold mt-0.5">
                                 {{ appointment.service || 'General Checkup' }}
                             </p>
@@ -233,6 +245,14 @@ const handleReject = (id) => {
                         <p class="text-[10px] uppercase font-black tracking-widest text-base-content/40">
                              Booking Details
                         </p>
+                        <div class="mt-1">
+                            <span
+                                class="badge badge-xs font-black uppercase tracking-widest"
+                                :class="isExistingPatientBooking(selectedAppointment) ? 'badge-info' : 'badge-warning'"
+                            >
+                                {{ isExistingPatientBooking(selectedAppointment) ? 'Existing' : 'New' }} Patient
+                            </span>
+                        </div>
                     </div>
                 </div>
 

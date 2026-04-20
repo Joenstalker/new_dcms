@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     show: Boolean,
@@ -15,21 +16,27 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-const totalSteps = 5;
+const totalSteps = 6;
 const stepFields = {
-    1: ['guest_first_name', 'guest_last_name', 'guest_phone', 'guest_email', 'guest_address', 'photo'],
-    2: ['guest_medical_history', 'current_medications'],
-    3: ['appointment_date', 'appointment_time', 'service'],
-    4: ['dentist_id'],
-    5: [],
+    1: ['patient_type'],
+    2: ['guest_first_name', 'guest_last_name', 'guest_phone', 'guest_email', 'guest_address', 'photo'],
+    3: ['guest_medical_history', 'current_medications'],
+    4: ['appointment_date', 'appointment_time', 'service'],
+    5: ['dentist_id'],
+    6: [],
 };
 
 const step = ref(1);
 const showSuccess = ref(false);
 const bookingReference = ref('');
 const attemptedStepAdvance = ref(false);
+const existingPatientLookupLoading = ref(false);
+const existingPatientFirstNameValid = ref(null);
+const existingPatientFullNameValid = ref(null);
+let existingPatientLookupTimer = null;
 
 const form = useForm({
+    patient_type: '',
     guest_first_name: '',
     guest_last_name: '',
     guest_phone: '',
@@ -118,6 +125,120 @@ const formatHourForDisplay = (value) => {
 
 const handleGuestPhoneInput = (event) => {
     form.guest_phone = sanitizePhoneInput(event?.target?.value);
+};
+
+const resetExistingPatientNameValidation = () => {
+    existingPatientFirstNameValid.value = null;
+    existingPatientFullNameValid.value = null;
+};
+
+const checkExistingPatientName = async () => {
+    if (form.patient_type !== 'existing') {
+        resetExistingPatientNameValidation();
+        return true;
+    }
+
+    const firstName = String(form.guest_first_name || '').trim();
+    const lastName = String(form.guest_last_name || '').trim();
+
+    if (!firstName) {
+        existingPatientFirstNameValid.value = null;
+        existingPatientFullNameValid.value = null;
+        return {
+            firstNameValid: false,
+            fullNameValid: false,
+        };
+    }
+
+    existingPatientLookupLoading.value = true;
+
+    try {
+        const url = route('tenant.book.check-existing-patient', {
+            first_name: firstName,
+            last_name: lastName,
+        });
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+            },
+        });
+
+        const data = await response.json();
+        const firstNameValid = Boolean(data?.first_name_exists);
+        const fullNameValid = Boolean(data?.full_name_exists);
+
+        existingPatientFirstNameValid.value = firstNameValid;
+        existingPatientFullNameValid.value = lastName ? fullNameValid : null;
+
+        return {
+            firstNameValid,
+            fullNameValid,
+        };
+    } catch (error) {
+        existingPatientFirstNameValid.value = false;
+        existingPatientFullNameValid.value = false;
+        return {
+            firstNameValid: false,
+            fullNameValid: false,
+        };
+    } finally {
+        existingPatientLookupLoading.value = false;
+    }
+};
+
+const lookupPatientNameMatch = async (firstNameInput, lastNameInput) => {
+    const firstName = String(firstNameInput || '').trim();
+    const lastName = String(lastNameInput || '').trim();
+
+    if (!firstName || !lastName) {
+        return {
+            firstNameExists: false,
+            fullNameExists: false,
+        };
+    }
+
+    try {
+        const url = route('tenant.book.check-existing-patient', {
+            first_name: firstName,
+            last_name: lastName,
+        });
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+            },
+        });
+
+        const data = await response.json();
+
+        return {
+            firstNameExists: Boolean(data?.first_name_exists),
+            fullNameExists: Boolean(data?.full_name_exists),
+        };
+    } catch (error) {
+        return {
+            firstNameExists: false,
+            fullNameExists: false,
+        };
+    }
+};
+
+const scheduleExistingPatientLookup = () => {
+    if (existingPatientLookupTimer) {
+        clearTimeout(existingPatientLookupTimer);
+    }
+
+    if (form.patient_type !== 'existing') {
+        resetExistingPatientNameValidation();
+        return;
+    }
+
+    existingPatientLookupTimer = setTimeout(() => {
+        checkExistingPatientName();
+    }, 350);
 };
 
 const isGuestPhoneValid = computed(() => /^\d{11}$/.test(String(form.guest_phone || '')));
@@ -366,11 +487,12 @@ const logoUrl = computed(() => {
 const fontFamily = computed(() => props.tenant?.font_family || 'font-sans');
 
 const steps = [
-    { id: 1, name: 'Patient Info' },
-    { id: 2, name: 'Medical History' },
-    { id: 3, name: 'Schedule' },
-    { id: 4, name: 'Dentist' },
-    { id: 5, name: 'Review' },
+    { id: 1, name: 'Patient Type' },
+    { id: 2, name: 'Patient Info' },
+    { id: 3, name: 'Medical History' },
+    { id: 4, name: 'Schedule' },
+    { id: 5, name: 'Dentist' },
+    { id: 6, name: 'Review' },
 ];
 
 const selectedDentist = computed(() => {
@@ -443,10 +565,47 @@ const availableTimeSlots = computed(() => {
 });
 
 const isStep1Valid = computed(() => {
-    return Boolean(form.guest_first_name && form.guest_last_name && isGuestPhoneValid.value);
+    return Boolean(form.patient_type);
 });
 
-const isStep3Valid = computed(() => {
+const isExistingPatientType = computed(() => form.patient_type === 'existing');
+const hasExistingNameLookupInput = computed(() => Boolean(form.guest_first_name));
+const showExistingFirstNameNotFoundInline = computed(() => {
+    return isExistingPatientType.value
+        && hasExistingNameLookupInput.value
+        && existingPatientFirstNameValid.value === false
+        && !existingPatientLookupLoading.value;
+});
+const showExistingFirstNameFoundInline = computed(() => {
+    return isExistingPatientType.value
+        && hasExistingNameLookupInput.value
+        && existingPatientFirstNameValid.value === true
+        && !existingPatientLookupLoading.value;
+});
+const showExistingLastNameNotFoundInline = computed(() => {
+    return isExistingPatientType.value
+        && Boolean(form.guest_first_name && form.guest_last_name)
+        && existingPatientFullNameValid.value === false
+        && !existingPatientLookupLoading.value;
+});
+const showExistingLastNameFoundInline = computed(() => {
+    return isExistingPatientType.value
+        && Boolean(form.guest_first_name && form.guest_last_name)
+        && existingPatientFullNameValid.value === true
+        && !existingPatientLookupLoading.value;
+});
+
+const isStep2Valid = computed(() => {
+    const hasNames = Boolean(form.guest_first_name && form.guest_last_name);
+
+    if (form.patient_type === 'existing') {
+        return hasNames && existingPatientFirstNameValid.value === true && existingPatientFullNameValid.value === true;
+    }
+
+    return hasNames && isGuestPhoneValid.value;
+});
+
+const isStep4Valid = computed(() => {
     return Boolean(
         form.appointment_date
         && form.appointment_time
@@ -457,7 +616,8 @@ const isStep3Valid = computed(() => {
 
 const canGoNext = computed(() => {
     if (step.value === 1) return isStep1Valid.value;
-    if (step.value === 3) return isStep3Valid.value;
+    if (step.value === 2) return isStep2Valid.value;
+    if (step.value === 4) return isStep4Valid.value;
     return true;
 });
 
@@ -475,12 +635,12 @@ const getStepForErrors = (errors) => {
 const focusPrimaryFieldForStep = async (targetStep = step.value) => {
     await nextTick();
 
-    if (targetStep === 1) {
+    if (targetStep === 2) {
         firstNameInputRef.value?.focus();
         return;
     }
 
-    if (targetStep === 3) {
+    if (targetStep === 4) {
         if (!form.appointment_date) {
             dateInputRef.value?.focus();
             return;
@@ -492,6 +652,7 @@ const focusPrimaryFieldForStep = async (targetStep = step.value) => {
 const draftStorageKey = computed(() => `booking_draft_${props.tenant?.id ?? 'default'}`);
 const draftPayload = computed(() => ({
     step: step.value,
+    patient_type: form.patient_type,
     guest_first_name: form.guest_first_name,
     guest_last_name: form.guest_last_name,
     guest_phone: form.guest_phone,
@@ -519,7 +680,7 @@ const saveDraft = () => {
     }
 };
 
-const loadDraft = () => {
+const loadDraft = async () => {
     try {
         const raw = window.sessionStorage.getItem(draftStorageKey.value);
         if (!raw) return;
@@ -527,11 +688,22 @@ const loadDraft = () => {
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== 'object') return;
 
-        if (!window.confirm('Resume your previous booking draft?')) {
+        const resumeResult = await Swal.fire({
+            title: 'Resume booking draft?',
+            text: 'We found a saved booking progress for this clinic.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Resume',
+            cancelButtonText: 'Discard',
+            confirmButtonColor: brandingColor.value,
+        });
+
+        if (!resumeResult.isConfirmed) {
             window.sessionStorage.removeItem(draftStorageKey.value);
             return;
         }
 
+        form.patient_type = String(parsed.patient_type || '');
         form.guest_first_name = String(parsed.guest_first_name || '');
         form.guest_last_name = String(parsed.guest_last_name || '');
         form.guest_phone = sanitizePhoneInput(parsed.guest_phone || '');
@@ -563,7 +735,8 @@ const clearDraft = () => {
 
 const hasDraftableContent = computed(() => {
     return Boolean(
-        form.guest_first_name
+        form.patient_type
+        || form.guest_first_name
         || form.guest_last_name
         || form.guest_phone
         || form.guest_email
@@ -587,6 +760,7 @@ const resetModalState = () => {
     form.clearErrors();
     serviceSearch.value = '';
     photoClientError.value = '';
+    resetExistingPatientNameValidation();
 
     if (photoPreview.value) {
         URL.revokeObjectURL(photoPreview.value);
@@ -594,14 +768,37 @@ const resetModalState = () => {
     }
 };
 
-const nextStep = () => {
+const nextStep = async () => {
     if (step.value >= totalSteps) {
         return;
     }
 
     attemptedStepAdvance.value = true;
+
     if (!canGoNext.value) {
         return;
+    }
+
+    if (step.value === 2 && form.patient_type === 'existing') {
+        const nameValidation = await checkExistingPatientName();
+        if (!nameValidation.fullNameValid) {
+            return;
+        }
+    }
+
+    if (step.value === 2 && form.patient_type === 'new') {
+        const existingMatch = await lookupPatientNameMatch(form.guest_first_name, form.guest_last_name);
+
+        if (existingMatch.fullNameExists) {
+            await Swal.fire({
+                title: 'Patient already exists',
+                text: 'This first name and last name already exist in this clinic. Please go to Existing patient booking.',
+                icon: 'warning',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#f59e0b',
+            });
+            return;
+        }
     }
 
     step.value += 1;
@@ -640,14 +837,32 @@ const submit = () => {
             const targetStep = getStepForErrors(errors) || 1;
             step.value = targetStep;
             await focusPrimaryFieldForStep(targetStep);
+
+            const firstErrorMessage = Object.values(errors || {}).find((value) => typeof value === 'string');
+            await Swal.fire({
+                title: 'Booking cannot continue',
+                text: firstErrorMessage || 'Please review the form and try again.',
+                icon: 'error',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#ef4444',
+            });
         },
     });
 };
 
-const close = () => {
+const close = async () => {
     if (!showSuccess.value && hasDraftableContent.value) {
-        const shouldClose = window.confirm('Discard your booking progress?');
-        if (!shouldClose) {
+        const confirmClose = await Swal.fire({
+            title: 'Discard booking progress?',
+            text: 'Your current booking details will be removed.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Discard',
+            cancelButtonText: 'Keep Editing',
+            confirmButtonColor: '#ef4444',
+        });
+
+        if (!confirmClose.isConfirmed) {
             return;
         }
     }
@@ -665,7 +880,7 @@ const close = () => {
 watch(() => props.show, (newVal) => {
     if (newVal) {
         document.body.style.overflow = 'hidden';
-        loadDraft();
+        void loadDraft();
         focusPrimaryFieldForStep(step.value);
     } else {
         closeCameraModal();
@@ -683,12 +898,26 @@ watch(() => step.value, async () => {
     await focusPrimaryFieldForStep(step.value);
 });
 
+watch(() => form.patient_type, () => {
+    resetExistingPatientNameValidation();
+    if (existingPatientLookupTimer) {
+        clearTimeout(existingPatientLookupTimer);
+    }
+});
+
+watch(() => [form.guest_first_name, form.guest_last_name], () => {
+    scheduleExistingPatientLookup();
+});
+
 watch(draftPayload, () => {
     saveDraft();
 });
 
 // Cleanup on component unmount
 onUnmounted(() => {
+    if (existingPatientLookupTimer) {
+        clearTimeout(existingPatientLookupTimer);
+    }
     stopCameraStream();
     if (photoPreview.value) {
         URL.revokeObjectURL(photoPreview.value);
@@ -744,7 +973,7 @@ onUnmounted(() => {
                             <h3 class="text-2xl font-black text-gray-900" id="modal-title">
                                 Book Appointment
                             </h3>
-                            <p class="text-sm text-gray-500 font-medium" aria-live="polite">Step {{ step }} of 5: {{ steps[step-1].name }}</p>
+                            <p class="text-sm text-gray-500 font-medium" aria-live="polite">Step {{ step }} of {{ totalSteps }}: {{ steps[step-1].name }}</p>
                         </div>
                         <button @click="close" class="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
                             <span class="text-2xl">✕</span>
@@ -755,32 +984,66 @@ onUnmounted(() => {
                     <div class="px-4 sm:px-8 mb-5 sm:mb-8 shrink-0">
                         <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                             <div class="h-full transition-all duration-500 ease-out" 
-                                 :style="{ width: (step / 5 * 100) + '%', backgroundColor: brandingColor }">
+                                 :style="{ width: (step / totalSteps * 100) + '%', backgroundColor: brandingColor }">
                             </div>
                         </div>
                     </div>
 
                     <!-- Step Content -->
                     <div class="px-4 sm:px-8 pb-6 sm:pb-8 flex-1 min-h-0 overflow-y-auto">
-                        
-                        <!-- Step 1: Patient Info -->
+
+                        <!-- Step 1: Patient Type -->
                         <div v-if="step === 1" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-4">Please select whether this booking is for a new patient or an existing patient.</p>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <button
+                                        type="button"
+                                        @click="form.patient_type = 'new'"
+                                        class="w-full p-6 rounded-3xl border-2 text-left transition-all"
+                                        :class="form.patient_type === 'new' ? 'border-blue-500 bg-blue-50 ring-2' : 'border-gray-100 bg-gray-50 hover:bg-gray-100'"
+                                        :style="form.patient_type === 'new' ? { '--tw-ring-color': brandingColor } : {}"
+                                    >
+                                        <p class="text-lg font-black text-gray-900">New Patient</p>
+                                        <p class="text-xs text-gray-500 mt-1">First time booking with this clinic</p>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="form.patient_type = 'existing'"
+                                        class="w-full p-6 rounded-3xl border-2 text-left transition-all"
+                                        :class="form.patient_type === 'existing' ? 'border-blue-500 bg-blue-50 ring-2' : 'border-gray-100 bg-gray-50 hover:bg-gray-100'"
+                                        :style="form.patient_type === 'existing' ? { '--tw-ring-color': brandingColor } : {}"
+                                    >
+                                        <p class="text-lg font-black text-gray-900">Old/Existing Patient</p>
+                                        <p class="text-xs text-gray-500 mt-1">Already registered in the clinic system</p>
+                                    </button>
+                                </div>
+                                <p v-if="form.errors.patient_type || (attemptedStepAdvance && !form.patient_type)" class="mt-3 text-xs font-bold text-red-500">{{ form.errors.patient_type || 'Please choose patient type before continuing.' }}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Step 2: Patient Info -->
+                        <div v-if="step === 2" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
                                     <label class="block text-sm font-bold text-gray-700 mb-2">
                                         First Name
-                                        <span :class="form.guest_first_name ? 'text-black' : 'text-red-500'">*</span>
+                                        <span :class="isExistingPatientType ? (existingPatientFirstNameValid === true ? 'text-black' : 'text-red-500') : (form.guest_first_name ? 'text-black' : 'text-red-500')">*</span>
                                     </label>
                                     <input ref="firstNameInputRef" type="text" v-model="form.guest_first_name" required class="w-full bg-gray-50 border-none rounded-2xl focus:ring-2 p-4 transition-all" :style="{ '--tw-ring-color': brandingColor }" placeholder="John">
                                     <p v-if="form.errors.guest_first_name || (attemptedStepAdvance && !form.guest_first_name)" class="mt-2 text-xs font-bold text-red-500">{{ form.errors.guest_first_name || 'First name is required.' }}</p>
+                                    <p v-if="showExistingFirstNameNotFoundInline" class="mt-2 text-xs font-bold text-red-500">First name is not registered in patient records.</p>
+                                    <p v-if="showExistingFirstNameFoundInline" class="mt-2 text-xs font-bold text-green-600">First name found in patient records.</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-bold text-gray-700 mb-2">
                                         Last Name
-                                        <span :class="form.guest_last_name ? 'text-black' : 'text-red-500'">*</span>
+                                        <span :class="isExistingPatientType ? (existingPatientFullNameValid === true ? 'text-black' : 'text-red-500') : (form.guest_last_name ? 'text-black' : 'text-red-500')">*</span>
                                     </label>
                                     <input type="text" v-model="form.guest_last_name" required class="w-full bg-gray-50 border-none rounded-2xl focus:ring-2 p-4 transition-all" :style="{ '--tw-ring-color': brandingColor }" placeholder="Doe">
                                     <p v-if="form.errors.guest_last_name || (attemptedStepAdvance && !form.guest_last_name)" class="mt-2 text-xs font-bold text-red-500">{{ form.errors.guest_last_name || 'Last name is required.' }}</p>
+                                    <p v-if="showExistingLastNameNotFoundInline" class="mt-2 text-xs font-bold text-red-500">Last name is not registered in patient records.</p>
+                                    <p v-if="showExistingLastNameFoundInline" class="mt-2 text-xs font-bold text-green-600">Last name found in patient records.</p>
                                 </div>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -791,7 +1054,8 @@ onUnmounted(() => {
                                 <div>
                                     <label class="block text-sm font-bold text-gray-700 mb-2">
                                         Phone Number
-                                        <span :class="isGuestPhoneValid ? 'text-black' : 'text-red-500'">*</span>
+                                        <span v-if="form.patient_type !== 'existing'" :class="isGuestPhoneValid ? 'text-black' : 'text-red-500'">*</span>
+                                        <span v-else class="text-gray-400 text-xs font-semibold">(Optional for Existing Patient)</span>
                                     </label>
                                     <input
                                         type="text"
@@ -806,6 +1070,7 @@ onUnmounted(() => {
                                         placeholder="09XX XXX XXXX"
                                     >
                                     <p v-if="form.guest_phone && !isGuestPhoneValid" class="mt-2 text-xs font-bold text-red-500">Phone number must be exactly 11 digits.</p>
+                                    <p v-if="form.patient_type === 'existing' && existingPatientLookupLoading" class="mt-2 text-xs font-bold text-gray-500">Checking existing patient name...</p>
                                     <p v-if="form.errors.guest_phone" class="mt-2 text-xs font-bold text-red-500">{{ form.errors.guest_phone }}</p>
                                 </div>
                             </div>
@@ -864,8 +1129,8 @@ onUnmounted(() => {
                             </div>
                         </div>
 
-                        <!-- Step 2: Medical History -->
-                        <div v-if="step === 2" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <!-- Step 3: Medical History -->
+                        <div v-if="step === 3" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
                             <p class="text-sm text-gray-500 mb-4">Please check any conditions that apply to you. This helps us provide the safest care.</p>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <label v-for="option in medicalOptions" :key="option" 
@@ -885,8 +1150,8 @@ onUnmounted(() => {
                             </div>
                         </div>
 
-                        <!-- Step 3: Schedule -->
-                        <div v-if="step === 3" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <!-- Step 4: Schedule -->
+                        <div v-if="step === 4" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-4">
                                     Select Preferred Date
@@ -951,8 +1216,8 @@ onUnmounted(() => {
                             </div>
                         </div>
 
-                        <!-- Step 4: Dentist Selection -->
-                        <div v-if="step === 4" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <!-- Step 5: Dentist Selection -->
+                        <div v-if="step === 5" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
                             <p class="text-sm text-gray-500 mb-4">Choose your preferred dentist or select "Any Available".</p>
                             <div class="space-y-3">
                                 <button @click="form.dentist_id = ''" 
@@ -986,14 +1251,15 @@ onUnmounted(() => {
                             </div>
                         </div>
 
-                        <!-- Step 5: Review -->
-                        <div v-if="step === 5" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <!-- Step 6: Review -->
+                        <div v-if="step === 6" class="space-y-6 animate-in slide-in-from-right-4 duration-300">
                             <div class="bg-gray-50 p-8 rounded-[2.5rem] space-y-6">
                                 <div class="flex justify-between border-b border-gray-200 pb-4">
                                     <div>
                                         <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Patient</p>
                                         <p class="text-xl font-black text-gray-900 leading-tight">{{ form.guest_first_name }} {{ form.guest_last_name }}</p>
                                         <p class="text-xs text-gray-500">{{ form.guest_phone }}</p>
+                                        <p class="text-[10px] uppercase tracking-widest text-gray-400 mt-1">{{ form.patient_type === 'existing' ? 'Old/Existing Patient' : 'New Patient' }}</p>
                                     </div>
                                     <div class="text-right">
                                         <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Service</p>
@@ -1046,13 +1312,13 @@ onUnmounted(() => {
                         <button v-if="step > 1" @click="prevStep" class="w-full sm:w-auto px-8 py-4 border-2 border-gray-100 font-bold rounded-full text-gray-500 hover:bg-gray-50 transition-all">
                             Back
                         </button>
-                        <button v-if="step < 5" @click="nextStep" 
+                        <button v-if="step < totalSteps" @click="nextStep" 
                             :disabled="!canGoNext"
                                 class="w-full sm:flex-1 py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50" 
                                 :style="{ backgroundColor: brandingColor }">
                             Continue
                         </button>
-                        <button v-if="step === 5" @click="submit" :disabled="form.processing"
+                        <button v-if="step === totalSteps" @click="submit" :disabled="form.processing"
                                 class="w-full sm:flex-1 py-4 text-white font-black text-lg rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50" 
                                 :style="{ backgroundColor: brandingColor }">
                             {{ form.processing ? 'Booking...' : 'Confirm Appointment' }}
