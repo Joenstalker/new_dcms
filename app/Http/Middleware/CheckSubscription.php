@@ -108,7 +108,7 @@ class CheckSubscription
                     'max_appointments' => 'appointments',
                 ];
 
-                $metricKey = $metricKeyMap[$feature] ?? '';
+                $metricKey = $metricKeyMap[$feature];
                 $baseMax = $plan->getFeatureValue($feature);
                 $max = app(TenantEffectiveLimitService::class)
                     ->resolveEffectiveLimit($subscription, $metricKey, $baseMax);

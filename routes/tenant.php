@@ -372,6 +372,7 @@ Route::middleware([
             Route::post('/', [SupportController::class, 'store'])->name('tenant.support.store');
             Route::get('/{ticket}', [SupportController::class, 'show'])->name('tenant.support.show');
             Route::post('/{ticket}/messages', [SupportController::class, 'sendMessage'])->name('tenant.support.message');
+            Route::get('/{ticket}/attachments/{attachment}', [SupportController::class, 'attachment'])->name('tenant.support.attachment');
         }
         );
     }

@@ -26,15 +26,24 @@ const form = useForm({
     image: null,
 });
 
+const allowedProfileImageTypes = [
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml',
+];
+
 const onFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
         // Validate file type
-        if (!file.type.startsWith('image/')) {
+        if (!allowedProfileImageTypes.includes(file.type)) {
             Swal.fire({
                 icon: 'error',
                 title: 'Invalid File',
-                text: 'Please select a valid image file.',
+                text: 'Please select PNG, JPG/JPEG, GIF, WEBP, or SVG image.',
                 confirmButtonColor: '#2B7CB3',
             });
             e.target.value = '';
@@ -179,7 +188,7 @@ watch(() => props.show, (showing) => {
                     type="file" 
                     class="hidden" 
                     id="profile-picture-input" 
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml"
                     @change="onFileChange"
                 />
                 <label 

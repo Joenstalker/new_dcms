@@ -62,13 +62,24 @@ class ProfileController extends Controller
         }
 
         $imageData = $request->input('image');
-        if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
+        if (preg_match('/^data:image\/([a-zA-Z0-9.+-]+);base64,/', $imageData, $type)) {
             $imageData = substr($imageData, strpos($imageData, ',') + 1);
-            $type = strtolower($type[1]); // jpg, png, gif
+            $mimeSubtype = strtolower($type[1]);
+            $allowedExtensions = [
+                'jpg' => 'jpg',
+                'jpeg' => 'jpeg',
+                'png' => 'png',
+                'gif' => 'gif',
+                'webp' => 'webp',
+                'svg+xml' => 'svg',
+                'svg' => 'svg',
+            ];
 
-            if (!in_array($type, ['jpg', 'jpeg', 'gif', 'png'])) {
+            if (! isset($allowedExtensions[$mimeSubtype])) {
                 return Redirect::back()->with('error', 'Invalid image type.');
             }
+
+            $type = $allowedExtensions[$mimeSubtype];
 
             $imageData = base64_decode($imageData);
 

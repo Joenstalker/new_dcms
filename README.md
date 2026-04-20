@@ -35,21 +35,66 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Open your `.env` file and configure your primary database credentials:
+Open your `.env` file and set the minimum required values below.
+
+This block is the most important setup for team onboarding because it controls:
+- central admin login credentials,
+- Laravel Reverb real-time broadcasting, and
+- local database connection.
+
 ```env
+APP_URL=http://localhost:8080
+
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=new_dcms_db
 DB_USERNAME=root
 DB_PASSWORD=
+
+# Central admin login seed (used by AdminUserSeeder)
+ADMIN_SEED_NAME="DCMS Admin"
+ADMIN_SEED_EMAIL=admin@example.test
+ADMIN_SEED_PASSWORD=ChangeMe_123!
+
+# Reverb / broadcasting (local)
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=dcms-local
+REVERB_APP_KEY=dcms-local-key
+REVERB_APP_SECRET=dcms-local-secret
+REVERB_HOST=127.0.0.1
+REVERB_PORT=8081
+REVERB_SCHEME=http
+REVERB_SERVER_HOST=0.0.0.0
+REVERB_SERVER_PORT=8081
+
+# Vite Echo client (must match Reverb host/port/scheme)
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="${REVERB_HOST}"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+
+# GitHub webhook secret (for release sync)
+GITHUB_WEBHOOK_SECRET=replace-with-a-long-random-secret
 ```
+
+Important notes:
+1. Do not commit real credentials to git.
+2. `REVERB_SERVER_PORT` and `REVERB_PORT` should be the same port locally (recommended: `8081`).
+3. If you change `.env` values, run `php artisan optimize:clear`.
 
 ### 3. Run Database Migrations & Seeders
 Because this is a multi-tenant application using `stancl/tenancy`, you must migrate the central database first, then seed the initial admin data and subscription plans:
 ```bash
 php artisan migrate:fresh --seed
 ```
+
+After seeding, central login is available at:
+- `http://localhost:8080/login`
+
+Use the same values you set in `.env`:
+- `ADMIN_SEED_EMAIL`
+- `ADMIN_SEED_PASSWORD`
 
 ### 4. Start the Application
 You will need three terminals running simultaneously for local development.
@@ -71,6 +116,27 @@ php artisan reverb:start
 
 You can now access the central landing page at `http://localhost:8080`.
 The websocket server will independently run via Reverb gracefully on port `8081`.
+
+---
+
+## 🔌 Laravel Reverb (Real-time) Checklist
+
+Use this quick checklist when notifications/live UI are not updating:
+
+1. Ensure `BROADCAST_CONNECTION=reverb` in `.env`.
+2. Ensure Reverb server/client ports match (recommended `8081`):
+    - `REVERB_SERVER_PORT`
+    - `REVERB_PORT`
+    - `VITE_REVERB_PORT`
+3. Ensure host/scheme are aligned:
+    - local host: `127.0.0.1`
+    - local scheme: `http`
+4. Keep both processes running:
+    - `php artisan reverb:start`
+    - `npm run dev`
+5. After changing Reverb env values:
+    - `php artisan optimize:clear`
+    - restart Laravel, Vite, and Reverb terminals.
 
 ---
 
@@ -191,7 +257,7 @@ To enable real-time detection of new releases and notify tenants immediately, yo
 ### 1. Set the Webhook Secret
 In your `.env` file, set a unique secret:
 ```env
-GITHUB_WEBHOOK_SECRET=f999685c-41e5-4072-adbc-4eb5b5c58185
+GITHUB_WEBHOOK_SECRET=replace-with-a-long-random-secret
 ```
 
 ### 2. Configure GitHub Settings
@@ -210,11 +276,15 @@ Check the **Audit Logs** in the Admin Dashboard to verify successful incoming de
 When testing GitHub Releases locally, start your tunnel first before creating/publishing a release.
 
 1. Start Laravel app on port `8080`.
-2. Start ngrok first: `ngrok 8080`.
-3. Update GitHub Webhook **Payload URL** to the current ngrok URL, e.g. `https://<ngrok-id>.ngrok-free.app/github/webhook`.
-4. Validate endpoint availability before publishing:
+2. Start ngrok first: `ngrok http 8080`.
+3. Copy the HTTPS forwarding URL from ngrok, e.g. `https://<ngrok-id>.ngrok-free.app`.
+4. Set `APP_URL` to that ngrok URL in `.env`, then run `php artisan optimize:clear`.
+   - This ensures central domain routing recognizes the ngrok host.
+5. Update GitHub Webhook **Payload URL** to: `https://<ngrok-id>.ngrok-free.app/github/webhook`.
+6. Validate endpoint availability before publishing:
     - `GET /github/webhook` should return `405 Method Not Allowed` (not `404`).
-5. Publish the GitHub release (or click **Redeliver** on release events).
-6. Confirm delivery status is `2xx` in GitHub and verify sync output in Admin Audit Logs.
+7. Publish the GitHub release (or click **Redeliver** on release events).
+8. Confirm delivery status is `2xx` in GitHub and verify sync output in Admin Audit Logs.
+9. Supported release actions for sync are `published` and `released`.
 
 If ngrok is not running before release publish/redelivery, GitHub deliveries can fail with `404` and release sync will be skipped.

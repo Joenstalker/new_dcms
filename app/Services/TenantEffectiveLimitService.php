@@ -24,7 +24,7 @@ class TenantEffectiveLimitService
             return 1;
         }
 
-        return max(1, (int) ($subscription?->limit_multiplier ?? 1));
+        return max(1, (int) ($subscription->limit_multiplier ?? 1));
     }
 
     public function isPrepaidBoostActive(?Subscription $subscription): bool
@@ -71,12 +71,21 @@ class TenantEffectiveLimitService
      */
     public function getPrepaidContext(?Subscription $subscription): array
     {
+        $multiplier = $subscription ? max(1, (int) ($subscription->limit_multiplier ?? 1)) : 1;
+        $startsAt = $subscription && $subscription->prepaid_started_at
+            ? $subscription->prepaid_started_at->toIso8601String()
+            : null;
+        $endsAt = $subscription && $subscription->prepaid_ends_at
+            ? $subscription->prepaid_ends_at->toIso8601String()
+            : null;
+        $months = $subscription ? max(1, (int) ($subscription->prepaid_months ?? 1)) : 1;
+
         return [
             'active' => $this->isPrepaidBoostActive($subscription),
-            'multiplier' => max(1, (int) ($subscription?->limit_multiplier ?? 1)),
-            'starts_at' => $subscription?->prepaid_started_at?->toIso8601String(),
-            'ends_at' => $subscription?->prepaid_ends_at?->toIso8601String(),
-            'months' => max(1, (int) ($subscription?->prepaid_months ?? 1)),
+            'multiplier' => $multiplier,
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
+            'months' => $months,
         ];
     }
 }

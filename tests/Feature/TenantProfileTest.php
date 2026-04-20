@@ -161,6 +161,36 @@ class TenantProfileTest extends TestCase
         $this->assertTrue(Hash::check('NewPassword1!', $this->user->refresh()->password));
     }
 
+    public function test_tenant_can_update_profile_picture_with_svg_data_uri(): void
+    {
+        Storage::fake('public');
+
+        $svgMarkup = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#2B7CB3"/></svg>';
+        $svgDataUri = 'data:image/svg+xml;base64,' . base64_encode($svgMarkup);
+
+        $response = $this
+            ->actingAs($this->user)
+            ->withSession([
+                'tenant_authenticated' => true,
+                'tenant_authenticated_tenant_id' => (string) $this->tenant->id,
+                'tenant_authenticated_user_id' => (int) $this->user->id,
+            ])
+            ->from('http://' . $this->tenantDomain . '/profile')
+            ->post('http://' . $this->tenantDomain . '/profile/picture', [
+                'image' => $svgDataUri,
+            ]);
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('http://' . $this->tenantDomain . '/profile');
+
+        $this->user->refresh();
+
+        $this->assertNotEmpty($this->user->profile_picture);
+        $this->assertStringEndsWith('.svg', $this->user->profile_picture);
+        Storage::disk('public')->assertExists($this->user->profile_picture);
+    }
+
     public function test_preview_session_uses_tenant_preview_user_in_shared_auth_props(): void
     {
         tenancy()->end();

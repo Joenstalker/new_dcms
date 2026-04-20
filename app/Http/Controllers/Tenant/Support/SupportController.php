@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tenant\Support;
 
 use App\Events\SupportTicketUpdated;
 use App\Http\Controllers\Controller;
+use App\Models\SupportAttachment;
 use App\Models\SupportMessage;
 use App\Models\SupportTicket;
 use App\Models\User;
@@ -15,10 +16,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class SupportController extends Controller
 {
     use ApiResponse;
+
+    private const FIRST_MESSAGE_AUTO_REPLY = "Thank you for reaching out with your concern.\nWe value your feedback and will review it promptly.";
 
     private function authorizeSupportChat(): void
     {
@@ -98,6 +102,8 @@ class SupportController extends Controller
 
         $this->handleAttachments($request, $message);
 
+        $this->createInitialAutoReplyIfNeeded($ticket);
+
         try {
             broadcast(new SupportTicketUpdated($ticket, 'created'));
         } catch (\Throwable $e) {
@@ -112,6 +118,26 @@ class SupportController extends Controller
         ], 'Support ticket created successfully.', 201);
     }
 
+    protected function createInitialAutoReplyIfNeeded(SupportTicket $ticket): void
+    {
+        // Only send one automatic acknowledgment for the first tenant message in a ticket.
+        if ($ticket->messages()->count() !== 1) {
+            return;
+        }
+
+        $firstMessage = $ticket->messages()->oldest('id')->first(['sender_type']);
+
+        if (! $firstMessage || $firstMessage->sender_type !== 'tenant') {
+            return;
+        }
+
+        $ticket->messages()->create([
+            'sender_id' => 0,
+            'sender_type' => 'admin',
+            'content' => self::FIRST_MESSAGE_AUTO_REPLY,
+        ]);
+    }
+
     public function show(SupportTicket $ticket)
     {
         $this->authorizeSupportChat();
@@ -122,10 +148,54 @@ class SupportController extends Controller
         ], 'Support ticket details retrieved successfully.');
     }
 
+    /**
+     * Serve a support attachment for tenant chat.
+     */
+    public function attachment(SupportTicket $ticket, SupportAttachment $attachment)
+    {
+        $this->authorizeSupportChat();
+        $this->authorize('view', $ticket);
+
+        $message = SupportMessage::query()
+            ->where('id', (int) $attachment->support_message_id)
+            ->where('support_ticket_id', $ticket->id)
+            ->first(['id', 'sender_type']);
+
+        if (! $message) {
+            abort(404);
+        }
+
+        $path = (string) $attachment->file_path;
+        if ($path === '') {
+            abort(404);
+        }
+
+        $disk = $message->sender_type === 'admin'
+            ? Storage::build([
+                'driver' => 'local',
+                'root' => base_path('storage/app/public'),
+                'throw' => false,
+            ])
+            : Storage::disk('support');
+
+        if (! $disk->exists($path)) {
+            abort(404);
+        }
+
+        return response($disk->get($path), 200, [
+            'Content-Type' => $disk->mimeType($path) ?: 'application/octet-stream',
+            'Cache-Control' => 'private, max-age=604800',
+        ]);
+    }
+
     public function sendMessage(Request $request, SupportTicket $ticket)
     {
         $this->authorizeSupportChat();
         $this->authorize('update', $ticket);
+
+        if ($ticket->status === 'closed') {
+            return $this->respondError('This ticket is closed and read-only.', 422);
+        }
 
         $validated = $request->validate([
             'content' => 'required|string',
@@ -158,7 +228,7 @@ class SupportController extends Controller
         $message->load('attachments');
 
         return $this->respondSuccess([
-            'message' => $this->transformMessage($message),
+            'message' => $this->transformMessage($message, $ticket),
         ], 'Support message sent successfully.');
     }
 
@@ -167,18 +237,36 @@ class SupportController extends Controller
         $data = $ticket->toArray();
         $messages = $ticket->messages ?? collect();
 
-        $data['messages'] = collect($messages)->map(function ($message) {
-            return $this->transformMessage($message);
+        $data['messages'] = collect($messages)->map(function ($message) use ($ticket) {
+            return $this->transformMessage($message, $ticket);
         })->values()->all();
 
         return $data;
     }
 
-    protected function transformMessage(SupportMessage $message): array
+    protected function transformMessage(SupportMessage $message, ?SupportTicket $ticket = null): array
     {
         $data = $message->toArray();
         $data['sender_name'] = $this->resolveSenderName($message);
         $data['sender_avatar_url'] = $this->resolveSenderAvatarUrl($message);
+
+        if ($ticket && ! empty($data['attachments']) && is_array($data['attachments'])) {
+            $data['attachments'] = collect($data['attachments'])->map(function ($att) use ($ticket) {
+                if (! is_array($att)) {
+                    return $att;
+                }
+
+                $attachmentId = $att['id'] ?? null;
+                if ($attachmentId) {
+                    $att['url'] = route('tenant.support.attachment', [
+                        'ticket' => $ticket->id,
+                        'attachment' => $attachmentId,
+                    ], absolute: false);
+                }
+
+                return $att;
+            })->values()->all();
+        }
 
         return $data;
     }
@@ -223,7 +311,12 @@ class SupportController extends Controller
                 return $path;
             }
 
-            return asset('storage/'.ltrim($path, '/'));
+            $normalizedPath = ltrim($path, '/');
+            if (! Storage::disk('public')->exists($normalizedPath)) {
+                return 'https://ui-avatars.com/api/?name='.urlencode($admin->name ?: 'Support Admin').'&color=FFFFFF&background=334155';
+            }
+
+            return asset('storage/'.$normalizedPath);
         }
 
         return 'https://ui-avatars.com/api/?name='.urlencode($admin?->name ?: 'Support Admin').'&color=FFFFFF&background=334155';

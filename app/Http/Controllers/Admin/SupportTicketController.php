@@ -83,7 +83,7 @@ class SupportTicketController extends Controller
         // but admin pages run on the central domain. To keep CSP strict (img-src 'self'),
         // we proxy tenant attachments through a central admin route.
         if (! empty($data['attachments']) && is_array($data['attachments'])) {
-            $data['attachments'] = collect($data['attachments'])->map(function ($att) use ($message, $ticket) {
+            $data['attachments'] = collect($data['attachments'])->map(function ($att) use ($ticket) {
                 if (! is_array($att)) {
                     return $att;
                 }
@@ -93,18 +93,13 @@ class SupportTicketController extends Controller
                     return $att;
                 }
 
-                if ($message->sender_type === 'tenant') {
-                    $attachmentId = $att['id'] ?? null;
-                    if ($attachmentId) {
-                        $att['url'] = route('admin.support.attachment', [
-                            'ticket' => $ticket->id,
-                            'attachment' => $attachmentId,
-                        ], absolute: false);
-                        return $att;
-                    }
+                $attachmentId = $att['id'] ?? null;
+                if ($attachmentId) {
+                    $att['url'] = route('admin.support.attachment', [
+                        'ticket' => $ticket->id,
+                        'attachment' => $attachmentId,
+                    ], absolute: false);
                 }
-
-                $att['url'] = asset('storage/'.ltrim($path, '/'));
                 return $att;
             })->values()->all();
         }
@@ -116,8 +111,8 @@ class SupportTicketController extends Controller
      * Serve a support attachment for admin UI.
      *
      * - Admin uploads are in central public storage and can be served directly via /storage.
-     * - Tenant uploads are stored under tenant-isolated storage; we initialize tenancy for the
-     *   ticket's tenant, read from the tenant's support disk, then end tenancy.
+        * - Tenant uploads are stored under tenant-isolated storage. For admin routes (central app),
+        *   read from the tenant storage path directly to avoid full tenancy bootstrap side effects.
      */
     public function attachment(SupportTicket $ticket, SupportAttachment $attachment)
     {
@@ -156,20 +151,23 @@ class SupportTicketController extends Controller
             abort(404);
         }
 
-        tenancy()->initialize($tenant);
-        try {
-            $disk = Storage::disk('support');
-            if (! $disk->exists($path)) {
-                abort(404);
-            }
+        $tenantStorageRoot = storage_path(
+            config('tenancy.filesystem.suffix_base', 'tenant').(string) $ticket->tenant_id.'/app/public'
+        );
+        $disk = Storage::build([
+            'driver' => 'local',
+            'root' => $tenantStorageRoot,
+            'throw' => false,
+        ]);
 
-            return response($disk->get($path), 200, [
-                'Content-Type' => $disk->mimeType($path) ?: 'application/octet-stream',
-                'Cache-Control' => 'private, max-age=604800',
-            ]);
-        } finally {
-            tenancy()->end();
+        if (! $disk->exists($path)) {
+            abort(404);
         }
+
+        return response($disk->get($path), 200, [
+            'Content-Type' => $disk->mimeType($path) ?: 'application/octet-stream',
+            'Cache-Control' => 'private, max-age=604800',
+        ]);
     }
 
     protected function resolveSenderName(SupportMessage $message, SupportTicket $ticket): string

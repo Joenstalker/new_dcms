@@ -613,6 +613,7 @@ const openTicket = async (ticket, silent = false) => {
 };
 
 const sendMessage = async () => {
+    if (activeTicket.value?.status === 'closed') return;
     if (!messageContent.value.trim() && attachments.value.length === 0) return;
     sending.value = true;
 
@@ -722,6 +723,22 @@ const formatTime = (dateStr) => {
 
 const isImage = (type) => type && type.startsWith('image/');
 const getAttachmentUrl = (msg, att) => {
+    const raw = att?.url || '';
+    if (raw) {
+        // Tenant portals may receive absolute URLs generated from APP_URL (central host).
+        // Convert to same-origin relative paths to avoid cross-origin/CSP issues.
+        try {
+            if (raw.startsWith('http://') || raw.startsWith('https://')) {
+                const u = new URL(raw);
+                return `${u.pathname}${u.search}${u.hash}`;
+            }
+        } catch {
+            // ignore parsing issues and return raw below
+        }
+
+        return raw;
+    }
+
     const fp = att?.file_path || '';
     if (!fp) return '';
 
@@ -732,22 +749,7 @@ const getAttachmentUrl = (msg, att) => {
         return `/tenant-storage/${fp}`.replaceAll('//', '/');
     }
 
-    const fallback = `/storage/${fp}`.replaceAll('//', '/');
-    const raw = att?.url || '';
-    if (!raw) return fallback;
-
-    // Tenant portals run on per-tenant subdomains. If the backend generates absolute URLs
-    // using APP_URL (central host), force same-origin by converting to a relative path.
-    try {
-        if (raw.startsWith('http://') || raw.startsWith('https://')) {
-            const u = new URL(raw);
-            return `${u.pathname}${u.search}${u.hash}`;
-        }
-    } catch {
-        // ignore parsing issues and return raw below
-    }
-
-    return raw;
+    return `/storage/${fp}`.replaceAll('//', '/');
 };
 
 const getFileIcon = (type) => {
@@ -772,6 +774,8 @@ const getMessageAvatar = (msg) => {
     const bg = msg?.sender_type === 'admin' ? '334155' : '1F2937';
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&color=FFFFFF&background=${bg}`;
 };
+
+const isActiveTicketClosed = computed(() => activeTicket.value?.status === 'closed');
 
 onMounted(() => {
     syncModalState();
@@ -1112,6 +1116,10 @@ onUnmounted(() => {
 
                     <!-- Message Input -->
                     <div class="border-t border-base-200 p-3 shrink-0 bg-base-100">
+                        <div v-if="isActiveTicketClosed" class="mb-2 rounded-lg border border-base-300 bg-base-200/60 px-3 py-2 text-[11px] font-semibold text-base-content/60">
+                            This ticket is closed. You can read messages, but you cannot reply.
+                        </div>
+
                         <!-- Attachment Preview -->
                         <div v-if="attachments.length > 0" class="flex flex-wrap gap-1.5 mb-2">
                             <div v-for="(file, i) in attachments" :key="i" class="badge badge-sm gap-1 bg-base-200 border-base-300">
@@ -1121,7 +1129,7 @@ onUnmounted(() => {
                         </div>
 
                         <div class="flex items-end gap-2">
-                            <button @click="$refs.fileInputChat.click()" class="btn btn-sm btn-ghost btn-circle shrink-0">
+                            <button @click="$refs.fileInputChat.click()" :disabled="isActiveTicketClosed" class="btn btn-sm btn-ghost btn-circle shrink-0">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-base-content/40">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
                                 </svg>
@@ -1131,14 +1139,15 @@ onUnmounted(() => {
                             <textarea
                                 v-model="messageContent"
                                 @keydown.enter.exact.prevent="sendMessage"
-                                placeholder="Type a message..."
+                                :placeholder="isActiveTicketClosed ? 'Ticket is closed.' : 'Type a message...'"
+                                :disabled="isActiveTicketClosed"
                                 rows="1"
                                 class="textarea textarea-sm textarea-bordered flex-1 rounded-xl text-sm resize-none min-h-[36px] max-h-[80px]"
                             ></textarea>
 
                             <button 
                                 @click="sendMessage"
-                                :disabled="(!messageContent.trim() && attachments.length === 0) || sending"
+                                :disabled="isActiveTicketClosed || (!messageContent.trim() && attachments.length === 0) || sending"
                                 class="btn btn-sm btn-circle shrink-0 border-0 text-white"
                                 :style="{ backgroundColor: primaryColor }"
                             >
