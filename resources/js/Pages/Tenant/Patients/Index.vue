@@ -168,6 +168,28 @@ const markPatientPhotoFailed = (patient) => {
     };
 };
 
+const resolvePatientPhotoUrl = (patient) => {
+    const directUrl = String(patient?.photo_url || '').trim();
+    if (directUrl) {
+        return directUrl;
+    }
+
+    const path = String(patient?.photo_path || '').trim();
+    if (!path) {
+        return null;
+    }
+
+    if (path.startsWith('data:image')) {
+        return path;
+    }
+
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) {
+        return path;
+    }
+
+    return `/tenant-storage/${path.replace(/^\/+/, '')}`;
+};
+
 const openAddModal = () => {
     editPatientData.value = null;
     showAddModal.value = true;
@@ -313,13 +335,13 @@ const checkLimitAndOpenAddModal = () => {
                 <div class="flex flex-wrap justify-end gap-2 mt-4">
                     <button
                         @click="clearFilters"
-                        class="btn btn-sm btn-ghost rounded-xl text-[10px] font-black uppercase tracking-widest"
+                        class="btn btn-sm btn-ghost rounded-xl text-xs font-black uppercase tracking-widest"
                     >
                         Clear
                     </button>
                     <button
                         @click="applyFilters"
-                        class="btn btn-sm rounded-xl border-0 text-white text-[10px] font-black uppercase tracking-widest"
+                        class="btn btn-sm rounded-xl border-0 text-white text-xs font-black uppercase tracking-widest"
                         :style="{ backgroundColor: primaryColor }"
                     >
                         Go
@@ -340,8 +362,8 @@ const checkLimitAndOpenAddModal = () => {
                             <div class="flex items-center gap-3 min-w-0">
                                 <div class="h-11 w-11 rounded-full overflow-hidden bg-base-200 ring-2 ring-base-100 shrink-0 shadow-sm">
                                     <img
-                                        v-if="patient.photo_url && !isPatientPhotoFailed(patient)"
-                                        :src="patient.photo_url"
+                                            v-if="resolvePatientPhotoUrl(patient) && !isPatientPhotoFailed(patient)"
+                                            :src="resolvePatientPhotoUrl(patient)"
                                         class="h-full w-full object-cover"
                                         @error="markPatientPhotoFailed(patient)"
                                     >
@@ -351,7 +373,7 @@ const checkLimitAndOpenAddModal = () => {
                                 </div>
                                 <div class="min-w-0">
                                     <p class="text-sm font-black text-base-content truncate">{{ patient.first_name }} {{ patient.last_name }}</p>
-                                    <p class="text-[10px] font-black tracking-widest uppercase text-base-content/40">ID {{ patient.id }}</p>
+                                    <p class="text-xs font-black tracking-widest uppercase text-base-content/40">ID {{ patient.id }}</p>
                                     <div class="flex items-center gap-1 mt-1">
                                         <span v-if="patient.patient_type" class="badge badge-xs font-black uppercase tracking-widest" :class="patient.patient_type === 'pedia' ? 'badge-info' : 'badge-neutral'">
                                             {{ patient.patient_type }}
@@ -361,7 +383,7 @@ const checkLimitAndOpenAddModal = () => {
                             </div>
                             <button
                                 @click="openManageModal(patient.id)"
-                                class="btn btn-xs h-7 min-h-0 px-2.5 text-[9px] font-black uppercase tracking-wide text-white shadow-sm rounded-lg border-0 shrink-0"
+                                class="btn btn-sm h-10 min-h-10 px-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm rounded-lg border-0 shrink-0"
                                 :style="{ backgroundColor: primaryColor }"
                             >
                                 Manage
@@ -370,23 +392,23 @@ const checkLimitAndOpenAddModal = () => {
 
                         <div class="grid grid-cols-2 gap-2 text-xs">
                             <div class="bg-base-200/40 rounded-lg px-2 py-1.5">
-                                <p class="text-[9px] font-black uppercase tracking-widest text-base-content/40">Mobile</p>
+                                <p class="text-xs font-black uppercase tracking-widest text-base-content/40">Mobile</p>
                                 <p class="font-bold text-base-content/70">{{ patient.phone || 'N/A' }}</p>
                             </div>
                             <div class="bg-base-200/40 rounded-lg px-2 py-1.5">
-                                <p class="text-[9px] font-black uppercase tracking-widest text-base-content/40">Balance</p>
+                                <p class="text-xs font-black uppercase tracking-widest text-base-content/40">Balance</p>
                                 <p class="font-black" :class="patient.balance > 0 ? 'text-error' : 'text-base-content/60'">₱{{ Number(patient.balance || 0).toFixed(2) }}</p>
                             </div>
                             <div class="bg-base-200/40 rounded-lg px-2 py-1.5 col-span-2">
-                                <p class="text-[9px] font-black uppercase tracking-widest text-base-content/40">Address</p>
+                                <p class="text-xs font-black uppercase tracking-widest text-base-content/40">Address</p>
                                 <p class="font-semibold text-base-content/70 truncate">{{ compactAddress(patient.address, 48) }}</p>
                             </div>
                             <div class="bg-base-200/40 rounded-lg px-2 py-1.5">
-                                <p class="text-[9px] font-black uppercase tracking-widest text-base-content/40">First Visit</p>
+                                <p class="text-xs font-black uppercase tracking-widest text-base-content/40">First Visit</p>
                                 <p class="font-semibold text-base-content/70">{{ patient.first_visit_at ? formatDate(patient.first_visit_at) : (patient.last_visit_time ? formatDate(patient.last_visit_time) : 'N/A') }}</p>
                             </div>
                             <div class="bg-base-200/40 rounded-lg px-2 py-1.5">
-                                <p class="text-[9px] font-black uppercase tracking-widest text-base-content/40">Last Recall</p>
+                                <p class="text-xs font-black uppercase tracking-widest text-base-content/40">Last Recall</p>
                                 <p class="font-semibold text-base-content/70">{{ patient.last_recall_at ? formatDate(patient.last_recall_at) : 'N/A' }}</p>
                             </div>
                         </div>
@@ -407,14 +429,14 @@ const checkLimitAndOpenAddModal = () => {
                 <table class="hidden lg:table table-fixed w-full">
                     <thead>
                         <tr class="bg-base-200/50">
-                            <th class="w-[10%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">ID</th>
-                            <th class="w-[21%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Patient Name</th>
-                            <th class="w-[19%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Address</th>
-                            <th class="w-[12%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Mobile</th>
-                            <th class="w-[10%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">First Visit</th>
-                            <th class="hidden xl:table-cell w-[10%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Last Recall</th>
-                            <th class="w-[8%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4 text-right">Balance</th>
-                            <th class="w-[10%] text-[10px] font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4 text-center whitespace-nowrap">Actions</th>
+                            <th class="w-[10%] text-xs font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">ID</th>
+                            <th class="w-[21%] text-xs font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Patient Name</th>
+                            <th class="w-[19%] text-xs font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Address</th>
+                            <th class="w-[12%] text-xs font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Mobile</th>
+                            <th class="w-[10%] text-xs font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">First Visit</th>
+                            <th class="hidden xl:table-cell w-[10%] text-xs font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4">Last Recall</th>
+                            <th class="w-[8%] text-xs font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4 text-right">Balance</th>
+                            <th class="w-[10%] text-xs font-black uppercase tracking-widest text-base-content/40 px-3 xl:px-5 py-4 text-center whitespace-nowrap sticky right-0 z-20 bg-base-200/95 backdrop-blur-sm border-l border-base-200">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-base-200">
@@ -428,8 +450,8 @@ const checkLimitAndOpenAddModal = () => {
                                 <div class="flex items-center gap-4">
                                     <div class="h-12 w-12 rounded-full overflow-hidden bg-base-200 ring-2 ring-base-100 shrink-0 shadow-sm">
                                         <img
-                                            v-if="patient.photo_url && !isPatientPhotoFailed(patient)"
-                                            :src="patient.photo_url"
+                                            v-if="resolvePatientPhotoUrl(patient) && !isPatientPhotoFailed(patient)"
+                                            :src="resolvePatientPhotoUrl(patient)"
                                             class="h-full w-full object-cover"
                                             @error="markPatientPhotoFailed(patient)"
                                         >
@@ -448,7 +470,7 @@ const checkLimitAndOpenAddModal = () => {
                                             <span
                                                 v-for="tagValue in (patient.tags || []).slice(0, 2)"
                                                 :key="`p-tag-${patient.id}-${tagValue}`"
-                                                class="badge badge-xs badge-outline text-[9px] font-black"
+                                                class="badge badge-xs badge-outline text-xs font-black"
                                             >
                                                 {{ tagValue }}
                                             </span>
@@ -457,12 +479,12 @@ const checkLimitAndOpenAddModal = () => {
                                 </div>
                             </td>
 
-                            <td class="px-3 xl:px-5 py-5 align-middle">
-                                <p class="text-xs font-semibold text-base-content/70 whitespace-normal leading-snug break-words">{{ compactAddress(patient.address, 58) }}</p>
+                            <td class="px-3 xl:px-5 py-5 align-middle overflow-hidden">
+                                <p class="text-xs font-semibold text-base-content/70 whitespace-normal leading-snug break-all [overflow-wrap:anywhere] max-w-full">{{ compactAddress(patient.address, 58) }}</p>
                             </td>
 
-                            <td class="px-3 xl:px-5 py-5 align-middle">
-                                <span class="text-xs font-semibold text-base-content/70 block whitespace-normal">{{ patient.phone || 'N/A' }}</span>
+                            <td class="px-3 xl:px-5 py-5 align-middle overflow-hidden">
+                                <span class="text-xs font-semibold text-base-content/70 block whitespace-normal break-all [overflow-wrap:anywhere] leading-snug max-w-full">{{ patient.phone || 'N/A' }}</span>
                             </td>
 
                             <td class="px-3 xl:px-5 py-5 align-middle">
@@ -485,10 +507,10 @@ const checkLimitAndOpenAddModal = () => {
                             </td>
 
                             <!-- Actions -->
-                            <td class="px-3 xl:px-5 py-5 align-middle text-center whitespace-nowrap">
+                            <td class="px-3 xl:px-5 py-5 align-middle text-center whitespace-nowrap sticky right-0 z-10 bg-base-100 border-l border-base-200">
                                 <button 
                                     @click="openManageModal(patient.id)"
-                                    class="btn btn-xs h-7 min-h-0 px-2.5 text-[9px] font-black uppercase tracking-wide text-white shadow-sm hover:scale-[1.02] transition-transform rounded-lg border-0"
+                                    class="btn btn-xs h-8 min-h-8 px-2.5 text-[11px] font-black uppercase tracking-[0.1em] text-white shadow-sm hover:scale-[1.02] transition-transform rounded-lg border-0 min-w-[84px]"
                                     :style="{ backgroundColor: primaryColor }"
                                 >
                                     <span class="xl:hidden">Mng</span>

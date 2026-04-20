@@ -350,9 +350,6 @@ const toggleType = (type) => {
     border: none;
     padding: 1px 4px;
 }
-.fc-daygrid-day-number {
-    display: none;
-}
 .fc-daygrid-day-frame {
     min-height: 100px;
 }

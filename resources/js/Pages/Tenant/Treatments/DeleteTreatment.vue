@@ -16,7 +16,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'deleted']);
 
 const primaryColor = computed(() => brandingState.primary_color);
 
@@ -26,6 +26,7 @@ const submit = () => {
     form.delete(route('treatments.destroy', props.treatment.id), {
         preserveScroll: true,
         onSuccess: () => {
+            emit('deleted');
             emit('close');
             Swal.fire({
                 toast: true,

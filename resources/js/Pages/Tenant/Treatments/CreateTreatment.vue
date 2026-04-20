@@ -30,7 +30,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'saved']);
 
 const primaryColor = computed(() => brandingState.primary_color);
 const step = ref(1);
@@ -139,6 +139,7 @@ const submit = () => {
     form.post(route('treatments.store'), {
         preserveScroll: true,
         onSuccess: () => {
+            emit('saved');
             form.reset();
             step.value = 1;
             emit('close');

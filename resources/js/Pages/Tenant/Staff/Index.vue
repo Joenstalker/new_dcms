@@ -13,7 +13,8 @@
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <!-- Premium Tab Navigation -->
-                <div class="mb-8 flex items-center space-x-1 bg-gray-100/50 p-1.5 rounded-3xl w-fit border border-gray-200/50">
+                <div class="mb-8 overflow-x-auto">
+                    <div class="flex min-w-max items-center space-x-1 bg-gray-100/50 p-1.5 rounded-3xl w-fit border border-gray-200/50">
                     <button 
                         @click="activeTab = 'list'"
                         :class="activeTab === 'list' 
@@ -51,6 +52,7 @@
                         Schedules
                     </button>
 
+                    </div>
                 </div>
 
                 <div v-if="activeTab === 'list'">

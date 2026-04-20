@@ -9,6 +9,19 @@ const props = defineProps({
 });
 
 const primaryColor = computed(() => brandingState.primary_color);
+const patientOptions = computed(() => {
+    return (props.patients || []).map((patient) => {
+        const fullName = [patient.first_name, patient.last_name]
+            .filter(Boolean)
+            .join(' ')
+            .trim();
+
+        return {
+            id: patient.id,
+            label: fullName || patient.name || `Patient #${patient.id}`,
+        };
+    });
+});
 
 // Walk-in form state
 const walkinForm = ref({
@@ -83,8 +96,8 @@ const handleSubmit = () => {
                     <label class="label"><span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">Select Patient</span></label>
                     <select v-model="walkinForm.existing_patient_id" class="select select-bordered rounded-xl bg-base-200/50">
                         <option value="" disabled>Choose a patient...</option>
-                        <option v-for="patient in patients" :key="patient.id" :value="patient.id">
-                            {{ patient.name }}
+                        <option v-for="patient in patientOptions" :key="patient.id" :value="patient.id">
+                            {{ patient.label }}
                         </option>
                     </select>
                 </div>

@@ -20,7 +20,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'saved']);
 
 const primaryColor = computed(() => brandingState.primary_color);
 
@@ -46,6 +46,7 @@ const submit = () => {
     form.put(route('treatments.update', props.treatment.id), {
         preserveScroll: true,
         onSuccess: () => {
+            emit('saved');
             emit('close');
             Swal.fire({
                 toast: true,

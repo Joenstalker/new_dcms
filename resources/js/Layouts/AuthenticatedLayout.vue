@@ -182,6 +182,12 @@ const uiSidebarTextSize = computed(() => {
         : Number(page.props.tenant?.ui_sidebar_text_size ?? 12);
 });
 
+const uiSidebarBackgroundColor = computed(() => {
+    return shouldApplyBranding.value
+        ? (brandingState.ui_sidebar_background_color ?? page.props.tenant?.ui_sidebar_background_color ?? null)
+        : (page.props.tenant?.ui_sidebar_background_color ?? null);
+});
+
 const uiHeaderTitleColor = computed(() => {
     return shouldApplyBranding.value
         ? (brandingState.ui_header_title_color ?? page.props.tenant?.ui_header_title_color ?? null)
@@ -820,7 +826,7 @@ const brandStyle = computed(() => {
             --pc: ${content};
             --tenant-sidebar-text-color: ${uiSidebarTextColor.value || 'inherit'};
             --tenant-sidebar-text-size: ${uiSidebarTextSize.value}px;
-            --tenant-sidebar-bg-color: hsl(var(--b1));
+            --tenant-sidebar-bg-color: ${uiSidebarBackgroundColor.value || 'hsl(var(--b1))'};
             --tenant-subnav-bg-color: hsl(var(--b1));
             --tenant-header-title-color: ${uiHeaderTitleColor.value || 'inherit'};
             --tenant-header-title-size: ${uiHeaderTitleSize.value}px;
@@ -863,6 +869,9 @@ const brandStyle = computed(() => {
 
         .tenant-sidebar-panel {
             background-color: var(--tenant-sidebar-bg-color) !important;
+            background-image: none !important;
+            backdrop-filter: none !important;
+            opacity: 1 !important;
         }
 
         .tenant-subnav-panel {
@@ -1106,7 +1115,7 @@ function getContrastColor(hex) {
         <!-- Sidebar -->
         <div class="drawer-side z-40 h-full min-h-0 lg:overflow-hidden">
             <label for="tenant-sidebar" aria-label="close sidebar" class="drawer-overlay"></label>
-            <aside id="tenant-sidebar-panel" class="tenant-sidebar-panel bg-base-100 overflow-hidden" :class="asideFrameClasses">
+            <aside id="tenant-sidebar-panel" class="tenant-sidebar-panel bg-base-100 overflow-hidden relative z-10" :class="asideFrameClasses">
                 <!-- Sidebar Header -->
                 <div class="flex items-center px-4 h-16 border-b border-base-300 shrink-0">
                     <Link :href="usePage().props.tenant ? route('tenant.dashboard') : route('dashboard')" class="flex items-center space-x-4 flex-1 min-w-0">

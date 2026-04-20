@@ -61,6 +61,7 @@ let layoutResizeObserver = null;
 let layoutMutationObserver = null;
 let clampFrame = null;
 const runtimePositionStoreKey = '__tenantSupportChatBubblePosition';
+const SUPPORT_CHAT_BASE_Z_INDEX = 30;
 
 /** Laravel `ApiResponse` wraps payloads as `{ success, data: { ticket, ... } }`. */
 const unwrapSupportApi = (axiosResponseData) => {
@@ -114,7 +115,7 @@ const syncSupportTicketEchoChannels = () => {
 };
 
 const bubbleLayerStyle = computed(() => ({
-    zIndex: isModalOpen.value ? 1 : 9999,
+    zIndex: isModalOpen.value ? 1 : SUPPORT_CHAT_BASE_Z_INDEX,
     pointerEvents: isModalOpen.value ? 'none' : 'auto',
     visibility: isModalOpen.value ? 'hidden' : 'visible',
     opacity: isModalOpen.value ? 0 : 1,

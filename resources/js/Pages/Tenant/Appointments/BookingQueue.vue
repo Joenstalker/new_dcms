@@ -13,9 +13,20 @@ const primaryColor = computed(() => brandingState.primary_color);
 const permissions = computed(() => usePage().props.auth.user.permissions);
 const canEdit = computed(() => permissions.value.includes('edit appointments'));
 
-// Filter only pending / queued appointments
+// Active queue: keep only not-yet-accepted bookings and order FIFO.
 const queuedAppointments = computed(() => 
-    props.appointments.filter(a => ['pending', 'confirmed', 'queued', 'scheduled'].includes(a.status))
+    props.appointments
+        .filter((a) => ['pending', 'confirmed', 'queued'].includes(String(a.status || '').toLowerCase()))
+        .sort((a, b) => {
+            const left = new Date(a.created_at || a.appointment_date || 0).getTime();
+            const right = new Date(b.created_at || b.appointment_date || 0).getTime();
+
+            if (left === right) {
+                return Number(a.id || 0) - Number(b.id || 0);
+            }
+
+            return left - right;
+        })
 );
 
 const formatTime = (dateString) => {

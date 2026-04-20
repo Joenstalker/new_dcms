@@ -38,6 +38,7 @@ const form = useForm({
     initial_balance: 0,
     last_visit_time: '',
     photo: null,
+    _method: '',
 });
 
 const tagsText = ref('');
@@ -46,6 +47,7 @@ const tagsText = ref('');
 watch(() => props.show, (newVal) => {
     if (newVal) {
         if (props.patient) {
+            form._method = 'put';
             form.first_name = props.patient.first_name || '';
             form.last_name = props.patient.last_name || '';
             form.phone = props.patient.phone || '';
@@ -66,9 +68,10 @@ watch(() => props.show, (newVal) => {
             form.photo = null;
             tagsText.value = form.tags.join(', ');
             
-            photoPreview.value = props.patient.photo_url || null;
+            photoPreview.value = resolveExistingPhoto(props.patient);
         } else {
             form.reset();
+            form._method = '';
             photoPreview.value = null;
             tagsText.value = '';
         }
@@ -96,6 +99,26 @@ const handlePhotoUpload = (e) => {
     }
 };
 
+const resolveExistingPhoto = (patient) => {
+    if (!patient) return null;
+
+    const preferred = String(patient.photo_url || '').trim();
+    if (preferred) return preferred;
+
+    const fallbackPath = String(patient.photo_path || '').trim();
+    if (!fallbackPath) return null;
+
+    if (fallbackPath.startsWith('data:image')) {
+        return fallbackPath;
+    }
+
+    if (fallbackPath.startsWith('http://') || fallbackPath.startsWith('https://') || fallbackPath.startsWith('/')) {
+        return fallbackPath;
+    }
+
+    return null;
+};
+
 const submit = () => {
     form.phone = sanitizePhoneInput(form.phone);
 
@@ -105,8 +128,10 @@ const submit = () => {
         .filter((item) => item.length > 0);
 
     if (props.patient) {
-        // Use PUT method for updating existing patient
-        form.put(`/patients/${props.patient.id}`, {
+        form._method = 'put';
+        // Use POST + _method for file-safe updates (multipart files are unreliable on raw PUT).
+        form.post(`/patients/${props.patient.id}`, {
+            forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
                 Swal.fire({
@@ -133,7 +158,9 @@ const submit = () => {
             }
         });
     } else {
+        form._method = '';
         const createPatient = () => form.post('/patients', {
+            forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
                 Swal.fire({

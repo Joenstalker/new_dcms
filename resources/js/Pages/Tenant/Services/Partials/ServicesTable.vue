@@ -1,4 +1,6 @@
 <script setup>
+import { usePage } from '@inertiajs/vue3';
+
 defineProps({
     services: {
         type: Array,
@@ -15,6 +17,7 @@ defineProps({
 });
 
 const emit = defineEmits(['edit', 'delete', 'approve', 'reject']);
+const page = usePage();
 
 const getStatusBadge = (status) => {
     const classes = {
@@ -39,6 +42,10 @@ const handleApprove = (id) => {
 
 const handleReject = (id) => {
     emit('reject', id);
+};
+
+const can = (permission) => {
+    return page.props.auth?.user?.permissions?.includes(permission) || false;
 };
 </script>
 

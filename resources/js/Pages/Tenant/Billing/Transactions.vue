@@ -63,7 +63,8 @@ const markAsPaid = (id) => {
 
         <!-- Transactions Table -->
         <div class="bg-base-100 rounded-2xl border border-base-300 overflow-hidden">
-            <table class="table w-full">
+            <div class="overflow-x-auto">
+                <table class="table w-full min-w-[720px]">
                 <thead>
                     <tr class="bg-base-200/50">
                         <th class="text-[10px] font-black uppercase tracking-widest text-base-content/30">Invoice ID</th>
@@ -120,7 +121,8 @@ const markAsPaid = (id) => {
                         </td>
                     </tr>
                 </tbody>
-            </table>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -140,7 +142,7 @@ const markAsPaid = (id) => {
 
             <div v-if="selectedInvoice" class="p-8 space-y-8">
                 <!-- Info Grid -->
-                <div class="grid grid-cols-2 gap-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                     <div class="space-y-1">
                         <p class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em]">Patient</p>
                         <p class="text-sm font-bold text-base-content">{{ selectedInvoice.patient?.first_name }} {{ selectedInvoice.patient?.last_name }}</p>
@@ -153,7 +155,8 @@ const markAsPaid = (id) => {
 
                 <!-- Items Table -->
                 <div class="rounded-2xl border border-base-300 overflow-hidden">
-                    <table class="table w-full">
+                    <div class="overflow-x-auto">
+                        <table class="table w-full min-w-[620px]">
                         <thead>
                             <tr class="bg-base-200/50">
                                 <th class="text-[10px] font-black uppercase tracking-widest text-base-content/30">Item</th>
@@ -170,7 +173,8 @@ const markAsPaid = (id) => {
                                 <td class="text-sm text-right font-bold">₱{{ (item.quantity * item.unit_price).toFixed(2) }}</td>
                             </tr>
                         </tbody>
-                    </table>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Summary -->

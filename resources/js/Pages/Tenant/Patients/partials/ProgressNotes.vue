@@ -1,6 +1,6 @@
 <script setup>
 import { brandingState } from '@/States/brandingState';
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import CreateTreatment from '../../Treatments/CreateTreatment.vue';
 import EditTreatment from '../../Treatments/EditTreatment.vue';
@@ -11,6 +11,7 @@ const props = defineProps({
 });
 
 const page = usePage();
+const tenantId = computed(() => page.props.tenant?.id || null);
 const primaryColor = computed(() => brandingState.primary_color || '#2563eb');
 const permissions = computed(() => page.props.auth?.user?.permissions || []);
 const roleNames = computed(() => {
@@ -32,9 +33,62 @@ const showDeleteModal = ref(false);
 const activeTreatment = ref(null);
 const services = ref([]);
 const dentists = ref([]);
+const localTreatments = ref([]);
+let treatmentsChannel = null;
+
+const syncLocalTreatments = (treatments) => {
+    localTreatments.value = Array.isArray(treatments)
+        ? treatments.map((item) => ({ ...item }))
+        : [];
+};
+
+const applyTreatmentEvent = (eventPayload) => {
+    const incoming = eventPayload?.treatment;
+    const action = eventPayload?.action;
+    if (!incoming?.id || !action) return;
+
+    if (action === 'deleted') {
+        localTreatments.value = localTreatments.value.filter((item) => item.id !== incoming.id);
+        return;
+    }
+
+    const currentPatientId = Number(props.patient?.id || 0);
+    const incomingPatientId = Number(incoming.patient_id || incoming.patient?.id || 0);
+
+    if (!currentPatientId || !incomingPatientId || incomingPatientId !== currentPatientId) {
+        return;
+    }
+
+    const existingIndex = localTreatments.value.findIndex((item) => item.id === incoming.id);
+
+    if (existingIndex >= 0) {
+        localTreatments.value[existingIndex] = {
+            ...localTreatments.value[existingIndex],
+            ...incoming,
+        };
+        return;
+    }
+
+    localTreatments.value = [incoming, ...localTreatments.value];
+};
+
+const setupTreatmentsRealtime = () => {
+    if (!window.Echo || !tenantId.value) return;
+
+    treatmentsChannel = window.Echo.private(`tenant.${tenantId.value}.treatments`)
+        .listen('.TenantTreatmentChanged', applyTreatmentEvent);
+};
+
+watch(
+    () => props.patient?.treatments,
+    (nextTreatments) => {
+        syncLocalTreatments(nextTreatments);
+    },
+    { immediate: true, deep: true },
+);
 
 const notes = computed(() => {
-    const list = Array.isArray(props.patient?.treatments) ? [...props.patient.treatments] : [];
+    const list = [...localTreatments.value];
 
     return list.sort((a, b) => {
         const aTime = new Date(a?.created_at || 0).getTime();
@@ -127,6 +181,8 @@ const openDeleteModal = (note) => {
 };
 
 onMounted(async () => {
+    setupTreatmentsRealtime();
+
     try {
         const response = await fetch('/treatments/options', {
             headers: { Accept: 'application/json' },
@@ -139,6 +195,14 @@ onMounted(async () => {
     } catch (e) {
         // Gracefully fallback: create modal can still open but dropdowns may be empty.
     }
+});
+
+onUnmounted(() => {
+    if (window.Echo && tenantId.value) {
+        window.Echo.leave(`tenant.${tenantId.value}.treatments`);
+    }
+
+    treatmentsChannel = null;
 });
 </script>
 
