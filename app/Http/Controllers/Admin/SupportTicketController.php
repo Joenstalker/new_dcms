@@ -306,6 +306,13 @@ class SupportTicketController extends Controller
 
         broadcast(new SupportTicketUpdated($ticket, 'status_updated'));
 
+        if ($request->expectsJson()) {
+            return $this->respondSuccess([
+                'status' => $ticket->status,
+                'ticket_id' => $ticket->id,
+            ], 'Ticket status updated.');
+        }
+
         return back()->with('success', 'Ticket status updated.');
     }
 
@@ -337,7 +344,6 @@ class SupportTicketController extends Controller
             }
         }
 
-        $ticket->update(['status' => 'in_progress']);
         $ticket->touch();
 
         AuditLog::record(

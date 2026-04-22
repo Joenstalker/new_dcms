@@ -14,6 +14,9 @@ const replyContent = ref(null);
 const isSendingReply = ref(false);
 const replyAttachments = ref([]);
 const failedAvatarMessages = ref(new Set());
+const isStatusMenuOpen = ref(false);
+const isUpdatingStatus = ref(false);
+const statusMenuContainer = ref(null);
 
 const statusColors = {
     open: 'badge-info',
@@ -51,6 +54,9 @@ const scrollToBottom = () => {
 };
 
 onMounted(() => {
+    document.addEventListener('click', handleOutsideStatusMenuClick);
+    document.addEventListener('keydown', handleStatusMenuEscape);
+
     if (window.Echo) {
         window.Echo.private('admin.support.tickets')
             .listen('.SupportTicketUpdated', (e) => {
@@ -69,6 +75,9 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    document.removeEventListener('click', handleOutsideStatusMenuClick);
+    document.removeEventListener('keydown', handleStatusMenuEscape);
+
     if (window.Echo) {
         window.Echo.leave('admin.support.tickets');
     }
@@ -100,14 +109,76 @@ const sendReply = () => {
     });
 };
 
-const updateStatus = (status) => {
-    axios.put(route('admin.support.updateStatus', supportState.selectedTicket.id), { status })
-        .then(() => {
-            supportState.selectedTicket.status = status;
-            if (route().current('admin.support.index')) {
-                router.reload({ only: ['tickets'] });
+const closeStatusMenu = () => {
+    isStatusMenuOpen.value = false;
+};
+
+const toggleStatusMenu = () => {
+    isStatusMenuOpen.value = !isStatusMenuOpen.value;
+};
+
+const handleOutsideStatusMenuClick = (event) => {
+    if (!isStatusMenuOpen.value) return;
+
+    if (statusMenuContainer.value && !statusMenuContainer.value.contains(event.target)) {
+        closeStatusMenu();
+    }
+};
+
+const handleStatusMenuEscape = (event) => {
+    if (event.key === 'Escape') {
+        closeStatusMenu();
+    }
+};
+
+const updateStatus = async (status) => {
+    if (!supportState.selectedTicket || isUpdatingStatus.value) return;
+
+    closeStatusMenu();
+
+    if (supportState.selectedTicket.status === status) return;
+
+    isUpdatingStatus.value = true;
+    try {
+        await axios.put(
+            route('admin.support.updateStatus', supportState.selectedTicket.id),
+            { status },
+            {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
             }
+        );
+
+        if (supportState.selectedTicket) {
+            supportState.selectedTicket.status = status;
+        }
+
+        Swal.fire({
+            toast: true,
+            position: 'bottom-end',
+            icon: 'success',
+            title: `Status updated to ${status.replace('_', ' ')}`,
+            timer: 1400,
+            showConfirmButton: false,
         });
+
+        if (route().current('admin.support.index')) {
+            router.reload({ only: ['tickets', 'stats'] });
+        }
+    } catch {
+        Swal.fire({
+            toast: true,
+            position: 'bottom-end',
+            icon: 'error',
+            title: 'Failed to update status',
+            timer: 1800,
+            showConfirmButton: false,
+        });
+    } finally {
+        isUpdatingStatus.value = false;
+    }
 };
 
 const deleteTicket = () => {
@@ -203,11 +274,23 @@ const removeAttachment = (i) => replyAttachments.value.splice(i, 1);
                             <span class="loading loading-dots loading-sm"></span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <div v-if="supportState.selectedTicket" class="dropdown dropdown-end">
-                                <button tabindex="0" class="btn btn-ghost btn-xs">Status ▼</button>
-                                <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-xl w-48 z-[300] border border-base-300">
+                            <div v-if="supportState.selectedTicket" ref="statusMenuContainer" class="relative">
+                                <button
+                                    type="button"
+                                    class="btn btn-ghost btn-xs"
+                                    :disabled="isUpdatingStatus"
+                                    @click="toggleStatusMenu"
+                                >
+                                    {{ isUpdatingStatus ? 'Updating...' : 'Status ▼' }}
+                                </button>
+                                <ul
+                                    v-if="isStatusMenuOpen"
+                                    class="absolute right-0 mt-1 menu p-2 shadow-lg bg-base-100 rounded-xl w-48 z-[300] border border-base-300"
+                                >
                                     <li v-for="s in ['open','in_progress','pending','resolved','closed']" :key="s">
-                                        <a @click="updateStatus(s)" class="text-xs font-bold uppercase">{{ s.replace('_', ' ') }}</a>
+                                        <button type="button" @click="updateStatus(s)" class="text-xs font-bold uppercase text-left">
+                                            {{ s.replace('_', ' ') }}
+                                        </button>
                                     </li>
                                 </ul>
                             </div>
