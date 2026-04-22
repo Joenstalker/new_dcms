@@ -168,57 +168,12 @@ const todayLabel = computed(() => {
     });
 });
 
-const storagePercentage = computed(() => {
-    const used = Number(liveStats.value?.storage_used_bytes || 0);
-    const max = Number(liveStats.value?.max_storage_bytes || 0);
-    if (!max) return 0;
-    return Math.min((used / max) * 100, 100);
-});
-
 const formatMoney = (value) => `₱${Number(value || 0).toLocaleString()}`;
 
 const hasPermission = (permission) => permissions.value.includes(permission);
 
-const hasRoute = (name) => {
-    try {
-        return route().has(name);
-    } catch (e) {
-        return false;
-    }
-};
+const recentEvents = computed(() => (props.concerns || []).slice(0, 5));
 
-const quickActions = computed(() => {
-    const actions = [
-        {
-            key: 'appointment',
-            label: 'New Appointment',
-            description: 'Manage booking queue',
-            route: 'appointments.index',
-            allowed: hasPermission('view appointments') || hasPermission('edit appointments') || isOwner.value,
-        },
-        {
-            key: 'patient',
-            label: 'Add Patient',
-            description: 'Open patient registry',
-            route: 'patients.index',
-            allowed: hasPermission('view patients') || hasPermission('create patients') || isOwner.value,
-        },
-        {
-            key: 'billing',
-            label: 'Open Billing',
-            description: 'Track payments and POS',
-            route: 'billing.index',
-            allowed: hasPermission('view billing') || hasPermission('create billing') || isOwner.value,
-        },
-    ];
-
-    return actions.filter((action) => action.allowed && hasRoute(action.route));
-});
-
-const openAction = (routeName) => {
-    if (!hasRoute(routeName)) return;
-    router.visit(route(routeName));
-};
 </script>
 
 <template>
@@ -265,30 +220,7 @@ const openAction = (routeName) => {
                                     {{ todayLabel }} · Real-time clinic activity is synced and ready.
                                 </p>
                             </div>
-                            <div class="grid grid-cols-2 gap-3 min-w-[300px]">
-                                <div class="rounded-2xl border border-base-300 bg-base-100 px-4 py-3">
-                                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/45">Appointments</p>
-                                    <p class="text-2xl font-black text-base-content mt-1">{{ liveStats.daily_appointments || 0 }}</p>
-                                </div>
-                                <div class="rounded-2xl border border-base-300 bg-base-100 px-4 py-3">
-                                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-base-content/45">Pending</p>
-                                    <p class="text-2xl font-black text-base-content mt-1">{{ liveStats.pending_appointments || 0 }}</p>
-                                </div>
-                            </div>
                         </div>
-                    </section>
-
-                    <section v-if="quickActions.length > 0" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                        <button
-                            v-for="action in quickActions"
-                            :key="action.key"
-                            @click="openAction(action.route)"
-                            class="group rounded-2xl border border-base-300 bg-base-100 p-4 text-left shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all"
-                        >
-                            <p class="text-sm font-black text-base-content">{{ action.label }}</p>
-                            <p class="text-xs text-base-content/55 mt-1">{{ action.description }}</p>
-                            <p class="text-[10px] font-black uppercase tracking-[0.16em] mt-3 text-primary">Open</p>
-                        </button>
                     </section>
 
                     <!-- Stat Cards -->
@@ -331,28 +263,6 @@ const openAction = (routeName) => {
                             </div>
                         </div>
 
-                        <!-- Storage Usage (Owner only) -->
-                        <div v-if="isOwner" class="overflow-hidden rounded-3xl p-6 border border-base-300 bg-base-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all md:col-span-2 xl:col-span-2">
-                            <div class="flex justify-between items-center mb-1">
-                                <div class="text-[10px] font-black text-info uppercase tracking-[0.18em]">Storage Used</div>
-                                <div class="text-[10px] font-bold text-base-content/40 italic">
-                                    {{ storagePercentage.toFixed(1) }}%
-                                </div>
-                            </div>
-                            <div class="text-3xl font-black text-base-content leading-none mb-2">
-                                {{ liveStats.storage_used_bytes >= 1048576 ? (liveStats.storage_used_bytes / 1048576).toFixed(1) + ' MB' : (liveStats.storage_used_bytes / 1024).toFixed(0) + ' KB' }}
-                            </div>
-                            <div class="w-full bg-base-200 h-2 rounded-full overflow-hidden shadow-inner">
-                                <div 
-                                    class="h-full bg-info rounded-full transition-all duration-1000" 
-                                    :style="{ width: storagePercentage + '%' }"
-                                ></div>
-                            </div>
-                            <div class="text-[10px] text-base-content/45 mt-2 flex justify-between items-center">
-                                <span>Plan: <span class="font-bold">{{ (liveStats.max_storage_bytes / 1048576).toFixed(0) }}MB</span></span>
-                                <span v-if="liveStats.storage_used_bytes > liveStats.max_storage_bytes" class="text-error font-bold animate-pulse">Limit Exceeded</span>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Welcome/Onboarding State (Staff with no clinical access) -->
@@ -367,26 +277,40 @@ const openAction = (routeName) => {
                         </p>
                     </div>
 
-                    <!-- General Welcome Card -->
-                    <div class="overflow-hidden bg-base-100 shadow-sm rounded-3xl p-8 border border-base-300 relative group">
-                        <div class="relative z-10">
-                            <h3 class="text-2xl font-black text-base-content mb-2">
-                                Welcome Back, {{ user.name.split(' ')[0] }}! 👋
-                            </h3>
-                            <p class="text-base-content/60 leading-relaxed max-w-2xl">
-                                <span v-if="isOwner">You are currently in the <strong>Admin Control Center</strong>. Manage your clinic operations and staff efficiently.</span>
-                                <span v-else-if="isDentist">You are in the <strong>Dentist Portal</strong>. View your assigned treatments and patient records once authorized.</span>
-                                <span v-else-if="isAssistant">You are in the <strong>Assistant Portal</strong>. Manage appointments and patient inquiries once authorized.</span>
-                                <br v-if="liveStats.daily_appointments > 0 && user.permissions.includes('view appointments')"/>
-                                <span v-if="liveStats.daily_appointments > 0 && user.permissions.includes('view appointments')" class="mt-2 block">
-                                    You have <span class="text-primary font-bold underline">{{ liveStats.daily_appointments }} appointments</span> scheduled for today.
-                                </span>
-                            </p>
+                    <section class="overflow-hidden bg-base-100 shadow-sm rounded-3xl p-6 md:p-8 border border-base-300">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <h3 class="text-xl md:text-2xl font-black text-base-content">Recent Events</h3>
+                            <span class="text-xs font-bold uppercase tracking-widest text-base-content/45">Latest 5</span>
                         </div>
-                        <div class="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700">
-                            <span class="text-9xl">🦷</span>
+
+                        <div v-if="recentEvents.length > 0" class="space-y-3">
+                            <div
+                                v-for="event in recentEvents"
+                                :key="event.id"
+                                class="rounded-2xl border border-base-300 bg-base-100 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+                            >
+                                <div>
+                                    <p class="text-sm font-bold text-base-content">{{ event.subject || 'No Subject' }}</p>
+                                    <p class="text-xs text-base-content/55">{{ event.name }} · {{ event.email }}</p>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs text-base-content/55">{{ new Date(event.created_at).toLocaleDateString() }}</span>
+                                    <span
+                                        :class="['px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider',
+                                            event.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                            event.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-green-100 text-green-700']"
+                                    >
+                                        {{ event.status }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+
+                        <div v-else class="py-10 text-center text-sm text-base-content/50 italic">
+                            No recent events yet.
+                        </div>
+                    </section>
                 </div>
 
                 <!-- Concerns Content -->
