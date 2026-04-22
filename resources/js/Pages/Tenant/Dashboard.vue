@@ -304,12 +304,12 @@ const openAction = (routeName) => {
                             </div>
                         </div>
 
-                        <!-- Monthly Revenue (Owner Only) -->
+                        <!-- Daily Income (Owner/Reports Access) -->
                         <div v-if="isOwner || user.permissions.includes('view reports')" class="overflow-hidden rounded-3xl p-6 border border-base-300 bg-base-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all">
-                            <div class="text-[10px] font-black text-success uppercase tracking-[0.18em] mb-2">Monthly Revenue</div>
-                            <div class="text-4xl font-black text-base-content">{{ formatMoney(liveStats.monthly_revenue) }}</div>
+                            <div class="text-[10px] font-black text-success uppercase tracking-[0.18em] mb-2">Daily Income</div>
+                            <div class="text-4xl font-black text-base-content">{{ formatMoney(liveStats.daily_income) }}</div>
                             <div class="mt-3 h-1.5 rounded-full bg-base-200 overflow-hidden">
-                                <div class="h-full bg-success" :style="{ width: `${Math.min((Number(liveStats.monthly_revenue || 0) / 50000) * 100, 100)}%` }"></div>
+                                <div class="h-full bg-success" :style="{ width: `${Math.min((Number(liveStats.daily_income || 0) / 10000) * 100, 100)}%` }"></div>
                             </div>
                         </div>
 

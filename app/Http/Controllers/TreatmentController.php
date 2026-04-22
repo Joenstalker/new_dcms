@@ -69,6 +69,7 @@ class TreatmentController extends Controller
         $usePercentage = (bool) ($validated['commission_use_percentage'] ?? true);
 
         $totalAmountDue = max($cost - $discount, 0);
+        $amountPaid = min(max($amountPaid, 0), $totalAmountDue);
         $commissionBase = max($totalAmountDue - $commissionDeductions, 0);
         $commissionNet = $usePercentage
             ? round(($commissionBase * $commissionPercentage) / 100, 2)
@@ -176,6 +177,7 @@ class TreatmentController extends Controller
         $commissionPercentage = (float) ($validated['commission_percentage'] ?? 0);
         $usePercentage = (bool) ($validated['commission_use_percentage'] ?? true);
         $totalAmountDue = max($cost - $discount, 0);
+        $amountPaid = min(max($amountPaid, 0), $totalAmountDue);
         $commissionBase = max($totalAmountDue - $commissionDeductions, 0);
         $commissionNet = $usePercentage
             ? round(($commissionBase * $commissionPercentage) / 100, 2)

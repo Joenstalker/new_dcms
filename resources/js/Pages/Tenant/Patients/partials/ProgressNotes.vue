@@ -135,8 +135,8 @@ const formatMoney = (value) => {
     return currency.format(num);
 };
 
-const rowAmount = (note) => Number(note?.cost || 0);
-const rowPaid = (note) => Number(note?.paid_amount ?? note?.paid ?? 0);
+const rowAmount = (note) => Number(note?.total_amount_due ?? note?.cost ?? 0);
+const rowPaid = (note) => Number(note?.amount_paid ?? note?.paid_amount ?? note?.paid ?? 0);
 const rowBalance = (note) => {
     if (note?.balance !== undefined && note?.balance !== null && note?.balance !== '') {
         return Number(note.balance || 0);

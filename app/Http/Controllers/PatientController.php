@@ -107,7 +107,21 @@ class PatientController extends Controller
                 $query->latest();
         }
 
+        $query->withSum('treatments as treatments_total_due', 'total_amount_due')
+            ->withSum('treatments as treatments_total_paid', 'amount_paid');
+
         $patients = $query->paginate(20)->withQueryString();
+        $patients->through(function ($patient) {
+            $totalDue = (float) ($patient->treatments_total_due ?? 0);
+            $totalPaid = (float) ($patient->treatments_total_paid ?? 0);
+            $initialBalance = (float) ($patient->initial_balance ?? 0);
+
+            $patient->balance = round($initialBalance + $totalDue - $totalPaid, 2);
+
+            unset($patient->treatments_total_due, $patient->treatments_total_paid);
+
+            return $patient;
+        });
 
         $availableYears = Patient::query()
             ->selectRaw($visitYearExpression . ' as filter_year')

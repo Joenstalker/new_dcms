@@ -82,6 +82,10 @@ const totalAmountDue = computed(() => {
     return Math.max(cost - discount, 0);
 });
 
+const amountPaidValue = computed(() => Math.max(Number(form.amount_paid || 0), 0));
+const remainingBalance = computed(() => Math.max(totalAmountDue.value - amountPaidValue.value, 0));
+const hasOverpayment = computed(() => amountPaidValue.value > totalAmountDue.value);
+
 const computedCommissionNet = computed(() => {
     const base = Math.max(totalAmountDue.value - Number(form.commission_deductions || 0), 0);
     if (form.commission_use_percentage) {
@@ -97,7 +101,10 @@ const canMoveNext = computed(() => {
     }
 
     if (step.value === 2) {
-        return Number(form.cost || 0) >= 0 && Number(form.discount || 0) >= 0 && Number(form.amount_paid || 0) >= 0;
+        return Number(form.cost || 0) >= 0
+            && Number(form.discount || 0) >= 0
+            && amountPaidValue.value >= 0
+            && amountPaidValue.value <= totalAmountDue.value;
     }
 
     if (step.value === 3) {
@@ -299,6 +306,17 @@ watch(() => props.show, (value) => {
                             <InputError :message="form.errors.amount_paid" class="mt-2" />
                         </div>
                     </div>
+
+                    <div class="rounded-xl border border-base-300 bg-base-100 p-3 flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-[10px] font-black uppercase tracking-widest text-base-content/50">Remaining Balance</p>
+                        <p class="text-sm font-black" :class="remainingBalance > 0 ? 'text-warning' : 'text-success'">
+                            ₱{{ remainingBalance.toFixed(2) }}
+                        </p>
+                    </div>
+
+                    <p v-if="hasOverpayment" class="text-xs font-bold text-error">
+                        Amount Paid cannot be greater than Total Amount Due.
+                    </p>
                 </section>
 
                 <section v-if="step === 3" class="space-y-4">

@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
-use App\Models\Invoice;
 use App\Models\Patient;
 use App\Models\Concern;
+use App\Models\Treatment;
 use Carbon\Carbon;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +27,7 @@ class DashboardController extends Controller
             return Inertia::render('Tenant/Dashboard', [
                 'stats' => [
                     'daily_appointments' => 0,
-                    'monthly_revenue' => 0,
+                    'daily_income' => 0,
                     'total_patients' => 0,
                     'pending_appointments' => 0,
                 ]
@@ -41,9 +41,8 @@ class DashboardController extends Controller
 
         $stats = [
             'daily_appointments' => Appointment::whereDate('appointment_date', Carbon::today())->count(),
-            'monthly_revenue' => Invoice::where('status', 'paid')
-                ->whereMonth('created_at', Carbon::now()->month)
-                ->sum('total_amount'),
+            'daily_income' => Treatment::whereDate('created_at', Carbon::today())
+                ->sum('amount_paid'),
             'total_patients' => Patient::count(),
             'pending_appointments' => Appointment::where('status', 'pending')->count(),
             'storage_used_bytes' => (int) $tenant->storage_used_bytes,

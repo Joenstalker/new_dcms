@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     stats: Object,
@@ -37,6 +37,26 @@ const tierLabel = computed(() => ({
     enhanced: 'Enhanced',
     advanced: 'Advanced',
 }[props.report_level] || 'Basic'));
+
+const incomePeriod = ref('daily');
+
+const incomeValue = computed(() => {
+    if (incomePeriod.value === 'weekly') {
+        return Number(props.stats?.weekly_income || 0);
+    }
+
+    if (incomePeriod.value === 'monthly') {
+        return Number(props.stats?.monthly_income || props.stats?.monthly_revenue || 0);
+    }
+
+    return Number(props.stats?.daily_income || 0);
+});
+
+const incomeLabel = computed(() => {
+    if (incomePeriod.value === 'weekly') return 'Weekly Paid Income';
+    if (incomePeriod.value === 'monthly') return 'Monthly Paid Income';
+    return 'Daily Paid Income';
+});
 </script>
 
 <template>
@@ -62,7 +82,7 @@ const tierLabel = computed(() => ({
 
         <div class="space-y-8 mt-6">
             <!-- ========== BASIC TIER: Stat Cards ========== -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <div class="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 flex items-center gap-4">
                     <div class="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
                         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -77,19 +97,29 @@ const tierLabel = computed(() => ({
                     <div class="w-14 h-14 rounded-2xl bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
                         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
-                    <div>
-                        <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">Monthly Revenue</div>
-                        <div class="text-3xl font-black text-base-content">₱{{ Number(stats.monthly_revenue).toLocaleString(undefined, {minimumFractionDigits: 2}) }}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">{{ incomeLabel }}</div>
+                            <select
+                                v-model="incomePeriod"
+                                class="select select-xs border-base-300 bg-base-100 font-black text-[10px] uppercase tracking-wider min-h-0 h-7"
+                            >
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                        <div class="text-3xl font-black text-base-content">₱{{ incomeValue.toLocaleString(undefined, { minimumFractionDigits: 2 }) }}</div>
                     </div>
                 </div>
 
                 <div class="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 flex items-center gap-4">
-                    <div class="w-14 h-14 rounded-2xl bg-cyan-100 text-cyan-600 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
                     <div>
-                        <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">Total Patients</div>
-                        <div class="text-3xl font-black text-base-content">{{ stats.total_patients }}</div>
+                        <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">Unpaid Balance</div>
+                        <div class="text-3xl font-black text-warning">₱{{ Number(stats.unpaid_balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2}) }}</div>
                     </div>
                 </div>
             </div>

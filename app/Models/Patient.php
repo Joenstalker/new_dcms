@@ -272,14 +272,14 @@ class Patient extends Model
 
     /**
      * Recalculate and save the patient's balance.
-     * Balance = Total Treatment Costs - Total Amount Paid in Invoices.
+     * Balance = Initial Balance + Total Treatment Due - Total Paid in Progress Notes.
      */
     public function recalculateBalance(): void
     {
-        $totalCharges = $this->treatments()->sum('cost');
-        $totalPaid = $this->invoices()->sum('amount_paid');
+        $totalCharges = (float) $this->treatments()->sum('total_amount_due');
+        $totalPaid = (float) $this->treatments()->sum('amount_paid');
 
-        $this->balance = $this->initial_balance + $totalCharges - $totalPaid;
+        $this->balance = round($this->initial_balance + $totalCharges - $totalPaid, 2);
         $this->saveQuietly();
     }
 

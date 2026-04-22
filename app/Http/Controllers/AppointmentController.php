@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\NotificationTriggerService;
 use App\Services\TenantNotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -259,7 +260,17 @@ class AppointmentController extends Controller
             return;
         }
 
-        broadcast(new TenantAppointmentChanged((string)tenant()->getTenantKey(), $action, $appointmentPayload));
+        try {
+            if (config('broadcasting.default') && config('broadcasting.default') !== 'null') {
+                broadcast(new TenantAppointmentChanged((string) tenant()->getTenantKey(), $action, $appointmentPayload));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to broadcast appointment change', [
+                'action' => $action,
+                'error' => $e->getMessage(),
+                'tenant_id' => tenant()->id,
+            ]);
+        }
     }
 
     private function normalizePhotoForPatient(?string $photoPath): ?string

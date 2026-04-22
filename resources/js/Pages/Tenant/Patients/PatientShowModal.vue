@@ -58,7 +58,6 @@ const tabs = [
     { id: 'dental_chart', label: 'Dental Chart' },
     { id: 'forms', label: 'Forms' },
     { id: 'appointments', label: 'Appointments' },
-    { id: 'billing', label: 'Balance' },
 ];
 
 watch(() => props.show, async (newVal) => {
@@ -154,7 +153,6 @@ const deletePatient = () => {
 // Import partials inside a normal script block or directly in setup
 import MedicalHistory from './partials/MedicalHistory.vue';
 import PatientAppointments from './partials/PatientAppointments.vue';
-import PatientBilling from './partials/PatientBilling.vue';
 import ProgressNotes from './partials/ProgressNotes.vue';
 import PlaceholderTab from './partials/PlaceholderTab.vue';
 </script>
@@ -303,9 +301,6 @@ import PlaceholderTab from './partials/PlaceholderTab.vue';
                             <!-- Appointments Content -->
                             <PatientAppointments v-else-if="activeTab === 'appointments'" :patient="patient" />
 
-                            <!-- Billing & Balance Content -->
-                            <PatientBilling v-else-if="activeTab === 'billing'" :patient="patient" />
-                            
                             <!-- Placeholders for other tabs -->
                             <PlaceholderTab v-else :patient="patient" :tab-name="activeTab.replace('_', ' ')" />
 

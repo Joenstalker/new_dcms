@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Patient;
 use App\Models\Service;
 use App\Models\Subscription;
+use App\Models\Treatment;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -17,15 +18,27 @@ class ReportController extends Controller
     public function index()
     {
         $today = Carbon::today();
+        $startOfDay = Carbon::now()->startOfDay();
+        $endOfDay = Carbon::now()->endOfDay();
+        $startOfWeek = Carbon::now()->startOfWeek();
+        $endOfWeek = Carbon::now()->endOfWeek();
         $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
         $reportLevel = $this->getReportLevel();
 
         // === BASIC TIER (All plans) ===
         $dailyAppointments = Appointment::whereDate('appointment_date', $today)->count();
 
-        // Sum all payments received this month across all invoices (handles partial payments)
-        $monthlyRevenue = Payment::whereBetween('created_at', [$startOfMonth, Carbon::now()])
-            ->sum('amount');
+        $dailyIncome = Treatment::whereBetween('created_at', [$startOfDay, $endOfDay])
+            ->sum('amount_paid');
+        $weeklyIncome = Treatment::whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->sum('amount_paid');
+        $monthlyIncome = Treatment::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->sum('amount_paid');
+        $unpaidBalance = Treatment::query()
+            ->selectRaw('COALESCE(SUM(CASE WHEN total_amount_due > amount_paid THEN total_amount_due - amount_paid ELSE 0 END), 0) AS unpaid_balance')
+            ->value('unpaid_balance');
+
         $totalPatients = Patient::count();
 
         $recentAppointments = Appointment::with('patient')
@@ -36,7 +49,11 @@ class ReportController extends Controller
         $data = [
             'stats' => [
                 'daily_appointments' => $dailyAppointments,
-                'monthly_revenue' => $monthlyRevenue,
+                'daily_income' => round((float) $dailyIncome, 2),
+                'weekly_income' => round((float) $weeklyIncome, 2),
+                'monthly_income' => round((float) $monthlyIncome, 2),
+                'monthly_revenue' => round((float) $monthlyIncome, 2),
+                'unpaid_balance' => round((float) $unpaidBalance, 2),
                 'total_patients' => $totalPatients,
             ],
             'recent_appointments' => $recentAppointments,
