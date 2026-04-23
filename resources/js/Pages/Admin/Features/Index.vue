@@ -51,6 +51,37 @@ const form = useForm({
     notify_tenants: false,
 });
 
+const getBlockingPlans = (feature) => {
+    if (!feature || !Array.isArray(feature.blocking_plan_names)) {
+        return [];
+    }
+
+    return feature.blocking_plan_names;
+};
+
+const showBlockingPlansModal = (feature, actionLabel) => {
+    const blockingPlans = getBlockingPlans(feature);
+    if (blockingPlans.length === 0) {
+        return false;
+    }
+
+    Swal.fire({
+        title: `${actionLabel} blocked`,
+        icon: 'warning',
+        html: `
+            <div class="text-left text-sm leading-6">
+                <p class="mb-3">You must remove <strong>${feature.name}</strong> from these active plans first:</p>
+                <p class="mb-3 font-semibold">${blockingPlans.join(', ')}</p>
+                <p class="text-base-content/70">This ensures tenants are properly notified that the feature has been removed from their plan.</p>
+            </div>
+        `,
+        confirmButtonColor: '#f59e0b',
+        confirmButtonText: 'Understood',
+    });
+
+    return true;
+};
+
 const openCreateModal = () => {
     editingFeature.value = null;
     form.reset();
@@ -121,6 +152,13 @@ const formatFeatureValue = (feature, value) => {
 };
 
 const submitForm = () => {
+    if (editingFeature.value && editingFeature.value.is_active && !form.is_active) {
+        const blocked = showBlockingPlansModal(editingFeature.value, 'Deactivation');
+        if (blocked) {
+            return;
+        }
+    }
+
     Swal.fire({
         target: document.querySelector('dialog[open]') || 'body',
         title: editingFeature.value ? 'Updating Feature' : 'Creating Feature',
@@ -180,6 +218,11 @@ const deleteFeature = (feature) => {
 };
 
 const toggleFeature = (feature) => {
+    const blocked = feature.is_active && showBlockingPlansModal(feature, 'Deactivation');
+    if (blocked) {
+        return;
+    }
+
     const action = feature.is_active ? 'Deactivate' : 'Activate';
     Swal.fire({
         title: `${action} Feature?`,
@@ -209,6 +252,11 @@ const toggleFeature = (feature) => {
 };
 
 const archiveFeature = (feature) => {
+    const blocked = showBlockingPlansModal(feature, 'Archive');
+    if (blocked) {
+        return;
+    }
+
     Swal.fire({
         title: 'Archive Feature?',
         text: `Archiving "${feature.name}" will hide it from all tenants and subscription plans. It can only be deleted from the archive.`,

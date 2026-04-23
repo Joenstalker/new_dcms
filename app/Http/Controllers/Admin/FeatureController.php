@@ -14,6 +14,27 @@ use Illuminate\Http\RedirectResponse;
 class FeatureController extends Controller
 {
     /**
+     * Get plan names that currently have active tenant subscriptions and include this feature.
+     */
+    private function getBlockingPlanNamesForDeactivation(Feature $feature): array
+    {
+        return $feature->plans()
+            ->whereHas('subscriptions', function ($query) {
+                $query->where('stripe_status', 'active')
+                    ->where(function ($subQuery) {
+                        $subQuery->whereNull('billing_cycle_end')
+                            ->orWhere('billing_cycle_end', '>', now());
+                    });
+            })
+            ->select('subscription_plans.name')
+            ->distinct()
+            ->orderBy('subscription_plans.name')
+            ->pluck('subscription_plans.name')
+            ->values()
+            ->all();
+    }
+
+    /**
      * Display a listing of all features.
      */
     public function index(): Response
@@ -21,12 +42,39 @@ class FeatureController extends Controller
         $features = Feature::ordered()
             ->notArchived()
             ->where('type', '!=', 'system_version')
+            ->with(['plans' => function ($query) {
+                $query->whereHas('subscriptions', function ($subscriptionQuery) {
+                    $subscriptionQuery->where('stripe_status', 'active')
+                        ->where(function ($subQuery) {
+                            $subQuery->whereNull('billing_cycle_end')
+                                ->orWhere('billing_cycle_end', '>', now());
+                        });
+                })->select('subscription_plans.id', 'subscription_plans.name');
+            }])
             ->get()
+            ->map(function (Feature $feature) {
+                $feature->blocking_plan_names = $feature->plans
+                    ->pluck('name')
+                    ->unique()
+                    ->sort()
+                    ->values();
+
+                return $feature;
+            })
             ->groupBy('category');
 
         $archivedFeatures = Feature::ordered()
             ->archived()
             ->where('type', '!=', 'system_version')
+            ->with(['plans' => function ($query) {
+                $query->whereHas('subscriptions', function ($subscriptionQuery) {
+                    $subscriptionQuery->where('stripe_status', 'active')
+                        ->where(function ($subQuery) {
+                            $subQuery->whereNull('billing_cycle_end')
+                                ->orWhere('billing_cycle_end', '>', now());
+                        });
+                })->select('subscription_plans.id', 'subscription_plans.name');
+            }])
             ->get();
 
         $plans = SubscriptionPlan::orderBy('price_monthly')->get();
@@ -43,14 +91,12 @@ class FeatureController extends Controller
      */
     public function archive(Feature $feature): RedirectResponse
     {
-        // Safety Guard: Check if attached to any paid subscription plan
-        $paidPlans = $feature->plans()
-            ->where('price_monthly', '>', 0)
-            ->get();
+        // Safety Guard: Prevent archive while feature is still in plans used by active tenants.
+        $blockingPlanNames = $this->getBlockingPlanNamesForDeactivation($feature);
+        if (! empty($blockingPlanNames)) {
+            $planNames = implode(', ', $blockingPlanNames);
 
-        if ($paidPlans->isNotEmpty()) {
-            $planNames = $paidPlans->pluck('name')->implode(', ');
-            return back()->with('error', "Cannot archive feature assigned to paid plans: {$planNames}. Remove it from these plans first.");
+            return back()->with('error', "Cannot archive this feature yet. Remove it from these active plans first so tenants can be notified of the removal: {$planNames}.");
         }
 
         $feature->update(['archived_at' => now(), 'is_active' => false]);
@@ -180,6 +226,16 @@ class FeatureController extends Controller
             'implementation_status' => 'nullable|in:coming_soon,in_development,beta,active,deprecated,maintenance',
             'code_identifier' => 'nullable|string|max:255|regex:/^[a-z0-9-]+$/',
         ]);
+
+        // Safety Guard: Prevent deactivation while feature is still in plans used by active tenants.
+        if (array_key_exists('is_active', $validated) && $feature->is_active && ! $validated['is_active']) {
+            $blockingPlanNames = $this->getBlockingPlanNamesForDeactivation($feature);
+            if (! empty($blockingPlanNames)) {
+                $planNames = implode(', ', $blockingPlanNames);
+
+                return back()->with('error', "Cannot deactivate this feature yet. Remove it from these active plans first so tenants can be notified of the removal: {$planNames}.");
+            }
+        }
 
         $oldStatus = $feature->implementation_status;
         $newStatus = $validated['implementation_status'] ?? $oldStatus;
@@ -424,6 +480,15 @@ class FeatureController extends Controller
      */
     public function toggleActive(Feature $feature): RedirectResponse
     {
+        if ($feature->is_active) {
+            $blockingPlanNames = $this->getBlockingPlanNamesForDeactivation($feature);
+            if (! empty($blockingPlanNames)) {
+                $planNames = implode(', ', $blockingPlanNames);
+
+                return back()->with('error', "Cannot deactivate this feature yet. Remove it from these active plans first so tenants can be notified of the removal: {$planNames}.");
+            }
+        }
+
         $feature->update(['is_active' => !$feature->is_active]);
 
         $status = $feature->is_active ? 'enabled' : 'disabled';

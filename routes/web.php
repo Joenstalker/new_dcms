@@ -242,6 +242,9 @@ $registerCentralRoutes = function ($withNames = false) {
         $featuresU = Route::put('/features/{feature}', [FeatureController::class, 'update']);
         $featuresD = Route::delete('/features/{feature}', [FeatureController::class, 'destroy']);
         $featuresT = Route::put('/features/{feature}/toggle', [FeatureController::class, 'toggleActive']);
+        $featuresTA = Route::put('/features/{feature}/toggle-active', [FeatureController::class, 'toggleActive']);
+        $featuresArchive = Route::post('/features/{feature}/archive', [FeatureController::class, 'archive']);
+        $featuresRestore = Route::post('/features/{feature}/restore', [FeatureController::class, 'restore']);
         $featuresA = Route::post('/features/{feature}/assign', [FeatureController::class, 'assignToPlan']);
         $featuresR = Route::delete('/features/{feature}/remove', [FeatureController::class, 'removeFromPlan']);
         if ($withNames) {
@@ -250,6 +253,9 @@ $registerCentralRoutes = function ($withNames = false) {
             $featuresU->name('features.update');
             $featuresD->name('features.destroy');
             $featuresT->name('features.toggle');
+            $featuresTA->name('features.toggle-active');
+            $featuresArchive->name('features.archive');
+            $featuresRestore->name('features.restore');
             $featuresA->name('features.assign');
             $featuresR->name('features.remove');
             Route::post('/features/sync-all', [FeatureController::class, 'syncAllUpdates'])->name('features.sync-all');
