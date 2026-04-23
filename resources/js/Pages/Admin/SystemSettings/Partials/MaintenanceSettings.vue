@@ -13,7 +13,6 @@ const emit = defineEmits(['save']);
 const maintenanceDescriptions = {
     maintenance_mode: 'Enable to show maintenance message to all users',
     maintenance_message: 'Message displayed when system is under maintenance',
-    central_api_url: 'The URL of Laptop A (Central) used to fetch latest system updates.',
 };
 
 const saveGroup = () => {
@@ -58,22 +57,6 @@ const primaryColor = computed(() => branding.value.primary_color || '#0ea5e9');
                     <textarea
                         v-model="form.maintenance_message"
                         rows="3"
-                        class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
-                    />
-                </div>
-            </div>
-
-            <!-- Central Update Server URL -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center pt-6 border-t border-base-200">
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-bold text-base-content/70">Central Update Server (Laptop A URL)</label>
-                    <p class="text-xs text-base-content/50 mt-1">{{ maintenanceDescriptions.central_api_url }}</p>
-                </div>
-                <div>
-                    <input
-                        type="url"
-                        v-model="form.central_api_url"
-                        placeholder="https://laptop-a-ngrok.io"
                         class="block w-full rounded-md border-base-300 bg-base-100 text-base-content shadow-sm focus:border-primary focus:ring-primary sm:text-sm px-3 py-2 border"
                     />
                 </div>

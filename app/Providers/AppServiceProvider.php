@@ -84,6 +84,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->ensureSystemVersionIsSynced();
         $this->configureLocalhostSessionCookieDomain();
         Gate::policy(SupportTicket::class, SupportTicketPolicy::class);
 
@@ -146,6 +147,23 @@ class AppServiceProvider extends ServiceProvider
             }
         } catch (\Throwable $e) {
             // Ignore host resolution issues during CLI/bootstrap edge cases.
+        }
+    }
+
+    /**
+     * Ensure the system version metadata exists in the database on first boot.
+     */
+    private function ensureSystemVersionIsSynced(): void
+    {
+        try {
+            // Check if the SystemRelease table exists and is empty
+            if (Schema::hasTable('system_releases') && \App\Models\SystemRelease::count() === 0) {
+                // If it's a fresh DB, trigger the sync command in the background
+                // This ensures v1.1.5 (or latest) is registered immediately
+                \Illuminate\Support\Facades\Artisan::queue('system:check-updates');
+            }
+        } catch (\Throwable $e) {
+            // Silently fail if DB isn't migrated yet
         }
     }
 }
