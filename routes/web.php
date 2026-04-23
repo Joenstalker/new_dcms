@@ -28,6 +28,7 @@ use App\Models\SubscriptionPlan;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\UpdateController;
 
 Route::post('/github/webhook', [GitHubWebhookController::class, 'handle'])
     ->withoutMiddleware([ValidateCsrfToken::class])
@@ -45,6 +46,12 @@ $registerCentralRoutes = function ($withNames = false) {
         ]);
     }
     );
+
+// Simple update API endpoints (admin only)
+Route::middleware(['auth', EnsureUserIsAdmin::class])->group(function () {
+    Route::get('/api/updates/check', [UpdateController::class, 'check']);
+    Route::post('/api/updates/apply', [UpdateController::class, 'apply']);
+});
     if ($withNames) {
         $home->name('central.home');
     }

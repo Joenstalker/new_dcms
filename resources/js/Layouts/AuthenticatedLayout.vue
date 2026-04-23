@@ -7,6 +7,7 @@ import TenantProfileDropdown from '@/Components/TenantProfileDropdown.vue';
 import MandatoryPasswordChangeModal from '@/Components/MandatoryPasswordChangeModal.vue';
 import MaintenanceDisplay from '@/Components/MaintenanceDisplay.vue';
 import SupportChatBubble from '@/Components/SupportChatBubble.vue';
+import UpdateNotificationBanner from '@/Components/UpdateNotificationBanner.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import { brandingState } from '@/States/brandingState';
@@ -1035,6 +1036,7 @@ function getContrastColor(hex) {
                 <div class="flex items-center space-x-4">
                     <ThemeSwitcher />
                     <NotificationBell type="tenant" />
+                    <UpdateNotificationBanner v-if="canManageUpdates" />
                     <TenantProfileDropdown />
                 </div>
             </header>
