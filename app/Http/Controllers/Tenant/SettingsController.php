@@ -1249,7 +1249,9 @@ class SettingsController extends Controller
         $centralUrl = SystemSetting::get('central_api_url');
         if ($centralUrl) {
             try {
-                $response = \Illuminate\Support\Facades\Http::timeout(5)->get(rtrim($centralUrl, '/') . '/api/central/latest-version');
+                $response = \Illuminate\Support\Facades\Http::withHeaders([
+                    'ngrok-skip-browser-warning' => 'true',
+                ])->timeout(5)->get(rtrim($centralUrl, '/') . '/api/central/latest-version');
                 if ($response->successful()) {
                     $data = $response->json();
                     $version = $data['version'];

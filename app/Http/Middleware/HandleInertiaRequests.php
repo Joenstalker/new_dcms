@@ -253,6 +253,71 @@ class HandleInertiaRequests extends Middleware
 
                 $cacheKey = 'tenant_'.tenant()->id.'_pending_updates_count';
 
+                // On Laptop B (Tenant), we need to check Laptop A (Central) periodically
+                $centralUrl = SystemSetting::get('central_api_url');
+                
+                // Auto-Discovery: If no URL is set, try to find it via Ngrok API
+                if (!$centralUrl) {
+                    $centralUrl = app(\App\Services\NgrokDiscoveryService::class)->discoverCentralUrl();
+                }
+
+                $lastCheckKey = 'tenant_'.tenant()->id.'_last_central_sync';
+                
+                if ($centralUrl && !Cache::has($lastCheckKey)) {
+                    // This is a bit heavy for a middleware, but for the demo it ensures Laptop B 
+                    // stays in sync without manual clicks. We use a short timeout.
+                    try {
+                        $response = \Illuminate\Support\Facades\Http::withHeaders([
+                            'ngrok-skip-browser-warning' => 'true',
+                        ])->timeout(2)->get(rtrim($centralUrl, '/') . '/api/central/latest-version');
+                        if ($response->successful()) {
+                            $data = $response->json();
+                            $version = $data['version'];
+
+                            // Sync logic (mirrored from SettingsController)
+                            $systemRelease = \App\Models\SystemRelease::firstOrCreate(
+                                ['version' => $version],
+                                [
+                                    'release_notes' => $data['release_notes'] ?? null,
+                                    'released_at' => now(),
+                                    'is_mandatory' => false,
+                                    'requires_db_update' => (bool) ($data['requires_db_update'] ?? false),
+                                ]
+                            );
+
+                            $cleanVersion = ltrim($version, 'vV');
+                            $featureKey = 'system_version_' . str_replace('.', '_', $cleanVersion);
+                            $feature = \App\Models\Feature::firstOrCreate(
+                                ['key' => $featureKey],
+                                [
+                                    'name' => "System Update: {$version}",
+                                    'description' => 'Official platform update released via Central.',
+                                    'type' => 'system_version',
+                                    'category' => 'expansion',
+                                    'is_active' => true,
+                                    'implementation_status' => \App\Models\Feature::STATUS_ACTIVE,
+                                    'system_release_id' => $systemRelease->id,
+                                    'released_at' => $systemRelease->released_at,
+                                ]
+                            );
+
+                            TenantFeatureUpdate::firstOrCreate([
+                                'tenant_id' => tenant()->id,
+                                'feature_id' => $feature->id,
+                            ], [
+                                'status' => TenantFeatureUpdate::STATUS_PENDING,
+                            ]);
+                            
+                            // Cache the sync for 5 minutes to avoid constant API calls
+                            Cache::put($lastCheckKey, true, now()->addMinutes(5));
+                            // Force refresh of the count cache
+                            Cache::forget($cacheKey);
+                        }
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::warning("Background sync with central failed: " . $e->getMessage());
+                    }
+                }
+
                 return Cache::remember($cacheKey, now()->addHour(), function () {
                     return TenantFeatureUpdate::where('tenant_id', tenant()->id)
                         ->pending()

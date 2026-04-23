@@ -67,4 +67,8 @@ return [
         'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
     ],
 
+    'ngrok' => [
+        'api_key' => env('NGROK_API_KEY'),
+    ],
+
 ];

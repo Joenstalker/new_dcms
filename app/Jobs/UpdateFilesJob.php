@@ -19,6 +19,9 @@ class UpdateFilesJob implements ShouldQueue
     public $version;
     public $zipUrl;
 
+    public $tries = 1; // Only try once as file system changes are destructive
+    public $timeout = 600; // 10 minutes for download + composer install
+
     /**
      * Create a new job instance.
      */

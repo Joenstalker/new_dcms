@@ -489,6 +489,59 @@ onUnmounted(() => {
     }
 
     userAccessChannel = null;
+    
+    if (updateCheckInterval) {
+        clearInterval(updateCheckInterval);
+    }
+});
+
+let updateCheckInterval = null;
+
+const startUpdatePolling = () => {
+    // Only poll if user has update management permissions
+    const canManageUpdates = roles.value.includes('Owner') || user.value?.permissions?.includes('manage system updates');
+    if (!canManageUpdates) return;
+
+    // Check every 60 seconds
+    updateCheckInterval = setInterval(async () => {
+        try {
+            const response = await fetch(route('settings.updates.check'));
+            if (!response.ok) return;
+            const data = await response.json();
+            
+            if (data.has_updates && data.count > 0) {
+                // If count changed or notification not shown this session
+                if (!sessionStorage.getItem('notified_updates')) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'info',
+                        title: `System Updates`,
+                        text: `You have ${data.count} new feature update(s) available.`,
+                        showConfirmButton: true,
+                        confirmButtonText: 'View',
+                        showCancelButton: true,
+                        cancelButtonText: 'Later',
+                        timer: 10000,
+                        timerProgressBar: true,
+                        confirmButtonColor: primaryColor.value,
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            router.visit(route('settings.updates'));
+                        }
+                    });
+                    sessionStorage.setItem('notified_updates', 'true');
+                }
+            }
+        } catch (e) {
+            // Silently ignore polling errors
+        }
+    }, 60000);
+};
+
+// Start polling on mount
+onMounted(() => {
+    startUpdatePolling();
 });
 
 // Authorization Guard: Check if the current route is allowed for the user
