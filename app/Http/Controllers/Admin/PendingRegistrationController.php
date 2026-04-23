@@ -169,7 +169,7 @@ class PendingRegistrationController extends Controller
                 $user = User::create([
                     'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
                     'email' => $pendingRegistration->email,
-                    'password' => $pendingRegistration->password,
+                    'password' => decrypt($pendingRegistration->password),
                     'requires_password_change' => true,
                 ]);
 
@@ -198,7 +198,7 @@ class PendingRegistrationController extends Controller
                 $user = User::create([
                     'name' => $pendingRegistration->first_name . ' ' . $pendingRegistration->last_name,
                     'email' => $pendingRegistration->email,
-                    'password' => $pendingRegistration->password,
+                    'password' => decrypt($pendingRegistration->password),
                     'requires_password_change' => true,
                 ]);
 

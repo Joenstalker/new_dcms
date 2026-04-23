@@ -260,7 +260,7 @@ class RegistrationController extends Controller
                     'barangay' => $validated['barangay'],
                     'city' => $validated['city'],
                     'province' => $validated['province'],
-                    'password' => $validated['password'],
+                    'password' => encrypt($validated['password']),
                     'subscription_plan_id' => $validated['plan_id'],
                     'billing_cycle' => $validated['billing_cycle'],
                     'amount_paid' => $totalPrice, // Save total expected amount
@@ -289,7 +289,6 @@ class RegistrationController extends Controller
                 'barangay' => $validated['barangay'],
                 'city' => $validated['city'],
                 'province' => $validated['province'],
-                'password' => $validated['password'], // Will be hashed after payment
                 'subdomain' => $validated['subdomain'],
                 'plan_id' => $validated['plan_id'],
                 'billing_cycle' => $validated['billing_cycle'],

@@ -33,6 +33,17 @@ Route::post('/github/webhook', [GitHubWebhookController::class, 'handle'])
     ->withoutMiddleware([ValidateCsrfToken::class])
     ->middleware([VerifyGitHubWebhookSignature::class, 'throttle:60,1']);
 
+// Central Release API (for Tenants to check Laptop A)
+Route::get('/api/central/latest-version', function (\App\Services\ReleaseService $releaseService) {
+    $latest = $releaseService->latestRelease();
+    return response()->json([
+        'version' => $latest ? $latest->version : config('app_version.version', '1.0.0'),
+        'zip_url' => $latest ? \App\Services\AppVersionService::getDownloadUrl($latest->version) : null,
+        'release_notes' => $latest ? $latest->release_notes : null,
+        'requires_db_update' => $latest ? $latest->requires_db_update : false,
+    ]);
+})->name('api.central.latest-version');
+
 /* |-------------------------------------------------------------------------- | Central Routes Definition Helper |-------------------------------------------------------------------------- */
 $registerCentralRoutes = function ($withNames = false) {
     // Landing Page

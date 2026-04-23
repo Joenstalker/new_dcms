@@ -293,6 +293,9 @@ Route::middleware([
             Route::post('api/system/update', [SystemUpdateController::class, 'update'])
                 ->middleware('role_or_permission:Owner|manage system updates')
                 ->name('api.system.update');
+            Route::post('api/system/update-files', [SystemUpdateController::class, 'updateFiles'])
+                ->middleware('role_or_permission:Owner|manage system updates')
+                ->name('api.system.update-files');
 
             // Stripe Customer Portal — self-service billing (upgrade, downgrade, cancel, update card)
             Route::get('billing-portal', [BillingPortalController::class, 'redirect'])

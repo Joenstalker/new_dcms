@@ -8,9 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Feature;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\SystemRelease;
+use App\Models\SystemSetting;
+use App\Models\TenantFeatureUpdate;
 use App\Models\TenantPaymentHistory;
 use App\Models\User;
+use App\Services\AppVersionService;
 use App\Services\FeatureOTAUpdateService;
+use App\Services\ReleaseService;
 use App\Services\TenantBrandingService;
 use App\Services\TenantEffectiveLimitService;
 use App\Services\TenantFeatureGateService;
@@ -1238,6 +1243,60 @@ class SettingsController extends Controller
     {
         $tenant = tenant();
         $otaService = app(FeatureOTAUpdateService::class);
+        $releaseService = app(ReleaseService::class);
+
+        // 1. Check Central API if configured (Laptop B polling Laptop A)
+        $centralUrl = SystemSetting::get('central_api_url');
+        if ($centralUrl) {
+            try {
+                $response = \Illuminate\Support\Facades\Http::timeout(5)->get(rtrim($centralUrl, '/') . '/api/central/latest-version');
+                if ($response->successful()) {
+                    $data = $response->json();
+                    $version = $data['version'];
+
+                    // Sync to local SystemRelease
+                    $systemRelease = SystemRelease::firstOrCreate(
+                        ['version' => $version],
+                        [
+                            'release_notes' => $data['release_notes'] ?? null,
+                            'released_at' => now(),
+                            'is_mandatory' => false,
+                            'requires_db_update' => (bool) ($data['requires_db_update'] ?? false),
+                        ]
+                    );
+
+                    // Sync to local Feature
+                    $cleanVersion = ltrim($version, 'vV');
+                    $featureKey = 'system_version_' . str_replace('.', '_', $cleanVersion);
+                    $feature = Feature::firstOrCreate(
+                        ['key' => $featureKey],
+                        [
+                            'name' => "System Update: {$version}",
+                            'description' => 'Official platform update released via Central.',
+                            'type' => 'system_version',
+                            'category' => 'expansion',
+                            'is_active' => true,
+                            'implementation_status' => Feature::STATUS_ACTIVE,
+                            'system_release_id' => $systemRelease->id,
+                            'released_at' => $systemRelease->released_at,
+                        ]
+                    );
+
+                    // Notify tenant
+                    TenantFeatureUpdate::firstOrCreate([
+                        'tenant_id' => $tenant->getTenantKey(),
+                        'feature_id' => $feature->id,
+                    ], [
+                        'status' => TenantFeatureUpdate::STATUS_PENDING,
+                    ]);
+                    
+                    \Illuminate\Support\Facades\Cache::forget("tenant_{$tenant->getTenantKey()}_pending_updates_count");
+                }
+            } catch (\Exception $e) {
+                Log::warning("Failed to poll central API at {$centralUrl}: " . $e->getMessage());
+            }
+        }
+
         $pendingUpdates = $otaService->getPendingUpdates($tenant->getTenantKey());
 
         $updates = $pendingUpdates->map(function ($u) {

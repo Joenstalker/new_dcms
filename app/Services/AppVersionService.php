@@ -74,6 +74,25 @@ class AppVersionService
     }
 
     /**
+     * Get the download URL for a specific release (ZIP).
+     */
+    public static function getDownloadUrl(string $version): ?string
+    {
+        try {
+            $response = Http::timeout(5)->get("https://api.github.com/repos/Joenstalker/new_dcms/releases/tags/{$version}");
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['zipball_url'] ?? null;
+            }
+        } catch (\Exception $e) {
+            Log::error("Failed to get download URL for version {$version}: " . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
      * Clear the cached version.
      */
     public static function clearCache(): void

@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * @property \Illuminate\Support\Collection $blocking_plan_names
+ */
 class Feature extends Model
 {
     protected $connection = 'central';

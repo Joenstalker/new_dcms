@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Jobs\ProcessTenantFeatureUpdateJob;
 use App\Mail\NewFeatureUpdateMail;
+use App\Jobs\UpdateFilesJob;
 use App\Models\Feature;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\Tenant;
 use App\Models\TenantFeatureUpdate;
 use App\Models\User;
+use App\Services\AppVersionService;
 use Illuminate\Bus\PendingBatch;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
@@ -171,6 +173,13 @@ class FeatureOTAUpdateService
                             if (version_compare($cleanNew, $cleanCurrent, '>')) {
                                 $tenant->update(['version' => $newVersion]);
                                 Log::info("Tenant {$tenantId} upgraded from {$currentVersion} to {$newVersion}");
+
+                                // 1.a Trigger File System Update (OTA)
+                                $zipUrl = AppVersionService::getDownloadUrl($newVersion);
+                                if ($zipUrl) {
+                                    UpdateFilesJob::dispatch($newVersion, $zipUrl);
+                                    Log::info("Dispatched UpdateFilesJob for tenant [{$tenantId}] version [{$newVersion}]");
+                                }
                             }
 
                             // Trigger per-tenant migration if required
