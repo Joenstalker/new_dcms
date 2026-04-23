@@ -26,8 +26,8 @@ class LandingController extends Controller
             : 'auto_staff';
         $includeOwner = (bool) ($teamConfig['include_owner'] ?? true);
         
-        // Fetch approved services
-        $services = Service::approved()->latest()->take(6)->get();
+        // Fetch services
+        $services = Service::latest()->take(6)->get();
         
         // Fetch dentists
         $dentists = User::role('Dentist')->get(['id', 'name', 'email']);

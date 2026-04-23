@@ -21,7 +21,7 @@ class TreatmentController extends Controller
 
         $treatments = Treatment::with(['patient', 'dentist', 'service', 'nextVisitDentist'])->latest()->get();
         $patients = Patient::select('id', 'first_name', 'last_name')->get();
-        $services = Service::approved()->select('id', 'name', 'price')->orderBy('name')->get();
+        $services = Service::select('id', 'name', 'price')->orderBy('name')->get();
         $dentists = User::role('Dentist')->select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Tenant/Treatments/Index', [

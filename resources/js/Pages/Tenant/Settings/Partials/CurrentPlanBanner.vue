@@ -19,7 +19,7 @@ const props = defineProps({
         
         <div class="flex items-center justify-between relative z-10">
             <div>
-                <p class="text-indigo-100 text-sm font-medium">Current Plan</p>
+                <p class="text-indigo-100 text-sm font-medium">My Plan</p>
                 <div class="flex items-center gap-3 mt-1">
                     <h3 class="text-2xl font-bold">{{ subscription.plan_name }}</h3>
                     <div v-if="hasUpdates" class="flex items-center">

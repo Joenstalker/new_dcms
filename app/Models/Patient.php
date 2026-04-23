@@ -197,10 +197,13 @@ class Patient extends Model
                         $patient->attributes[$field] = $encryptionService->decrypt($patient->attributes[$field]);
                     }
                     catch (\Exception $e) {
-                    // If decryption fails, value might not be encrypted
+                        // If decryption fails, value might not be encrypted
                     }
                 }
             }
+
+            // Ensure attributes are synced to original to prevent accidental re-encryption on save
+            $patient->syncOriginal();
         });
     }
 

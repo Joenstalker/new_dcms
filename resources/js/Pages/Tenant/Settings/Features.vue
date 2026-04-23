@@ -27,7 +27,7 @@ const categoryLabels = {
 const categoryDescriptions = {
     core: 'Essential features available to all plans',
     limits: 'Your current plan limits',
-    addons: 'Enhance your clinic with premium features',
+    addons: 'Enhance your clinic with extra features',
     reports: 'Analytics and reporting capabilities',
     expansion: 'Grow your business with advanced options',
 };
@@ -68,7 +68,7 @@ const filteredFeatures = computed(() => {
             <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
                 <!-- Header -->
                 <div class="mb-8">
-                    <h2 class="text-2xl font-bold text-gray-900">Your Features</h2>
+                    <h2 class="text-2xl font-bold text-gray-900">My Features</h2>
                     <p class="mt-1 text-sm text-gray-600">
                         View the features available on your current subscription plan.
                     </p>

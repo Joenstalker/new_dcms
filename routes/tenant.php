@@ -192,7 +192,9 @@ Route::middleware([
             Route::get('medical-records/{medicalRecord}', [MedicalRecordController::class, 'show'])->name('medical-records.show');
             Route::put('medical-records/{medicalRecord}', [MedicalRecordController::class, 'update'])->middleware('permission:edit medical records')->name('medical-records.update');
             Route::delete('medical-records/{medicalRecord}', [MedicalRecordController::class, 'destroy'])->middleware('permission:delete medical records')->name('medical-records.destroy');
-        });
+            // Reports & Export
+    Route::get('/reports/export', [App\Http\Controllers\Tenant\ReportController::class, 'export'])->name('reports.export');
+});
 
         // Billing
         // IMPORTANT: View permission must not imply create/edit access.

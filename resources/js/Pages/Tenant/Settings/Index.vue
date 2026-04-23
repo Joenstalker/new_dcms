@@ -65,7 +65,6 @@ const planGradients = {
 };
 
 const planBadge = {
-    Pro: '🚀 Most Popular',
     Ultimate: '👑 Best Value',
 };
 
@@ -230,10 +229,6 @@ const formatStatus = (status) => {
                         </span>
                         <span v-else>👥 Unlimited patients</span>
                         <span v-if="subscription.max_users">👤 <strong>{{ subscription.max_users }}</strong> staff</span>
-                        <span v-if="subscription.has_sms" class="text-emerald-600 font-semibold">📱 SMS ✓</span>
-                        <span v-if="subscription.has_analytics" class="text-emerald-600 font-semibold">📊 Analytics ✓</span>
-                        <span v-if="subscription.has_branding" class="text-emerald-600 font-semibold">🎨 Branding ✓</span>
-                        <span v-if="subscription.has_multi_branch" class="text-emerald-600 font-semibold">🏢 Multi-branch ✓</span>
                     </div>
                     <a
                         v-if="stripe_id || payment_method !== 'admin_override'"

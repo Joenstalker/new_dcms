@@ -33,7 +33,7 @@ class BookingController extends Controller
         }
 
         $dentists = User::role('Dentist')->get(['id', 'name', 'email', 'profile_picture']);
-        $services = Service::approved()->get(['id', 'name', 'description', 'price']);
+        $services = Service::get(['id', 'name', 'description', 'price']);
         $medicalRecords = MedicalRecord::active()
             ->orderBy('name')
             ->get(['id', 'name', 'description']);

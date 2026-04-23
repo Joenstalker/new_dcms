@@ -711,7 +711,7 @@ const menuCategories = computed(() => {
                     permissions: ['manage settings'],
                     subItems: [
                         { name: 'Billing & Plan', route: 'settings.index', permissions: ['manage settings'] },
-                        { name: 'Premium Features', route: 'settings.features', permissions: ['manage system features'], featureKey: 'custom_system_features' },
+                        { name: 'My Features', route: 'settings.features', permissions: ['manage system features'], featureKey: 'custom_system_features' },
                         { name: 'Updates', route: 'settings.updates', permissions: ['manage system updates'], icon: 'refresh', badge: pendingUpdatesCount.value },
                     ]
                 },
@@ -1120,8 +1120,8 @@ function getContrastColor(hex) {
             </nav>
 
             <!-- Content Area -->
-            <main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8 tenant-main">
-                <div class="max-w-[1600px] mx-auto">
+            <main class="flex-1 overflow-y-auto custom-scrollbar p-2 lg:p-4 tenant-main">
+                <div class="max-w-full mx-auto">
                     <!-- Authorization Guard -->
                     <template v-if="isRouteAuthorized">
                         <!-- Maintenance Guard -->

@@ -1,161 +1,164 @@
 <template>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <!-- Staff List Sidebar -->
-        <div class="md:col-span-1 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden h-fit">
-            <div class="p-4 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
-                <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wider">Staff</h3>
-                <button @click="selectAllStaff" class="text-[10px] font-black text-blue-600 uppercase hover:text-blue-800 transition-colors">
-                    {{ selectedStaffIds.length === staff.length ? 'Deselect All' : 'Select All' }}
-                </button>
-            </div>
-            <div class="divide-y divide-gray-50">
-                <div
-                    v-for="member in staff" 
-                    :key="member.id"
-                    @click="toggleStaffSelection(member)"
-                    :class="isStaffSelected(member.id) ? 'bg-blue-50/50' : 'hover:bg-gray-50'"
-                    class="w-full text-left p-4 transition-all flex items-center justify-between cursor-pointer group"
-                >
-                    <div class="flex flex-col truncate mr-2">
-                        <span class="font-bold text-sm text-gray-900" :class="isStaffSelected(member.id) ? 'text-blue-700' : ''">{{ member.name }}</span>
-                        <span class="text-[10px] uppercase font-black tracking-widest opacity-30">{{ member.roles?.[0]?.name }}</span>
-                    </div>
-                    <div 
-                        class="h-5 w-5 rounded-lg border-2 flex items-center justify-center transition-all duration-300"
-                        :class="isStaffSelected(member.id) ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-500/30' : 'border-gray-200 group-hover:border-gray-300'"
+    <div class="space-y-4">
+        <!-- Top Section: Staff List & Role Defaults -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-stretch">
+            <!-- Staff List Sidebar -->
+            <div class="md:col-span-1 bg-white/95 backdrop-blur-md rounded-2xl border border-base-300 shadow-md overflow-hidden flex flex-col">
+                <div class="p-4 border-b border-base-200 bg-base-100/50 flex justify-between items-center shrink-0">
+                    <h3 class="text-[10px] font-black text-gray-900 uppercase tracking-widest">Staff</h3>
+                    <button @click="selectAllStaff" class="text-[10px] font-black text-blue-600 uppercase hover:text-blue-800 transition-colors">
+                        {{ selectedStaffIds.length === staff.length ? 'Deselect All' : 'Select All' }}
+                    </button>
+                </div>
+                <div class="divide-y divide-base-200 overflow-y-auto max-h-[215px] md:max-h-[215px] flex-1 custom-scrollbar">
+                    <div
+                        v-for="member in staff" 
+                        :key="member.id"
+                        @click="toggleStaffSelection(member)"
+                        :class="isStaffSelected(member.id) ? 'bg-blue-50/80' : 'hover:bg-base-200/50'"
+                        class="w-full text-left p-4 transition-all flex items-center justify-between cursor-pointer group"
                     >
-                        <svg v-if="isStaffSelected(member.id)" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                        </svg>
+                        <div class="flex flex-col truncate mr-2">
+                            <span class="font-black text-sm text-gray-900 tracking-tight" :class="isStaffSelected(member.id) ? 'text-blue-700' : ''">{{ member.name }}</span>
+                            <span class="text-[10px] uppercase font-black tracking-widest opacity-40">{{ member.roles?.[0]?.name }}</span>
+                        </div>
+                        <div 
+                            class="h-5 w-5 rounded-lg border-2 flex items-center justify-center transition-all duration-300"
+                            :class="isStaffSelected(member.id) ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-500/30' : 'border-base-300 group-hover:border-base-400'"
+                        >
+                            <svg v-if="isStaffSelected(member.id)" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Permission Checklist Grid -->
-        <div class="md:col-span-3 space-y-6">
-            <div v-if="canManageDefaultPermissions" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <div class="mb-6 border-b pb-4">
+            <!-- Role Default Permissions -->
+            <div v-if="canManageDefaultPermissions" class="md:col-span-4 bg-white/95 backdrop-blur-md rounded-2xl border border-base-300 shadow-md p-6 flex flex-col">
+                <div class="mb-6 border-b border-base-200 pb-4 shrink-0">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-900">Role Default Permissions</h3>
-                        <p class="text-sm text-gray-500">Click a role to open the Set Default Role modal and manage its default permissions.</p>
+                        <h3 class="text-xl font-black text-gray-900 uppercase tracking-tight">Role Default Permissions</h3>
+                        <p class="text-xs font-bold text-gray-500 mt-1">Manage standard access levels for clinic roles.</p>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 flex-1">
                     <button
                         v-for="role in managedRoles"
                         :key="`defaults-${role}`"
                         type="button"
                         @click="openRoleDefaultsModal(role)"
-                        class="text-left rounded-2xl border border-gray-200 bg-gray-50/60 p-5 hover:border-blue-300 hover:bg-blue-50/40 transition-all"
+                        class="text-left rounded-2xl border border-base-200 bg-base-100/50 p-5 hover:border-blue-300 hover:bg-blue-50/40 transition-all group flex flex-col"
                     >
-                        <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center justify-between mb-3 shrink-0">
                             <h4 class="text-sm font-black text-gray-900 uppercase tracking-widest">{{ role }} Role</h4>
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-wider">
-                                Set Default Role
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-xl bg-blue-100 text-blue-700 text-[9px] font-black uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                SET DEFAULT ROLE
                             </span>
                         </div>
-                        <p class="text-xs text-gray-500 mb-3">Default permissions selected: {{ rolePermissionCount(role) }}</p>
-                        <div class="flex flex-wrap gap-2">
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 shrink-0">Default permissions selected: {{ rolePermissionCount(role) }}</p>
+                        <div class="flex flex-wrap gap-2 overflow-y-auto">
                             <span
                                 v-for="permission in previewRolePermissions(role)"
                                 :key="`preview-${role}-${permission}`"
-                                class="px-2 py-1 rounded-lg bg-white border border-gray-200 text-[10px] font-black uppercase tracking-wider text-gray-600"
+                                class="px-2.5 py-1.5 rounded-lg bg-white border border-base-200 text-[9px] font-black uppercase tracking-wider text-gray-600 shadow-sm"
                             >
                                 {{ permission }}
                             </span>
-                            <span v-if="previewRolePermissions(role).length === 0" class="text-xs text-gray-400 font-bold">No default permissions selected.</span>
+                            <span v-if="previewRolePermissions(role).length === 0" class="text-[10px] font-black text-gray-400 uppercase tracking-widest">No defaults selected.</span>
                         </div>
                     </button>
                 </div>
             </div>
+        </div>
 
-            <div v-if="selectedStaffIds.length > 0" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-fade-in">
-                <div class="flex justify-between items-center mb-8 border-b pb-4">
-                    <div>
-                        <h3 class="text-xl font-bold text-gray-900">
-                            Manage Permissions 
-                            <span class="ml-2 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-black">
-                                {{ selectedStaffIds.length }} Selected
-                            </span>
-                        </h3>
-                        <p class="text-sm text-gray-500">Toggle features for all selected staff members</p>
-                    </div>
-                    <PrimaryButton 
-                        @click="savePermissionsTab" 
-                        :class="{ 'opacity-25': permissionForm.processing }" 
-                        :disabled="permissionForm.processing"
-                        class="shadow-lg shadow-blue-500/20"
-                    >
-                        Apply Changes
-                    </PrimaryButton>
+        <!-- Bottom Section: Manage Permissions OR Permission Catalog (Full Width) -->
+        <div v-if="selectedStaffIds.length > 0" class="bg-white/95 backdrop-blur-md rounded-2xl border border-base-300 shadow-md p-6 animate-fade-in w-full">
+            <div class="flex justify-between items-center mb-8 border-b border-base-200 pb-4">
+                <div>
+                    <h3 class="text-xl font-black text-gray-900 uppercase tracking-tight">
+                        Manage Permissions 
+                        <span class="ml-2 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-black">
+                            {{ selectedStaffIds.length }} Selected
+                        </span>
+                    </h3>
+                    <p class="text-xs font-bold text-gray-500 mt-1 uppercase tracking-wider">Toggle features for selected staff</p>
                 </div>
+                <PrimaryButton 
+                    @click="savePermissionsTab" 
+                    :class="{ 'opacity-25': permissionForm.processing }" 
+                    :disabled="permissionForm.processing"
+                    class="shadow-xl shadow-blue-500/20 rounded-xl px-8"
+                >
+                    APPLY CHANGES
+                </PrimaryButton>
+            </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div v-for="(group, feature) in permissionGroups" :key="feature" class="bg-gray-50/50 p-5 rounded-2xl border border-gray-100/50 hover:border-blue-100 transition-colors">
-                        <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center">
-                                <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                                {{ feature }}
-                            </h4>
-                            <label class="flex items-center space-x-2 cursor-pointer group/toggle">
-                                <span class="text-[10px] font-bold text-gray-400 group-hover/toggle:text-blue-500 transition-colors uppercase">Toggle All</span>
-                                <input 
-                                    type="checkbox" 
-                                    :checked="isGroupChecked(group)"
-                                    :indeterminate.prop="isGroupIndeterminate(group)"
-                                    @change="toggleGroup(group, $event)"
-                                    class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition cursor-pointer"
-                                >
-                            </label>
-                        </div>
-                        <div class="space-y-3">
-                            <div 
-                                v-for="permission in group" 
-                                :key="permission.id" 
-                                @click="togglePermission(permission.name)"
-                                class="flex items-center justify-between p-3 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50/30 transition-all cursor-pointer group"
-                                :class="permission.isLocked ? 'opacity-60 cursor-not-allowed border-amber-200 bg-amber-50/30 hover:border-amber-200 hover:bg-amber-50/30' : ''"
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div v-for="(group, feature) in permissionGroups" :key="feature" class="bg-base-100/50 p-5 rounded-2xl border border-base-200 hover:border-blue-100 transition-colors shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center">
+                            <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                            {{ feature }}
+                        </h4>
+                        <label class="flex items-center space-x-2 cursor-pointer group/toggle">
+                            <span class="text-[9px] font-black text-gray-400 group-hover/toggle:text-blue-500 transition-colors uppercase tracking-widest">Toggle All</span>
+                            <input 
+                                type="checkbox" 
+                                :checked="isGroupChecked(group)"
+                                :indeterminate.prop="isGroupIndeterminate(group)"
+                                @change="toggleGroup(group, $event)"
+                                class="h-4 w-4 rounded border-base-300 text-blue-600 focus:ring-blue-500 transition cursor-pointer"
                             >
-                                <div class="flex items-center space-x-3">
-                                    <div 
-                                        class="h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300"
-                                        :class="permissionForm.permissions.includes(permission.name) ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-500/20' : 'border-gray-200 group-hover:border-gray-300'"
-                                    >
-                                        <svg v-if="permissionForm.permissions.includes(permission.name)" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm font-bold transition-colors" :class="permissionForm.permissions.includes(permission.name) ? 'text-gray-900 font-black' : 'text-gray-500 font-bold'">{{ permission.displayName }}</span>
-                                        <p v-if="permission.isLocked" class="text-[10px] font-black uppercase tracking-wider text-amber-600 mt-1">
-                                            Locked by plan{{ permission.requiredPlan ? ` (${permission.requiredPlan})` : '' }}
-                                        </p>
-                                    </div>
+                        </label>
+                    </div>
+                    <div class="space-y-3">
+                        <div 
+                            v-for="permission in group" 
+                            :key="permission.id" 
+                            @click="togglePermission(permission.name)"
+                            class="flex items-center justify-between p-3 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50/30 transition-all cursor-pointer group"
+                            :class="permission.isLocked ? 'opacity-60 cursor-not-allowed border-amber-200 bg-amber-50/30 hover:border-amber-200 hover:bg-amber-50/30' : ''"
+                        >
+                            <div class="flex items-center space-x-3">
+                                <div 
+                                    class="h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300"
+                                    :class="permissionForm.permissions.includes(permission.name) ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-500/20' : 'border-gray-200 group-hover:border-base-400'"
+                                >
+                                    <svg v-if="permissionForm.permissions.includes(permission.name)" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <span class="text-sm font-black transition-colors tracking-tight" :class="permissionForm.permissions.includes(permission.name) ? 'text-gray-900' : 'text-gray-500'">{{ permission.displayName }}</span>
+                                    <p v-if="permission.isLocked" class="text-[10px] font-black uppercase tracking-wider text-amber-600 mt-1">
+                                        Locked{{ permission.requiredPlan ? ` • ${permission.requiredPlan}` : '' }}
+                                    </p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div v-else class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <div class="mb-6">
-                    <h3 class="text-xl font-black text-gray-900 uppercase tracking-widest">Permission Catalog</h3>
-                    <p class="text-sm text-gray-500 mt-1">Select staff from the sidebar to edit permissions. All available permissions are listed below.</p>
-                </div>
+        </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div v-for="(group, feature) in permissionGroups" :key="`readonly-${feature}`" class="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-                        <h4 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-3">{{ feature }}</h4>
-                        <div class="space-y-2">
-                            <div v-for="permission in group" :key="`readonly-${permission.id}`" class="px-3 py-2 rounded-lg bg-white border border-gray-100 text-xs font-bold text-gray-600">
-                                <div class="flex items-center justify-between gap-2">
-                                    <span>{{ permission.displayName }}</span>
-                                    <span v-if="permission.isLocked" class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider">
-                                        {{ permission.requiredPlan || 'Upgrade' }}
-                                    </span>
-                                </div>
+        <div v-else class="bg-white/95 backdrop-blur-md rounded-2xl border border-base-300 shadow-md p-6 w-full">
+            <div class="mb-6">
+                <h3 class="text-xl font-black text-gray-900 uppercase tracking-widest">Permission Catalog</h3>
+                <p class="text-xs font-bold text-gray-500 mt-1 uppercase tracking-wider">Select staff from the sidebar to edit permissions.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div v-for="(group, feature) in permissionGroups" :key="`readonly-${feature}`" class="rounded-xl border border-base-200 bg-base-100/50 p-4 shadow-sm">
+                    <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">{{ feature }}</h4>
+                    <div class="space-y-2">
+                        <div v-for="permission in group" :key="`readonly-${permission.id}`" class="px-3 py-2.5 rounded-lg bg-white border border-base-200 text-[10px] font-black uppercase tracking-widest text-gray-600">
+                            <div class="flex items-center justify-between gap-2">
+                                <span>{{ permission.displayName }}</span>
+                                <span v-if="permission.isLocked" class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-wider">
+                                    {{ permission.requiredPlan || 'UPGRADE' }}
+                                </span>
                             </div>
                         </div>
                     </div>

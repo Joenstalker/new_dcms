@@ -18,6 +18,28 @@ const cartItems = ref([]);
 const paymentMethod = ref('cash');
 const discount = ref(0);
 
+// Watch for patient selection to auto-fetch treatments
+watch(selectedPatient, (newId) => {
+    if (!newId) {
+        cartItems.value = [];
+        return;
+    }
+
+    const patient = props.patients.find(p => p.id === newId);
+    if (patient && patient.treatments && patient.treatments.length > 0) {
+        // Map treatments to cart items
+        cartItems.value = patient.treatments.map(t => ({
+            id: `treatment-${t.id}`,
+            description: t.procedure || t.service?.name || 'Dental Service',
+            quantity: 1,
+            unit_price: Number(t.total_amount_due || t.cost || 0),
+            treatment_id: t.id
+        }));
+    } else {
+        cartItems.value = [];
+    }
+});
+
 // Add item to cart
 const newItem = ref({ description: '', quantity: 1, unit_price: 0 });
 
@@ -74,9 +96,9 @@ const handleCreateInvoice = () => {
         <!-- POS Left: Item Entry -->
         <div class="flex-1 space-y-6">
             <!-- Patient Selection -->
-            <div class="bg-base-100 rounded-2xl border border-base-300 p-5">
+            <div class="bg-base-100/95 backdrop-blur-md rounded-2xl border border-base-300 p-5 shadow-sm">
                 <h3 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-3">Select Patient</h3>
-                <select v-model="selectedPatient" class="select select-bordered w-full rounded-xl bg-base-200/50">
+                <select v-model="selectedPatient" class="select select-bordered w-full rounded-xl bg-base-200/50 text-sm focus:border-primary transition-all">
                     <option value="" disabled>Choose a patient...</option>
                     <option v-for="patient in patients" :key="patient.id" :value="patient.id">
                         {{ patient.first_name }} {{ patient.last_name }}
@@ -85,35 +107,37 @@ const handleCreateInvoice = () => {
             </div>
 
             <!-- Add Line Item -->
-            <div class="bg-base-100 rounded-2xl border border-base-300 p-5 space-y-4">
+            <div class="bg-base-100/95 backdrop-blur-md rounded-2xl border border-base-300 p-5 space-y-4 shadow-sm">
                 <h3 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-1">Add Item / Service</h3>
-                <div class="flex gap-3">
-                    <div class="flex-1 relative">
+                <div class="flex flex-col md:flex-row gap-3">
+                    <div class="flex-[3] relative">
                         <input v-model="newItem.description" type="text" placeholder="Description (e.g., Cleaning)" 
                             list="services-list"
-                            class="input input-bordered w-full rounded-xl bg-base-200/50 text-sm" />
-                        <datalist id="services-list">
+                            class="input input-bordered w-full rounded-xl bg-base-200/50 text-sm focus:border-primary transition-all" />
+                        <datalist id="services-list" class="bg-base-100">
                             <option v-for="service in services" :key="service.id" :value="service.name">
                                 ₱{{ Number(service.price).toLocaleString() }}
                             </option>
                         </datalist>
                     </div>
-                    <input v-model.number="newItem.quantity" type="number" min="1" placeholder="Qty" 
-                        class="input input-bordered w-20 rounded-xl bg-base-200/50 text-sm text-center" />
-                    <input v-model.number="newItem.unit_price" type="number" min="0" step="0.01" placeholder="Price" 
-                        class="input input-bordered w-28 rounded-xl bg-base-200/50 text-sm" />
-                    <button 
-                        @click="addToCart"
-                        class="btn rounded-xl text-white text-xs font-black"
-                        :style="{ backgroundColor: primaryColor }"
-                    >
-                        + Add
-                    </button>
+                    <div class="flex flex-1 gap-3">
+                        <input v-model.number="newItem.quantity" type="number" min="1" placeholder="Qty" 
+                            class="input input-bordered w-full md:w-20 rounded-xl bg-base-200/50 text-sm text-center focus:border-primary transition-all" />
+                        <input v-model.number="newItem.unit_price" type="number" min="0" step="0.01" placeholder="Price" 
+                            class="input input-bordered w-full md:w-28 rounded-xl bg-base-200/50 text-sm focus:border-primary transition-all" />
+                        <button 
+                            @click="addToCart"
+                            class="btn rounded-xl text-white text-xs font-black uppercase tracking-widest px-6"
+                            :style="{ backgroundColor: primaryColor }"
+                        >
+                            + Add
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <!-- Cart Items -->
-            <div class="bg-base-100 rounded-2xl border border-base-300 overflow-hidden">
+            <div class="bg-base-100/95 backdrop-blur-md rounded-2xl border border-base-300 shadow-md overflow-hidden">
                 <table class="table w-full">
                     <thead>
                         <tr class="bg-base-200/50">
@@ -166,7 +190,10 @@ const handleCreateInvoice = () => {
 
                 <!-- Payment Method -->
                 <div>
-                    <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em] mb-2">Payment Method</h4>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-[10px] font-black text-base-content/30 uppercase tracking-[0.2em]">Payment Method</h4>
+                        <span v-if="paymentMethod !== 'cash'" class="text-[9px] font-black text-error uppercase tracking-widest animate-pulse">Unavailable Yet</span>
+                    </div>
                     <div class="flex gap-2">
                         <button v-for="method in ['cash', 'card', 'gcash']" :key="method"
                             @click="paymentMethod = method"
@@ -182,8 +209,8 @@ const handleCreateInvoice = () => {
                 <!-- Submit -->
                 <button 
                     @click="handleCreateInvoice"
-                    :disabled="cartItems.length === 0 || !selectedPatient"
-                    class="w-full py-3.5 rounded-xl text-white text-xs font-black uppercase tracking-widest shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                    :disabled="cartItems.length === 0 || !selectedPatient || paymentMethod !== 'cash'"
+                    class="w-full py-3.5 rounded-xl text-white text-xs font-black uppercase tracking-widest shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed disabled:grayscale"
                     :style="{ backgroundColor: primaryColor }"
                 >
                     Create Invoice & Pay

@@ -198,12 +198,7 @@ const isApplyingFeature = (featureId) => {
                 </p>
             </div>
 
-            <!-- Plan Info -->
-            <div v-if="subscription" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p class="text-sm text-blue-800">
-                    <strong>Current Plan:</strong> {{ subscription.plan_name }}
-                </p>
-            </div>
+            <!-- Plan Info (Removed) -->
 
             <!-- No Updates -->
             <div v-if="!hasUpdates" class="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">

@@ -11,9 +11,15 @@ class ServiceController extends Controller
 {
     public function index()
     {
-        $services = Service::with('creator', 'approver')->latest()->get();
+        $services = Service::with('creator')->latest()->get();
+
         return Inertia::render('Tenant/Services/Index', [
             'services' => $services,
+            'can' => [
+                'create' => auth()->user()->can('create services'),
+                'edit' => auth()->user()->can('edit services'),
+                'delete' => auth()->user()->can('delete services'),
+            ],
         ]);
     }
 
@@ -25,86 +31,42 @@ class ServiceController extends Controller
             'price' => 'required|numeric|min:0',
         ]);
 
-        $authenticatedUser = auth()->user();
-        $isOwner = $authenticatedUser->hasRole('Owner');
+        $service = Service::create([
+            ...$validated,
+            'created_by' => auth()->id(),
+        ]);
 
-        $validated['created_by'] = $authenticatedUser->id;
-        $validated['status'] = $isOwner ? 'approved' : 'pending';
+        $this->broadcastServiceChange($service->load('creator'), 'created');
 
-        if ($isOwner) {
-            $validated['approved_by'] = $authenticatedUser->id;
-        }
-
-        $service = Service::create($validated);
-        $this->broadcastServiceChange($service->load(['creator', 'approver']), 'created');
-
-        $message = $validated['status'] === 'approved'
-            ? 'Service added and approved successfully.'
-            : 'Service submitted for approval.';
-
-        return redirect()->back()->with('success', $message);
+        return redirect()->back()->with('success', 'Service created successfully.');
     }
 
-    public function update(Request $request, Service $service)
+    public function show($serviceId)
     {
+        $service = Service::with('creator')->findOrFail($serviceId);
+        return response()->json($service);
+    }
+
+    public function update(Request $request, $serviceId)
+    {
+        $service = Service::findOrFail($serviceId);
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
         ]);
 
-        $authenticatedUser = auth()->user();
-        $isOwner = $authenticatedUser->hasRole('Owner');
-
-        // If staff (Dentist/Assistant) updates, it goes back to pending
-        if (!$isOwner) {
-            $validated['status'] = 'pending';
-            $validated['approved_by'] = null;
-        }
-
         $service->update($validated);
-        $this->broadcastServiceChange($service->fresh()->load(['creator', 'approver']), 'updated');
+        $this->broadcastServiceChange($service->fresh()->load('creator'), 'updated');
 
-        $message = $service->status === 'approved'
-            ? 'Service updated successfully.'
-            : 'Service updated and resubmitted for approval.';
-
-        return redirect()->back()->with('success', $message);
+        return redirect()->back()->with('success', 'Service updated successfully.');
     }
 
-    public function approve(Service $service)
+    public function destroy($serviceId)
     {
-        if (!auth()->user()->can('approve services')) {
-            abort(403);
-        }
+        $service = Service::findOrFail($serviceId);
 
-        $service->update([
-            'status' => 'approved',
-            'approved_by' => auth()->id(),
-        ]);
-
-        $this->broadcastServiceChange($service->fresh()->load(['creator', 'approver']), 'approved');
-
-        return redirect()->back()->with('success', 'Service approved successfully.');
-    }
-
-    public function reject(Service $service)
-    {
-        if (!auth()->user()->can('approve services')) {
-            abort(403);
-        }
-
-        $service->update([
-            'status' => 'rejected',
-        ]);
-
-        $this->broadcastServiceChange($service->fresh()->load(['creator', 'approver']), 'rejected');
-
-        return redirect()->back()->with('success', 'Service rejected.');
-    }
-
-    public function destroy(Service $service)
-    {
         $deletedPayload = [
             'id' => $service->id,
         ];
@@ -126,16 +88,10 @@ class ServiceController extends Controller
             'name' => $service->name,
             'description' => $service->description,
             'price' => $service->price,
-            'status' => $service->status,
             'created_by' => $service->created_by,
-            'approved_by' => $service->approved_by,
             'creator' => $service->creator ? [
                 'id' => $service->creator->id,
                 'name' => $service->creator->name,
-            ] : null,
-            'approver' => $service->approver ? [
-                'id' => $service->approver->id,
-                'name' => $service->approver->name,
             ] : null,
             'created_at' => optional($service->created_at)?->toISOString(),
             'updated_at' => optional($service->updated_at)?->toISOString(),

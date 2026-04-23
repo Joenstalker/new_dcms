@@ -5,7 +5,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "dev:all": "concurrently -n laravel,reverb,vite,schedule,ngrok -c blue,magenta,green,cyan,yellow \"php artisan serve --port=8080\" \"php artisan reverb:start --host=127.0.0.1 --port=8081\" \"npm run dev\" \"php artisan schedule:work\" \"ngrok http 8080 --log stdout\""
+        "dev:all": "concurrently -n laravel,reverb,vite,schedule,ngrok,stripe -c blue,magenta,green,cyan,yellow,blue.bright \"php artisan serve --port=8080\" \"php artisan reverb:start --host=127.0.0.1 --port=8081\" \"npm run dev\" \"php artisan schedule:work\" \"ngrok http 8080 --log stdout\" \".\\stripe listen --forward-to http://localhost:8080/stripe/webhook\""
     },
     "devDependencies": {
         "@inertiajs/vue3": "^2.0.0",

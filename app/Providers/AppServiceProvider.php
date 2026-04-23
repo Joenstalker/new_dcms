@@ -90,12 +90,14 @@ class AppServiceProvider extends ServiceProvider
 
         Vite::prefetch(concurrency: 3);
 
-        Event::listen(function (Login $event) {
+        Event::listen(Login::class, function (Login $event) {
             if (tenant() && Schema::hasTable('activity_log')) {
+                /** @var \App\Models\User $user */
+                $user = $event->user;
                 activity()
-                    ->causedBy($event->user)
+                    ->causedBy($user)
                     ->withProperties([
-                        'email' => $event->user?->email,
+                        'email' => $user->email,
                         'ip' => request()?->ip(),
                     ])
                     ->event('login')
@@ -103,7 +105,7 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        Event::listen(function (Failed $event) {
+        Event::listen(Failed::class, function (Failed $event) {
             if (tenant() && Schema::hasTable('activity_log')) {
                 $attemptedEmail = strtolower((string) ($event->credentials['email'] ?? ''));
                 $matchedUser = $attemptedEmail !== ''
@@ -115,8 +117,11 @@ class AppServiceProvider extends ServiceProvider
                     ? "Failed login attempt for {$attemptedEmail} ({$knownStatus})"
                     : 'Failed login attempt with missing email';
 
+                /** @var \App\Models\User|null $causer */
+                $causer = $event->user ?? $matchedUser;
+
                 activity()
-                    ->causedBy($event->user)
+                    ->causedBy($causer)
                     ->withProperties([
                         'attempted_email' => $attemptedEmail ?: null,
                         'email_exists' => (bool) $matchedUser,

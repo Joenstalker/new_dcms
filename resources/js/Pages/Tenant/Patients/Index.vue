@@ -242,9 +242,9 @@ const checkLimitAndOpenAddModal = () => {
             <h2 class="text-xl font-black tracking-tight text-base-content">Patient Records</h2>
         </template>
 
-        <div class="mt-8 space-y-6">
+        <div class="mt-4 space-y-4">
             <!-- Limit Reached Banner -->
-            <div v-if="limitReached" class="mb-6 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div v-if="limitReached" class="mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
                 <div class="bg-warning/10 border border-warning/20 rounded-2xl p-4 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-warning/20 flex items-center justify-center text-warning">
@@ -267,10 +267,10 @@ const checkLimitAndOpenAddModal = () => {
             </div>
 
             <!-- Top Actions + Count -->
-            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-base-100 p-6 rounded-2xl border border-base-300">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-base-100/95 backdrop-blur-md p-4 rounded-2xl border border-base-300 shadow-sm">
                 <div>
-                    <h3 class="text-sm font-black text-base-content/40 uppercase tracking-[0.2em]">Patient Registry</h3>
-                    <p class="text-sm font-bold text-base-content/70 mt-1">
+                    <h3 class="text-[10px] font-black text-base-content/40 uppercase tracking-[0.2em]">Patient Registry</h3>
+                    <p class="text-xs font-bold text-base-content/70 mt-0.5">
                         Showing {{ filteredTotal }} of {{ totalPatients }} patients
                     </p>
                 </div>
@@ -278,7 +278,7 @@ const checkLimitAndOpenAddModal = () => {
                     <button
                         v-if="can('create patients')"
                         @click="checkLimitAndOpenAddModal"
-                        class="btn rounded-xl border-0 text-white shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl transition-all w-full lg:w-auto text-xs font-black uppercase tracking-widest"
+                        class="btn btn-sm h-10 rounded-xl border-0 text-white shadow-lg shadow-primary/20 hover:scale-[1.02] hover:shadow-xl transition-all w-full lg:w-auto text-[10px] font-black uppercase tracking-widest"
                         :style="{ backgroundColor: primaryColor }"
                     >
                         + Add Patient
@@ -287,10 +287,10 @@ const checkLimitAndOpenAddModal = () => {
             </div>
 
             <!-- Filter Strip -->
-            <div class="bg-base-100 p-6 rounded-2xl border border-base-300">
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+            <div class="bg-base-100/95 backdrop-blur-md p-4 rounded-2xl border border-base-300 shadow-sm">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-2">
                     <div class="xl:col-span-2 relative">
-                        <svg class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                         <input
@@ -298,31 +298,31 @@ const checkLimitAndOpenAddModal = () => {
                             @keyup.enter="applyFilters"
                             type="text"
                             placeholder="Filter by ID, name, mobile, email"
-                            class="input w-full pl-11 rounded-xl bg-base-200/50 border-transparent focus:border-primary focus:bg-base-100 text-sm font-medium transition-all"
+                            class="input input-sm h-10 w-full pl-10 rounded-xl bg-base-200/50 border-transparent focus:border-primary focus:bg-base-100 text-xs font-medium transition-all"
                         >
                     </div>
 
-                    <select v-model="selectedType" class="select rounded-xl bg-base-200/50 border-transparent focus:border-primary text-sm font-bold">
+                    <select v-model="selectedType" class="select select-sm h-10 rounded-xl bg-base-200/50 border-transparent focus:border-primary text-xs font-bold">
                         <option value="">Patient Type</option>
                         <option value="pedia">Pedia</option>
                         <option value="adult">Adult</option>
                     </select>
 
-                    <select v-model="selectedYear" class="select rounded-xl bg-base-200/50 border-transparent focus:border-primary text-sm font-bold">
+                    <select v-model="selectedYear" class="select select-sm h-10 rounded-xl bg-base-200/50 border-transparent focus:border-primary text-xs font-bold">
                         <option value="">Visit Year</option>
                         <option v-for="yearOption in (available_years || [])" :key="`year-${yearOption}`" :value="String(yearOption)">
                             {{ yearOption }}
                         </option>
                     </select>
 
-                    <select v-model="selectedTag" class="select rounded-xl bg-base-200/50 border-transparent focus:border-primary text-sm font-bold">
+                    <select v-model="selectedTag" class="select select-sm h-10 rounded-xl bg-base-200/50 border-transparent focus:border-primary text-xs font-bold">
                         <option value="">Tag</option>
                         <option v-for="tagOption in (available_tags || [])" :key="`tag-${tagOption}`" :value="tagOption">
                             {{ tagOption }}
                         </option>
                     </select>
 
-                    <select v-model="selectedSort" class="select rounded-xl bg-base-200/50 border-transparent focus:border-primary text-sm font-bold">
+                    <select v-model="selectedSort" class="select select-sm h-10 rounded-xl bg-base-200/50 border-transparent focus:border-primary text-xs font-bold">
                         <option value="latest">Sort: Latest</option>
                         <option value="name_asc">Sort: Name A-Z</option>
                         <option value="name_desc">Sort: Name Z-A</option>
@@ -332,16 +332,16 @@ const checkLimitAndOpenAddModal = () => {
                     </select>
                 </div>
 
-                <div class="flex flex-wrap justify-end gap-2 mt-4">
+                <div class="flex flex-wrap justify-end gap-2 mt-3">
                     <button
                         @click="clearFilters"
-                        class="btn btn-sm btn-ghost rounded-xl text-xs font-black uppercase tracking-widest"
+                        class="btn btn-xs h-8 px-4 btn-ghost rounded-lg text-[10px] font-black uppercase tracking-widest"
                     >
                         Clear
                     </button>
                     <button
                         @click="applyFilters"
-                        class="btn btn-sm rounded-xl border-0 text-white text-xs font-black uppercase tracking-widest"
+                        class="btn btn-xs h-8 px-6 rounded-lg border-0 text-white text-[10px] font-black uppercase tracking-widest"
                         :style="{ backgroundColor: primaryColor }"
                     >
                         Go
@@ -350,7 +350,7 @@ const checkLimitAndOpenAddModal = () => {
             </div>
 
             <!-- Patient List (Responsive / No horizontal scroll) -->
-            <div class="bg-base-100 rounded-2xl border border-base-300 shadow-sm overflow-hidden">
+            <div class="bg-base-100/95 backdrop-blur-md rounded-2xl border border-base-300 shadow-md overflow-hidden">
                 <!-- Mobile / Small Tablet Cards -->
                 <div class="lg:hidden divide-y divide-base-200">
                     <div
@@ -507,14 +507,13 @@ const checkLimitAndOpenAddModal = () => {
                             </td>
 
                             <!-- Actions -->
-                            <td class="px-3 xl:px-5 py-5 align-middle text-center whitespace-nowrap sticky right-0 z-10 bg-base-100 border-l border-base-200">
+                            <td class="px-3 xl:px-5 py-5 align-middle text-center whitespace-nowrap sticky right-0 z-10 bg-base-100/95 backdrop-blur-md border-l border-base-200">
                                 <button 
                                     @click="openManageModal(patient.id)"
-                                    class="btn btn-xs h-8 min-h-8 px-2.5 text-[11px] font-black uppercase tracking-[0.1em] text-white shadow-sm hover:scale-[1.02] transition-transform rounded-lg border-0 min-w-[84px]"
+                                    class="btn btn-xs h-8 px-3 rounded-lg border-0 text-white text-[10px] font-black uppercase tracking-widest shadow-sm hover:scale-[1.02] transition-transform"
                                     :style="{ backgroundColor: primaryColor }"
                                 >
-                                    <span class="xl:hidden">Mng</span>
-                                    <span class="hidden xl:inline">Manage</span>
+                                    Manage
                                 </button>
                             </td>
                         </tr>
