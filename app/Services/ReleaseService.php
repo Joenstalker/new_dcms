@@ -22,28 +22,41 @@ class ReleaseService
     public function latestRelease(): ?SystemRelease
     {
         return Cache::remember('latest_system_release', 3600, function () {
-            // We order by ID desc as a fallback in case multiple share the same released_at
-            $release = SystemRelease::orderBy('released_at', 'desc')
+            return SystemRelease::orderBy('released_at', 'desc')
                 ->orderBy('id', 'desc')
                 ->first();
-
-            if (! $release) {
-                // If no SystemRelease exists in DB, attempt to fetch the latest GitHub release
-                try {
-                    $ghVersion = AppVersionService::getVersion();
-                    if (! empty($ghVersion)) {
-                        $release = SystemRelease::firstOrCreate(
-                            ['version' => $ghVersion],
-                            ['release_notes' => null, 'released_at' => now(), 'is_mandatory' => false, 'requires_db_update' => false]
-                        );
-                    }
-                } catch (\Throwable $e) {
-                    // ignore and return null -- we still want the cached value to be null
-                }
-            }
-
-            return $release;
         });
+    }
+
+    /**
+     * Proactively sync the latest release from GitHub into the database.
+     */
+    public function syncLatestRelease(): ?SystemRelease
+    {
+        try {
+            // Clear version cache to force a fresh check from GitHub
+            AppVersionService::clearCache();
+            
+            $ghVersion = AppVersionService::getVersion();
+            if (! empty($ghVersion)) {
+                $release = SystemRelease::updateOrCreate(
+                    ['version' => $ghVersion],
+                    [
+                        'release_notes' => 'Synced from GitHub',
+                        'released_at' => now(),
+                        'is_mandatory' => false,
+                        'requires_db_update' => false
+                    ]
+                );
+
+                Cache::forget('latest_system_release');
+                return $release;
+            }
+        } catch (\Throwable $e) {
+            Log::error('ReleaseService: Failed to sync latest release from GitHub: ' . $e->getMessage());
+        }
+
+        return $this->latestRelease();
     }
 
     /**

@@ -7,14 +7,22 @@ use App\Models\AuditLog;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\Tenant;
+use App\Services\ReleaseService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, ReleaseService $releaseService): Response
     {
+        // Sync with GitHub every 15 minutes if an admin visits the dashboard
+        Cache::remember('admin_last_github_sync', 900, function () use ($releaseService) {
+            $releaseService->syncLatestRelease();
+            return now();
+        });
+
         $totalTenants = Tenant::count();
         $activeTenants = Tenant::all()->filter(fn($t) => ($t->subscription_status ?? 'active') === 'active')->count();
         $suspendedTenants = Tenant::all()->filter(fn($t) => ($t->subscription_status ?? '') === 'suspended')->count();
