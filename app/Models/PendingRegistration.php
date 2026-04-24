@@ -40,6 +40,8 @@ class PendingRegistration extends Model
         'reminder_sent_at',
         'auto_approve_enabled',
         'auto_approve_scheduled_at',
+        'pending_refund_timer_enabled',
+        'pending_refund_timer_minutes',
         'original_expires_at',
         'expiry_history',
     ];
@@ -51,6 +53,7 @@ class PendingRegistration extends Model
         'amount_paid' => 'decimal:2',
         'reminder_enabled' => 'boolean',
         'auto_approve_enabled' => 'boolean',
+        'pending_refund_timer_enabled' => 'boolean',
         'reminder_sent_at' => 'datetime',
         'auto_approve_scheduled_at' => 'datetime',
         'original_expires_at' => 'datetime',
@@ -172,6 +175,30 @@ class PendingRegistration extends Model
     public function getEffectiveAutoApproveMinutes(): int
     {
         return SystemSetting::get('pending_auto_approve_minutes', 10080);
+    }
+
+    /**
+     * Check if auto-refund is enabled (per-registration or global default)
+     */
+    public function isAutoRefundEnabled(): bool
+    {
+        if ($this->pending_refund_timer_enabled !== null) {
+            return $this->pending_refund_timer_enabled;
+        }
+
+        return SystemSetting::get('pending_refund_timer_enabled', false);
+    }
+
+    /**
+     * Get the effective auto-refund minutes
+     */
+    public function getEffectiveAutoRefundMinutes(): int
+    {
+        if ($this->pending_refund_timer_minutes) {
+            return $this->pending_refund_timer_minutes;
+        }
+
+        return SystemSetting::get('pending_refund_timer_minutes', 10080);
     }
 
     /**

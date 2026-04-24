@@ -245,6 +245,8 @@ class RegistrationController extends Controller
             $defaultTimeoutMinutes = SystemSetting::get('pending_timeout_default_minutes', 10080);
             $autoApproveEnabled = SystemSetting::get('pending_auto_approve_enabled', false);
             $reminderEnabled = SystemSetting::get('pending_reminder_global_enabled', true);
+            $refundEnabled = SystemSetting::get('pending_refund_timer_enabled', false);
+            $refundMinutes = SystemSetting::get('pending_refund_timer_minutes', 10080);
 
             // First, create or update a PendingRegistration record
             $pendingRegistration = PendingRegistration::updateOrCreate(
@@ -270,6 +272,8 @@ class RegistrationController extends Controller
                     'pending_timeout_minutes' => $defaultTimeoutMinutes,
                     'auto_approve_enabled' => $autoApproveEnabled,
                     'reminder_enabled' => $reminderEnabled,
+                    'pending_refund_timer_enabled' => $refundEnabled,
+                    'pending_refund_timer_minutes' => $refundMinutes,
                 ]
             );
 
@@ -574,15 +578,30 @@ class RegistrationController extends Controller
                     $this->handleSubscriptionDeleted($subscriptionObj);
                     break;
 
+                case 'customer.created':
+                case 'customer.updated':
+                case 'payment_intent.created':
+                case 'payment_intent.succeeded':
+                case 'payment_method.attached':
+                case 'invoice.created':
+                case 'invoice.finalized':
+                    // These events are expected but don't require custom logic in this handler
+                    Log::debug('Stripe event received and acknowledged: '.$event->type);
+                    break;
+
                 default:
                     Log::info('Unhandled Stripe event: '.$event->type);
             }
 
             return response()->json(['success' => true]);
-        } catch (\Exception $e) {
-            Log::error('Webhook processing failed: '.$e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Webhook processing failed: '.$e->getMessage(), [
+                'type' => $event->type ?? 'unknown',
+                'exception' => get_class($e),
+                'stack' => $e->getTraceAsString()
+            ]);
 
-            return response()->json(['error' => 'Webhook processing failed'], 400);
+            return response()->json(['error' => 'Webhook processing failed: '.$e->getMessage()], 500);
         }
     }
 
@@ -762,6 +781,9 @@ class RegistrationController extends Controller
                 'amount_paid' => $session->amount_total / 100,
                 'status' => PendingRegistration::STATUS_PENDING,
                 'expires_at' => now('UTC')->addMinutes($timeoutMinutes),
+                'auto_approve_scheduled_at' => $pendingRegistration->isAutoApproveEnabled() 
+                    ? now('UTC')->addMinutes($pendingRegistration->getEffectiveAutoApproveMinutes())
+                    : null,
             ]);
 
             SystemEarning::create([

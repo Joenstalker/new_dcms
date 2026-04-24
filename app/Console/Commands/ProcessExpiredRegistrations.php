@@ -211,14 +211,38 @@ class ProcessExpiredRegistrations extends Command
      */
     protected function processRefunds(): void
     {
+        $now = now('UTC');
+        
         // Get expired pending registrations that weren't auto-approved
-        $expiredRegistrations = PendingRegistration::expired()
-            ->where('status', PendingRegistration::STATUS_PENDING)
+        // We only process them if they are TRULY expired based on their own expires_at
+        $expiredRegistrations = PendingRegistration::where('status', PendingRegistration::STATUS_PENDING)
+            ->where('expires_at', '<', $now)
             ->get();
 
-        $this->info("Found {$expiredRegistrations->count()} expired registrations to process for refund.");
+        $this->info("Current Time (UTC): " . $now);
+        $this->info("Found {$expiredRegistrations->count()} registrations past their expiry date.");
 
         foreach ($expiredRegistrations as $registration) {
+            $this->info("Checking ID: {$registration->id}, Subdomain: {$registration->subdomain}");
+
+            // Check if auto-refund is enabled for this registration
+            if (!$registration->isAutoRefundEnabled()) {
+                $this->info("Skipping refund: Auto-refund is disabled for {$registration->subdomain}");
+                continue;
+            }
+
+            // Safety Check: If a tenant already exists for this subdomain, DO NOT refund.
+            if (Tenant::where('id', $registration->subdomain)->exists()) {
+                $this->info("Skipping refund: Tenant already exists for {$registration->subdomain}");
+                
+                $registration->update([
+                    'status' => PendingRegistration::STATUS_APPROVED,
+                    'approved_at' => $registration->approved_at ?? now(),
+                ]);
+                continue;
+            }
+
+            $this->info("Processing refund for ID: {$registration->id}, Subdomain: {$registration->subdomain}, Expired At: {$registration->expires_at}");
             $this->processRegistration($registration);
         }
     }
@@ -230,23 +254,35 @@ class ProcessExpiredRegistrations extends Command
     {
         $this->info("Processing registration for: {$registration->clinic_name}");
 
+        $refundSuccessful = false;
+
         // Process refund via Stripe if payment exists
         if ($registration->stripe_payment_intent_id) {
-            $this->processRefund($registration);
+            $refundSuccessful = $this->processRefund($registration);
+        } else {
+            // If no payment intent, we just mark it as refunded (or abandoned)
+            $registration->update([
+                'status' => PendingRegistration::STATUS_REFUNDED,
+            ]);
+            $refundSuccessful = true;
         }
 
-        // Send refund email
-        try {
-            Mail::to($registration->email)->send(
-                new RegistrationRefunded($registration, $registration->amount_paid ?? 0)
-            );
-            $this->info("Refund email sent to: {$registration->email}");
-        }
-        catch (\Exception $e) {
-            $this->error("Failed to send refund email: " . $e->getMessage());
-        }
+        // Only send refund email if the refund was actually processed (or no payment was made)
+        if ($refundSuccessful) {
+            try {
+                Mail::to($registration->email)->send(
+                    new RegistrationRefunded($registration, $registration->amount_paid ?? 0)
+                );
+                $this->info("Refund email sent to: {$registration->email}");
+            }
+            catch (\Exception $e) {
+                $this->error("Failed to send refund email: " . $e->getMessage());
+            }
 
-        $this->info("Registration marked as refunded: {$registration->subdomain}");
+            $this->info("Registration marked as refunded: {$registration->subdomain}");
+        } else {
+            $this->error("Skipping refund email because refund failed for: {$registration->subdomain}");
+        }
     }
 
     /**

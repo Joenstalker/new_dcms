@@ -458,10 +458,12 @@ class SystemSettingsController extends Controller
             'lockout_duration' => ['integer', 'min:1', 'max:1440'],
             'password_reset_expiry' => ['integer', 'min:5', 'max:1440'],
             'pending_timeout_default_minutes' => ['integer', 'min:1', 'max:525600'],
+            'pending_refund_timer_minutes' => ['integer', 'min:1', 'max:525600'],
             'pending_reminder_minutes_before' => ['integer', 'min:1', 'max:525600'],
             'pending_auto_approve_minutes' => ['integer', 'min:1', 'max:525600'],
             'pending_reminder_global_enabled' => ['boolean'],
             'pending_auto_approve_enabled' => ['boolean'],
+            'pending_refund_timer_enabled' => ['boolean'],
         ];
 
         $rules = [];
