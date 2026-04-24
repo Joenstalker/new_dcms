@@ -64,6 +64,8 @@ return [
     ],
 
     'github' => [
+        'token' => env('GITHUB_TOKEN'),
+        'repo' => env('GITHUB_REPO'),
         'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
     ],
 

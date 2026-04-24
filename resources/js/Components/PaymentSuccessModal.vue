@@ -42,7 +42,7 @@ const emit = defineEmits(['close']);
 
             <!-- Email Notice -->
             <div class="bg-gray-50 rounded-lg p-4 mb-6">
-                <p class="text-sm text-gray-700 text-center">
+                <div class="text-sm text-gray-700 text-center">
                     <strong>Next Steps:</strong>
                     <ul class="mt-2 text-left text-sm text-gray-600 space-y-2">
                         <li class="flex items-start">
@@ -64,7 +64,7 @@ const emit = defineEmits(['close']);
                             You'll receive a confirmation email once approved
                         </li>
                     </ul>
-                </p>
+                </div>
             </div>
 
             <!-- Close Button -->

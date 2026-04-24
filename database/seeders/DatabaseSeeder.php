@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             SubscriptionPlanSeeder::class,
             FeatureSeeder::class,
+            SystemReleaseSeeder::class,
         ]);
 
         // Tenant Seeding
