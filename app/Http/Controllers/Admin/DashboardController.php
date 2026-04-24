@@ -17,8 +17,8 @@ class DashboardController extends Controller
 {
     public function index(Request $request, ReleaseService $releaseService): Response
     {
-        // Sync with GitHub every 15 minutes if an admin visits the dashboard
-        Cache::remember('admin_last_github_sync', 900, function () use ($releaseService) {
+        // Sync with GitHub every 1 minute if an admin visits the dashboard
+        Cache::remember('admin_last_github_sync', 60, function () use ($releaseService) {
             $releaseService->syncLatestRelease();
             return now();
         });

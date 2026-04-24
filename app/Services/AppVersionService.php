@@ -15,8 +15,8 @@ class AppVersionService
     {
         $cacheFile = base_path('storage/framework/cache/app_version.json');
 
-        // Check if we have a valid cache file and it's less than 1 hour old
-        if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 3600)) {
+        // Check if we have a valid cache file and it's less than 1 minute old
+        if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 60)) {
             $data = json_decode(file_get_contents($cacheFile), true);
             if (!empty($data['version'])) {
                 return $data['version'];
