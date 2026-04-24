@@ -104,6 +104,7 @@ class AppVersionService
     public static function clearCache(): void
     {
         Cache::forget('github_release_history');
+        Cache::forget('latest_system_release');
         
         $cacheFile = base_path('storage/framework/cache/app_version.json');
         if (file_exists($cacheFile)) {

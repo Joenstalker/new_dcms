@@ -93,4 +93,15 @@ class VersionComplianceController extends Controller
 
         return back()->with('success', "Tenant upgrade rollout dispatched (Batch ID: {$batch->id}).");
     }
+
+    public function syncWithGitHub(ReleaseService $releaseService): RedirectResponse
+    {
+        $release = $releaseService->syncLatestRelease();
+
+        if (! $release) {
+            return back()->with('error', 'Failed to sync latest release from GitHub. Please check your GitHub configuration.');
+        }
+
+        return back()->with('success', "Latest version synced from GitHub: {$release->version}");
+    }
 }

@@ -239,12 +239,14 @@ $registerCentralRoutes = function ($withNames = false) {
         $versionComplianceI = Route::get('/version-compliance', [VersionComplianceController::class, 'index']);
         $versionComplianceToggle = Route::post('/version-compliance/auto-rollout', [VersionComplianceController::class, 'toggleAutoRollout']);
         $versionComplianceTrigger = Route::post('/version-compliance/rollout', [VersionComplianceController::class, 'triggerRollout']);
+        $versionComplianceSync = Route::post('/version-compliance/sync', [VersionComplianceController::class, 'syncWithGitHub']);
         if ($withNames) {
             $versionComplianceI->name('version-compliance.index');
         }
         if ($withNames) {
             $versionComplianceToggle->name('version-compliance.auto-rollout');
             $versionComplianceTrigger->name('version-compliance.rollout');
+            $versionComplianceSync->name('version-compliance.sync');
         }
 
         // Feature Management
