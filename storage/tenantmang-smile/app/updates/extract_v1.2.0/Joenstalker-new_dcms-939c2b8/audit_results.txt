@@ -1,0 +1,25 @@
+==================================================
+           USER AUDIT REPORT
+==================================================
+
+[CENTRAL DATABASE]
+--------------------
+ - admin@dcms.com                 | Admin: YES
+ - devmarkgabertan@gmail.com      | Admin: YES
+
+[TENANT DATABASES]
+--------------------
+TENANT: joensmile (joensmile)
+   - joenilpanal+tenant10@gmail.com | Roles: Owner
+
+TENANT: junjunsmile (junjunsmile)
+   - joenilpanal+tenant1@gmail.com  | Roles: Owner
+   - joenilpanal+dentist1@gmail.com | Roles: Dentist
+
+TENANT: preview-sandbox (tenantpreview)
+   - preview-owner@local.test       | Roles: Owner
+   - joenilpanal+dentist1@gmail.com | Roles: Dentist
+
+==================================================
+Audit Complete.
+==================================================

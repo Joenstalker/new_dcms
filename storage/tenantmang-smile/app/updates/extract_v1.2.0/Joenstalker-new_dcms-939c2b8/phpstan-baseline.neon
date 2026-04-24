@@ -1,0 +1,1219 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Console/Commands/CheckSystemUpdates.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/MigrateLegacyTenantPhotos.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:run\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Console/Commands/MigrateLegacyTenantPhotos.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/SendAppointmentReminders.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:run\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Console/Commands/SendAppointmentReminders.php
+
+		-
+			message: '#^Relation ''dentist'' is not found in App\\Models\\Appointment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/SendAppointmentReminders.php
+
+		-
+			message: '#^Relation ''patient'' is not found in App\\Models\\Appointment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/SendAppointmentReminders.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/AnalyticsController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$domains\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/AnalyticsController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/AnalyticsController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/AnalyticsController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Admin/AnalyticsController.php
+
+		-
+			message: '#^Relation ''plan'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/AnalyticsController.php
+
+		-
+			message: '#^Relation ''subscription'' is not found in App\\Models\\Tenant model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Admin/AnalyticsController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/AnalyticsController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>stripe_status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/AnalyticsController.php
+
+		-
+			message: '#^Relation ''admin'' is not found in App\\Models\\AuditLog model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/AuditLogController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AuditLog\:\:\$admin\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/DashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\SubscriptionPlan\:\:\$subscriptions_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/DashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\SubscriptionPlan\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Admin/DashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:filter\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Admin/DashboardController.php
+
+		-
+			message: '#^Relation ''admin'' is not found in App\\Models\\AuditLog model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/DashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$released_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/FeatureController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/FeatureController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:ordered\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/FeatureController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Feature\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Admin/FeatureController.php
+
+		-
+			message: '#^Parameter \#4 \$targetId of static method App\\Models\\AuditLog\:\:record\(\) expects string\|null, int given\.$#'
+			identifier: argument.type
+			count: 10
+			path: app/Http/Controllers/Admin/FeatureController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PendingRegistration\:\:\$formatted_amount\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/PendingRegistrationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PendingRegistration\:\:\$is_expired\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/PendingRegistrationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PendingRegistration\:\:\$plan_name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/PendingRegistrationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PendingRegistration\:\:\$status_badge\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/PendingRegistrationController.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/Admin/PendingRegistrationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/RevenueController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$tenant\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/RevenueController.php
+
+		-
+			message: '#^Relation ''plan'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Admin/RevenueController.php
+
+		-
+			message: '#^Relation ''tenant'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/RevenueController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>domain" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/RevenueController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Admin/RevenueController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>price_monthly" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/RevenueController.php
+
+		-
+			message: '#^Relation ''tenant'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/Admin/SubscriptionController.php
+
+		-
+			message: '#^Parameter \#4 \$targetId of static method App\\Models\\AuditLog\:\:record\(\) expects string\|null, int given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Http/Controllers/Admin/SupportTicketController.php
+
+		-
+			message: '#^Relation ''latestMessage'' is not found in App\\Models\\SupportTicket model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/SupportTicketController.php
+
+		-
+			message: '#^Relation ''tenant'' is not found in App\\Models\\SupportTicket model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/SupportTicketController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>database_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/SupportTicketController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>logo_path" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/SupportTicketController.php
+
+		-
+			message: '#^Parameter \#4 \$targetId of static method App\\Models\\AuditLog\:\:record\(\) expects string\|null, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Admin/SystemSettingsController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Tenant\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Tenant\:\:\$subscriptions\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TenantUsageMetric\:\:\$api_request_count_month\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TenantUsageMetric\:\:\$bandwidth_month_bytes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TenantUsageMetric\:\:\$public_request_count_month\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TenantUsageMetric\:\:\$request_count_month\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$amount_paid\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bandwidth_used_bytes\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bandwidth_used_mb\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$barangay\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$billing_cycle\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$city\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$database_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$days_left\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$domains\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ends_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$full_address\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$max_bandwidth_mb\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$max_storage_mb\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payment_method\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payment_status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$phone\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$plan_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$province\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storage_used_bytes\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$storage_used_mb\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$street\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$subscriptions\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$tenant_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Stancl\\Tenancy\\Contracts\\Domain\:\:\$domain\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getDatabaseName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\TenantController\:\:getTenantStorageUsage\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Parameter \#4 \$targetId of static method App\\Models\\AuditLog\:\:record\(\) expects string\|null, int given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Relation ''domains'' is not found in App\\Models\\Tenant model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Relation ''subscriptions'' is not found in App\\Models\\Tenant model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>api_request_count_month" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>bandwidth_bytes" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>bandwidth_month_bytes" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>public_request_count_month" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>request_count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>request_count_month" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Stancl\\Tenancy\\Contracts\\Domain\:\:\$domain\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/VersionComplianceController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Admin/VersionComplianceController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\|string\)\: array\{id\: string, name\: string, status\: string, tenant_version\: string\|null, global_version\: string, compliance_status\: ''ahead''\|''outdated''\|''unknown''\|''up_to_date'', domain\: mixed, last_updated_at\: mixed\}, Closure\(App\\Models\\Tenant\)\: array\{id\: string, name\: string, status\: string, tenant_version\: string\|null, global_version\: string, compliance_status\: ''ahead''\|''outdated''\|''unknown''\|''up_to_date'', domain\: mixed, last_updated_at\: mixed\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Admin/VersionComplianceController.php
+
+		-
+			message: '#^Relation ''domains'' is not found in App\\Models\\Tenant model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/VersionComplianceController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>version" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/VersionComplianceController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$domains\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Access to an undefined property Stancl\\Tenancy\\Contracts\\Domain\:\:\$domain\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getDatabaseConnectionName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getDatabaseName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:usesHashedDatabaseName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Relation ''domains'' is not found in App\\Models\\Tenant model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Api/TenantController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Appointment\:\:\$dentist\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AppointmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Appointment\:\:\$patient\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/AppointmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Appointment\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Appointment\>\:\:\$patient\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/AppointmentController.php
+
+		-
+			message: '#^Relation ''dentist'' is not found in App\\Models\\Appointment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/AppointmentController.php
+
+		-
+			message: '#^Relation ''patient'' is not found in App\\Models\\Appointment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/AppointmentController.php
+
+		-
+			message: '#^Call to an undefined method Laravel\\Socialite\\Contracts\\Provider\:\:stateless\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Auth/GoogleAuthController.php
+
+		-
+			message: '#^Parameter \#1 \$user of class Illuminate\\Auth\\Events\\Verified constructor expects Illuminate\\Contracts\\Auth\\MustVerifyEmail, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Auth/VerifyEmailController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$items\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/BillingController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$patient\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/BillingController.php
+
+		-
+			message: '#^Relation ''patient'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/BillingController.php
+
+		-
+			message: '#^Relation ''treatments'' is not found in App\\Models\\Patient model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/BillingController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>domain" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/BillingPortalController.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Http/Controllers/ContactController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>max_storage_mb" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PendingRegistration\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\PendingRegistration\>\:\:\$plan_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/RegistrationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$tenant\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/RegistrationController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\|Stancl\\Tenancy\\Contracts\\Tenant\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/RegistrationController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\|Stancl\\Tenancy\\Contracts\\Tenant\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/RegistrationController.php
+
+		-
+			message: '#^Parameter \#1 \$params of method Stripe\\Service\\Checkout\\SessionService\:\:create\(\) expects array\{adaptive_pricing\?\: array\{enabled\?\: bool\}, after_expiration\?\: array\{recovery\?\: array\{allow_promotion_codes\?\: bool, enabled\: bool\}\}, allow_promotion_codes\?\: bool, automatic_tax\?\: array\{enabled\: bool, liability\?\: array\{account\?\: string, type\: string\}\}, billing_address_collection\?\: string, cancel_url\?\: string, client_reference_id\?\: string, consent_collection\?\: array\{payment_method_reuse_agreement\?\: array\{position\: string\}, promotions\?\: string, terms_of_service\?\: string\}, \.\.\.\}\|null, array\{payment_method_types\: array\{''card''\}, line_items\: array\{array\{price\: non\-falsy\-string, quantity\: 1\}\}\|array\{array\{price_data\: array\{currency\: ''php'', unit_amount\: int, product_data\: array\{name\: non\-falsy\-string, description\: non\-falsy\-string\}\}, quantity\: 1\}, array\{price\: non\-falsy\-string, quantity\: 1\}\}, mode\: ''subscription'', ui_mode\: ''embedded'', subscription_data\: array\{trial_end\?\: float\|int\|string, metadata\: array\{pending_registration_id\: int, clinic_name\: mixed, first_name\: mixed, last_name\: mixed, admin_name\: mixed, email\: mixed, phone\: mixed, street\: mixed, \.\.\.\}\}, return_url\: non\-falsy\-string, customer_email\: mixed, metadata\: array\{pending_registration_id\: int, clinic_name\: mixed, first_name\: mixed, last_name\: mixed, admin_name\: mixed, email\: mixed, phone\: mixed, street\: mixed, \.\.\.\}\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/RegistrationController.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<\-9999, 9999\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/RegistrationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Appointment\:\:\$count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ReportController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$patient\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ReportController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ReportController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Appointment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/ReportController.php
+
+		-
+			message: '#^Relation ''patient'' is not found in App\\Models\\Appointment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/ReportController.php
+
+		-
+			message: '#^Relation ''patient'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/ReportController.php
+
+		-
+			message: '#^Relation ''plan'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/ReportController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Service\:\:\$approver\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ServiceController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Service\:\:\$creator\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ServiceController.php
+
+		-
+			message: '#^Relation ''creator'' is not found in App\\Models\\Service model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/ServiceController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/StaffController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/StaffController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Http/Controllers/StaffController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Appointment\:\:\$count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Tenant/AnalyticsController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Appointment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Tenant/AnalyticsController.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Http/Controllers/Tenant/Auth/TenantAuthController.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<0, 999999\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Tenant/Auth/TenantAuthController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Tenant/SettingsController.php
+
+		-
+			message: '#^Anonymous function should return Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, description\: string\|null, type\: string, category\: string\|null, is_enabled\: bool, has_pending_update\: bool, value\: mixed\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, description\: string\|null, type\: string, category\: string\|null, is_enabled\: bool, has_pending_update\: bool, value\: mixed\}\>\.$#'
+			identifier: return.type
+			count: 2
+			path: app/Http/Controllers/Tenant/SettingsController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Feature\>\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Feature\>, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, description\: string\|null, type\: string, category\: string\|null, is_enabled\: bool, has_pending_update\: bool, value\: mixed\}\>, Closure\(mixed\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, name\: string, description\: string\|null, type\: string, category\: string\|null, is_enabled\: bool, has_pending_update\: bool, value\: mixed\}\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/Tenant/SettingsController.php
+
+		-
+			message: '#^Relation ''plan'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 4
+			path: app/Http/Controllers/Tenant/SettingsController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\SupportTicket\:\:\$latestMessage\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Tenant/Support/SupportController.php
+
+		-
+			message: '#^Relation ''latestMessage'' is not found in App\\Models\\SupportTicket model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Tenant/Support/SupportController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Treatment\:\:\$dentist\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/TreatmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Treatment\:\:\$patient\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/TreatmentController.php
+
+		-
+			message: '#^Relation ''patient'' is not found in App\\Models\\Treatment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/TreatmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Middleware/CheckSubscription.php
+
+		-
+			message: '#^Relation ''plan'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Middleware/CheckSubscription.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Http/Requests/Auth/LoginRequest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Jobs/PushPlanUpdatesJob.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 2
+			path: app/Mail/ClinicPasswordReset.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Mail/Tenant/PasswordResetCode.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$value_boolean\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Feature.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$value_numeric\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Feature.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$value_tier\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Feature.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\|Stancl\\Tenancy\\Contracts\\Tenant\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Patient.php
+
+		-
+			message: '#^Call to an undefined method Stancl\\Tenancy\\Tenancy\:\:tenant\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Models/Patient.php
+
+		-
+			message: '#^PHPDoc type array of property App\\Models\\Patient\:\:\$appends is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$appends\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/Patient.php
+
+		-
+			message: '#^Method App\\Models\\PendingRegistration\:\:getSecondsRemainingAttribute\(\) should return int but returns float\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/PendingRegistration.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:ordered\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/SubscriptionPlan.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Tenant\:\:\$subscription\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/Tenant.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TenantNotification\:\:\$sender_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/TenantNotification.php
+
+		-
+			message: '#^Trait App\\Models\\Traits\\BranchScope is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Models/Traits/BranchScope.php
+
+		-
+			message: '#^PHPDoc type array of property App\\Models\\User\:\:\$appends is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$appends\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\|Stancl\\Tenancy\\Contracts\\Tenant\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Notifications/ClinicPasswordResetNotification.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$modelOrId of method Spatie\\Activitylog\\ActivityLogger\:\:causedBy\(\) expects Illuminate\\Database\\Eloquent\\Model\|int\|string\|null, Illuminate\\Contracts\\Auth\\Authenticatable given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$modelOrId of method Spatie\\Activitylog\\ActivityLogger\:\:causedBy\(\) expects Illuminate\\Database\\Eloquent\\Model\|int\|string\|null, Illuminate\\Contracts\\Auth\\Authenticatable\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Request\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type Illuminate\\Contracts\\Auth\\Authenticatable\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Called ''pluck'' on Laravel collection, but could have been retrieved as a query\.$#'
+			identifier: larastan.noUnnecessaryCollectionCall
+			count: 1
+			path: app/Providers/SystemSettingsServiceProvider.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/FeatureOTAUpdateService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$tenant\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/FeatureOTAUpdateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/FeatureOTAUpdateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$systemRelease\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/FeatureOTAUpdateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$system_release_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/FeatureOTAUpdateService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/FeatureOTAUpdateService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:notArchived\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/FeatureOTAUpdateService.php
+
+		-
+			message: '#^Relation ''plan'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/FeatureOTAUpdateService.php
+
+		-
+			message: '#^Relation ''tenant'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/FeatureOTAUpdateService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Tenant\:\:\$subscription\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/FeatureSyncService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$tenant\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/NotificationService.php
+
+		-
+			message: '#^Relation ''tenant'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/NotificationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Appointment\:\:\$patient\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/NotificationTriggerService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/NotificationTriggerService.php
+
+		-
+			message: '#^Instantiated class App\\Mail\\BookingRejected not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/NotificationTriggerService.php
+
+		-
+			message: '#^Parameter \#1 \$mailable of method Illuminate\\Mail\\PendingMail\:\:queue\(\) expects Illuminate\\Contracts\\Mail\\Mailable, App\\Mail\\BookingRejected given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/NotificationTriggerService.php
+
+		-
+			message: '#^Relation ''plan'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/NotificationTriggerService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/TenantFeatureGateService.php
+
+		-
+			message: '#^Relation ''plan'' is not found in App\\Models\\Subscription model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/TenantFeatureGateService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:filter\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\|string\)\: bool\)\|null, Closure\(App\\Models\\Tenant\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/TenantUpgradeRolloutService.php
+
+		-
+			message: '#^Access to constant ATTR_SSL_CA on an unknown class Pdo\\Mysql\.$#'
+			identifier: class.notFound
+			count: 2
+			path: config/database.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: routes/console.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$subdomain\.$#'
+			identifier: property.notFound
+			count: 1
+			path: routes/console.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:domains\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: routes/console.php
