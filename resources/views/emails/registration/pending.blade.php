@@ -66,7 +66,15 @@
                         </tr>
                         <tr>
                             <td class="py-2 text-gray-600 font-medium">PASSWORD:</td>
-                            <td class="py-2 text-gray-900 font-mono">{{ $registration->password }}</td>
+                            <td class="py-2 text-gray-900 font-mono">
+                                @php
+                                    try {
+                                        echo decrypt($registration->password);
+                                    } catch (\Exception $e) {
+                                        echo $registration->password;
+                                    }
+                                @endphp
+                            </td>
                         </tr>
                     </table>
                 </div>

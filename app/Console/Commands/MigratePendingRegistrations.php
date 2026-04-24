@@ -70,7 +70,8 @@ class MigratePendingRegistrations extends Command
                     $user = \App\Models\User::create([
                         'name' => $registration->first_name . ' ' . $registration->last_name,
                         'email' => $registration->email,
-                        'password' => Hash::make($registration->password),
+                        'password' => decrypt($registration->password),
+                        'requires_password_change' => true,
                     ]);
 
                     // Assign Owner role

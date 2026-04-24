@@ -63,7 +63,17 @@
                         </tr>
                         <tr>
                             <td class="py-2 text-gray-600 font-medium">Password:</td>
-                            <td class="py-2 text-gray-900 font-mono">{{ is_array($registration->password) ? '' : ($registration->password ?? 'As set during registration') }}</td>
+                            <td class="py-2 text-gray-900 font-mono">
+                                @php
+                                    try {
+                                        // Attempt to decrypt if it looks like an encrypted string
+                                        echo is_string($registration->password) ? decrypt($registration->password) : 'As set during registration';
+                                    } catch (\Exception $e) {
+                                        // Fallback to raw value or default message
+                                        echo is_string($registration->password) ? $registration->password : 'As set during registration';
+                                    }
+                                @endphp
+                            </td>
                         </tr>
                     </table>
                 </div>

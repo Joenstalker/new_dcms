@@ -94,10 +94,21 @@
                     </button>
     </div>
 
+    @php
+        $expiresAt = 0;
+        if (isset($expires_at)) {
+            $expiresAt = \Illuminate\Support\Carbon::parse($expires_at)->timestamp * 1000;
+        } elseif (isset($created_at)) {
+            $expiresAt = \Illuminate\Support\Carbon::parse($created_at)->timestamp * 1000;
+        } else {
+            $expiresAt = time() * 1000;
+        }
+    @endphp
+
     <script>
         function startCountdown() {
-            const expiresAt = {{ isset($expires_at) ? (is_string($expires_at) ? \Carbon\Carbon::parse($expires_at)->timestamp : $expires_at->timestamp) * 1000 : (isset($created_at) ? (is_string($created_at) ? \Carbon\Carbon::parse($created_at)->timestamp : $created_at->timestamp) * 1000 : time() * 1000) }};
-            const serverTimeMs = {{ time() * 1000 }};
+            const expiresAt = Number("{{ $expiresAt }}");
+            const serverTimeMs = Number("{{ time() * 1000 }}");
             const timeOffset = serverTimeMs - new Date().getTime();
 
             function updateTimer() {
@@ -110,7 +121,7 @@
                     document.getElementById('countdown').classList.remove('text-amber-700', 'text-orange-600');
                     const messageEl = document.getElementById('expiry-message');
                     if (messageEl) {
-                        messageEl.textContent = @json(__('Your registration has expired. Please contact support.'));
+                        messageEl.textContent = "{{ __('Your registration has expired. Please contact support.') }}";
                         messageEl.classList.add('text-red-600');
                     }
                     return;
@@ -141,23 +152,9 @@
         }
         startCountdown();
 
-        (function () {
-            function dismissAppError() {
-                if (window.history.length > 1) {
-                    window.history.back();
-                    return;
-                }
-                var ref = document.referrer;
-                try {
-                    if (ref && new URL(ref).origin === window.location.origin) {
-                        window.location.assign(ref);
-                        return;
-                    }
-                } catch (e) {}
-                window.location.href = @json(url('/'));
-            }
-            document.getElementById('error-ok-btn').addEventListener('click', dismissAppError);
-        })();
+        document.getElementById('error-ok-btn').addEventListener('click', function() {
+            window.location.href = 'http://localhost:8080/';
+        });
     </script>
 </body>
 </html>
