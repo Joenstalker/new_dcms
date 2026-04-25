@@ -221,17 +221,17 @@ const isApplyingFeature = (featureId) => {
             <div v-else class="space-y-4">
                 <!-- Select All -->
                 <div class="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <label class="flex items-center cursor-pointer group">
+                    <label for="select-all-updates" class="flex items-center cursor-pointer group">
                         <div class="relative flex items-center">
                             <input 
+                                id="select-all-updates"
                                 type="checkbox" 
                                 :checked="form.feature_ids.length === activeUpdates.length && activeUpdates.length > 0"
                                 :disabled="activeUpdates.length === 0"
                                 @change="selectAll"
-                                class="sr-only"
+                                class="absolute h-6 w-6 cursor-pointer opacity-0"
                             />
                             <div 
-                                @click="selectAll"
                                 class="w-6 h-6 border-2 rounded-md transition-all duration-200 flex items-center justify-center cursor-pointer"
                                 :class="form.feature_ids.length === activeUpdates.length && activeUpdates.length > 0 ? 'bg-primary border-primary' : 'bg-white border-gray-300 group-hover:border-primary'"
                             >

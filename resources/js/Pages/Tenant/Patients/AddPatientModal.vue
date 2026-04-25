@@ -35,7 +35,6 @@ const form = useForm({
     tags: [],
     first_visit_at: '',
     last_recall_at: '',
-    initial_balance: 0,
     last_visit_time: '',
     photo: null,
     _method: '',
@@ -62,7 +61,6 @@ watch(() => props.show, (newVal) => {
             form.patient_type = props.patient.patient_type || '';
             form.first_visit_at = props.patient.first_visit_at || '';
             form.last_recall_at = props.patient.last_recall_at || '';
-            form.initial_balance = props.patient.initial_balance ?? props.patient.balance ?? 0;
             form.last_visit_time = props.patient.last_visit_time || '';
             form.tags = Array.isArray(props.patient.tags) ? [...props.patient.tags] : [];
             form.photo = null;
@@ -324,16 +322,6 @@ const submit = () => {
                                         <option value="pedia">Pedia</option>
                                         <option value="adult">Adult</option>
                                     </select>
-                                </div>
-                                <div class="form-control sm:col-span-2 lg:col-span-1">
-                                    <label class="label"><span class="label-text text-xs font-black uppercase tracking-widest text-base-content/50">Initial Balance</span></label>
-                                    <div class="relative">
-                                        <span
-                                            class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-lg font-black leading-none text-base-content"
-                                            style="font-family: 'Segoe UI Symbol', 'Noto Sans', 'Arial Unicode MS', 'DejaVu Sans', sans-serif;"
-                                        >&#8369;</span>
-                                        <input v-model.number="form.initial_balance" type="number" step="0.01" min="0" class="input input-bordered w-full pl-9 rounded-xl bg-base-100" />
-                                    </div>
                                 </div>
                             </div>
                         </div>
