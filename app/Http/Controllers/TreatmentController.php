@@ -136,7 +136,7 @@ class TreatmentController extends Controller
         $this->authorizeProgressNotes('view progress notes');
 
         return response()->json([
-            'services' => Service::approved()->select('id', 'name', 'price')->orderBy('name')->get(),
+            'services' => Service::query()->select('id', 'name', 'price')->orderBy('name')->get(),
             'dentists' => User::role('Dentist')->select('id', 'name')->orderBy('name')->get(),
         ]);
     }

@@ -671,8 +671,6 @@ const menuCategories = computed(() => {
                     permissions: ['view reports'],
                     subItems: [
                         { name: 'Revenue Report', route: 'reports.index', permissions: ['view reports'] },
-                        { name: 'Enhanced Reports', route: 'reports.index', permissions: ['view reports'], featureKey: 'enhanced_reports' },
-                        { name: 'Appointments Report', route: 'reports.index', permissions: ['view reports'] },
                     ]
                 },
                 { name: 'Analytics', route: 'analytics.index', icon: 'analytics', feature: 'analytics', permissions: ['view analytics'], featureKey: 'advanced_analytics' },
