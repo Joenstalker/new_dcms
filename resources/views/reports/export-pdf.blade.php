@@ -4,107 +4,92 @@
     <meta charset="utf-8">
     <title>Clinic Report</title>
     <style>
-        /* CRITICAL FIX 1: Use consistent margin values */
         @page {
-            margin: 80px 24px 60px;  /* Top and Bottom should match header/footer heights */
+            margin: 65px 24px 50px;
         }
         
-        /* CRITICAL FIX 2: Enable DOMPDF's internal page counter */
         body {
-            font-family: Helvetica, Arial, sans-serif;
-            font-size: 11px;
+            font-family: DejaVu Sans, Helvetica, Arial, sans-serif;
+            font-size: 10px;
             color: #1f2937;
             margin: 0;
             padding: 0;
             line-height: 1.3;
         }
         
-        /* FIXED HEADER - Use positive positioning within the margin area */
         header {
             position: fixed;
-            top: -68px;  /* Adjusted: (margin-top 80px) - (header height ~66px) = ~14px padding */
+            top: -53px;
             left: 24px;
             right: 24px;
-            height: 60px;
+            height: 48px;
             text-align: center;
         }
         
         .logo {
-            max-height: 40px;
+            max-height: 30px;
             width: auto;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
         
         .clinic-name {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
-            line-height: 1.2;
+            letter-spacing: 0.5px;
         }
         
         .report-period {
-            margin-top: 2px;
-            font-size: 10px;
+            font-size: 9px;
             color: #374151;
             font-weight: 700;
         }
 
         .data-status {
-            margin-top: 2px;
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 700;
             letter-spacing: 0.2px;
             text-transform: uppercase;
             color: #1f2937;
         }
         
-        /* FIXED FOOTER - Positive positioning */
         footer {
             position: fixed;
-            bottom: -48px;  /* Adjusted: (margin-bottom 60px) - (footer height ~36px) = ~24px padding */
+            bottom: -38px;
             left: 24px;
             right: 24px;
-            height: 30px;
-            font-size: 9px;
-            color: #4b5563;
+            height: 24px;
+            font-size: 7.5px;
+            color: #6b7280;
+            border-top: 0.5px solid #d1d5db;
+            padding-top: 3px;
         }
         
         .footer-left {
             float: left;
-            width: 60%;
         }
         
         .footer-right {
             float: right;
-            width: 40%;
-            text-align: right;
         }
         
-        /* CRITICAL FIX 3: Main content needs NO top margin/padding */
-        .content {
-            display: block;
-            margin-top: 0;
-            padding-top: 0;
-        }
-        
-        /* CRITICAL FIX 4: Page break management */
         .section {
-            margin-bottom: 20px;
+            margin-bottom: 14px;
+            page-break-inside: avoid;
         }
         
         .section-title {
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
-            margin: 0 0 8px;
+            margin: 0 0 5px;
             border-bottom: 1px solid #d1d5db;
-            padding-bottom: 3px;
+            padding-bottom: 2px;
         }
 
         .section-subtitle {
-            margin: 0 0 8px;
-            font-size: 11px;
+            margin: 0 0 5px;
+            font-size: 9.5px;
             font-weight: 700;
             color: #374151;
         }
@@ -113,48 +98,38 @@
             border: 1px solid #f59e0b;
             background: #fffbeb;
             color: #78350f;
-            padding: 8px 10px;
-            margin: 0 0 12px;
-            font-size: 10.5px;
+            padding: 6px 8px;
+            margin: 0 0 10px;
+            font-size: 9px;
             font-weight: 700;
         }
         
-        /* TABLE BREAKING FIXES - Most important part */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
-            page-break-inside: auto;  /* Allow tables to break */
+            margin-bottom: 8px;
         }
         
-        /* Force thead to repeat on every page */
         thead {
             display: table-header-group;
         }
         
-        /* Prevent rows from breaking inside */
         tr {
             page-break-inside: avoid;
-            page-break-after: auto;
-        }
-        
-        /* But allow table to break between rows */
-        tbody {
-            page-break-inside: auto;
         }
         
         th, td {
             border: 1px solid #d1d5db;
-            padding: 5px 6px;
+            padding: 3px 5px;
             vertical-align: top;
-            word-break: break-word;
+            font-size: 8px;
         }
         
         th {
             background: #eef2f7;
             text-transform: uppercase;
-            font-size: 9px;
-            letter-spacing: 0.3px;
+            font-size: 7px;
+            letter-spacing: 0.2px;
             text-align: left;
         }
         
@@ -165,13 +140,14 @@
         .summary-box {
             border: 1px solid #d1d5db;
             background: #f8fafc;
-            padding: 6px 10px;
-            margin-bottom: 10px;
+            padding: 5px 8px;
+            margin-bottom: 8px;
+            page-break-inside: avoid;
         }
         
         .summary-item {
             margin: 2px 0;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
         }
         
@@ -193,7 +169,7 @@
         @if(!empty($logoSrc))
             <img src="{{ $logoSrc }}" alt="Dental Logo" class="logo">
         @endif
-        <div class="clinic-name">{{ $tenant?->name ?? 'DENTAL NAME' }}</div>
+        <div class="clinic-name">{{ $tenant->name ?? 'DENTAL NAME' }}</div>
         <div class="report-period">{{ strtoupper($dateRange['label']) }}</div>
         <div class="data-status">Data Status: {{ $hasContent ? 'WITH RECORDS' : 'NO RECORDS' }}</div>
     </header>
@@ -203,18 +179,17 @@
             Digital Signature: <strong>{{ $digitalSignature }}</strong>
         </div>
         <div class="footer-right">
-            <span></span>
+            
         </div>
     </footer>
 
     <div class="content">
         @if(!$hasContent)
             <div class="no-data-box">
-                No records found for this selected filter period. The report structure is still generated with zero totals for reference.
+                No records found for this selected filter period.
             </div>
         @endif
 
-        <!-- PATIENTS SECTION -->
         <div class="section">
             <h2 class="section-title">Total Patients</h2>
             <p class="section-subtitle">Total Count: {{ $patientTotal }}</p>
@@ -239,7 +214,7 @@
                         <td>{{ $patient['mobile'] }}</td>
                         <td>{{ $patient['first_visit'] }}</td>
                         <td>{{ $patient['last_visit'] }}</td>
-                        <td class="text-right">₱{{ number_format($patient['balance'], 2) }}</td>
+                        <td class="text-right">PHP {{ number_format($patient['balance'], 2) }}</td>
                     </tr>
                     @empty
                     <tr>
@@ -281,12 +256,11 @@
             </table>
         </div>
 
-        <!-- INCOME SECTION -->
         <div class="section">
             <h2 class="section-title">Total Income</h2>
             <div class="summary-box">
-                <div class="summary-item">PAID = ₱{{ number_format($income['paid'], 2) }}</div>
-                <div class="summary-item">UNPAID BALANCE = ₱{{ number_format($income['unpaid_balance'], 2) }}</div>
+                <div class="summary-item">PAID = PHP {{ number_format($income['paid'], 2) }}</div>
+                <div class="summary-item">UNPAID BALANCE = PHP {{ number_format($income['unpaid_balance'], 2) }}</div>
             </div>
         </div>
     </div>

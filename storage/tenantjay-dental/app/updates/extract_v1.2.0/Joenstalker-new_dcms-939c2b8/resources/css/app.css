@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fix daisyUI theme compatibility with @tailwindcss/forms base styles */
+@layer base {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+    select,
+    textarea {
+        color: hsl(var(--bc)) !important;
+        background-color: hsl(var(--b1)) !important;
+        border-color: hsl(var(--bc) / 0.2) !important;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: hsl(var(--bc) / 0.4) !important;
+    }
+
+    /* Keep checkboxes and radio buttons styled properly (excluding toggles to allow transitions) */
+    input[type="checkbox"]:not(.toggle),
+    input[type="radio"] {
+        background-color: hsl(var(--b1)) !important;
+        border-color: hsl(var(--bc) / 0.2) !important;
+    }
+
+    /* Ensure labels remain visible */
+    label {
+        color: hsl(var(--bc) / 0.8);
+    }
+}
+
+
+/* Global Toggle Redesign: Reversed Direction (On=Left, Off=Right) + White Handle */
+.toggle {
+    --tglbg: #ffffff !important;
+    transition: all 0.3s ease-in-out !important;
+}
+
+/* Off State (Not Checked): Red + Handle on the Right */
+.toggle:not(:checked) {
+    background-color: #ef4444 !important;
+    border-color: #ef4444 !important;
+    --handleoffset: 1.5rem !important;
+}
+
+/* On State (Checked): Handle on the Left (0) */
+.toggle:checked {
+    --handleoffset: 0 !important;
+    /* Background and border will be set via inline style for branding primary color */
+}
+
+/* Ensure SweetAlert2 is always on top of modals */
+.swal2-container {
+    z-index: 10000 !important;
+}

@@ -1,0 +1,108 @@
+<script setup>
+import { Link } from '@inertiajs/vue3';
+
+defineProps({
+    featuresByCategory: {
+        type: Object,
+        required: true,
+    },
+    categoryLabels: {
+        type: Object,
+        required: true,
+    },
+    plans: {
+        type: Array,
+        default: () => [],
+    },
+    getTypeLabel: {
+        type: Function,
+        required: true,
+    },
+    primaryColor: {
+        type: String,
+        default: '#0ea5e9'
+    },
+    isArchive: {
+        type: Boolean,
+        default: false,
+    }
+});
+
+const emit = defineEmits(['manage']);
+</script>
+
+<template>
+    <div class="space-y-8">
+        <div v-for="(features, category) in featuresByCategory" :key="category">
+            <h3 class="text-lg font-bold text-base-content mb-4 flex items-center">
+                <span class="badge badge-ghost badge-lg mr-3 py-3 font-bold">
+                    {{ categoryLabels[category] || category }}
+                </span>
+                <span class="text-base-content/50 font-normal text-sm">{{ features.length }} features</span>
+            </h3>
+            
+            <div class="bg-base-100 shadow-sm ring-1 ring-base-300 sm:rounded-xl overflow-hidden border border-base-300">
+                <ul role="list" class="divide-y divide-base-300">
+                    <li v-for="feature in features" :key="feature.id" class="px-6 py-5 hover:bg-base-200/50 transition-colors">
+                        <div class="flex items-center justify-between gap-x-6">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-x-3">
+                                    <p class="text-sm font-bold leading-6 text-base-content">
+                                        {{ feature.name }}
+                                    </p>
+                                    <span class="badge badge-outline badge-sm font-medium text-base-content/70">
+                                        {{ feature.key }}
+                                    </span>
+                                    <span class="badge badge-outline badge-sm font-mono text-base-content/50" title="Sort Order Sequence">
+                                        #{{ feature.sort_order }}
+                                    </span>
+                                    <span 
+                                        class="badge badge-sm font-bold"
+                                        :class="{
+                                            'badge-info bg-info/10 text-info border-info/20': feature.type === 'boolean',
+                                            'badge-success bg-success/10 text-success border-success/20': feature.type === 'numeric',
+                                            'badge-secondary bg-secondary/10 text-secondary border-secondary/20': feature.type === 'tiered',
+                                        }"
+                                    >
+                                        {{ getTypeLabel(feature.type) }}
+                                    </span>
+                                    <span 
+                                        v-if="!feature.is_active" 
+                                        class="badge badge-error badge-sm font-bold bg-error/10 text-error border-error/20"
+                                    >
+                                        Inactive
+                                    </span>
+                                    <span 
+                                        class="badge badge-sm font-bold"
+                                        :class="{
+                                            'badge-warning bg-warning/10 text-warning border-warning/20': feature.implementation_status === 'coming_soon',
+                                            'badge-info bg-info/10 text-info border-info/20': feature.implementation_status === 'in_development',
+                                            'badge-primary bg-primary/10 text-primary border-primary/20': feature.implementation_status === 'beta',
+                                            'badge-success bg-success/10 text-success border-success/20': feature.implementation_status === 'active',
+                                        }"
+                                    >
+                                        {{ feature.implementation_status?.replace('_', ' ') }}
+                                    </span>
+                                </div>
+                                <div class="mt-1 flex items-center gap-x-2 text-sm leading-5 text-base-content/50">
+                                    <p v-if="feature.description" class="truncate">{{ feature.description }}</p>
+                                    <svg v-if="feature.description && feature.options?.length" viewBox="0 0 2 2" class="h-0.5 w-0.5 fill-current"><circle cx="1" cy="1" r="1" /></svg>
+                                    <p v-if="feature.options && feature.options.length">Options: {{ feature.options.join(', ') }}</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-none items-center gap-x-2">
+                                <button
+                                    @click="emit('manage', feature)"
+                                    class="btn btn-sm rounded-lg shadow-sm font-bold text-white border-0 hover:brightness-110 transition-all"
+                                    :style="{ backgroundColor: primaryColor }"
+                                >
+                                    Manage
+                                </button>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</template>

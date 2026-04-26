@@ -1,0 +1,192 @@
+<script setup>
+import { Link, usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const primaryColor = page.props.branding?.primary_color || '#0ea5e9';
+
+defineProps({
+    notifications: {
+        type: Object,
+        required: true
+    }
+});
+
+const emit = defineEmits(['mark-as-read', 'delete']);
+
+const formatDate = (date) => {
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
+const getIcon = (type) => {
+    const icons = {
+        building: `<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />`,
+        'credit-card': `<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />`,
+        ticket: `<path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />`,
+        star: `<path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />`,
+        'check-circle': `<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />`,
+        'exclamation-circle': `<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />`,
+        bell: `<path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />`,
+    };
+
+    const iconMap = {
+        new_tenant: 'building',
+        tenant_suspended: 'exclamation-circle',
+        tenant_reactivated: 'check-circle',
+        subscription_created: 'credit-card',
+        subscription_renewed: 'credit-card',
+        subscription_expiring: 'exclamation-circle',
+        subscription_expired: 'exclamation-circle',
+        subscription_cancelled: 'exclamation-circle',
+        new_support_ticket: 'ticket',
+        support_ticket_replied: 'ticket',
+        feature_request: 'star',
+        new_feature_published: 'star',
+        payment_received: 'check-circle',
+        payment_failed: 'exclamation-circle',
+        system_alert: 'bell',
+    };
+
+    return icons[iconMap[type] || 'bell'];
+};
+
+const handleMarkAsRead = (id) => {
+    emit('mark-as-read', id);
+};
+
+const handleDelete = (id) => {
+    emit('delete', id);
+};
+</script>
+
+<template>
+    <!-- Notifications List -->
+    <div class="bg-base-100 rounded-2xl shadow-sm border border-base-300 overflow-hidden">
+        <div v-if="notifications.data.length === 0" class="flex flex-col items-center justify-center py-20">
+            <div class="w-20 h-20 rounded-full bg-base-200 flex items-center justify-center mb-6">
+                <svg class="w-10 h-10 text-base-content/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-black text-base-content mb-1">No notifications</h3>
+            <p class="text-base-content/40 font-medium">You're all caught up!</p>
+        </div>
+
+        <ul v-else class="divide-y divide-base-300">
+            <li 
+                v-for="notification in notifications.data" 
+                :key="notification.id"
+                :class="[
+                    'group hover:bg-base-200/50 transition-all duration-300 relative'
+                ]"
+                :style="!notification.is_read ? { backgroundColor: primaryColor + '0A' } : {}"
+            >
+                <div class="flex items-start gap-5 p-5 sm:px-8">
+                    <!-- Icon -->
+                    <div 
+                        :class="[
+                            'flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm transition-colors duration-300',
+                            !notification.is_read ? 'text-white border-transparent' : 'bg-base-200 text-base-content/40 border-base-300'
+                        ]"
+                        :style="!notification.is_read ? { backgroundColor: primaryColor, boxShadow: `0 4px 14px 0 ${primaryColor}33` } : {}"
+                    >
+                        <svg 
+                            class="w-6 h-6" 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                            stroke-width="2"
+                            v-html="getIcon(notification.type)"
+                        ></svg>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-6">
+                            <div>
+                                <p :class="['text-sm tracking-tight', !notification.is_read ? 'font-black text-base-content' : 'font-bold text-base-content/70']">
+                                    {{ notification.title }}
+                                </p>
+                                <p class="text-sm text-base-content/60 mt-1 leading-relaxed font-medium">
+                                    {{ notification.message }}
+                                </p>
+                                <div class="flex items-center gap-3 mt-3">
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-base-content/30">
+                                        {{ formatDate(notification.created_at) }}
+                                    </p>
+                                    <span v-if="!notification.is_read" class="w-1.5 h-1.5 rounded-full animate-pulse" :style="{ backgroundColor: primaryColor }"></span>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+                                <button
+                                    v-if="!notification.is_read"
+                                    @click="handleMarkAsRead(notification.id)"
+                                    class="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-primary hover:bg-primary/10"
+                                    title="Mark as read"
+                                >
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </button>
+                                <button
+                                    @click="handleDelete(notification.id)"
+                                    class="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-error hover:bg-error/10"
+                                    title="Delete"
+                                >
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Unread Indicator (Left border style) -->
+                        <div 
+                            v-if="!notification.is_read"
+                            class="absolute left-0 top-0 bottom-0 w-1 rounded-r-full"
+                            :style="{ backgroundColor: primaryColor }"
+                        ></div>
+                    </div>
+                </div>
+            </li>
+        </ul>
+
+        <!-- Pagination -->
+        <div v-if="notifications.links && notifications.links.length > 1" class="px-8 py-6 border-t border-base-300 bg-base-200/30">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="text-xs font-bold text-base-content/40 uppercase tracking-widest">
+                    Showing <span class="text-base-content">{{ notifications.from }}</span> to <span class="text-base-content">{{ notifications.to }}</span> of <span class="text-base-content">{{ notifications.total }}</span> results
+                </div>
+                <div class="flex gap-2">
+                    <template v-for="(link, index) in notifications.links" :key="index">
+                        <Link
+                            v-if="link.url"
+                            :href="link.url"
+                            :class="[
+                                'btn btn-xs font-black transition-all duration-300 border-transparent',
+                                link.active
+                                    ? 'shadow-sm text-white'
+                                    : 'btn-ghost text-base-content/50 hover:text-base-content hover:bg-base-300'
+                            ]"
+                            :style="link.active ? { backgroundColor: primaryColor } : {}"
+                            v-html="link.label"
+                        />
+                        <span 
+                            v-else
+                            class="btn btn-xs btn-ghost btn-disabled opacity-30 font-black cursor-not-allowed"
+                            v-html="link.label"
+                        />
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
