@@ -9,9 +9,12 @@ use App\Models\Patient;
 use App\Models\Service;
 use App\Models\Subscription;
 use App\Models\Treatment;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
@@ -58,6 +61,7 @@ class ReportController extends Controller
             ],
             'recent_appointments' => $recentAppointments,
             'report_level' => $reportLevel,
+            'can_export' => true,
         ];
 
         // === ENHANCED TIER (Pro plans) ===
@@ -70,42 +74,228 @@ class ReportController extends Controller
         if ($reportLevel === 'advanced') {
             $data['service_breakdown'] = $this->getServiceBreakdown();
             $data['patient_growth'] = $this->getPatientGrowth();
-            $data['can_export'] = true;
         }
 
         return Inertia::render('Tenant/Reports/Index', $data);
     }
 
-    /**
-     * Export reports as CSV (advanced tier only).
-     */
-    public function export(Request $request, string $format = 'csv')
+    public function export(Request $request)
     {
-        if ($this->getReportLevel() !== 'advanced') {
-            return back()->with('error', 'Export is available on the Ultimate plan only.');
+        $validated = $request->validate([
+            'filter' => 'required|in:today,week,month,year,custom',
+            'start_date' => 'nullable|date|required_if:filter,custom',
+            'end_date' => 'nullable|date|required_if:filter,custom|after_or_equal:start_date',
+        ]);
+
+        $dateRange = $this->getDateRange(
+            $validated['filter'],
+            $validated['start_date'] ?? null,
+            $validated['end_date'] ?? null
+        );
+        $reportData = $this->buildPdfReportData($dateRange);
+        $tenant = tenant();
+        $logoSrc = $this->resolveReportLogoSrc($tenant);
+
+        $digitalSignature = now()->format('YmdHis') . '-' . Str::upper(Str::random(4));
+
+        $dompdfOptions = [
+            'defaultFont' => 'Helvetica',
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => true,
+            'isPhpEnabled' => false,
+            'chroot' => base_path(),
+            'dpi' => 96,
+            'isFontSubsettingEnabled' => true,
+        ];
+
+        $pdf = Pdf::setOptions($dompdfOptions)->loadView('reports.export-pdf', [
+            'tenant' => $tenant,
+            'logoSrc' => $logoSrc,
+            'dateRange' => $dateRange,
+            'patients' => $reportData['patients'],
+            'patientTotal' => $reportData['patient_total'],
+            'appointments' => $reportData['appointments'],
+            'appointmentTotal' => $reportData['appointment_total'],
+            'income' => $reportData['income'],
+            'digitalSignature' => $digitalSignature,
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'Clinic_Report_' . strtoupper($validated['filter']) . '_' . now()->format('YmdHis') . '.pdf';
+        $domPdf = $pdf->getDomPDF();
+        $domPdf->render();
+        $canvas = $domPdf->getCanvas();
+        $fontMetrics = $domPdf->getFontMetrics();
+        $font = $fontMetrics->getFont('Helvetica', 'normal');
+        $canvas->page_text(752, 574, 'Page {PAGE_NUM} of {PAGE_COUNT}', $font, 9, [0.29, 0.33, 0.39]);
+
+        return response()->streamDownload(
+            static function () use ($domPdf) {
+                echo $domPdf->output();
+            },
+            $filename,
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    private function resolveReportLogoSrc($tenant): ?string
+    {
+        $row = DB::table('branding_settings')
+            ->whereIn('key', ['logo_base64', 'logo base64'])
+            ->whereNotNull('binary_value')
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if ($row && !empty($row->binary_value)) {
+            $mime = $this->detectImageMimeType($row->binary_value);
+            return 'data:' . $mime . ';base64,' . base64_encode($row->binary_value);
         }
 
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $invoices = Invoice::where('status', 'paid')
-            ->whereBetween('created_at', [$startOfMonth, Carbon::now()])
-            ->with('patient')
-            ->get();
+        $logoPath = $tenant?->logo_path;
+        if (!$logoPath) {
+            return null;
+        }
 
-        if ($format === 'csv') {
-            $csv = "Date,Patient,Amount,Status\n";
-            foreach ($invoices as $invoice) {
-                $patientName = $invoice->patient
-                    ? $invoice->patient->first_name . ' ' . $invoice->patient->last_name
-                    : 'N/A';
-                $csv .= "{$invoice->created_at->format('Y-m-d')},{$patientName},{$invoice->amount_paid},{$invoice->status}\n";
+        if (is_string($logoPath) && str_starts_with($logoPath, 'data:image')) {
+            return $logoPath;
+        }
+
+        $candidatePaths = [
+            public_path($logoPath),
+            storage_path('app/public/' . ltrim($logoPath, '/')),
+        ];
+
+        foreach ($candidatePaths as $path) {
+            if (is_string($path) && file_exists($path)) {
+                $binary = @file_get_contents($path);
+                if ($binary !== false) {
+                    $mime = $this->detectImageMimeType($binary);
+                    return 'data:' . $mime . ';base64,' . base64_encode($binary);
+                }
             }
-
-            return response($csv)
-                ->header('Content-Type', 'text/csv')
-                ->header('Content-Disposition', 'attachment; filename="revenue-report-' . now()->format('Y-m-d') . '.csv"');
         }
 
-        return back()->with('error', 'Unsupported export format.');
+        return null;
+    }
+
+    private function detectImageMimeType(string $binary): string
+    {
+        $header = substr($binary, 0, 12);
+
+        if (str_starts_with($header, "\xFF\xD8\xFF")) {
+            return 'image/jpeg';
+        }
+        if (str_starts_with($header, "\x89PNG")) {
+            return 'image/png';
+        }
+        if (str_starts_with($header, 'GIF87a') || str_starts_with($header, 'GIF89a')) {
+            return 'image/gif';
+        }
+        if (str_starts_with($header, 'RIFF') && substr($binary, 8, 4) === 'WEBP') {
+            return 'image/webp';
+        }
+        if (str_contains($binary, '<svg') || str_contains($binary, '<SVG')) {
+            return 'image/svg+xml';
+        }
+
+        return 'image/png';
+    }
+
+    private function getDateRange(string $filter, ?string $startDate = null, ?string $endDate = null): array
+    {
+        $now = Carbon::now();
+
+        return match ($filter) {
+            'today' => [
+                'start' => $now->copy()->startOfDay(),
+                'end' => $now->copy()->endOfDay(),
+                'label' => 'Today (' . $now->format('Y-m-d') . ')',
+            ],
+            'week' => [
+                'start' => $now->copy()->startOfWeek(),
+                'end' => $now->copy()->endOfWeek(),
+                'label' => 'This Week (' . $now->copy()->startOfWeek()->format('Y-m-d') . ' to ' . $now->copy()->endOfWeek()->format('Y-m-d') . ')',
+            ],
+            'month' => [
+                'start' => $now->copy()->startOfMonth(),
+                'end' => $now->copy()->endOfMonth(),
+                'label' => 'This Month (' . $now->format('F Y') . ')',
+            ],
+            'year' => [
+                'start' => $now->copy()->startOfYear(),
+                'end' => $now->copy()->endOfYear(),
+                'label' => 'This Year (' . $now->format('Y') . ')',
+            ],
+            'custom' => [
+                'start' => Carbon::parse($startDate)->startOfDay(),
+                'end' => Carbon::parse($endDate)->endOfDay(),
+                'label' => 'Custom (' . Carbon::parse($startDate)->format('Y-m-d') . ' to ' . Carbon::parse($endDate)->format('Y-m-d') . ')',
+            ],
+        };
+    }
+
+    private function buildPdfReportData(array $range): array
+    {
+        $patients = Patient::with(['appointments:id,patient_id,appointment_date'])
+            ->whereBetween('created_at', [$range['start'], $range['end']])
+            ->orderBy('created_at')
+            ->get()
+            ->map(function (Patient $patient) {
+                $appointments = $patient->appointments->sortBy('appointment_date')->values();
+                $firstVisit = $patient->first_visit_at
+                    ? Carbon::parse($patient->first_visit_at)->format('Y-m-d')
+                    : optional($appointments->first())->appointment_date?->format('Y-m-d') ?? 'N/A';
+                $lastVisit = $patient->last_visit_time
+                    ? Carbon::parse($patient->last_visit_time)->format('Y-m-d')
+                    : optional($appointments->last())->appointment_date?->format('Y-m-d') ?? 'N/A';
+
+                return [
+                    'id' => $patient->id,
+                    'name' => trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? '')),
+                    'address' => $patient->address ?: 'N/A',
+                    'mobile' => $patient->phone ?: 'N/A',
+                    'first_visit' => $firstVisit,
+                    'last_visit' => $lastVisit,
+                    'balance' => (float) ($patient->balance ?? 0),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $appointments = Appointment::with('patient:id,first_name,last_name')
+            ->whereBetween('appointment_date', [$range['start'], $range['end']])
+            ->orderBy('appointment_date', 'asc')
+            ->get()
+            ->map(function (Appointment $appointment) {
+                $patientName = $appointment->patient
+                    ? trim(($appointment->patient->first_name ?? '') . ' ' . ($appointment->patient->last_name ?? ''))
+                    : trim(($appointment->guest_first_name ?? '') . ' ' . ($appointment->guest_last_name ?? ''));
+
+                return [
+                    'date_time' => $appointment->appointment_date?->format('Y-m-d H:i') ?? 'N/A',
+                    'queue_reference' => $appointment->booking_reference ?: 'N/A',
+                    'patient_name' => $patientName ?: 'N/A',
+                    'service' => $appointment->service ?: 'N/A',
+                    'status' => strtoupper((string) $appointment->status),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $income = Treatment::whereBetween('created_at', [$range['start'], $range['end']])
+            ->selectRaw('COALESCE(SUM(amount_paid), 0) as paid')
+            ->selectRaw('COALESCE(SUM(CASE WHEN total_amount_due > amount_paid THEN total_amount_due - amount_paid ELSE 0 END), 0) as unpaid_balance')
+            ->first();
+
+        return [
+            'patients' => $patients,
+            'patient_total' => count($patients),
+            'appointments' => $appointments,
+            'appointment_total' => count($appointments),
+            'income' => [
+                'paid' => round((float) ($income->paid ?? 0), 2),
+                'unpaid_balance' => round((float) ($income->unpaid_balance ?? 0), 2),
+            ],
+        ];
     }
 
     /**

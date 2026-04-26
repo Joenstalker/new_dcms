@@ -82,7 +82,7 @@ const form = useForm({
     ui_footer_text_size: Number(props.tenant?.ui_footer_text_size ?? 10),
     ui_main_text_color: props.tenant?.ui_main_text_color || '',
     ui_main_text_size: Number(props.tenant?.ui_main_text_size ?? 14),
-    ui_card_background_color: props.tenant?.ui_card_background_color || '',
+    ui_card_background_color: props.tenant?.ui_card_background_color || '#ffffff',
     ui_card_border_color: props.tenant?.ui_card_border_color || '',
     ui_card_text_color: props.tenant?.ui_card_text_color || '',
     font_family: initialFontFamily,
@@ -139,7 +139,7 @@ watch(() => [
         ui_footer_text_size: form.ui_footer_text_size,
         ui_main_text_color: form.ui_main_text_color || null,
         ui_main_text_size: form.ui_main_text_size,
-        ui_card_background_color: form.ui_card_background_color || null,
+        ui_card_background_color: form.ui_card_background_color || '#ffffff',
         ui_card_border_color: form.ui_card_border_color || null,
         ui_card_text_color: form.ui_card_text_color || null,
     });
@@ -233,7 +233,7 @@ const applyRealtimeBranding = async (event) => {
     if (Object.prototype.hasOwnProperty.call(event, 'ui_footer_text_size')) form.ui_footer_text_size = Number(event.ui_footer_text_size ?? 10);
     if (Object.prototype.hasOwnProperty.call(event, 'ui_main_text_color')) form.ui_main_text_color = event.ui_main_text_color || '';
     if (Object.prototype.hasOwnProperty.call(event, 'ui_main_text_size')) form.ui_main_text_size = Number(event.ui_main_text_size ?? 14);
-    if (Object.prototype.hasOwnProperty.call(event, 'ui_card_background_color')) form.ui_card_background_color = event.ui_card_background_color || '';
+    if (Object.prototype.hasOwnProperty.call(event, 'ui_card_background_color')) form.ui_card_background_color = event.ui_card_background_color || '#ffffff';
     if (Object.prototype.hasOwnProperty.call(event, 'ui_card_border_color')) form.ui_card_border_color = event.ui_card_border_color || '';
     if (Object.prototype.hasOwnProperty.call(event, 'ui_card_text_color')) form.ui_card_text_color = event.ui_card_text_color || '';
 

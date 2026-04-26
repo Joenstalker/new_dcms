@@ -17,17 +17,21 @@ class GitHubService
         $token = config('services.github.token');
         $repo = config('services.github.repo');
 
-        if (!$token || !$repo) {
-            Log::warning('GitHubService: GITHUB_TOKEN or GITHUB_REPO not configured.');
+        if (!$repo) {
+            Log::warning('GitHubService: GITHUB_REPO not configured.');
             return null;
         }
 
         try {
-            $response = Http::withToken($token)
-                ->withHeaders([
-                    'Accept' => 'application/vnd.github.v3+json',
-                ])
-                ->timeout(10)
+            $request = Http::withHeaders([
+                'Accept' => 'application/vnd.github.v3+json',
+            ]);
+
+            if ($token) {
+                $request = $request->withToken($token);
+            }
+
+            $response = $request->timeout(10)
                 ->get("https://api.github.com/repos/{$repo}/releases/latest");
 
             if ($response->successful()) {

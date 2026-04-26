@@ -65,7 +65,7 @@ return [
 
     'github' => [
         'token' => env('GITHUB_TOKEN'),
-        'repo' => env('GITHUB_REPO'),
+        'repo' => env('GITHUB_REPO', 'Joenstalker/new_dcms'),
         'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
     ],
 

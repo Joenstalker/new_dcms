@@ -1,6 +1,5 @@
 <script setup>
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -29,11 +28,6 @@ const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. A
     <div
         class="flex min-h-screen flex-col items-center bg-base-200 pt-6 sm:justify-center sm:pt-0 relative"
     >
-        <!-- Theme switcher in top-right corner -->
-        <div class="absolute top-4 right-4">
-            <ThemeSwitcher />
-        </div>
-
         <div>
             <Link href="/">
                 <div class="h-20 w-20 rounded-lg border border-base-300 bg-base-100 p-2 flex items-center justify-center overflow-hidden">
@@ -55,4 +49,3 @@ const footerText = computed(() => branding.value.footer_text || '© 2026 DCMS. A
         </div>
     </div>
 </template>
-

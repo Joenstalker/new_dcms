@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -32,12 +32,6 @@ const totalBreakdown = computed(() => {
     return (b.scheduled || 0) + (b.completed || 0) + (b.cancelled || 0) + (b.walk_in || 0) || 1;
 });
 
-const tierLabel = computed(() => ({
-    basic: 'Basic',
-    enhanced: 'Enhanced',
-    advanced: 'Advanced',
-}[props.report_level] || 'Basic'));
-
 const incomePeriod = ref('daily');
 
 const incomeValue = computed(() => {
@@ -57,6 +51,19 @@ const incomeLabel = computed(() => {
     if (incomePeriod.value === 'monthly') return 'Monthly Paid Income';
     return 'Daily Paid Income';
 });
+
+const isExportModalOpen = ref(false);
+const exportFilter = ref('today');
+
+const openExportModal = () => {
+    isExportModalOpen.value = true;
+};
+
+const handleExportPdf = () => {
+    const params = new URLSearchParams({ filter: exportFilter.value }).toString();
+    window.open(`${route('reports.export')}?${params}`, '_blank');
+    isExportModalOpen.value = false;
+};
 </script>
 
 <template>
@@ -68,15 +75,16 @@ const incomeLabel = computed(() => {
                 <h2 class="text-xl font-semibold leading-tight text-gray-800">
                     Clinic Insights & Reports
                 </h2>
-                <span class="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full"
-                    :class="{
-                        'bg-base-200 text-base-content/40': report_level === 'basic',
-                        'bg-blue-100 text-blue-700': report_level === 'enhanced',
-                        'bg-gradient-to-r from-amber-400 to-orange-500 text-white': report_level === 'advanced',
-                    }"
-                >
-                    {{ tierLabel }} Reports
-                </span>
+                <div class="flex items-center gap-3">
+                    <button
+                        type="button"
+                        @click="openExportModal"
+                        class="btn btn-sm bg-gradient-to-r from-amber-400 to-orange-500 text-white border-none shadow hover:shadow-lg transition-all"
+                    >
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Export PDF
+                    </button>
+                </div>
             </div>
         </template>
 
@@ -95,7 +103,7 @@ const incomeLabel = computed(() => {
 
                 <div class="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 flex items-center gap-4">
                     <div class="w-14 h-14 rounded-2xl bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span class="text-3xl font-black leading-none">₱</span>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between gap-2">
@@ -115,7 +123,7 @@ const incomeLabel = computed(() => {
 
                 <div class="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 flex items-center gap-4">
                     <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span class="text-3xl font-black leading-none">₱</span>
                     </div>
                     <div>
                         <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">Unpaid Balance</div>
@@ -194,11 +202,6 @@ const incomeLabel = computed(() => {
             <div v-if="isAdvanced && service_breakdown.length" class="bg-base-100 rounded-2xl shadow-sm border border-base-200 p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-sm font-black uppercase tracking-wider text-base-content/50">Top Services (This Month)</h3>
-                    <a :href="route('reports.export', { format: 'csv' })" 
-                       class="btn btn-sm bg-gradient-to-r from-amber-400 to-orange-500 text-white border-none shadow hover:shadow-lg transition-all">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        Export CSV
-                    </a>
                 </div>
                 <div class="space-y-3">
                     <div v-for="(s, i) in service_breakdown" :key="s.service" class="flex items-center gap-4">
@@ -260,6 +263,28 @@ const incomeLabel = computed(() => {
                     Upgrade to <strong>Pro</strong> for trend charts, appointment breakdowns, and more detailed analytics.
                 </p>
             </div>
+        </div>
+
+        <div class="modal" :class="{ 'modal-open': isExportModalOpen }">
+            <div class="modal-box rounded-3xl max-w-md bg-base-100/95 backdrop-blur-md border border-base-300 shadow-2xl">
+                <h3 class="font-black text-xl mb-6 uppercase tracking-tight">Export PDF Report</h3>
+                <div class="form-control w-full">
+                    <label class="label font-black text-[10px] uppercase tracking-widest text-base-content/40">Filter Period</label>
+                    <select v-model="exportFilter" class="select select-bordered rounded-xl font-bold text-sm">
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="year">This Year</option>
+                    </select>
+                </div>
+                <div class="modal-action mt-8 flex justify-end gap-2">
+                    <button @click="isExportModalOpen = false" class="btn btn-ghost rounded-xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
+                    <button @click="handleExportPdf" class="btn btn-primary rounded-xl px-8 shadow-lg text-[10px] font-black uppercase tracking-widest border-none">Download PDF</button>
+                </div>
+            </div>
+            <form method="dialog" class="modal-backdrop" @click="isExportModalOpen = false">
+                <button>close</button>
+            </form>
         </div>
     </AuthenticatedLayout>
 </template>

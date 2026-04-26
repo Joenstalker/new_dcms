@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
-import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import ProfileDropdown from '@/Components/ProfileDropdown.vue';
 import Dropdown from '@/Components/Dropdown.vue';
@@ -13,6 +12,7 @@ const user = computed(() => page.props.auth.user);
 const branding = computed(() => page.props.branding || {});
 const adminPreviewMode = computed(() => page.props.admin_preview_mode || { active: false });
 const previewCredentials = computed(() => page.props.preview_credentials || null);
+const showPreviewTools = false;
 
 // Initialize brandingState for admin context so ProfileDropdown uses admin system color
 brandingState.initialize(page.props);
@@ -278,9 +278,7 @@ watch(() => page.props.flash, (flash) => {
                 </div>
 
                 <div class="flex items-center space-x-3 ml-4">
-                    <span class="text-[10px] uppercase font-bold tracking-widest text-base-content/30 hidden sm:inline">Admin System</span>
-
-                    <Dropdown align="right" width="64" content-classes="py-1 bg-base-100">
+                    <Dropdown v-if="showPreviewTools" align="right" width="64" content-classes="py-1 bg-base-100">
                         <template #trigger>
                             <button
                                 type="button"
@@ -346,7 +344,6 @@ watch(() => page.props.flash, (flash) => {
                         </template>
                     </Dropdown>
 
-                    <ThemeSwitcher />
                     <NotificationBell type="admin" />
                     <ProfileDropdown />
                 </div>

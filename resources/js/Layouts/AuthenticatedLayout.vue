@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, provide, onMounted, onUnmounted } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import ThemeSwitcher from '@/Components/ThemeSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import TenantProfileDropdown from '@/Components/TenantProfileDropdown.vue';
 import MandatoryPasswordChangeModal from '@/Components/MandatoryPasswordChangeModal.vue';
@@ -72,7 +71,7 @@ watch(() => page.props.tenant, (tenant) => {
         ui_footer_text_size: tenant.ui_footer_text_size ?? 10,
         ui_main_text_color: tenant.ui_main_text_color || null,
         ui_main_text_size: tenant.ui_main_text_size ?? 14,
-        ui_card_background_color: tenant.ui_card_background_color || null,
+        ui_card_background_color: tenant.ui_card_background_color || '#ffffff',
         ui_card_border_color: tenant.ui_card_border_color || null,
         ui_card_text_color: tenant.ui_card_text_color || null,
     });
@@ -226,8 +225,8 @@ const uiMainTextSize = computed(() => {
 
 const uiCardBackgroundColor = computed(() => {
     return shouldApplyBranding.value
-        ? (brandingState.ui_card_background_color ?? page.props.tenant?.ui_card_background_color ?? null)
-        : (page.props.tenant?.ui_card_background_color ?? null);
+        ? (brandingState.ui_card_background_color ?? page.props.tenant?.ui_card_background_color ?? '#ffffff')
+        : (page.props.tenant?.ui_card_background_color ?? '#ffffff');
 });
 
 const uiCardBorderColor = computed(() => {
@@ -405,7 +404,7 @@ onMounted(() => {
                     ui_footer_background_color: Object.prototype.hasOwnProperty.call(event, 'ui_footer_background_color') ? (event.ui_footer_background_color || null) : brandingState.ui_footer_background_color,
                     ui_main_text_color: Object.prototype.hasOwnProperty.call(event, 'ui_main_text_color') ? (event.ui_main_text_color || null) : brandingState.ui_main_text_color,
                     ui_main_text_size: Object.prototype.hasOwnProperty.call(event, 'ui_main_text_size') ? event.ui_main_text_size : brandingState.ui_main_text_size,
-                    ui_card_background_color: Object.prototype.hasOwnProperty.call(event, 'ui_card_background_color') ? (event.ui_card_background_color || null) : brandingState.ui_card_background_color,
+                    ui_card_background_color: Object.prototype.hasOwnProperty.call(event, 'ui_card_background_color') ? (event.ui_card_background_color || '#ffffff') : brandingState.ui_card_background_color,
                     ui_card_border_color: Object.prototype.hasOwnProperty.call(event, 'ui_card_border_color') ? (event.ui_card_border_color || null) : brandingState.ui_card_border_color,
                     ui_card_text_color: Object.prototype.hasOwnProperty.call(event, 'ui_card_text_color') ? (event.ui_card_text_color || null) : brandingState.ui_card_text_color,
                 });
@@ -886,7 +885,7 @@ const brandStyle = computed(() => {
             --tenant-footer-bg-color: hsl(var(--b1));
             --tenant-main-text-color: ${uiMainTextColor.value || 'inherit'};
             --tenant-main-text-size: ${uiMainTextSize.value}px;
-            --tenant-card-bg-color: ${uiCardBackgroundColor.value || 'hsl(var(--b1) / 0.86)'};
+            --tenant-card-bg-color: ${resolveCardBackgroundColor(uiCardBackgroundColor.value)};
             --tenant-card-border-color: ${uiCardBorderColor.value || 'hsl(var(--b3) / 0.95)'};
             --tenant-card-text-color: ${uiCardTextColor.value || 'hsl(var(--bc))'};
             
@@ -1027,6 +1026,15 @@ function darkenColor(hex, percent) {
     return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
 }
 
+function resolveCardBackgroundColor(color) {
+    const normalized = (color || '').toString().trim().toLowerCase();
+    if (!normalized || normalized === '#fff' || normalized === '#ffffff' || normalized === 'white') {
+        // Keep default card background consistently white across themes.
+        return '#ffffff';
+    }
+    return color;
+}
+
 function getContrastColor(hex) {
     const color = hex.replace('#', '');
     const r = parseInt(color.substr(0, 2), 16);
@@ -1084,7 +1092,6 @@ function getContrastColor(hex) {
                 </div>
 
                 <div class="flex items-center space-x-4">
-                    <ThemeSwitcher />
                     <NotificationBell type="tenant" />
                     <TenantProfileDropdown />
                 </div>

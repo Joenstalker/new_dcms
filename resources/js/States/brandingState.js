@@ -18,7 +18,7 @@ export const brandingState = reactive({
     ui_footer_background_color: null,
     ui_main_text_color: null,
     ui_main_text_size: 14,
-    ui_card_background_color: null,
+    ui_card_background_color: '#ffffff',
     ui_card_border_color: null,
     ui_card_text_color: null,
     is_initialized: false,
@@ -48,7 +48,7 @@ export const brandingState = reactive({
             this.ui_footer_background_color = props.tenant.ui_footer_background_color || null;
             this.ui_main_text_color = props.tenant.ui_main_text_color || null;
             this.ui_main_text_size = Number(props.tenant.ui_main_text_size ?? 14);
-            this.ui_card_background_color = props.tenant.ui_card_background_color || null;
+            this.ui_card_background_color = props.tenant.ui_card_background_color || '#ffffff';
             this.ui_card_border_color = props.tenant.ui_card_border_color || null;
             this.ui_card_text_color = props.tenant.ui_card_text_color || null;
         }

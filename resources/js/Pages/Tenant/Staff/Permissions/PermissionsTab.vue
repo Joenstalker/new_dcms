@@ -172,7 +172,7 @@
         class="fixed inset-0 z-[120] flex items-center justify-center bg-black/45 p-4"
         @click.self="closeRoleDefaultsModal"
     >
-        <div class="w-full max-w-3xl bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden">
+        <div class="role-defaults-modal-surface w-full max-w-3xl rounded-2xl border border-gray-100 shadow-2xl overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div>
                     <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Set Default Role</p>
@@ -191,7 +191,7 @@
                     <div
                         v-for="(group, feature) in permissionGroups"
                         :key="`modal-group-${feature}`"
-                        class="rounded-xl border border-gray-100 bg-gray-50/50 p-4"
+                        class="role-defaults-modal-group rounded-xl border border-gray-100 p-4"
                     >
                         <div class="flex items-center justify-between mb-3">
                             <h4 class="text-xs font-black uppercase tracking-widest text-gray-500">{{ feature }}</h4>
@@ -207,7 +207,7 @@
                                 <button
                                     type="button"
                                     @click="clearRoleGroupPermissions(activeRoleModal, group)"
-                                    class="px-2 py-1 rounded-md border border-gray-200 bg-white text-gray-600 text-[10px] font-black uppercase tracking-wider hover:bg-gray-100"
+                                    class="role-defaults-modal-clear px-2 py-1 rounded-md border border-gray-200 text-gray-600 text-[10px] font-black uppercase tracking-wider hover:bg-gray-100"
                                 >
                                     Clear
                                 </button>
@@ -220,12 +220,12 @@
                                 :key="`modal-${activeRoleModal}-${permission.name}`"
                                 type="button"
                                 @click="toggleDefaultPermission(activeRoleModal, permission.name)"
-                                class="w-full px-4 py-3 rounded-xl border text-left transition-all flex items-center justify-between"
+                                class="role-defaults-modal-permission w-full px-4 py-3 rounded-xl border text-left transition-all flex items-center justify-between"
                                 :class="permission.isLocked
                                     ? 'border-amber-200 bg-amber-50 text-amber-700 opacity-70 cursor-not-allowed'
                                     : (isDefaultPermissionChecked(activeRoleModal, permission.name)
                                     ? 'border-blue-500 bg-blue-50 text-blue-800'
-                                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50/40')"
+                                    : 'border-gray-200 text-gray-700 hover:border-blue-200 hover:bg-blue-50/40')"
                                 :disabled="permission.isLocked"
                             >
                                 <div class="pr-2">
@@ -639,3 +639,12 @@ const isGroupIndeterminate = (groupPermissions) => {
     return checkedCount > 0 && checkedCount < groupPermissions.length;
 };
 </script>
+
+<style scoped>
+.role-defaults-modal-surface,
+.role-defaults-modal-group,
+.role-defaults-modal-permission,
+.role-defaults-modal-clear {
+    background-color: #ffffff !important;
+}
+</style>
