@@ -269,6 +269,14 @@ const debouncedCheck = debounce(() => {
     checkSubdomainAvailability();
 }, 500);
 
+const getCentralApiUrl = (path) => {
+    const centralUrl = page.props.config?.central_api_url;
+    if (centralUrl) {
+        return `${centralUrl.replace(/\/$/, '')}${path}`;
+    }
+    return path;
+};
+
 const checkEmailAvailability = async () => {
     const email = String(form.email ?? '').trim();
     if (!isEmailFormatValid.value) {
@@ -281,7 +289,7 @@ const checkEmailAvailability = async () => {
     emailAvailable.value = null;
 
     try {
-        const response = await fetch('/registration/check-email', {
+        const response = await fetch(getCentralApiUrl('/registration/check-email'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -372,7 +380,7 @@ watch(() => form.subdomain, (newVal) => {
 // Methods
 const fetchSubdomainSuggestions = async () => {
     try {
-        const response = await fetch('/registration/suggest-subdomain', {
+        const response = await fetch(getCentralApiUrl('/registration/suggest-subdomain'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -407,7 +415,7 @@ const checkSubdomainAvailability = async () => {
     subdomainFormatMessage.value = null;
 
     try {
-        const response = await fetch('/registration/check-subdomain', {
+        const response = await fetch(getCentralApiUrl('/registration/check-subdomain'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -456,7 +464,7 @@ const nextStep = async () => {
         isLoading.value = true;
         form.clearErrors();
         try {
-            const response = await fetch('/registration/validate-account', {
+            const response = await fetch(getCentralApiUrl('/registration/validate-account'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

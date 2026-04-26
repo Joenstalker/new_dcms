@@ -220,6 +220,14 @@ const closePaymentSuccessModal = () => {
     window.location.replace(cleanLandingUrl);
 };
 
+const getCentralApiUrl = (path) => {
+    const centralUrl = page.props.config?.central_api_url;
+    if (centralUrl) {
+        return `${centralUrl.replace(/\/$/, '')}${path}`;
+    }
+    return path;
+};
+
 /**
  * After Stripe redirects to /?payment=success&session_id=…, finalize via the same API as before (no extra full page load).
  */
@@ -232,7 +240,7 @@ const finalizeRegistrationAfterPayment = async (sid) => {
     const started = Date.now();
 
     try {
-        const { data } = await axios.post(route('registration.complete'), { session_id: sid });
+        const { data } = await axios.post(getCentralApiUrl('/registration/complete'), { session_id: sid });
 
         const elapsed = Date.now() - started;
         const minOverlayMs = 900;

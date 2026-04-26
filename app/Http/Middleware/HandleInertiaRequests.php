@@ -129,6 +129,16 @@ class HandleInertiaRequests extends Middleware
                 'app_url' => $request->getSchemeAndHttpHost(),
                 'recaptcha_site_key' => config('services.recaptcha.site_key', ''),
                 'version' => fn () => tenant() ? (tenant()->version ?: 'v1.0.0') : AppVersionService::getVersion(),
+                'central_api_url' => function() {
+                    $url = SystemSetting::get('central_api_url');
+                    if (!$url && !tenant()) {
+                        // On Central (Laptop A), we can try to discover our own ngrok URL
+                        // but usually Central knows itself. However, for registration 
+                        // from Laptop B, Laptop B needs this discovered.
+                        $url = app(\App\Services\NgrokDiscoveryService::class)->discoverCentralUrl();
+                    }
+                    return $url;
+                },
             ],
             'tenant' => function () {
                 $tenant = tenant();

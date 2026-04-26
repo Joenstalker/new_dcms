@@ -93,13 +93,21 @@ watch(() => props.show, (newVal) => {
     }
 });
 
+const getCentralApiUrl = (path) => {
+    const centralUrl = page.props.config?.central_api_url;
+    if (centralUrl) {
+        return `${centralUrl.replace(/\/$/, '')}${path}`;
+    }
+    return path;
+};
+
 // ─── Proceed from review → redirect to full-page Secure Payment ──────────────
 const proceedToCheckout = async () => {
     if (!selectedPlan?.value) return;
     isLoading.value = true;
 
     try {
-        const response = await fetch('/registration/checkout', {
+        const response = await fetch(getCentralApiUrl('/registration/checkout'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
