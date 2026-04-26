@@ -193,6 +193,8 @@ Route::middleware([
         Route::middleware(['permission:view medical records'])->group(function () {
             Route::get('medical-records', [MedicalRecordController::class, 'index'])->name('medical-records.index');
             Route::post('medical-records', [MedicalRecordController::class, 'store'])->middleware('permission:create medical records')->name('medical-records.store');
+            Route::post('medical-records/generate-defaults', [MedicalRecordController::class, 'generateDefaults'])->middleware('permission:create medical records')->name('medical-records.generate-defaults');
+            Route::post('medical-records/generate-samples', [MedicalRecordController::class, 'generateSamples'])->middleware('permission:create medical records')->name('medical-records.generate-samples');
             Route::get('medical-records/{medicalRecord}', [MedicalRecordController::class, 'show'])->name('medical-records.show');
             Route::put('medical-records/{medicalRecord}', [MedicalRecordController::class, 'update'])->middleware('permission:edit medical records')->name('medical-records.update');
             Route::delete('medical-records/{medicalRecord}', [MedicalRecordController::class, 'destroy'])->middleware('permission:delete medical records')->name('medical-records.destroy');
@@ -337,6 +339,12 @@ Route::middleware([
         Route::post('services', [ServiceController::class, 'store'])
             ->middleware(['permission:create services'])
             ->name('services.store');
+        Route::post('services/generate-defaults', [ServiceController::class, 'generateDefaults'])
+            ->middleware(['permission:create services'])
+            ->name('services.generate-defaults');
+        Route::post('services/generate-samples', [ServiceController::class, 'generateSamples'])
+            ->middleware(['permission:create services'])
+            ->name('services.generate-samples');
 
         Route::get('services/{service}', [ServiceController::class, 'show'])
             ->middleware(['permission:view services'])

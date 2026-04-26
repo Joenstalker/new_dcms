@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\TenantServiceChanged;
 use App\Models\Service;
+use Database\Factories\ServiceFactory;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -15,6 +16,7 @@ class ServiceController extends Controller
 
         return Inertia::render('Tenant/Services/Index', [
             'services' => $services,
+            'defaultServiceCatalog' => ServiceFactory::defaultCatalog(),
             'can' => [
                 'create' => auth()->user()->can('create services'),
                 'edit' => auth()->user()->can('edit services'),
@@ -39,6 +41,74 @@ class ServiceController extends Controller
         $this->broadcastServiceChange($service->load('creator'), 'created');
 
         return redirect()->back()->with('success', 'Service created successfully.');
+    }
+
+    public function generateDefaults(Request $request)
+    {
+        $catalog = collect(ServiceFactory::defaultCatalog())
+            ->mapWithKeys(fn (array $item) => [$item['name'] => $item]);
+
+        $validated = $request->validate([
+            'names' => ['nullable', 'array'],
+            'names.*' => ['string'],
+        ]);
+
+        $requestedNames = collect($validated['names'] ?? [])
+            ->map(fn ($name) => trim((string) $name))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $itemsToCreate = $requestedNames->isEmpty()
+            ? $catalog->values()
+            : $requestedNames
+                ->filter(fn ($name) => $catalog->has($name))
+                ->map(fn ($name) => $catalog->get($name));
+
+        $createdCount = 0;
+        foreach ($itemsToCreate as $item) {
+            $service = Service::updateOrCreate(
+                ['name' => $item['name']],
+                [
+                    'description' => $item['name'] . ' procedure | ' . ($item['category'] ?? 'General'),
+                    'price' => $item['amount'] ?? 0,
+                    'created_by' => auth()->id(),
+                ]
+            );
+
+            $this->broadcastServiceChange($service->load('creator'), 'created');
+            $createdCount++;
+        }
+
+        return redirect()->back()->with('success', "{$createdCount} service(s) generated successfully.");
+    }
+
+    public function generateSamples(Request $request)
+    {
+        $validated = $request->validate([
+            'count' => ['required', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $catalog = collect(ServiceFactory::defaultCatalog())
+            ->shuffle()
+            ->take((int) $validated['count']);
+
+        $createdCount = 0;
+        foreach ($catalog as $item) {
+            $service = Service::updateOrCreate(
+                ['name' => $item['name']],
+                [
+                    'description' => $item['name'] . ' procedure | ' . ($item['category'] ?? 'General'),
+                    'price' => $item['amount'] ?? 0,
+                    'created_by' => auth()->id(),
+                ]
+            );
+
+            $this->broadcastServiceChange($service->load('creator'), 'created');
+            $createdCount++;
+        }
+
+        return redirect()->back()->with('success', "{$createdCount} service(s) generated from factory list.");
     }
 
     public function show($serviceId)

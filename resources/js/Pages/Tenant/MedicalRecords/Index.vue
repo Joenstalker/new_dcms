@@ -13,6 +13,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    defaultMedicalChecklist: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const page = usePage();
@@ -213,7 +217,11 @@ const openDeleteModal = (record) => {
             </div>
         </div>
 
-        <MedicalCreate :show="showCreateModal" @close="showCreateModal = false" />
+        <MedicalCreate
+            :show="showCreateModal"
+            :default-medical-checklist="defaultMedicalChecklist"
+            @close="showCreateModal = false"
+        />
 
         <MedicalShow
             :show="showViewModal"

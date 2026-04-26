@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Events\TenantMedicalRecordChanged;
 use App\Http\Controllers\Controller;
 use App\Models\MedicalRecord;
+use Database\Factories\MedicalRecordFactory;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -16,6 +17,7 @@ class MedicalRecordController extends Controller
             'medicalRecords' => MedicalRecord::query()
                 ->orderBy('name')
                 ->get(),
+            'defaultMedicalChecklist' => MedicalRecordFactory::defaultChecklist(),
         ]);
     }
 
@@ -43,6 +45,74 @@ class MedicalRecordController extends Controller
         }
 
         return redirect()->back()->with('success', 'Medical record item created successfully.');
+    }
+
+    public function generateDefaults(Request $request)
+    {
+        $checklist = collect(MedicalRecordFactory::defaultChecklist())
+            ->mapWithKeys(fn (array $item) => [$item['name'] => $item]);
+
+        $validated = $request->validate([
+            'names' => ['nullable', 'array'],
+            'names.*' => ['string'],
+        ]);
+
+        $requestedNames = collect($validated['names'] ?? [])
+            ->map(fn ($name) => trim((string) $name))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $itemsToCreate = $requestedNames->isEmpty()
+            ? $checklist->values()
+            : $requestedNames
+                ->filter(fn ($name) => $checklist->has($name))
+                ->map(fn ($name) => $checklist->get($name));
+
+        $createdCount = 0;
+        foreach ($itemsToCreate as $item) {
+            $medicalRecord = MedicalRecord::updateOrCreate(
+                ['name' => $item['name']],
+                [
+                    'description' => $item['description'] ?? null,
+                    'is_active' => true,
+                    'sort_order' => $item['sort_order'] ?? 0,
+                ]
+            );
+
+            $this->broadcastMedicalRecordChange($medicalRecord->fresh(), 'created');
+            $createdCount++;
+        }
+
+        return redirect()->back()->with('success', "{$createdCount} medical record item(s) generated successfully.");
+    }
+
+    public function generateSamples(Request $request)
+    {
+        $validated = $request->validate([
+            'count' => ['required', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $checklist = collect(MedicalRecordFactory::defaultChecklist())
+            ->shuffle()
+            ->take((int) $validated['count']);
+
+        $createdCount = 0;
+        foreach ($checklist as $item) {
+            $medicalRecord = MedicalRecord::updateOrCreate(
+                ['name' => $item['name']],
+                [
+                    'description' => $item['description'] ?? null,
+                    'is_active' => true,
+                    'sort_order' => $item['sort_order'] ?? 0,
+                ]
+            );
+
+            $this->broadcastMedicalRecordChange($medicalRecord->fresh(), 'created');
+            $createdCount++;
+        }
+
+        return redirect()->back()->with('success', "{$createdCount} medical record item(s) generated from factory list.");
     }
 
     public function show(MedicalRecord $medicalRecord)

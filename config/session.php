@@ -160,6 +160,14 @@ return [
         $domain = env('SESSION_DOMAIN');
 
         if (in_array($domain, [null, '', 'null', '(null)'], true)) {
+            // Check if we are on ngrok
+            $host = request()->getHost();
+            if (str_contains($host, 'ngrok-free.dev') || str_contains($host, 'ngrok-free.app')) {
+                // Return null to let the browser handle it for the specific subdomain,
+                // or you could return '.ngrok-free.dev' if you want shared sessions.
+                // For the demo, null is safer to avoid cross-tenant session leaks.
+                return null;
+            }
             return null;
         }
 

@@ -84,6 +84,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (str_contains(request()->getHost(), 'ngrok-free.dev')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         $this->ensureSystemVersionIsSynced();
         $this->configureLocalhostSessionCookieDomain();
         Gate::policy(SupportTicket::class, SupportTicketPolicy::class);

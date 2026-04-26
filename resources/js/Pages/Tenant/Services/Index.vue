@@ -8,7 +8,11 @@ import ServicesTable from './Partials/ServicesTable.vue';
 import ServiceFormModal from './Partials/ServiceFormModal.vue';
 
 const props = defineProps({
-    services: Array
+    services: Array,
+    defaultServiceCatalog: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const page = usePage();
@@ -197,6 +201,7 @@ const closeModal = () => {
             :show="isModalOpen"
             :editing-service="editingService"
             :is-owner-or-dentist="isOwnerOrDentist"
+            :default-service-catalog="defaultServiceCatalog"
             @close="closeModal"
             @submit="submit"
         />

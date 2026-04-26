@@ -44,13 +44,8 @@ export default defineConfig({
             protocol: 'ws',
         },
 
-        // Allow requests from subdomains
-        allowedHosts: [
-            'dcms.lvh.me',
-            '*.dcms.lvh.me',
-            'localhost',
-            '127.0.0.1',
-        ],
+        // Allow requests from all hosts in development (including ngrok)
+        allowedHosts: true,
 
         // Configure CORS for development
         cors: true,

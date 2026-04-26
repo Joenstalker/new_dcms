@@ -31,9 +31,9 @@ return [
         'dcms.local',
         'lvh.me',
         parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST),
-        // Add current ngrok domain if present
-        'unresisted-brittaney-rimfire.ngrok-free.de',
-        'unresisted-brittaney-rimfire.ngrok-free.dev',
+        // Wildcard for ngrok to support both Central and Tenants
+        '*.ngrok-free.dev',
+        '*.ngrok-free.de',
     ],
 
     /**

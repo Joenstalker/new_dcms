@@ -20,8 +20,15 @@ class SetTenantUrl
             $hostname = $request->getHost();
             $scheme = $request->getScheme();
             $port = $request->getPort();
+
+            // If we are on ngrok, we usually want to force https and no port in the generated URLs
+            if (str_contains($hostname, 'ngrok-free.dev')) {
+                $scheme = 'https';
+                $portStr = '';
+            } else {
+                $portStr = ($port && !in_array($port, [80, 443])) ? ":{$port}" : '';
+            }
             
-            $portStr = ($port && !in_array($port, [80, 443])) ? ":{$port}" : '';
             $baseUrl = "{$scheme}://{$hostname}{$portStr}";
             
             config(['app.url' => $baseUrl]);
