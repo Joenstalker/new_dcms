@@ -1,0 +1,475 @@
+<script setup>
+import { ref, computed, watch, onUnmounted } from 'vue';
+import { usePage } from '@inertiajs/vue3';
+import { loadStripe } from '@stripe/stripe-js';
+import Modal from '@/Components/Modal.vue';
+import Swal from 'sweetalert2';
+
+const props = defineProps({
+    show: Boolean,
+    registrationData: {
+        type: Object,
+        default: null
+    },
+    plans: {
+        type: Array,
+        default: () => []
+    },
+    sessionId: {
+        type: String,
+        default: null
+    }
+});
+
+const emit = defineEmits(['close', 'paymentSuccess']);
+
+// ─── Screen state: 'review' | 'checkout' | 'success' ────────────────────────
+const screen = ref('review');
+const isLoading = ref(false);
+const selectedPlanId = ref(null);
+const billingCycle = ref('monthly');
+const monthsToSubscribe = ref(1);
+
+// Success data
+const paymentResult = ref(null);
+const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+let countdownTimer = null;
+
+// Stripe
+let stripeCheckout = null;
+const currentSessionId = ref(null); // stored as ref so it survives async closures
+let completionInProgress = false; // guard against duplicate handlePaymentComplete calls
+
+// Dynamic domain
+const page = usePage();
+const clinicDomain = computed(() => {
+    const appUrl = page.props.config?.app_url || 'http://localhost:8080';
+    const url = new URL(appUrl);
+    const port = url.port ? `:${url.port}` : '';
+    return `${url.hostname}${port}`;
+});
+
+const selectedPlan = computed(() => {
+    if (selectedPlanId.value) {
+        return props.plans.find(p => p.id === selectedPlanId.value);
+    }
+    return props.plans[0] || props.registrationData?.plan;
+});
+
+const currentPrice = computed(() => {
+    if (!selectedPlan?.value) return 0;
+    
+    if (billingCycle.value === 'yearly') {
+        return selectedPlan?.value.price_yearly;
+    }
+    
+    // Custom months calculation
+    return selectedPlan?.value.price_monthly * monthsToSubscribe.value;
+});
+
+const savings = computed(() => {
+    if (!selectedPlan?.value || billingCycle.value !== 'yearly') return 0;
+    const monthlyCost = selectedPlan?.value.price_monthly * 12;
+    return monthlyCost - selectedPlan?.value.price_yearly;
+});
+
+// Set plan when modal opens
+watch(() => props.show, (newVal) => {
+    if (newVal) {
+        if (props.sessionId) {
+            console.log('[PaymentModal] Opened with sessionId prop:', props.sessionId);
+            currentSessionId.value = props.sessionId;
+            screen.value = 'checkout'; // show checkout screen (loading)
+            handlePaymentComplete();
+        } else if (props.plans.length > 0) {
+            selectedPlanId.value = props.registrationData?.plan?.id ?? props.plans[0].id;
+            monthsToSubscribe.value = 1;
+            billingCycle.value = 'monthly';
+            screen.value = 'review';
+        }
+    }
+    if (!newVal) {
+        cleanupStripe();
+    }
+});
+
+// ─── Proceed from review → redirect to full-page Secure Payment ──────────────
+const proceedToCheckout = async () => {
+    if (!selectedPlan?.value) return;
+    isLoading.value = true;
+
+    try {
+        const response = await fetch('/registration/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({
+                clinic_name:   props.registrationData?.clinic_name,
+                first_name:    props.registrationData?.first_name,
+                last_name:     props.registrationData?.last_name,
+                admin_name:    props.registrationData?.admin_name,
+                email:         props.registrationData?.email,
+                phone:         props.registrationData?.phone,
+                street:        props.registrationData?.street,
+                region:        props.registrationData?.region,
+                barangay:      props.registrationData?.barangay,
+                city:          props.registrationData?.city,
+                province:      props.registrationData?.province,
+                password:      props.registrationData?.password,
+                subdomain:     props.registrationData?.subdomain,
+                plan_id:       selectedPlan?.value.id,
+                billing_cycle: billingCycle.value,
+                months:        billingCycle.value === 'monthly' ? monthsToSubscribe.value : 12,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (!data.success || !data.redirect_url) {
+            throw new Error(data.message || 'Failed to create payment session.');
+        }
+
+        // Redirect the whole page to the full-page Secure Payment view
+        window.location.href = data.redirect_url;
+
+    } catch (error) {
+        console.error('Checkout error:', error);
+        isLoading.value = false;
+        Swal.fire({
+            icon: 'error',
+            title: 'Payment Error',
+            text: error.message || 'An error occurred. Please try again.',
+            confirmButtonColor: '#2B7CB3',
+        });
+    }
+};
+
+// ─── Stripe onComplete callback ─────────────────────────────────────────────
+// NOTE: Do NOT call cleanupStripe() here — we need Stripe's confirmation UI to
+// remain visible until we've confirmed the API returned success and switched
+// screen to 'success'. This prevents a blank flash.
+const handlePaymentComplete = async () => {
+    const sessionId = currentSessionId.value;
+    console.log('[PaymentModal] handlePaymentComplete called, sessionId:', sessionId);
+
+    if (!sessionId) {
+        console.error('[PaymentModal] No sessionId! Cannot redirect to success page.');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Session ID missing. Please refresh and try again.', confirmButtonColor: '#2B7CB3' });
+        return;
+    }
+
+    if (completionInProgress) {
+        console.warn('[PaymentModal] handlePaymentComplete already in progress, skipping duplicate call.');
+        return;
+    }
+    completionInProgress = true;
+
+    console.log('[PaymentModal] Payment complete ✅ — redirecting to Blade success view...');
+    cleanupStripe();
+
+    // ── Redirect directly to the Blade success page (payment-received.blade.php)
+    // The controller handles registration finalization and renders the modal.
+    window.location.href = `/registration/success?session_id=${sessionId}`;
+};
+
+// ─── Countdown timer ─────────────────────────────────────────────────────────
+const startCountdown = (expiresAt, serverTimeStr) => {
+    clearInterval(countdownTimer);
+
+    // Calculate the offset between server time and the browser's local time
+    // If serverTimeStr is missing, default to 0 offset
+    const serverTimeMs = serverTimeStr 
+        ? (typeof serverTimeStr === 'number' ? serverTimeStr : new Date(serverTimeStr).getTime())
+        : new Date().getTime();
+    const expiresAtMs = typeof expiresAt === 'number' ? expiresAt : new Date(expiresAt).getTime();
+    const timeOffset = serverTimeMs - new Date().getTime();
+
+    const update = () => {
+        // Evaluate the "current" time adjusted by our measured offset
+        const nowMs = new Date().getTime() + timeOffset;
+        const diff = expiresAtMs - nowMs;
+
+        if (diff <= 0) {
+            countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+            clearInterval(countdownTimer);
+            return;
+        }
+
+        const days    = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours   = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        countdown.value = { days, hours, minutes, seconds };
+    };
+
+    update();
+    countdownTimer = setInterval(update, 1000);
+};
+
+// ─── Cleanup ─────────────────────────────────────────────────────────────────
+const cleanupStripe = () => {
+    if (stripeCheckout) {
+        try { stripeCheckout.destroy(); } catch {}
+        stripeCheckout = null;
+    }
+};
+
+onUnmounted(() => {
+    cleanupStripe();
+    clearInterval(countdownTimer);
+});
+
+const closeModal = () => {
+    cleanupStripe();
+    clearInterval(countdownTimer);
+    
+    // If we were on the success screen, redirect to homepage to clean URL
+    if (screen.value === 'success') {
+        window.location.href = '/';
+        return;
+    }
+
+    screen.value = 'review';
+    selectedPlanId.value = null;
+    billingCycle.value = 'monthly';
+    paymentResult.value = null;
+    countdown.value = null;
+    emit('close');
+};
+
+const formatCurrency = (val) =>
+    '₱' + Number(val ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+
+const tenantUrl = computed(() => {
+    if (!paymentResult.value?.subdomain) return '#';
+    return `/tenant/${paymentResult.value.subdomain}`;
+});
+</script>
+
+<template>
+    <!-- maxWidth 3xl to facilitate side-by-side layout -->
+    <Modal :show="show" @close="closeModal" maxWidth="4xl">
+        <div class="relative min-h-[400px]">
+
+            <!-- ── REVIEW SCREEN ─────────────────────────────────── -->
+            <div v-if="screen === 'review'" class="p-5">
+                <!-- Header -->
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">Finalize Subscription</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">Please review your registration and select your preferred billing period.</p>
+                    </div>
+                    <button @click="closeModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+                    <!-- Left: Registration Summary (4 cols) -->
+                    <div class="md:col-span-4 space-y-4">
+                        <div v-if="registrationData" class="bg-gray-50 rounded-xl p-4 border border-gray-100 h-full">
+                            <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Registration Summary</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <span class="block text-[10px] text-gray-400 uppercase">Clinic Name</span>
+                                    <span class="font-semibold text-gray-900">{{ registrationData?.clinic_name }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] text-gray-400 uppercase">Clinic Web Address</span>
+                                    <span class="font-semibold text-[#2B7CB3]">{{ registrationData?.subdomain }}.{{ clinicDomain }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] text-gray-400 uppercase">Administrator</span>
+                                    <span class="font-semibold text-gray-900">{{ registrationData?.admin_name }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] text-gray-400 uppercase">Billing Email</span>
+                                    <span class="font-semibold text-gray-900 break-all">{{ registrationData?.email }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Plan & Billing (8 cols) -->
+                    <div class="md:col-span-8 space-y-4">
+                        <!-- Plan Selector -->
+                        <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                            <div class="flex justify-between items-center mb-4">
+                                <label class="text-sm font-bold text-gray-900">Choose Plan</label>
+                                <select
+                                    v-model="selectedPlanId"
+                                    class="text-xs border-gray-200 rounded-lg focus:ring-[#2B7CB3] focus:border-[#2B7CB3] py-1.5"
+                                >
+                                    <option v-for="plan in plans" :key="plan.id" :value="plan.id">{{ plan.name }}</option>
+                                </select>
+                            </div>
+
+                            <!-- Billing Cycle Options -->
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <button 
+                                    @click="billingCycle = 'monthly'"
+                                    :class="[
+                                        'px-4 py-2 text-xs font-bold rounded-lg border transition-all',
+                                        billingCycle === 'monthly' ? 'bg-blue-50 border-[#2B7CB3] text-[#2B7CB3]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                                    ]"
+                                >
+                                    Flexible Monthly
+                                </button>
+                                <button 
+                                    @click="billingCycle = 'yearly'"
+                                    :class="[
+                                        'px-4 py-2 text-xs font-bold rounded-lg border transition-all',
+                                        billingCycle === 'yearly' ? 'bg-blue-50 border-[#2B7CB3] text-[#2B7CB3]' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                                    ]"
+                                >
+                                    Annual (Best Value)
+                                </button>
+                            </div>
+
+                            <!-- Multi-Month Selector (only for monthly) -->
+                            <div v-if="billingCycle === 'monthly'" class="mb-4">
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Duration (Months)</label>
+                                <div class="grid grid-cols-6 gap-1.5">
+                                    <button 
+                                        v-for="m in 12" 
+                                        :key="m"
+                                        @click="monthsToSubscribe = m"
+                                        :class="[
+                                            'h-8 text-xs font-bold rounded flex items-center justify-center border transition-all',
+                                            monthsToSubscribe === m ? 'bg-[#2B7CB3] border-[#2B7CB3] text-white shadow-sm' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                                        ]"
+                                    >
+                                        {{ m }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Total Preview -->
+                            <div class="bg-gray-900 rounded-xl p-4 text-white">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-[10px] text-gray-400 uppercase font-bold">Total Due Today</p>
+                                        <p class="text-2xl font-black">{{ formatCurrency(currentPrice) }}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-[10px] text-gray-400 uppercase font-bold">Subscription Period</p>
+                                        <p class="text-xs font-medium">
+                                            {{ billingCycle === 'yearly' ? '12 Months (Yearly Saver)' : `${monthsToSubscribe} Month${monthsToSubscribe > 1 ? 's' : ''}` }}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div v-if="billingCycle === 'yearly' && savings > 0" class="mt-2 pt-2 border-t border-gray-800 text-[10px] text-green-400 flex items-center">
+                                    <span class="mr-1">🎉</span> You are saving {{ formatCurrency(savings) }} with the Annual Plan!
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            @click="proceedToCheckout"
+                            :disabled="isLoading || !selectedPlan"
+                            class="w-full py-4 rounded-xl font-black text-white bg-[#FF6B53] hover:bg-[#E05A44] transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            <svg v-if="isLoading" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                            <span>{{ isLoading ? 'Initializing Secure Payment...' : 'Secure Checkout & Payment' }}</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex items-center justify-center gap-4 text-[10px] text-gray-400">
+                    <span class="flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg> SSL Secured</span>
+                    <span class="flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"></path><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"></path></svg> PCI Compliant</span>
+                    <span class="flex items-center gap-1">💳 Powered by Stripe</span>
+                </div>
+            </div>
+
+            <!-- ── STRIPE CHECKOUT SCREEN ────────────────────────── -->
+            <div v-if="screen === 'checkout'" class="p-3 sm:p-5">
+                <!-- Compact Header -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <button @click="screen = 'review'; cleanupStripe()" class="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-all">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                            </svg>
+                        </button>
+                        <div>
+                            <h2 class="text-lg font-black text-gray-900 tracking-tight leading-none">Secure Payment</h2>
+                            <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">Stripe Checkout Interface</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 px-3 py-1 bg-gray-50 rounded-full border border-gray-200">
+                        <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">PCI-DSS Compliant</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-5 lg:gap-8">
+                    <!-- Left: Compact Summary (4 cols) -->
+                    <div class="md:col-span-4 space-y-3">
+                        <div class="bg-gray-900 rounded-2xl p-5 text-white shadow-xl">
+                            <p class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-3">Order Summary</p>
+                            
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-300">{{ selectedPlan?.name }} Plan</p>
+                                        <p class="text-[10px] text-gray-500">{{ billingCycle === 'yearly' ? 'Yearly Billing' : (monthsToSubscribe + ' x Monthly Billing') }}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xl font-black text-[#60A5FA]">₱{{ formatCurrency(currentPrice).replace('₱', '') }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-2 pt-1">
+                                    <div v-if="registrationData?.subdomain" class="flex justify-between text-[10px] text-gray-400">
+                                        <span>Subdomain</span>
+                                        <span class="font-bold text-gray-200">{{ registrationData?.subdomain }}</span>
+                                    </div>
+                                    <div v-if="registrationData?.region" class="flex justify-between text-[10px] text-gray-400">
+                                        <span>Region</span>
+                                        <span class="font-bold text-gray-200">{{ registrationData?.region }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mini security badge -->
+                        <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0 font-bold text-lg">🛡️</div>
+                            <p class="text-[10px] text-blue-800 leading-tight font-medium">
+                                <strong>Secure Checkout</strong><br>
+                                Encrypted by Stripe.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Right: Stripe Embedded Checkout (8 cols) -->
+                    <div class="md:col-span-8 relative">
+                        <!-- Stripe mounts here -->
+                        <div id="stripe-embedded-checkout" class="min-h-[380px]"></div>
+
+                        <!-- Loading spinner -->
+                        <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-white z-10">
+                            <div class="flex flex-col items-center gap-2">
+                                <div class="w-10 h-10 rounded-full border-4 border-gray-100 border-t-[#2B7CB3] animate-spin"></div>
+                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Initializing...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </Modal>
+</template>
