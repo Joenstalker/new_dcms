@@ -62,6 +62,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'registration/webhook',
+            'registration/check-email',
+            'registration/check-subdomain',
+            'registration/validate-account',
+            'registration/validate-subdomain',
+            'registration/suggest-subdomain',
+            'registration/checkout',
+            'registration/complete',
             'api/login',
             'api/login/google',
             'api/password/code/send',

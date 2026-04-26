@@ -203,6 +203,7 @@ const generatePassword = () => {
 const isStep1Valid = computed(() => {
     return form.first_name.length >= 2 &&
            form.last_name.length >= 2 &&
+           form.clinic_name.length >= 3 &&
            isEmailFormatValid.value &&
            emailAvailable.value === true &&
            !emailChecking.value &&
