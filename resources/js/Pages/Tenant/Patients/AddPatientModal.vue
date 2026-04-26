@@ -216,6 +216,71 @@ const submit = () => {
         createPatient();
     }
 };
+
+const generateSamplePatients = async () => {
+    const { value: count, isConfirmed } = await Swal.fire({
+        title: 'Generate Sample Patients',
+        text: 'Enter how many patients to generate (1-50).',
+        input: 'number',
+        inputValue: 10,
+        inputAttributes: {
+            min: '1',
+            max: '50',
+            step: '1',
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Generate',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: primaryColor.value,
+        cancelButtonColor: '#94a3b8',
+        preConfirm: (value) => {
+            const parsed = Number(value);
+            if (!Number.isInteger(parsed) || parsed < 1 || parsed > 50) {
+                Swal.showValidationMessage('Please enter a whole number from 1 to 50.');
+                return false;
+            }
+
+            return parsed;
+        },
+    });
+
+    if (!isConfirmed || !count) {
+        return;
+    }
+
+    router.post(route('patients.generate-samples'), { count }, {
+        preserveScroll: true,
+        preserveState: true,
+        onStart: () => {
+            emit('close');
+            Swal.fire({
+                title: 'Processing',
+                text: 'Generating sample patients, please wait...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            });
+        },
+        onSuccess: () => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Completed',
+                text: 'Sample patients were generated successfully.',
+                timer: 1700,
+                showConfirmButton: false,
+            });
+        },
+        onError: () => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Unable to generate patients',
+                text: 'Please try again with a value from 1 to 50.',
+            });
+        },
+    });
+};
 </script>
 
 <template>
@@ -319,7 +384,8 @@ const submit = () => {
                                     <label class="label"><span class="label-text text-xs font-black uppercase tracking-widest text-base-content/50">Patient Type</span></label>
                                     <select v-model="form.patient_type" class="select select-bordered rounded-xl bg-base-100">
                                         <option value="">Auto / Unset</option>
-                                        <option value="pedia">Pedia</option>
+                                        <option value="pediatric">Pediatric (0-12)</option>
+                                        <option value="adolescent">Adolescent (13-17)</option>
                                         <option value="adult">Adult</option>
                                     </select>
                                 </div>
@@ -391,6 +457,14 @@ const submit = () => {
 
                 <!-- Fixed Footer Actions -->
                 <div class="p-6 bg-base-100 border-t border-base-300 flex justify-end gap-3 shrink-0">
+                    <button
+                        v-if="!patient"
+                        type="button"
+                        @click="generateSamplePatients"
+                        class="btn rounded-xl text-xs font-black uppercase tracking-widest"
+                    >
+                        Generate Patient
+                    </button>
                     <button type="button" @click="close" class="btn btn-ghost rounded-xl text-xs font-black uppercase tracking-widest">Cancel</button>
                     <button 
                         type="submit" 

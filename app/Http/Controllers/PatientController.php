@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\TenantPatientChanged;
 use App\Models\Patient;
+use Database\Seeders\TenantPatientSeeder;
 use App\Services\TenantNotificationService;
 use App\Services\TenantStorageUsageService;
 use Carbon\Carbon;
@@ -58,8 +59,12 @@ class PatientController extends Controller
             });
         }
 
-        if ($hasPatientType && in_array($type, ['pedia', 'adult'], true)) {
-            $query->where('patient_type', $type);
+        if ($hasPatientType && in_array($type, ['pediatric', 'adolescent', 'adult', 'pedia'], true)) {
+            if ($type === 'pediatric') {
+                $query->whereIn('patient_type', ['pediatric', 'pedia']);
+            } else {
+                $query->where('patient_type', $type);
+            }
         }
 
         if (!empty($year) && is_numeric($year)) {
@@ -174,7 +179,7 @@ class PatientController extends Controller
             'address' => 'nullable|string',
             'medical_history' => 'nullable|string',
             'operation_history' => 'nullable|string',
-            'patient_type' => 'nullable|in:pedia,adult',
+            'patient_type' => 'nullable|in:pediatric,adolescent,adult,pedia',
             'tags' => 'nullable|array',
             'tags.*' => 'string|max:50',
             'first_visit_at' => 'nullable|date',
@@ -214,7 +219,15 @@ class PatientController extends Controller
             && empty($validated['patient_type'])
             && !empty($validated['date_of_birth'])
         ) {
-            $validated['patient_type'] = Carbon::parse((string) $validated['date_of_birth'])->age < 18 ? 'pedia' : 'adult';
+            $age = Carbon::parse((string) $validated['date_of_birth'])->age;
+            $validated['patient_type'] = $age <= 12
+                ? 'pediatric'
+                : ($age <= 17 ? 'adolescent' : 'adult');
+        }
+
+        // Backward compatibility for older "pedia" value.
+        if (($validated['patient_type'] ?? null) === 'pedia') {
+            $validated['patient_type'] = 'pediatric';
         }
 
         if ($request->hasFile('photo')) {
@@ -241,6 +254,20 @@ class PatientController extends Controller
         $this->broadcastPatientChange($patient, 'created');
 
         return redirect()->route('patients.index')->with('success', 'Patient created successfully.');
+    }
+
+    public function generateSamples(Request $request)
+    {
+        $validated = $request->validate([
+            'count' => ['required', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            (new TenantPatientSeeder())->run((int) $validated['count']);
+        });
+
+        return Redirect::route('patients.index')
+            ->with('success', "{$validated['count']} sample patient(s) generated successfully.");
     }
 
     public function show(Request $request, $patientId)
@@ -340,7 +367,7 @@ class PatientController extends Controller
             'address' => 'nullable|string',
             'medical_history' => 'nullable|string',
             'operation_history' => 'nullable|string',
-            'patient_type' => 'nullable|in:pedia,adult',
+            'patient_type' => 'nullable|in:pediatric,adolescent,adult,pedia',
             'tags' => 'nullable|array',
             'tags.*' => 'string|max:50',
             'first_visit_at' => 'nullable|date',
@@ -380,7 +407,15 @@ class PatientController extends Controller
             && empty($validated['patient_type'])
             && !empty($validated['date_of_birth'])
         ) {
-            $validated['patient_type'] = Carbon::parse((string) $validated['date_of_birth'])->age < 18 ? 'pedia' : 'adult';
+            $age = Carbon::parse((string) $validated['date_of_birth'])->age;
+            $validated['patient_type'] = $age <= 12
+                ? 'pediatric'
+                : ($age <= 17 ? 'adolescent' : 'adult');
+        }
+
+        // Backward compatibility for older "pedia" value.
+        if (($validated['patient_type'] ?? null) === 'pedia') {
+            $validated['patient_type'] = 'pediatric';
         }
 
         if ($request->hasFile('photo')) {

@@ -22,7 +22,7 @@ class SecurityHeaders
 
         $styleSrc = "style-src 'self' 'unsafe-inline' https:";
         $scriptSrc = "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:";
-        $connectSrc = "connect-src 'self' https: wss: ws:";
+        $connectSrc = "connect-src 'self' https: wss: ws: " . $request->getSchemeAndHttpHost();
         $imgSrc = "img-src 'self' data: blob: https:";
         foreach ($viteDevOrigins as $origin) {
             $styleSrc .= ' '.$origin;

@@ -126,6 +126,10 @@ Route::middleware([
             ->middleware(['permission:create patients', 'check.subscription:max_patients'])
             ->name('patients.store');
 
+        Route::post('patients/generate-samples', [PatientController::class, 'generateSamples'])
+            ->middleware('permission:create patients')
+            ->name('patients.generate-samples');
+
         Route::get('patients/{patientId}', [PatientController::class, 'show'])
             ->middleware('permission:view patients')
             ->name('patients.show');

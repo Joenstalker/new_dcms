@@ -232,6 +232,7 @@ const checkLimitAndOpenAddModal = () => {
     }
     openAddModal();
 };
+
 </script>
 
 <template>
@@ -304,7 +305,8 @@ const checkLimitAndOpenAddModal = () => {
 
                     <select v-model="selectedType" class="select select-sm h-10 rounded-xl bg-base-200/50 border-transparent focus:border-primary text-xs font-bold">
                         <option value="">Patient Type</option>
-                        <option value="pedia">Pedia</option>
+                        <option value="pediatric">Pediatric</option>
+                        <option value="adolescent">Adolescent</option>
                         <option value="adult">Adult</option>
                     </select>
 
@@ -375,7 +377,7 @@ const checkLimitAndOpenAddModal = () => {
                                     <p class="text-sm font-black text-base-content truncate">{{ patient.first_name }} {{ patient.last_name }}</p>
                                     <p class="text-xs font-black tracking-widest uppercase text-base-content/40">ID {{ patient.id }}</p>
                                     <div class="flex items-center gap-1 mt-1">
-                                        <span v-if="patient.patient_type" class="badge badge-xs font-black uppercase tracking-widest" :class="patient.patient_type === 'pedia' ? 'badge-info' : 'badge-neutral'">
+                                        <span v-if="patient.patient_type" class="badge badge-xs font-black uppercase tracking-widest" :class="patient.patient_type === 'pediatric' || patient.patient_type === 'pedia' ? 'badge-info' : (patient.patient_type === 'adolescent' ? 'badge-warning' : 'badge-neutral')">
                                             {{ patient.patient_type }}
                                         </span>
                                     </div>
@@ -464,7 +466,7 @@ const checkLimitAndOpenAddModal = () => {
                                             {{ patient.first_name }} {{ patient.last_name }}
                                         </p>
                                         <div class="flex items-center gap-1 mt-1">
-                                            <span v-if="patient.patient_type" class="badge badge-xs font-black uppercase tracking-widest" :class="patient.patient_type === 'pedia' ? 'badge-info' : 'badge-neutral'">
+                                            <span v-if="patient.patient_type" class="badge badge-xs font-black uppercase tracking-widest" :class="patient.patient_type === 'pediatric' || patient.patient_type === 'pedia' ? 'badge-info' : (patient.patient_type === 'adolescent' ? 'badge-warning' : 'badge-neutral')">
                                                 {{ patient.patient_type }}
                                             </span>
                                             <span
