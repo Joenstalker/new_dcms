@@ -197,6 +197,7 @@ Route::middleware([
             Route::post('medical-records/generate-samples', [MedicalRecordController::class, 'generateSamples'])->middleware('permission:create medical records')->name('medical-records.generate-samples');
             Route::get('medical-records/{medicalRecord}', [MedicalRecordController::class, 'show'])->name('medical-records.show');
             Route::put('medical-records/{medicalRecord}', [MedicalRecordController::class, 'update'])->middleware('permission:edit medical records')->name('medical-records.update');
+            Route::delete('medical-records/bulk-destroy', [MedicalRecordController::class, 'bulkDestroy'])->middleware('permission:delete medical records')->name('medical-records.bulk-destroy');
             Route::delete('medical-records/{medicalRecord}', [MedicalRecordController::class, 'destroy'])->middleware('permission:delete medical records')->name('medical-records.destroy');
 });
 
@@ -219,6 +220,9 @@ Route::middleware([
         Route::post('staff', [StaffController::class, 'store'])
             ->middleware(['permission:create staff', 'check.subscription:max_users'])
             ->name('staff.store');
+        Route::post('staff/generate-samples', [StaffController::class, 'generateSamples'])
+            ->middleware('permission:create staff')
+            ->name('staff.generate-samples');
         Route::put('staff/{staff}', [StaffController::class, 'update'])
             ->middleware('permission:edit staff')
             ->name('staff.update');
@@ -353,6 +357,10 @@ Route::middleware([
         Route::put('services/{service}', [ServiceController::class, 'update'])
             ->middleware(['permission:edit services'])
             ->name('services.update');
+
+        Route::delete('services/bulk-destroy', [ServiceController::class, 'bulkDestroy'])
+            ->middleware(['permission:delete services'])
+            ->name('services.bulk-destroy');
 
         Route::delete('services/{service}', [ServiceController::class, 'destroy'])
             ->middleware(['permission:delete services'])

@@ -1,4 +1,5 @@
 <script setup>
+import { brandingState } from '@/States/brandingState';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
@@ -6,6 +7,7 @@ import Swal from 'sweetalert2';
 
 import ServicesTable from './Partials/ServicesTable.vue';
 import ServiceFormModal from './Partials/ServiceFormModal.vue';
+import ServiceDelete from './Partials/ServiceDelete.vue';
 
 const props = defineProps({
     services: Array,
@@ -16,6 +18,7 @@ const props = defineProps({
 });
 
 const page = usePage();
+const primaryColor = computed(() => brandingState.primary_color || '#10b981');
 const tenantId = computed(() => page.props.tenant?.id || null);
 const user = computed(() => page.props.auth.user);
 const roles = computed(() => user.value?.roles || []);
@@ -28,11 +31,8 @@ const canManageServices = computed(() => isOwner.value || isDentist.value || isA
 
 const searchQuery = ref('');
 const liveServices = ref([...(props.services || [])]);
+const selectedIds = ref([]);
 let servicesChannel = null;
-
-watch(() => props.services, (nextServices) => {
-    liveServices.value = [...(nextServices || [])];
-}, { deep: true });
 
 const filteredServices = computed(() => {
     let result = liveServices.value;
@@ -49,6 +49,30 @@ const filteredServices = computed(() => {
     return result;
 });
 
+const selectAll = computed({
+    get: () => filteredServices.value.length > 0 && selectedIds.value.length === filteredServices.value.length,
+    set: (value) => {
+        if (value) {
+            selectedIds.value = filteredServices.value.map(s => s.id);
+        } else {
+            selectedIds.value = [];
+        }
+    }
+});
+
+const toggleSelection = (id) => {
+    const index = selectedIds.value.indexOf(id);
+    if (index === -1) {
+        selectedIds.value.push(id);
+    } else {
+        selectedIds.value.splice(index, 1);
+    }
+};
+
+watch(() => props.services, (nextServices) => {
+    liveServices.value = [...(nextServices || [])];
+}, { deep: true });
+
 onMounted(() => {
     if (!window.Echo || !tenantId.value) return;
 
@@ -61,6 +85,7 @@ onMounted(() => {
 
             if (action === 'deleted') {
                 liveServices.value = liveServices.value.filter((item) => item.id !== incoming.id);
+                selectedIds.value = selectedIds.value.filter(id => id !== incoming.id);
                 return;
             }
 
@@ -127,22 +152,24 @@ const submit = (payload) => {
     }
 };
 
-const deleteService = (id) => {
-    Swal.fire({
-        title: 'Are you sure?',
-        text: "You won't be able to revert this!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            form.delete(route('services.destroy', id), {
-                onSuccess: () => Swal.fire('Deleted!', 'Service has been removed.', 'success')
-            });
-        }
-    });
+// Delete State
+const isDeleteModalOpen = ref(false);
+const serviceToDelete = ref(null);
+
+const openDeleteModal = (service) => {
+    serviceToDelete.value = service;
+    selectedIds.value = [];
+    isDeleteModalOpen.value = true;
+};
+
+const openBulkDeleteModal = () => {
+    serviceToDelete.value = null;
+    isDeleteModalOpen.value = true;
+};
+
+const handleDeleted = () => {
+    selectedIds.value = [];
+    isDeleteModalOpen.value = false;
 };
 
 const closeModal = () => {
@@ -156,18 +183,24 @@ const closeModal = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h2 class="text-2xl font-bold text-gray-800">Service & Pricing</h2>
-            </div>
+            <h2 class="text-xl font-black tracking-tight text-base-content normal-case">
+                Service & Pricing
+            </h2>
         </template>
 
-        <div class="py-6">
-            <!-- Search Navigation -->
-            <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-6">
-                <div class="flex flex-col sm:flex-row gap-3">
+        <div class="mt-8 space-y-6">
+            <!-- Header Banner -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm gap-4">
+                <div>
+                    <h3 class="text-sm font-black text-base-content/40 uppercase tracking-[0.2em]">Management Module</h3>
+                    <h2 class="text-xl font-black text-base-content uppercase tracking-tight">Service & Pricing</h2>
+                    <p class="text-xs text-base-content/50 mt-1">Manage services and pricing offered by your clinic.</p>
+                </div>
+                <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                    <!-- Search with Autocomplete -->
                     <div class="relative w-full sm:w-64">
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg class="h-4 w-4 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </span>
@@ -175,25 +208,42 @@ const closeModal = () => {
                             v-model="searchQuery"
                             type="text" 
                             placeholder="Search services..." 
-                            class="input input-bordered w-full pl-10 rounded-xl focus:ring-2 focus:ring-primary shadow-sm"
+                            class="input input-sm input-bordered w-full pl-10 rounded-xl focus:ring-2 focus:ring-primary shadow-sm text-xs font-bold bg-white"
                         />
                     </div>
-                    
-                    <button v-if="canManageServices" @click="openModal()" class="btn btn-primary shadow-lg border-none px-6 rounded-xl">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        New Service
-                    </button>
+
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <button
+                            v-if="selectedIds.length > 0"
+                            @click="openBulkDeleteModal"
+                            class="btn btn-sm btn-error btn-outline rounded-xl hover:scale-[1.02] transition-all font-black text-[10px] uppercase tracking-widest px-6 w-full sm:w-auto"
+                        >
+                            Delete Selected ({{ selectedIds.length }})
+                        </button>
+                        
+                        <button 
+                            v-if="canManageServices" 
+                            @click="openModal()" 
+                            class="btn btn-sm rounded-xl border-0 text-white shadow-lg hover:scale-[1.02] transition-all font-black text-[10px] uppercase tracking-widest px-6 w-full sm:w-auto"
+                            :style="{ backgroundColor: primaryColor, boxShadow: `0 10px 15px -3px ${primaryColor}33` }"
+                        >
+                            + New Service
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <ServicesTable 
-                :services="filteredServices"
-                :can-manage="canManageServices"
-                @edit="openModal"
-                @delete="deleteService"
-            />
+            <div class="bg-base-100 rounded-2xl border border-base-300 overflow-hidden shadow-sm">
+                <ServicesTable 
+                    :services="filteredServices"
+                    :can-manage="canManageServices"
+                    :selected-ids="selectedIds"
+                    v-model:selectAll="selectAll"
+                    @edit="openModal"
+                    @delete="openDeleteModal"
+                    @toggle-selection="toggleSelection"
+                />
+            </div>
         </div>
 
         <!-- Create/Edit Modal -->
@@ -204,6 +254,15 @@ const closeModal = () => {
             :default-service-catalog="defaultServiceCatalog"
             @close="closeModal"
             @submit="submit"
+        />
+
+        <!-- Delete Modal -->
+        <ServiceDelete
+            :show="isDeleteModalOpen"
+            :service="serviceToDelete"
+            :selected-ids="selectedIds"
+            @close="isDeleteModalOpen = false"
+            @deleted="handleDeleted"
         />
     </AuthenticatedLayout>
 </template>

@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 
 const props = defineProps({
     show: Boolean,
-    medicalRecord: {
+    service: {
         type: Object,
         default: null,
     },
@@ -33,7 +33,7 @@ const close = () => {
 const submit = () => {
     if (props.selectedIds.length > 0) {
         form.ids = props.selectedIds;
-        form.delete(route('medical-records.bulk-destroy'), {
+        form.delete(route('services.bulk-destroy'), {
             preserveScroll: true,
             onSuccess: () => {
                 form.confirmation = '';
@@ -43,7 +43,7 @@ const submit = () => {
                     toast: true,
                     position: 'top-end',
                     icon: 'success',
-                    title: `${props.selectedIds.length} items deleted successfully`,
+                    title: `${props.selectedIds.length} services deleted successfully`,
                     showConfirmButton: false,
                     timer: 2500,
                 });
@@ -52,11 +52,11 @@ const submit = () => {
         return;
     }
 
-    if (!props.medicalRecord) {
+    if (!props.service) {
         return;
     }
 
-    form.delete(route('medical-records.destroy', props.medicalRecord.id), {
+    form.delete(route('services.destroy', props.service.id), {
         preserveScroll: true,
         onSuccess: () => {
             form.confirmation = '';
@@ -65,7 +65,7 @@ const submit = () => {
                 toast: true,
                 position: 'top-end',
                 icon: 'success',
-                title: 'Medical record item deleted successfully',
+                title: 'Service deleted successfully',
                 showConfirmButton: false,
                 timer: 2500,
             });
@@ -76,16 +76,16 @@ const submit = () => {
 
 <template>
     <Modal :show="show" @close="close" maxWidth="md">
-        <div class="p-6" v-if="medicalRecord || selectedIds.length > 0">
+        <div class="p-6" v-if="service || selectedIds.length > 0">
             <h2 class="text-lg font-black text-base-content uppercase tracking-tight">
-                {{ selectedIds.length > 0 ? `Delete ${selectedIds.length} Items` : 'Delete Medical Record Item' }}
+                {{ selectedIds.length > 0 ? `Delete ${selectedIds.length} Services` : 'Delete Service' }}
             </h2>
             <p class="mt-4 text-sm text-base-content/60 font-medium">
                 <template v-if="selectedIds.length > 0">
-                    Are you sure you want to delete these <span class="font-bold text-base-content">{{ selectedIds.length }}</span> items?
+                    Are you sure you want to delete these <span class="font-bold text-base-content">{{ selectedIds.length }}</span> services?
                 </template>
                 <template v-else>
-                    Are you sure you want to delete <span class="font-bold text-base-content">{{ medicalRecord.name }}</span>?
+                    Are you sure you want to delete <span class="font-bold text-base-content">{{ service.name }}</span>?
                 </template>
             </p>
             <p class="mt-2 text-xs text-error font-bold uppercase tracking-widest">This action cannot be undone.</p>

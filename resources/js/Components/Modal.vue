@@ -18,6 +18,10 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    zIndex: {
+        type: Number,
+        default: 150,
+    },
 });
 
 const emit = defineEmits(['close']);
@@ -124,7 +128,8 @@ const maxWidthClass = computed(() => {
         >
             <div
                 v-if="show"
-                class="fixed inset-0 z-[150] overflow-y-auto px-4 py-6 sm:px-0"
+                class="fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0"
+                :style="{ zIndex: props.zIndex }"
                 scroll-region
             >
                 <div
@@ -167,7 +172,8 @@ const maxWidthClass = computed(() => {
     >
         <div
             v-if="show"
-            class="fixed inset-0 z-[150] overflow-y-auto px-4 py-6 sm:px-0"
+            class="fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0"
+            :style="{ zIndex: props.zIndex }"
             scroll-region
         >
             <div

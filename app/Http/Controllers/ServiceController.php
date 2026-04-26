@@ -147,6 +147,27 @@ class ServiceController extends Controller
         return redirect()->back()->with('success', 'Service deleted successfully.');
     }
 
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:services,id',
+        ]);
+
+        $ids = $validated['ids'];
+        $records = Service::whereIn('id', $ids)->get();
+
+        foreach ($records as $record) {
+            $deletedPayload = [
+                'id' => $record->id,
+            ];
+            $record->delete();
+            $this->broadcastRawServiceChange('deleted', $deletedPayload);
+        }
+
+        return redirect()->back()->with('success', count($ids) . ' services deleted successfully.');
+    }
+
     private function broadcastServiceChange(Service $service, string $action): void
     {
         if (!tenant()) {

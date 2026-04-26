@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\StaffInvitation;
 use App\Services\TenantBrandingService;
+use Database\Factories\StaffFactory;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -121,6 +122,21 @@ class StaffController extends Controller
         return redirect()->back()->with('success', 'Staff member created successfully and invitation sent.');
     }
 
+
+    public function generateSamples(Request $request)
+    {
+        $validated = $request->validate([
+            'count' => 'required|integer|min:1|max:50',
+        ]);
+
+        $count = (int) $validated['count'];
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($count) {
+            (new \Database\Seeders\TenantStaffSeeder())->run($count);
+        });
+
+        return redirect()->route('staff.index')->with('success', $count . ' staff members generated successfully.');
+    }
 
     public function update(Request $request, User $staff)
     {

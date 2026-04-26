@@ -230,18 +230,10 @@ watch(() => props.show, (value) => {
                     <button
                         v-if="defaultMedicalChecklist.length"
                         type="button"
-                        @click="openGenerateModal"
-                        class="btn rounded-xl px-6"
-                    >
-                        Generate List
-                    </button>
-                    <button
-                        v-if="defaultMedicalChecklist.length"
-                        type="button"
                         @click="generateByCount"
                         class="btn rounded-xl px-6"
                     >
-                        Generate 1-50
+                        Generate
                     </button>
                     <button type="button" @click="close" class="btn rounded-xl px-6">Cancel</button>
                     <button type="submit" class="btn rounded-xl px-8 border-0 text-white font-black text-xs uppercase tracking-widest" :style="{ backgroundColor: primaryColor }" :disabled="form.processing">

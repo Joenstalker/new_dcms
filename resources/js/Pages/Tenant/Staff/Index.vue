@@ -18,8 +18,12 @@
                     <button 
                         @click="activeTab = 'list'"
                         :class="activeTab === 'list' 
-                            ? 'bg-gray-900 text-white shadow-xl shadow-gray-200' 
+                            ? 'text-white shadow-xl' 
                             : 'text-gray-500 hover:text-gray-900 hover:bg-white/80'"
+                        :style="activeTab === 'list' ? { 
+                            backgroundColor: primaryColor,
+                            shadowColor: hexToRgba(primaryColor, 0.4)
+                        } : {}"
                         class="px-8 py-3 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -30,8 +34,12 @@
                     <button 
                         @click="activeTab = 'permissions'"
                         :class="activeTab === 'permissions' 
-                            ? 'bg-gray-900 text-white shadow-xl shadow-gray-200' 
+                            ? 'text-white shadow-xl' 
                             : 'text-gray-500 hover:text-gray-900 hover:bg-white/80'"
+                        :style="activeTab === 'permissions' ? { 
+                            backgroundColor: primaryColor,
+                            shadowColor: hexToRgba(primaryColor, 0.4)
+                        } : {}"
                         class="px-8 py-3 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,8 +50,12 @@
                     <button 
                         @click="activeTab = 'schedules'"
                         :class="activeTab === 'schedules' 
-                            ? 'bg-gray-900 text-white shadow-xl shadow-gray-200' 
+                            ? 'text-white shadow-xl' 
                             : 'text-gray-500 hover:text-gray-900 hover:bg-white/80'"
+                        :style="activeTab === 'schedules' ? { 
+                            backgroundColor: primaryColor,
+                            shadowColor: hexToRgba(primaryColor, 0.4)
+                        } : {}"
                         class="px-8 py-3 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 flex items-center"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -68,7 +80,11 @@
                             <h2 class="text-xl font-black text-gray-900 uppercase tracking-widest">Active Staff Members</h2>
                             <button 
                                 @click="checkLimitAndOpenAddStaff"
-                                class="inline-flex items-center px-6 py-3 bg-gray-900 text-white border border-transparent rounded-[1.25rem] font-black text-[10px] uppercase tracking-[0.25em] hover:bg-black transition-all shadow-xl shadow-gray-200 active:scale-95 group"
+                                class="inline-flex items-center px-6 py-3 text-white border border-transparent rounded-[1.25rem] font-black text-[10px] uppercase tracking-[0.25em] transition-all shadow-xl active:scale-95 group"
+                                :style="{ 
+                                    backgroundColor: primaryColor,
+                                    boxShadow: `0 20px 24px -12px ${hexToRgba(primaryColor, 0.42)}`
+                                }"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2.5 group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
@@ -91,18 +107,30 @@
                                     <tr v-for="member in liveStaff" :key="member.id" class="group hover:bg-gray-50/70 transition-all duration-300">
                                         <td class="py-5 px-4">
                                             <div class="flex items-center space-x-4">
-                                                <div class="h-12 w-12 rounded-2xl bg-blue-50/50 flex items-center justify-center font-black text-blue-600 border border-blue-100 uppercase tracking-tighter text-sm group-hover:scale-110 transition-transform duration-300 overflow-hidden">
+                                                <div class="h-12 w-12 rounded-2xl flex items-center justify-center font-black border uppercase tracking-tighter text-sm group-hover:scale-110 transition-transform duration-300 overflow-hidden"
+                                                    :style="{ 
+                                                        backgroundColor: hexToRgba(primaryColor, 0.1),
+                                                        borderColor: hexToRgba(primaryColor, 0.2),
+                                                        color: primaryColor
+                                                    }"
+                                                >
                                                     <img v-if="member.profile_picture_url" :src="member.profile_picture_url" class="h-full w-full object-cover" />
                                                     <span v-else>{{ member.name.substring(0, 2) }}</span>
                                                 </div>
                                                 <div class="flex flex-col">
-                                                    <span class="font-black text-gray-900 text-sm tracking-tight group-hover:text-blue-600 transition-colors">{{ member.name }}</span>
+                                                    <span class="font-black text-gray-900 text-sm tracking-tight group-hover:text-[var(--staff-primary)] transition-colors" :style="{ '--staff-primary': primaryColor }">{{ member.name }}</span>
                                                     <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Staff ID #{{ member.id.toString().padStart(4, '0') }}</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="py-5 px-4">
-                                            <span class="px-3 py-1.5 rounded-xl bg-gray-100 text-gray-700 text-[9px] font-black uppercase tracking-widest border border-gray-200">
+                                            <span class="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border"
+                                                :style="{ 
+                                                    backgroundColor: hexToRgba(primaryColor, 0.1),
+                                                    color: primaryColor,
+                                                    borderColor: hexToRgba(primaryColor, 0.2)
+                                                }"
+                                            >
                                                 {{ member.roles?.[0]?.name || 'Staff' }}
                                             </span>
                                         </td>
@@ -112,7 +140,10 @@
                                         <td class="py-5 px-4 text-right">
                                             <button 
                                                 @click="selectStaffForManage(member)"
-                                                class="inline-flex items-center px-5 py-2.5 bg-white border border-gray-200 rounded-2xl font-black text-[10px] text-gray-600 uppercase tracking-widest hover:bg-gray-900 hover:border-gray-900 hover:text-white transition-all shadow-sm active:scale-95 group/btn overflow-hidden relative"
+                                                class="inline-flex items-center px-5 py-2.5 bg-white border border-gray-200 rounded-2xl font-black text-[10px] text-gray-600 uppercase tracking-widest transition-all shadow-sm active:scale-95 group/btn overflow-hidden relative"
+                                                :style="{ '--staff-primary': primaryColor }"
+                                                onmouseover="this.style.backgroundColor=this.style.getPropertyValue('--staff-primary'); this.style.borderColor=this.style.getPropertyValue('--staff-primary'); this.style.color='white'"
+                                                onmouseout="this.style.backgroundColor='white'; this.style.borderColor='#e5e7eb'; this.style.color='#4b5563'"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-2.5 group-hover/btn:rotate-45 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -145,7 +176,12 @@
                         <div class="flex justify-between items-center mb-8">
                             <h2 class="text-xl font-black text-gray-900 uppercase tracking-widest">Clinic Schedule</h2>
                             <div class="flex space-x-3">
-                                <select class="rounded-xl border-gray-100 bg-gray-50/50 text-[10px] font-black uppercase tracking-widest focus:ring-gray-900 focus:border-gray-900 px-6 py-3">
+                                <select 
+                                    class="rounded-xl border-gray-100 bg-gray-50/50 text-[10px] font-black uppercase tracking-widest px-6 py-3 transition-all"
+                                    :style="{ '--staff-primary': primaryColor }"
+                                    onfocus="this.style.borderColor=this.style.getPropertyValue('--staff-primary'); this.style.boxShadow=`0 0 0 2px ${this.style.getPropertyValue('--staff-primary')}40`"
+                                    onblur="this.style.borderColor='#f3f4f6'; this.style.boxShadow='none'"
+                                >
                                     <option value="">All Staff</option>
                                     <option v-for="member in liveStaff" :key="member.id" :value="member.id">
                                         {{ member.name }}
@@ -154,7 +190,9 @@
                             </div>
                         </div>
 
-                        <div class="calendar-container border border-gray-100 rounded-3xl overflow-hidden p-8 shadow-inner bg-gray-50/20">
+                        <div class="calendar-container border rounded-3xl overflow-hidden p-8 shadow-inner bg-gray-50/20"
+                            :style="{ borderColor: hexToRgba(primaryColor, 0.1) }"
+                        >
                             <FullCalendar :options="calendarOptions" />
                         </div>
                     </div>
@@ -166,7 +204,7 @@
 
         <!-- Manage Staff Modal (Profile) -->
         <Modal :show="showingStaffModal" @close="showingStaffModal = false" maxWidth="md">
-            <div class="bg-gradient-to-br from-blue-600 to-indigo-700 h-24 relative">
+            <div class="h-24 relative" :style="addModalHeaderStyle">
                 <button @click="showingStaffModal = false" class="absolute top-3 right-3 h-8 w-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white transition-colors">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
@@ -174,10 +212,14 @@
                 </button>
             </div>
             
-            <div class="px-8 pb-8 -mt-12">
+            <div class="px-8 pb-8 -mt-12 max-h-[70vh] overflow-y-auto" :style="{ '--staff-primary': primaryColor }">
                 <div class="flex flex-col items-center text-center">
                     <div class="h-32 w-32 rounded-[2rem] bg-white p-2 shadow-2xl relative group mb-6">
-                        <div class="h-full w-full rounded-[1.5rem] bg-gray-50 flex items-center justify-center border-4 border-gray-100 overflow-hidden relative group-hover:border-blue-400 transition-colors">
+                        <div class="h-full w-full rounded-[1.5rem] bg-gray-50 flex items-center justify-center border-4 border-gray-100 overflow-hidden relative transition-colors"
+                            :style="{ '--staff-primary': primaryColor }"
+                            onmouseover="this.style.borderColor=this.style.getPropertyValue('--staff-primary')"
+                            onmouseout="this.style.borderColor='#f3f4f6'"
+                        >
                             <img v-if="selectedStaff?.profile_picture_url" :src="selectedStaff.profile_picture_url" class="h-full w-full object-cover" />
                             <span v-else class="text-4xl font-black text-gray-200 uppercase tracking-tighter">{{ selectedStaff?.name?.substring(0, 2) }}</span>
                         </div>
@@ -186,7 +228,13 @@
                     <div class="mb-8">
                         <h2 class="text-2xl font-black text-gray-900 tracking-tight uppercase">{{ selectedStaff?.name }}</h2>
                         <div class="flex items-center justify-center space-x-2 mt-2">
-                            <span class="px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg border border-blue-100">
+                            <span class="px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg border"
+                                :style="{ 
+                                    backgroundColor: hexToRgba(primaryColor, 0.1),
+                                    color: primaryColor,
+                                    borderColor: hexToRgba(primaryColor, 0.2)
+                                }"
+                            >
                                 {{ selectedStaff?.roles?.[0]?.name }}
                             </span>
                             <span class="h-1.5 w-1.5 rounded-full bg-green-500 shadow-sm shadow-green-400/50"></span>
@@ -195,16 +243,24 @@
                     </div>
 
                     <div class="grid grid-cols-1 w-full gap-3 mb-6">
-                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 text-left group hover:bg-blue-50/30 transition-colors">
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 text-left group transition-colors"
+                            :style="{ '--staff-primary': hexToRgba(primaryColor, 0.1) }"
+                            onmouseover="this.style.backgroundColor=this.style.getPropertyValue('--staff-primary')"
+                            onmouseout="this.style.backgroundColor='#f9fafb'"
+                        >
                             <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Email Address</span>
                             <span class="text-sm font-black text-gray-900 truncate">{{ selectedStaff?.email }}</span>
                         </div>
                     </div>
 
-                    <div class="flex items-center space-x-3 w-full">
+                    <div class="flex flex-wrap items-center gap-3 w-full">
                         <button 
                             @click="editStaff(selectedStaff)"
-                            class="flex-1 py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-gray-200 transition-all active:scale-95 flex items-center justify-center"
+                            class="flex-1 py-3.5 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center shadow-xl"
+                            :style="{ 
+                                backgroundColor: primaryColor,
+                                boxShadow: `0 20px 24px -12px ${hexToRgba(primaryColor, 0.42)}`
+                            }"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -213,7 +269,7 @@
                         </button>
                         <button 
                             @click="confirmDelete(selectedStaff)"
-                            class="p-3.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors active:scale-95"
+                            class="p-3.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors active:scale-95 shrink-0"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -223,11 +279,37 @@
                 </div>
             </div>
         </Modal>
+        
+        <Modal :show="showingAccessModal" @close="showingAccessModal = false" maxWidth="md" :zIndex="200">
+            <div class="p-8">
+                <div class="mb-6 border-b border-gray-50 pb-4">
+                    <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase">Default Access</h3>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1.5">Permissions for {{ addForm.role }} role</p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-2 max-h-[60vh] overflow-y-auto pr-2">
+                    <div 
+                        v-for="permission in selectedRoleDefaultPermissions" 
+                        :key="permission"
+                        class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100"
+                    >
+                        <div class="h-2 w-2 rounded-full bg-success shadow-[0_0_10px_rgba(34,197,94,0.4)]"></div>
+                        <span class="text-[11px] font-black uppercase tracking-widest text-gray-700">{{ permission }}</span>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <SecondaryButton @click="showingAccessModal = false" class="w-full py-4 justify-center border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
+                        Close
+                    </SecondaryButton>
+                </div>
+            </div>
+        </Modal>
 
         <!-- Edit Staff Modal -->
         <Modal :show="showingEditModal" @close="showingEditModal = false" maxWidth="md">
-            <div class="bg-gradient-to-br from-amber-500 to-orange-600 h-24 relative">
-                <div class="absolute -bottom-6 left-8 h-14 w-14 rounded-xl bg-white p-1.5 shadow-2xl border border-white/50 flex items-center justify-center font-black text-amber-600 uppercase tracking-tighter text-lg shadow-amber-200/40 overflow-hidden">
+            <div class="h-24 relative" :style="addModalHeaderStyle">
+                <div class="absolute -bottom-6 left-8 h-14 w-14 rounded-xl bg-white p-1.5 shadow-2xl border border-white/50 flex items-center justify-center font-black uppercase tracking-tighter text-lg shadow-xl overflow-hidden" :style="{ color: primaryColor }">
                     <img v-if="editForm.profile_picture_url" :src="editForm.profile_picture_url" class="h-full w-full object-cover rounded-lg" />
                     <span v-else>{{ editForm.name ? editForm.name.substring(0, 2) : 'ST' }}</span>
                 </div>
@@ -238,7 +320,7 @@
                 </button>
             </div>
 
-            <div class="p-8 pt-10">
+            <div class="p-8 pt-10 max-h-[65vh] overflow-y-auto" :style="{ '--staff-primary': primaryColor }">
                 <div class="mb-8 border-b border-gray-50 pb-6">
                     <h3 class="text-2xl font-black text-gray-900 tracking-tight uppercase">Update Profile</h3>
                     <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1.5">Modify team member credentials and roles</p>
@@ -250,7 +332,7 @@
                         <TextInput
                             id="edit_name"
                             type="text"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner"
+                            class="block w-full border-gray-100 focus:border-[var(--staff-primary)] focus:ring-[var(--staff-primary)] rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner"
                             v-model="editForm.name"
                             required
                         />
@@ -262,7 +344,7 @@
                         <TextInput
                             id="edit_email"
                             type="email"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner"
+                            class="block w-full border-gray-100 focus:border-[var(--staff-primary)] focus:ring-[var(--staff-primary)] rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner"
                             v-model="editForm.email"
                             required
                         />
@@ -274,7 +356,7 @@
                         <select 
                             id="edit_role"
                             v-model="editForm.role"
-                            class="block w-full border-gray-100 focus:border-blue-500 focus:ring-blue-500 rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E')] bg-[length:1.25em_1.25em] bg-[right_1.25em_center] bg-no-repeat"
+                            class="block w-full border-gray-100 focus:border-[var(--staff-primary)] focus:ring-[var(--staff-primary)] rounded-xl p-4 font-black text-sm bg-gray-50/50 shadow-inner appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E')] bg-[length:1.25em_1.25em] bg-[right_1.25em_center] bg-no-repeat"
                             required
                         >
                             <option value="Dentist">Dentist</option>
@@ -283,12 +365,13 @@
                         <InputError class="mt-2" :message="editForm.errors.role" />
                     </div>
 
-                    <div class="pt-8 flex items-center space-x-4">
-                        <SecondaryButton @click="showingEditModal = false" class="flex-[0.4] py-4 justify-center border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
+                    <div class="pt-8 flex flex-wrap items-center gap-4">
+                        <SecondaryButton @click="showingEditModal = false" class="flex-1 py-4 justify-center border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
                             Cancel
                         </SecondaryButton>
                         <PrimaryButton 
-                            class="flex-1 py-4 justify-center bg-gray-900 border-none rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl shadow-gray-300 transition-all hover:bg-black active:scale-95" 
+                            class="flex-[1.5] py-4 justify-center border-none rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95" 
+                            :style="addModalButtonStyle"
                             :class="{ 'opacity-25': editForm.processing }" 
                             :disabled="editForm.processing"
                         >
@@ -318,7 +401,7 @@
                 </button>
             </div>
 
-            <div class="p-4 sm:p-8 pt-8 sm:pt-10 max-h-[78vh] overflow-y-auto" :style="{ '--staff-primary': primaryColor }">
+            <div class="p-4 sm:p-8 pt-8 sm:pt-10 max-h-[65vh] overflow-y-auto" :style="{ '--staff-primary': primaryColor }">
                 <div class="mb-6 sm:mb-8 border-b border-gray-50 pb-4 sm:pb-6">
                     <h3 class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight uppercase">New Staff Member</h3>
                     <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1.5">Send an invitation to join your clinic</p>
@@ -363,26 +446,40 @@
                         </select>
                         <InputError class="mt-2" :message="addForm.errors.role" />
 
-                        <div class="mt-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3">
-                            <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Default Access for {{ addForm.role }}</p>
-                            <div class="flex flex-wrap gap-2">
-                                <span
-                                    v-for="permission in selectedRoleDefaultPermissions"
-                                    :key="permission"
-                                    class="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-[10px] font-black uppercase tracking-wider text-gray-600"
-                                >
-                                    {{ permission }}
-                                </span>
-                            </div>
+                        <div class="mt-3">
+                            <button 
+                                type="button"
+                                @click="showingAccessModal = true"
+                                class="w-full flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/60 hover:bg-gray-100/80 transition-all group"
+                            >
+                                <div class="flex flex-col items-start">
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Default Access</p>
+                                    <p class="text-xs font-bold text-gray-900 mt-0.5">View permissions for {{ addForm.role }}</p>
+                                </div>
+                                <div class="h-8 w-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </div>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="pt-4 sm:pt-8 flex items-center gap-3 sm:gap-4">
-                        <SecondaryButton @click="showingAddModal = false" class="flex-[0.42] py-3 sm:py-4 justify-center border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
+                    <div class="pt-4 sm:pt-8 flex flex-wrap items-center gap-3 sm:gap-4">
+                        <button
+                            type="button"
+                            @click="generateByCount"
+                            class="btn rounded-xl text-[10px] font-black uppercase tracking-widest text-white border-none shadow-lg transition-all active:scale-95"
+                            :style="{ backgroundColor: primaryColor }"
+                        >
+                            Generate
+                        </button>
+                        <SecondaryButton @click="showingAddModal = false" class="flex-1 py-3 sm:py-4 justify-center border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all active:scale-95">
                             Cancel
                         </SecondaryButton>
                         <PrimaryButton 
-                            class="flex-1 py-3 sm:py-4 justify-center border-none rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95" 
+                            class="w-full sm:w-auto sm:flex-[1.5] py-3 sm:py-4 justify-center border-none rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95" 
                             :style="addModalButtonStyle"
                             :class="{ 'opacity-25': addForm.processing }" 
                             :disabled="addForm.processing"
@@ -525,7 +622,7 @@ const checkLimitAndOpenAddStaff = () => {
             html: `Your plan allows up to ${maxUsers} staff members. You currently have ${currentUsers}.<br><br>Continue anyway and add overage to next renewal bill?`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#111827',
+            confirmButtonColor: primaryColor.value,
             cancelButtonColor: '#94a3b8',
             confirmButtonText: 'Continue and Bill Next Renewal',
             cancelButtonText: 'Cancel'
@@ -578,6 +675,66 @@ const handleAddStaff = () => {
     });
 };
 
+const generateByCount = async () => {
+    const { value: count, isConfirmed } = await Swal.fire({
+        title: 'Generate Staff by Count',
+        text: 'Enter how many staff members to generate (1-50). Password will be "password".',
+        input: 'number',
+        inputValue: 10,
+        inputAttributes: {
+            min: '1',
+            max: '50',
+            step: '1',
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Generate',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: primaryColor.value,
+        preConfirm: (value) => {
+            const parsed = Number(value);
+            if (!Number.isInteger(parsed) || parsed < 1 || parsed > 50) {
+                Swal.showValidationMessage('Please enter a whole number from 1 to 50.');
+                return false;
+            }
+            return parsed;
+        },
+    });
+
+    if (!isConfirmed || !count) {
+        return;
+    }
+
+    router.post(route('staff.generate-samples'), { count }, {
+        preserveScroll: true,
+        onStart: () => {
+            Swal.fire({
+                title: 'Processing',
+                text: 'Generating staff members...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => Swal.showLoading(),
+            });
+        },
+        onSuccess: () => {
+            showingAddModal.value = false;
+            Swal.fire({
+                icon: 'success',
+                title: 'Generated',
+                text: 'Staff members generated successfully.',
+                timer: 1800,
+                showConfirmButton: false,
+            });
+        },
+        onError: () => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Generation failed',
+                text: 'Please try again.',
+            });
+        },
+    });
+};
+
 const selectedRoleDefaultPermissions = computed(() => {
     const role = addForm.role || 'Dentist';
     return props.defaultPermissionMap?.[role] || [];
@@ -609,6 +766,7 @@ const calendarOptions = computed(() => ({
 
 // View Modal State
 const showingStaffModal = ref(false);
+const showingAccessModal = ref(false);
 const selectedStaff = ref(null);
 
 const selectStaffForManage = (member) => {
@@ -733,8 +891,8 @@ const confirmDelete = (member) => {
         text: "You won't be able to revert this! This will permanently delete the staff member from the database.",
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#2563eb',
-        cancelButtonColor: '#d33',
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#94a3b8',
         confirmButtonText: 'Yes, remove them!',
         cancelButtonText: 'Cancel'
     }).then((result) => {

@@ -151,6 +151,27 @@ class MedicalRecordController extends Controller
         return redirect()->back()->with('success', 'Medical record item deleted successfully.');
     }
 
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:medical_records,id',
+        ]);
+
+        $ids = $validated['ids'];
+        $records = MedicalRecord::whereIn('id', $ids)->get();
+
+        foreach ($records as $record) {
+            $deletedPayload = [
+                'id' => $record->id,
+            ];
+            $record->delete();
+            $this->broadcastRawMedicalRecordChange('deleted', $deletedPayload);
+        }
+
+        return redirect()->back()->with('success', count($ids) . ' medical record items deleted successfully.');
+    }
+
     private function broadcastMedicalRecordChange(MedicalRecord $medicalRecord, string $action): void
     {
         if (!tenant()) {

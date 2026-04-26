@@ -235,18 +235,10 @@ const generateByCount = async () => {
                     <button
                         v-if="!editingService && defaultServiceCatalog.length"
                         type="button"
-                        @click="openGenerateModal"
-                        class="btn rounded-xl"
-                    >
-                        Generate List
-                    </button>
-                    <button
-                        v-if="!editingService && defaultServiceCatalog.length"
-                        type="button"
                         @click="generateByCount"
                         class="btn rounded-xl"
                     >
-                        Generate 1-50
+                        Generate
                     </button>
                     <button type="button" @click="handleClose" class="btn btn-ghost rounded-xl">Cancel</button>
                     <button type="submit" class="btn btn-primary rounded-xl px-8 shadow-md" :disabled="form.processing">

@@ -6,7 +6,9 @@
             <div class="md:col-span-1 bg-white/95 backdrop-blur-md rounded-2xl border border-base-300 shadow-md overflow-hidden flex flex-col">
                 <div class="p-4 border-b border-base-200 bg-base-100/50 flex justify-between items-center shrink-0">
                     <h3 class="text-[10px] font-black text-gray-900 uppercase tracking-widest">Staff</h3>
-                    <button @click="selectAllStaff" class="text-[10px] font-black text-blue-600 uppercase hover:text-blue-800 transition-colors">
+                    <button @click="selectAllStaff" class="text-[10px] font-black uppercase transition-colors"
+                        :style="{ color: primaryColor }"
+                    >
                         {{ selectedStaffIds.length === staff.length ? 'Deselect All' : 'Select All' }}
                     </button>
                 </div>
@@ -15,16 +17,22 @@
                         v-for="member in staff" 
                         :key="member.id"
                         @click="toggleStaffSelection(member)"
-                        :class="isStaffSelected(member.id) ? 'bg-blue-50/80' : 'hover:bg-base-200/50'"
+                        :class="isStaffSelected(member.id) ? '' : 'hover:bg-base-200/50'"
+                        :style="isStaffSelected(member.id) ? { backgroundColor: hexToRgba(primaryColor, 0.1) } : {}"
                         class="w-full text-left p-4 transition-all flex items-center justify-between cursor-pointer group"
                     >
                         <div class="flex flex-col truncate mr-2">
-                            <span class="font-black text-sm text-gray-900 tracking-tight" :class="isStaffSelected(member.id) ? 'text-blue-700' : ''">{{ member.name }}</span>
+                            <span class="font-black text-sm text-gray-900 tracking-tight" :style="isStaffSelected(member.id) ? { color: primaryColor } : {}">{{ member.name }}</span>
                             <span class="text-[10px] uppercase font-black tracking-widest opacity-40">{{ member.roles?.[0]?.name }}</span>
                         </div>
                         <div 
                             class="h-5 w-5 rounded-lg border-2 flex items-center justify-center transition-all duration-300"
-                            :class="isStaffSelected(member.id) ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-500/30' : 'border-base-300 group-hover:border-base-400'"
+                            :class="isStaffSelected(member.id) ? 'shadow-lg' : 'border-base-300 group-hover:border-base-400'"
+                            :style="isStaffSelected(member.id) ? { 
+                                backgroundColor: primaryColor, 
+                                borderColor: primaryColor,
+                                shadowColor: hexToRgba(primaryColor, 0.3)
+                            } : {}"
                         >
                             <svg v-if="isStaffSelected(member.id)" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -49,11 +57,18 @@
                         :key="`defaults-${role}`"
                         type="button"
                         @click="openRoleDefaultsModal(role)"
-                        class="text-left rounded-2xl border border-base-200 bg-base-100/50 p-5 hover:border-blue-300 hover:bg-blue-50/40 transition-all group flex flex-col"
+                        class="text-left rounded-2xl border border-base-200 bg-base-100/50 p-5 transition-all group flex flex-col"
+                        :style="{ '--staff-primary': primaryColor, '--staff-primary-light': hexToRgba(primaryColor, 0.1) }"
+                        onmouseover="this.style.borderColor=this.style.getPropertyValue('--staff-primary'); this.style.backgroundColor=this.style.getPropertyValue('--staff-primary-light')"
+                        onmouseout="this.style.borderColor='#f3f4f6'; this.style.backgroundColor='#f9fafb'"
                     >
                         <div class="flex items-center justify-between mb-3 shrink-0">
                             <h4 class="text-sm font-black text-gray-900 uppercase tracking-widest">{{ role }} Role</h4>
-                            <span class="inline-flex items-center px-3 py-1.5 rounded-xl bg-blue-100 text-blue-700 text-[9px] font-black uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors"
+                                :style="{ backgroundColor: hexToRgba(primaryColor, 0.1), color: primaryColor }"
+                                onmouseover="this.style.backgroundColor=brandingState.primary_color; this.style.color='white'"
+                                onmouseout="this.style.backgroundColor=hexToRgba(brandingState.primary_color, 0.1); this.style.color=brandingState.primary_color"
+                            >
                                 SET DEFAULT ROLE
                             </span>
                         </div>
@@ -79,7 +94,9 @@
                 <div>
                     <h3 class="text-xl font-black text-gray-900 uppercase tracking-tight">
                         Manage Permissions 
-                        <span class="ml-2 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-black">
+                        <span class="ml-2 px-2.5 py-0.5 rounded-full text-xs font-black"
+                            :style="{ backgroundColor: hexToRgba(primaryColor, 0.1), color: primaryColor }"
+                        >
                             {{ selectedStaffIds.length }} Selected
                         </span>
                     </h3>
@@ -89,27 +106,36 @@
                     @click="savePermissionsTab" 
                     :class="{ 'opacity-25': permissionForm.processing }" 
                     :disabled="permissionForm.processing"
-                    class="shadow-xl shadow-blue-500/20 rounded-xl px-8"
+                    class="shadow-xl rounded-xl px-8"
+                    :style="{ 
+                        backgroundColor: primaryColor,
+                        shadowColor: hexToRgba(primaryColor, 0.2)
+                    }"
                 >
                     APPLY CHANGES
                 </PrimaryButton>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <div v-for="(group, feature) in permissionGroups" :key="feature" class="bg-base-100/50 p-5 rounded-2xl border border-base-200 hover:border-blue-100 transition-colors shadow-sm">
+                <div v-for="(group, feature) in permissionGroups" :key="feature" class="bg-base-100/50 p-5 rounded-2xl border border-base-200 transition-colors shadow-sm hover:border-blue-100">
                     <div class="flex justify-between items-center mb-4">
                         <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center">
-                            <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                            <span class="w-2 h-2 rounded-full mr-2" :style="{ backgroundColor: primaryColor }"></span>
                             {{ feature }}
                         </h4>
                         <label class="flex items-center space-x-2 cursor-pointer group/toggle">
-                            <span class="text-[9px] font-black text-gray-400 group-hover/toggle:text-blue-500 transition-colors uppercase tracking-widest">Toggle All</span>
+                            <span class="text-[9px] font-black text-gray-400 transition-colors uppercase tracking-widest"
+                                :style="{ '--staff-primary': primaryColor }"
+                                onmouseover="this.style.color=this.style.getPropertyValue('--staff-primary')"
+                                onmouseout="this.style.color='#9ca3af'"
+                            >Toggle All</span>
                             <input 
                                 type="checkbox" 
                                 :checked="isGroupChecked(group)"
                                 :indeterminate.prop="isGroupIndeterminate(group)"
                                 @change="toggleGroup(group, $event)"
-                                class="h-4 w-4 rounded border-base-300 text-blue-600 focus:ring-blue-500 transition cursor-pointer"
+                                class="h-4 w-4 rounded border-base-300 transition cursor-pointer"
+                                :style="{ color: primaryColor, '--tw-ring-color': primaryColor }"
                             >
                         </label>
                     </div>
@@ -118,13 +144,21 @@
                             v-for="permission in group" 
                             :key="permission.id" 
                             @click="togglePermission(permission.name)"
-                            class="flex items-center justify-between p-3 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50/30 transition-all cursor-pointer group"
+                            class="flex items-center justify-between p-3 rounded-xl border border-transparent transition-all cursor-pointer group"
                             :class="permission.isLocked ? 'opacity-60 cursor-not-allowed border-amber-200 bg-amber-50/30 hover:border-amber-200 hover:bg-amber-50/30' : ''"
+                            :style="{ '--staff-primary-light': hexToRgba(primaryColor, 0.1), '--staff-primary-border': hexToRgba(primaryColor, 0.2) }"
+                            onmouseover="if(!this.classList.contains('cursor-not-allowed')) { this.style.borderColor=this.style.getPropertyValue('--staff-primary-border'); this.style.backgroundColor=this.style.getPropertyValue('--staff-primary-light') }"
+                            onmouseout="if(!this.classList.contains('cursor-not-allowed')) { this.style.borderColor='transparent'; this.style.backgroundColor='transparent' }"
                         >
                             <div class="flex items-center space-x-3">
                                 <div 
                                     class="h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300"
-                                    :class="permissionForm.permissions.includes(permission.name) ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-500/20' : 'border-gray-200 group-hover:border-base-400'"
+                                    :class="permissionForm.permissions.includes(permission.name) ? 'shadow-md' : 'border-gray-200 group-hover:border-base-400'"
+                                    :style="permissionForm.permissions.includes(permission.name) ? { 
+                                        backgroundColor: primaryColor, 
+                                        borderColor: primaryColor,
+                                        shadowColor: hexToRgba(primaryColor, 0.2)
+                                    } : {}"
                                 >
                                     <svg v-if="permissionForm.permissions.includes(permission.name)" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -274,6 +308,7 @@ import { ref, computed, watch } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import Swal from 'sweetalert2';
+import { brandingState } from '@/States/brandingState';
 
 const props = defineProps({
     staff: { type: Array, required: true },
@@ -294,6 +329,23 @@ const canManageDefaultPermissions = computed(() => {
 });
 const managedRoles = ['Dentist', 'Assistant'];
 const activeRoleModal = ref(null);
+
+const primaryColor = computed(() => brandingState.primary_color || '#2563eb');
+
+function hexToRgba(hex, alpha = 1) {
+    const clean = (hex || '#2563eb').replace('#', '');
+    const bigint = parseInt(clean.length === 3
+        ? clean.split('').map((c) => c + c).join('')
+        : clean, 16);
+
+    if (Number.isNaN(bigint)) return `rgba(37, 99, 235, ${alpha})`;
+
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 const selectedStaffIds = ref([]);
 const permissionForm = useForm({

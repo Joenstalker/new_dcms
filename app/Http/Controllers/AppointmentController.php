@@ -31,10 +31,12 @@ class AppointmentController extends Controller
     {
         $validated = $request->validate([
             'patient_id' => 'nullable|exists:patients,id',
+            'dentist_id' => 'nullable|exists:users,id',
             'guest_first_name' => 'required_without:patient_id|string|max:255|nullable',
             'guest_last_name' => 'required_without:patient_id|string|max:255|nullable',
             'guest_phone' => 'required_without:patient_id|string|max:20|nullable',
             'appointment_date' => 'required|date',
+            'duration' => 'nullable|integer',
             'service' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'status' => 'required|string|in:scheduled,completed,cancelled,walk-in',
@@ -72,6 +74,8 @@ class AppointmentController extends Controller
         $validated = $request->validate([
             'status' => 'required|string|in:scheduled,completed,cancelled,walk-in',
             'appointment_date' => 'sometimes|required|date',
+            'dentist_id' => 'sometimes|nullable|exists:users,id',
+            'duration' => 'sometimes|nullable|integer',
         ]);
 
         $oldStatus = $appointment->status;

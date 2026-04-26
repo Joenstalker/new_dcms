@@ -20,6 +20,7 @@ class Appointment extends Model
         'guest_medical_history',
         'booking_reference',
         'appointment_date',
+        'duration',
         'status',
         'type',
         'service',
