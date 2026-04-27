@@ -111,6 +111,7 @@ class FileUpdateService
             'public/storage',
             'bootstrap/cache',
             '.git',
+            'stripe.exe',
             'vendor', // Usually updated via composer, but for non-techy we might need to include it?
                       // Actually, for non-techy, we should probably include vendor in the ZIP if possible,
                       // or run composer install. But since this is a GitHub ZIP, it won't have vendor.
