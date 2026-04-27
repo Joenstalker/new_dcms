@@ -23,25 +23,40 @@ class GitHubService
         }
 
         try {
-            $request = Http::withHeaders([
-                'Accept' => 'application/vnd.github.v3+json',
-                'User-Agent' => 'Laravel-OTA-Check',
-            ]);
+            $buildRequest = static function (?string $authToken = null) {
+                $request = Http::withHeaders([
+                    'Accept' => 'application/vnd.github.v3+json',
+                    'User-Agent' => 'Laravel-OTA-Check',
+                ])->timeout(10);
 
-            if ($token) {
-                $request = $request->withToken($token);
-            }
+                return ! empty($authToken) ? $request->withToken($authToken) : $request;
+            };
 
-            $response = $request->timeout(10)
+            $response = $buildRequest($token)
                 ->get("https://api.github.com/repos/{$repo}/releases/latest");
 
             if ($response->successful()) {
-                return $response->json('tag_name');
+                $tag = $response->json('tag_name');
+                if (! empty($tag)) {
+                    return $tag;
+                }
+            }
+
+            // Fallback without token for cases where token visibility is restricted.
+            $fallback = $buildRequest()
+                ->get("https://api.github.com/repos/{$repo}/releases/latest");
+            if ($fallback->successful()) {
+                $tag = $fallback->json('tag_name');
+                if (! empty($tag)) {
+                    return $tag;
+                }
             }
 
             Log::error('GitHubService: Failed to fetch latest release.', [
                 'status' => $response->status(),
                 'body' => $response->body(),
+                'fallback_status' => $fallback->status(),
+                'fallback_body' => $fallback->body(),
             ]);
         } catch (\Exception $e) {
             Log::error('GitHubService: Exception during API call.', [
