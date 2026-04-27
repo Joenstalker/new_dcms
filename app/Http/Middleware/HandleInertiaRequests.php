@@ -130,18 +130,24 @@ class HandleInertiaRequests extends Middleware
                 'recaptcha_site_key' => config('services.recaptcha.site_key', ''),
                 'version' => fn () => tenant() ? (tenant()->version ?: 'v1.0.0') : AppVersionService::getVersion(),
                 'central_api_url' => function() use ($request) {
-                    // 1. If we are already on Laptop A (Central)
-                    // We check if the request is coming from a local-like source or if the host isn't ngrok.
-                    // Or more simply: if we are NOT on a tenant, and the host is localhost/central domain.
                     $currentHost = $request->getHost();
-                    $isCentralHost = in_array($currentHost, config('tenancy.central_domains', ['localhost', '127.0.0.1']));
+                    $centralDomains = config('tenancy.central_domains', ['localhost', '127.0.0.1']);
                     
-                    if (!tenant() && $isCentralHost) {
-                        return ''; // Use local paths (relative)
+                    $isLocal = false;
+                    foreach ($centralDomains as $domain) {
+                        if ($currentHost === $domain || str_ends_with($currentHost, '.' . $domain)) {
+                            $isLocal = true;
+                            break;
+                        }
+                    }
+
+                    if ($isLocal) {
+                        return ''; // Use relative paths for local development (Laptop A behavior)
                     }
 
                     // 2. Otherwise (on Laptop B or on a Tenant), try to find the Central Ngrok URL
-                    $url = SystemSetting::get('central_api_url');
+                    // Prioritize .env/config if set, then database, then auto-discovery
+                    $url = config('app.central_api_url') ?: env('CENTRAL_API_URL') ?: SystemSetting::get('central_api_url');
                     if (!$url && !tenant()) {
                         $url = app(\App\Services\NgrokDiscoveryService::class)->discoverCentralUrl();
                     }
@@ -277,7 +283,8 @@ class HandleInertiaRequests extends Middleware
                 $cacheKey = 'tenant_'.tenant()->id.'_pending_updates_count';
 
                 // On Laptop B (Tenant), we need to check Laptop A (Central) periodically
-                $centralUrl = SystemSetting::get('central_api_url');
+                // Prioritize .env/config if set, then database, then auto-discovery
+                $centralUrl = config('app.central_api_url') ?: env('CENTRAL_API_URL') ?: SystemSetting::get('central_api_url');
                 
                 // Auto-Discovery: If no URL is set, try to find it via Ngrok API
                 if (!$centralUrl) {
@@ -286,13 +293,20 @@ class HandleInertiaRequests extends Middleware
 
                 $lastCheckKey = 'tenant_'.tenant()->id.'_last_central_sync';
                 
-                if ($centralUrl && !Cache::has($lastCheckKey)) {
+                if (!Cache::has($lastCheckKey)) {
                     // This is a bit heavy for a middleware, but for the demo it ensures Laptop B 
-                    // stays in sync without manual clicks. We use a short timeout.
+                    // stays in sync without manual clicks. We use a longer timeout (15s) 
+                    // because Central might need to check GitHub.
                     try {
+                        $fullUrl = $centralUrl;
+                        if (empty($fullUrl) || !str_starts_with($fullUrl, 'http')) {
+                            // If relative (e.g. on localhost), use the current host to make a full URL for PHP
+                            $fullUrl = $request->getSchemeAndHttpHost() . '/' . ltrim($fullUrl, '/');
+                        }
+
                         $response = \Illuminate\Support\Facades\Http::withHeaders([
                             'ngrok-skip-browser-warning' => 'true',
-                        ])->timeout(2)->get(rtrim($centralUrl, '/') . '/api/central/latest-version');
+                        ])->timeout(15)->get(rtrim($fullUrl, '/') . '/api/central/latest-version');
                         if ($response->successful()) {
                             $data = $response->json();
                             $version = $data['version'];

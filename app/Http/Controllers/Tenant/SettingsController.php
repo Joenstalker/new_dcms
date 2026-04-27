@@ -1255,12 +1255,20 @@ class SettingsController extends Controller
         }
 
         // 1. Check Central API if configured (Laptop B polling Laptop A)
-        $centralUrl = SystemSetting::get('central_api_url');
-        if ($centralUrl) {
+        // Prioritize .env/config if set, then database
+        $centralUrl = config('app.central_api_url') ?: env('CENTRAL_API_URL') ?: SystemSetting::get('central_api_url');
+        
+        if ($centralUrl || empty($centralUrl)) {
             try {
+                $fullUrl = $centralUrl;
+                if (empty($fullUrl) || !str_starts_with($fullUrl, 'http')) {
+                    // If relative, use the current request host
+                    $fullUrl = request()->getSchemeAndHttpHost() . '/' . ltrim($fullUrl, '/');
+                }
+
                 $response = \Illuminate\Support\Facades\Http::withHeaders([
                     'ngrok-skip-browser-warning' => 'true',
-                ])->timeout(5)->get(rtrim($centralUrl, '/') . '/api/central/latest-version');
+                ])->timeout(15)->get(rtrim($fullUrl, '/') . '/api/central/latest-version');
                 if ($response->successful()) {
                     $data = $response->json();
                     $version = $data['version'];
