@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\ProcessTenantFeatureUpdateJob;
 use App\Mail\NewFeatureUpdateMail;
+use App\Jobs\SyncTenantFeaturesJob;
 use App\Jobs\UpdateFilesJob;
 use App\Models\Feature;
 use App\Models\Subscription;
@@ -203,9 +204,9 @@ class FeatureOTAUpdateService
             }
         }
 
-        // Synchronize the tenant's features after applying updates
+        // Synchronize the tenant's features after applying updates (in background)
         if (! empty($applied)) {
-            $this->syncTenantFeatures($tenantId);
+            SyncTenantFeaturesJob::dispatch($tenantId);
             Cache::forget("tenant_{$tenantId}_pending_updates_count");
         }
 

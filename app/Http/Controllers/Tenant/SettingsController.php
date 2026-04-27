@@ -1218,6 +1218,9 @@ class SettingsController extends Controller
      */
     public function applyUpdates(Request $request)
     {
+        // Increase execution time for this request to be safe
+        set_time_limit(180);
+
         $validated = $request->validate([
             'feature_ids' => 'required|array',
             'feature_ids.*' => 'exists:central.features,id',
