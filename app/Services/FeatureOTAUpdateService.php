@@ -72,6 +72,8 @@ class FeatureOTAUpdateService
         // Clear cache for all notified tenants
         foreach ($tenantIdsToNotify as $tenantId) {
             Cache::forget("tenant_{$tenantId}_pending_updates_count");
+            Cache::forget("tenant_has_updates_{$tenantId}");
+            Cache::forget("tenant_{$tenantId}_version");
         }
 
         return $createdCount;
@@ -161,13 +163,15 @@ class FeatureOTAUpdateService
 
         if (! empty($applied)) {
             // Truly asynchronous background execution for Windows/Linux
-            $idsString = implode(' ', $applied);
-            $php = PHP_BINARY;
-            $command = "{$php} artisan system:apply-tenant-update {$tenantId} {$idsString}";
+            $phpBinary = escapeshellarg(PHP_BINARY);
+            $artisanPath = escapeshellarg(base_path('artisan'));
+            $escapedTenantId = escapeshellarg($tenantId);
+            $escapedFeatureIds = implode(' ', array_map(static fn ($id) => escapeshellarg((string) $id), $applied));
+            $command = "{$phpBinary} {$artisanPath} system:apply-tenant-update {$escapedTenantId} {$escapedFeatureIds}";
             
             if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                 // Windows background command
-                pclose(popen("start /B {$command} > nul 2>&1", "r"));
+                pclose(popen("start /B \"\" {$command} > nul 2>&1", "r"));
                 Log::info("Triggered Windows background update: {$command}");
             } else {
                 // Linux/Unix background command
@@ -176,6 +180,8 @@ class FeatureOTAUpdateService
             }
 
             Cache::forget("tenant_{$tenantId}_pending_updates_count");
+            Cache::forget("tenant_has_updates_{$tenantId}");
+            Cache::forget("tenant_{$tenantId}_version");
         }
 
         return $applied;
@@ -213,10 +219,10 @@ class FeatureOTAUpdateService
      */
     public function getPendingUpdates(string $tenantId)
     {
-        // Auto-reset stuck updates (older than 10 seconds) for instant local testing
+        // Auto-reset stuck updates (older than 5 minutes) for instant local testing
         TenantFeatureUpdate::where('tenant_id', $tenantId)
             ->where('status', TenantFeatureUpdate::STATUS_PROCESSING)
-            ->where('updated_at', '<', now()->subSeconds(10))
+            ->where('updated_at', '<', now()->subMinutes(5))
             ->update(['status' => TenantFeatureUpdate::STATUS_PENDING]);
 
         return TenantFeatureUpdate::where('tenant_id', $tenantId)

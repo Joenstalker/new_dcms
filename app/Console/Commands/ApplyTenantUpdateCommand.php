@@ -9,6 +9,7 @@ use App\Jobs\UpdateFilesJob;
 use App\Jobs\SyncTenantFeaturesJob;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ApplyTenantUpdateCommand extends Command
@@ -65,33 +66,53 @@ class ApplyTenantUpdateCommand extends Command
 
                 if ($feature->type === 'system_version' && $feature->system_release_id) {
                     $release = $feature->systemRelease;
-                    if ($release) {
-                        $tenant = Tenant::find($tenantId);
-                        if ($tenant) {
-                            $currentVersion = $tenant->version ?: 'v1.0.0';
-                            $newVersion = $release->version;
+                    if (! $release) {
+                        throw new \RuntimeException("Missing system release for feature [{$featureId}]");
+                    }
 
-                            $cleanCurrent = ltrim($currentVersion, 'v');
-                            $cleanNew = ltrim($newVersion, 'v');
+                    $tenant = Tenant::find($tenantId);
+                    if (! $tenant) {
+                        throw new \RuntimeException("Tenant [{$tenantId}] not found");
+                    }
 
-                            if (version_compare($cleanNew, $cleanCurrent, '>')) {
-                                $zipUrl = AppVersionService::getDownloadUrl($newVersion);
-                                if ($zipUrl) {
-                                    $this->info("Updating files to {$newVersion}...");
-                                    $tenant->update(['version' => $newVersion]);
-                                    
-                                    // Since this is already in a background command, 
-                                    // we can call the job logic directly or dispatch sync
-                                    UpdateFilesJob::dispatch($newVersion, $zipUrl);
-                                }
-                            }
+                    $currentVersion = $tenant->version ?: 'v1.0.0';
+                    $newVersion = (string) $release->version;
 
-                            if ($release->requires_db_update) {
-                                $this->info("Running migrations...");
-                                Artisan::call('tenants:migrate', [
-                                    '--tenants' => [$tenantId],
-                                ]);
-                            }
+                    $cleanCurrent = ltrim($currentVersion, 'vV');
+                    $cleanNew = ltrim($newVersion, 'vV');
+
+                    if ($cleanNew === '') {
+                        throw new \RuntimeException("Invalid release version for feature [{$featureId}]");
+                    }
+
+                    if (version_compare($cleanNew, $cleanCurrent, '>')) {
+                        $zipUrl = AppVersionService::getDownloadUrl($newVersion);
+                        if (! $zipUrl) {
+                            throw new \RuntimeException("Failed to get download URL for version [{$newVersion}]");
+                        }
+
+                        $this->info("Updating files to {$newVersion}...");
+                        $tenant->update(['version' => $newVersion]);
+
+                        // Clear version caches
+                        Cache::forget("tenant_{$tenantId}_version");
+                        AppVersionService::clearCache();
+
+                        // Since this is already in a background command,
+                        // we can call the job logic directly or dispatch sync
+                        UpdateFilesJob::dispatch($newVersion, $zipUrl);
+                    } else {
+                        $this->info("Tenant already on latest version ({$currentVersion}).");
+                    }
+
+                    if ($release->requires_db_update) {
+                        $this->info("Running migrations...");
+                        $migrationExitCode = Artisan::call('tenants:migrate', [
+                            '--tenants' => [$tenantId],
+                        ]);
+
+                        if ($migrationExitCode !== 0) {
+                            throw new \RuntimeException("Database migration failed for tenant [{$tenantId}]");
                         }
                     }
                 }

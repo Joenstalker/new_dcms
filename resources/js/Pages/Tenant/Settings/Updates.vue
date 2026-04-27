@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, usePage } from '@inertiajs/vue3';
+import { router, useForm, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Swal from 'sweetalert2';
 
@@ -151,6 +151,9 @@ const applyUpdates = () => {
                     icon: 'success',
                     confirmButtonText: 'Great!'
                 });
+                
+                // Refresh the page props to show updated version and status
+                router.reload();
             }, 500);
         },
         onError: () => {
