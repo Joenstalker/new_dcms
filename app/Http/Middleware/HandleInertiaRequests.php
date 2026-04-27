@@ -369,12 +369,30 @@ class HandleInertiaRequests extends Middleware
                                 ]
                             );
 
-                            TenantFeatureUpdate::firstOrCreate([
-                                'tenant_id' => tenant()->id,
-                                'feature_id' => $feature->id,
-                            ], [
-                                'status' => TenantFeatureUpdate::STATUS_PENDING,
-                            ]);
+                            $tenantVersion = ltrim((string) (tenant()->version ?? 'v1.0.0'), 'vV');
+                            $latestVersion = ltrim((string) $version, 'vV');
+
+                            if ($latestVersion !== '' && version_compare($latestVersion, $tenantVersion, '>')) {
+                                TenantFeatureUpdate::firstOrCreate([
+                                    'tenant_id' => tenant()->id,
+                                    'feature_id' => $feature->id,
+                                ], [
+                                    'status' => TenantFeatureUpdate::STATUS_PENDING,
+                                ]);
+                            } else {
+                                // If tenant is already at/above this release, prevent stale "pending update" cards.
+                                TenantFeatureUpdate::where('tenant_id', tenant()->id)
+                                    ->where('feature_id', $feature->id)
+                                    ->whereIn('status', [
+                                        TenantFeatureUpdate::STATUS_PENDING,
+                                        TenantFeatureUpdate::STATUS_PROCESSING,
+                                        TenantFeatureUpdate::STATUS_FAILED,
+                                    ])
+                                    ->update([
+                                        'status' => TenantFeatureUpdate::STATUS_APPLIED,
+                                        'applied_at' => now(),
+                                    ]);
+                            }
                             
                             // Cache the sync for 5 minutes to avoid constant API calls
                             Cache::put($lastCheckKey, true, now()->addMinutes(5));
