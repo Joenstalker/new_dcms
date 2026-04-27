@@ -197,6 +197,11 @@ class HandleInertiaRequests extends Middleware
                     'ui_card_border_color' => $branding['ui_card_border_color'] ?? null,
                     'ui_card_text_color' => $branding['ui_card_text_color'] ?? null,
                     'is_premium' => $tenant->canCustomizeBranding(),
+                    'has_updates' => Cache::remember('tenant_has_updates_' . $tenant->id, 3600, function() use ($tenant) {
+                        return TenantFeatureUpdate::where('tenant_id', $tenant->id)
+                            ->where('status', TenantFeatureUpdate::STATUS_PENDING)
+                            ->exists();
+                    }),
                 ]);
             },
             'tenant_plan' => function () {

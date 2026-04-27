@@ -35,6 +35,19 @@ Route::post('/github/webhook', [GitHubWebhookController::class, 'handle'])
 
 // Central Release API (for Tenants to check Laptop A)
 Route::get('/api/central/latest-version', function (\App\Services\ReleaseService $releaseService) {
+    // Proactively check GitHub if we haven't checked recently (e.g., in the last 15 mins)
+    // This ensures that even if the scheduler isn't running or the admin hasn't 
+    // opened the dashboard, the central API stays up-to-date when tenants poll it.
+    \Illuminate\Support\Facades\Cache::remember('central_github_sync', 900, function() {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('system:check-updates');
+            return true;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Proactive GitHub sync failed in central API: ' . $e->getMessage());
+            return false;
+        }
+    });
+
     $latest = $releaseService->latestRelease();
     return response()->json([
         'version' => $latest ? $latest->version : config('app_version.version', '1.0.0'),
