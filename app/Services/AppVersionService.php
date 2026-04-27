@@ -56,11 +56,16 @@ class AppVersionService
                 $token = config('services.github.token');
                 $repo = config('services.github.repo');
 
-                $response = Http::withToken($token)
-                    ->withHeaders([
-                        'Accept' => 'application/vnd.github.v3+json',
-                    ])
-                    ->timeout(10)
+                $request = Http::withHeaders([
+                    'Accept' => 'application/vnd.github.v3+json',
+                    'User-Agent' => 'Laravel-OTA-Check',
+                ]);
+
+                if (! empty($token)) {
+                    $request->withToken($token);
+                }
+
+                $response = $request->timeout(10)
                     ->get("https://api.github.com/repos/{$repo}/releases");
 
                 if ($response->successful()) {
@@ -83,8 +88,16 @@ class AppVersionService
             $token = config('services.github.token');
             $repo = config('services.github.repo');
 
-            $response = Http::withToken($token)
-                ->timeout(10)
+            $request = Http::withHeaders([
+                'Accept' => 'application/vnd.github.v3+json',
+                'User-Agent' => 'Laravel-OTA-Check',
+            ]);
+
+            if (! empty($token)) {
+                $request->withToken($token);
+            }
+
+            $response = $request->timeout(10)
                 ->get("https://api.github.com/repos/{$repo}/releases/tags/{$version}");
 
             if ($response->successful()) {

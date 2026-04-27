@@ -22,6 +22,7 @@ use App\Services\TenantFeatureGateService;
 use App\Services\TenantLimitOverageService;
 use App\Services\TenantSecuritySettingsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -1244,6 +1245,14 @@ class SettingsController extends Controller
         $tenant = tenant();
         $otaService = app(FeatureOTAUpdateService::class);
         $releaseService = app(ReleaseService::class);
+
+        // 0. Trigger the global system check command to sync with GitHub
+        // This ensures the local database is up-to-date with the latest releases.
+        try {
+            Artisan::call('system:check-updates');
+        } catch (\Exception $e) {
+            Log::error('Failed to run system:check-updates from UI: ' . $e->getMessage());
+        }
 
         // 1. Check Central API if configured (Laptop B polling Laptop A)
         $centralUrl = SystemSetting::get('central_api_url');

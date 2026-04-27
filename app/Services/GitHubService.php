@@ -25,6 +25,7 @@ class GitHubService
         try {
             $request = Http::withHeaders([
                 'Accept' => 'application/vnd.github.v3+json',
+                'User-Agent' => 'Laravel-OTA-Check',
             ]);
 
             if ($token) {
