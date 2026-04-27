@@ -291,6 +291,29 @@ class HandleInertiaRequests extends Middleware
                     $centralUrl = app(\App\Services\NgrokDiscoveryService::class)->discoverCentralUrl();
                 }
 
+                // DEADLOCK PREVENTION: 
+                // 1. Never call central API during POST requests (like applying updates).
+                // 2. Never call if we are explicitly marked as central.
+                // 3. Never call if the URL points to our own host/ngrok.
+                $currentHost = $request->getHost();
+                $centralHost = $centralUrl ? parse_url($centralUrl, PHP_URL_HOST) : null;
+                $isCentral = config('app.is_central', false) || env('APP_IS_CENTRAL', false);
+                
+                $isSelf = ($centralHost && (
+                    $centralHost === $currentHost || 
+                    $centralHost === 'localhost' || 
+                    $centralHost === '127.0.0.1' ||
+                    (str_contains($centralHost, 'ngrok-free.dev') && str_contains(config('app.url'), $centralHost))
+                ));
+
+                if ($request->isMethod('POST') || $isCentral || $isSelf) {
+                    return Cache::remember($cacheKey, now()->addHour(), function () {
+                        return TenantFeatureUpdate::where('tenant_id', tenant()->id)
+                            ->pending()
+                            ->count();
+                    });
+                }
+
                 $lastCheckKey = 'tenant_'.tenant()->id.'_last_central_sync';
                 
                 if (!Cache::has($lastCheckKey)) {

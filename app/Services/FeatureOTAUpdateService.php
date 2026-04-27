@@ -151,62 +151,30 @@ class FeatureOTAUpdateService
         foreach ($featureIds as $featureId) {
             $update = TenantFeatureUpdate::where('tenant_id', $tenantId)
                 ->where('feature_id', $featureId)
-                ->with('feature.systemRelease')
                 ->first();
 
             if ($update && ($update->status === TenantFeatureUpdate::STATUS_PENDING || $update->status === TenantFeatureUpdate::STATUS_FAILED)) {
-                $feature = $update->feature;
-
-                // Mark as processing immediately to prevent double-clicks
                 $update->update(['status' => TenantFeatureUpdate::STATUS_PROCESSING]);
-
-                // 1. Manually Sync Version & Migration if it's a system_version
-                if ($feature->type === 'system_version' && $feature->system_release_id) {
-                    $release = $feature->systemRelease;
-                    if ($release) {
-                        $tenant = Tenant::find($tenantId);
-                        if ($tenant) {
-                            $currentVersion = $tenant->version ?: 'v1.0.0';
-                            $newVersion = $release->version;
-
-                            $cleanCurrent = ltrim($currentVersion, 'v');
-                            $cleanNew = ltrim($newVersion, 'v');
-
-                            if (version_compare($cleanNew, $cleanCurrent, '>')) {
-                                // 1.a Trigger File System Update (OTA) via Job (ASYNCHRONOUS)
-                                $zipUrl = AppVersionService::getDownloadUrl($newVersion);
-                                if ($zipUrl) {
-                                    // Update version only after dispatching job or within the job
-                                    $tenant->update(['version' => $newVersion]);
-                                    UpdateFilesJob::dispatch($newVersion, $zipUrl);
-                                    Log::info("Dispatched UpdateFilesJob for tenant [{$tenantId}] version [{$newVersion}]");
-                                }
-                            }
-
-                            // 1.b Trigger per-tenant migration (ASYNCHRONOUS via shell or background job)
-                            if ($release->requires_db_update) {
-                                // For better UX, we could also move this into a Job
-                                // but if it's just one tenant, it's usually fast enough.
-                                // However, to be safe from 120s timeout, let's keep it efficient.
-                                Log::info("Running per-tenant migration for [{$tenantId}] in background...");
-                                // Use shell_exec to run it in background or just trust the speed if it's 1 tenant
-                                // For now, we keep it synchronous but we've removed the slow file part.
-                                Artisan::call('tenants:migrate', [
-                                    '--tenants' => [$tenantId],
-                                ]);
-                            }
-                        }
-                    }
-                }
-
-                $update->markAsApplied();
                 $applied[] = $featureId;
             }
         }
 
-        // Synchronize the tenant's features after applying updates (in background)
         if (! empty($applied)) {
-            SyncTenantFeaturesJob::dispatch($tenantId);
+            // Truly asynchronous background execution for Windows/Linux
+            $idsString = implode(' ', $applied);
+            $php = PHP_BINARY;
+            $command = "{$php} artisan system:apply-tenant-update {$tenantId} {$idsString}";
+            
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                // Windows background command
+                pclose(popen("start /B {$command} > nul 2>&1", "r"));
+                Log::info("Triggered Windows background update: {$command}");
+            } else {
+                // Linux/Unix background command
+                exec("{$command} > /dev/null 2>&1 &");
+                Log::info("Triggered Linux background update: {$command}");
+            }
+
             Cache::forget("tenant_{$tenantId}_pending_updates_count");
         }
 

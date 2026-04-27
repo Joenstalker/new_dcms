@@ -40,10 +40,15 @@ Route::get('/api/central/latest-version', function (\App\Services\ReleaseService
     // opened the dashboard, the central API stays up-to-date when tenants poll it.
     \Illuminate\Support\Facades\Cache::remember('central_github_sync', 900, function() {
         try {
-            \Illuminate\Support\Facades\Artisan::call('system:check-updates');
+            // Trigger background sync to avoid blocking the current request
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                pclose(popen("start /B php artisan system:check-updates > nul 2>&1", "r"));
+            } else {
+                exec("php artisan system:check-updates > /dev/null 2>&1 &");
+            }
             return true;
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Proactive GitHub sync failed in central API: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Background GitHub sync trigger failed in central API: ' . $e->getMessage());
             return false;
         }
     });

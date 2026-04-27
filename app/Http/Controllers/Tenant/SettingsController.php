@@ -1254,19 +1254,39 @@ class SettingsController extends Controller
         $otaService = app(FeatureOTAUpdateService::class);
         $releaseService = app(ReleaseService::class);
 
+        $isCentral = config('app.is_central', false) || env('APP_IS_CENTRAL', false);
+
         // 0. Trigger the global system check command to sync with GitHub
-        // This ensures the local database is up-to-date with the latest releases.
-        try {
-            Artisan::call('system:check-updates');
-        } catch (\Exception $e) {
-            Log::error('Failed to run system:check-updates from UI: ' . $e->getMessage());
+        // On Central (Laptop A), we run this locally. On Tenant (Laptop B), we rely on Central.
+        // We trigger it in the background to avoid blocking the UI.
+        if ($isCentral) {
+            try {
+                if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                    pclose(popen("start /B php artisan system:check-updates > nul 2>&1", "r"));
+                } else {
+                    exec("php artisan system:check-updates > /dev/null 2>&1 &");
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to trigger background system:check-updates: ' . $e->getMessage());
+            }
         }
 
         // 1. Check Central API if configured (Laptop B polling Laptop A)
         // Prioritize .env/config if set, then database
         $centralUrl = config('app.central_api_url') ?: env('CENTRAL_API_URL') ?: SystemSetting::get('central_api_url');
         
-        if ($centralUrl || empty($centralUrl)) {
+        $currentHost = $request->getHost();
+        $centralHost = $centralUrl ? parse_url($centralUrl, PHP_URL_HOST) : null;
+        
+        $isSelf = ($centralHost && (
+            $centralHost === $currentHost || 
+            $centralHost === 'localhost' || 
+            $centralHost === '127.0.0.1' ||
+            (str_contains($centralHost, 'ngrok-free.dev') && str_contains(config('app.url'), $centralHost))
+        ));
+
+        // If we are NOT central and have a central URL that is NOT us, poll it.
+        if (!$isCentral && $centralUrl && !$isSelf) {
             try {
                 $fullUrl = $centralUrl;
                 if (empty($fullUrl) || !str_starts_with($fullUrl, 'http')) {
