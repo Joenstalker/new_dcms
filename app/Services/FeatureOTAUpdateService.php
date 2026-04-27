@@ -213,8 +213,14 @@ class FeatureOTAUpdateService
      */
     public function getPendingUpdates(string $tenantId)
     {
+        // Auto-reset stuck updates (older than 30 mins)
+        TenantFeatureUpdate::where('tenant_id', $tenantId)
+            ->where('status', TenantFeatureUpdate::STATUS_PROCESSING)
+            ->where('updated_at', '<', now()->subMinutes(30))
+            ->update(['status' => TenantFeatureUpdate::STATUS_PENDING]);
+
         return TenantFeatureUpdate::where('tenant_id', $tenantId)
-            ->pending()
+            ->whereIn('status', [TenantFeatureUpdate::STATUS_PENDING, TenantFeatureUpdate::STATUS_PROCESSING, TenantFeatureUpdate::STATUS_FAILED])
             ->whereHas('feature', function ($query) {
                 $query->notArchived()->where('is_active', true);
             })

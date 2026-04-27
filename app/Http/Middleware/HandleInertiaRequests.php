@@ -205,7 +205,11 @@ class HandleInertiaRequests extends Middleware
                     'is_premium' => $tenant->canCustomizeBranding(),
                     'has_updates' => Cache::remember('tenant_has_updates_' . $tenant->id, 3600, function() use ($tenant) {
                         return TenantFeatureUpdate::where('tenant_id', $tenant->id)
-                            ->where('status', TenantFeatureUpdate::STATUS_PENDING)
+                            ->whereIn('status', [
+                                TenantFeatureUpdate::STATUS_PENDING,
+                                TenantFeatureUpdate::STATUS_PROCESSING,
+                                TenantFeatureUpdate::STATUS_FAILED
+                            ])
                             ->exists();
                     }),
                 ]);
@@ -309,7 +313,11 @@ class HandleInertiaRequests extends Middleware
                 if ($request->isMethod('POST') || $isCentral || $isSelf) {
                     return Cache::remember($cacheKey, now()->addHour(), function () {
                         return TenantFeatureUpdate::where('tenant_id', tenant()->id)
-                            ->pending()
+                            ->whereIn('status', [
+                                TenantFeatureUpdate::STATUS_PENDING,
+                                TenantFeatureUpdate::STATUS_PROCESSING,
+                                TenantFeatureUpdate::STATUS_FAILED
+                            ])
                             ->count();
                     });
                 }
