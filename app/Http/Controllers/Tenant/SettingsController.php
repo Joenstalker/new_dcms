@@ -1231,7 +1231,12 @@ class SettingsController extends Controller
         $count = count($applied);
 
         if ($count > 0) {
-            return back()->with('success', "{$count} update(s) applied successfully! You can now test the new features.");
+            // We return a specialized response if it's an Inertia request 
+            // to ensure the progress UI shows up correctly.
+            return back()->with([
+                'success' => "{$count} update(s) applied successfully! Files are being updated in the background.",
+                'updates_processing' => true
+            ]);
         }
 
         return back()->with('info', 'No new updates to apply.');

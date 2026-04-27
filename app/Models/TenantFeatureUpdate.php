@@ -38,6 +38,8 @@ class TenantFeatureUpdate extends Model
     public const STATUS_PENDING = 'pending';
     public const STATUS_APPLIED = 'applied';
     public const STATUS_DISMISSED = 'dismissed';
+    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_FAILED = 'failed';
 
     /**
      * Get the feature associated with this update.

@@ -128,44 +128,39 @@ const applyUpdates = () => {
     applyingIds.value = [...form.feature_ids];
     
     // Simulate robust progress feeling
+    // Since we now use a background job, the initial request is FAST.
+    // We want the user to see the progress bar reaching 100% to feel the "completion".
     loadingInterval = setInterval(() => {
-        if (loadingProgress.value < 99) {
-            loadingProgress.value += Math.floor(Math.random() * 10) + 2;
-            if (loadingProgress.value > 99) loadingProgress.value = 99;
+        if (loadingProgress.value < 90) {
+            loadingProgress.value += Math.floor(Math.random() * 15) + 5;
+            if (loadingProgress.value > 90) loadingProgress.value = 90;
         }
-    }, 150);
+    }, 100);
     
     form.post(route('settings.updates.apply'), {
         onSuccess: () => {
             clearInterval(loadingInterval);
             loadingProgress.value = 100;
+            
             setTimeout(() => {
                 isApplying.value = false;
                 applyingIds.value = [];
                 Swal.fire({
-                    toast: true,
-                    position: 'top-end',
+                    title: 'Update Started',
+                    text: 'The update is being applied in the background. Your files will be updated in a few minutes.',
                     icon: 'success',
-                    title: 'Updates successfully applied!',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true
+                    confirmButtonText: 'Great!'
                 });
-            }, 300);
+            }, 500);
         },
         onError: () => {
             clearInterval(loadingInterval);
             isApplying.value = false;
             applyingIds.value = [];
             Swal.fire({
-                toast: true,
-                position: 'top-end',
                 icon: 'error',
                 title: 'Operation Failed',
-                text: 'Something went wrong during the update procedure.',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
+                text: 'Something went wrong while starting the update. Please try again.',
             });
         }
     });
