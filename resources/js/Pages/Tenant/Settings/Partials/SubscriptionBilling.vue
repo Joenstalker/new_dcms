@@ -46,7 +46,7 @@ defineProps({
                     </span>
                     <span v-if="subscription.has_sms" class="text-xs text-green-600 font-medium">· SMS ✓</span>
                     <span v-if="subscription.has_analytics" class="text-xs text-green-600 font-medium">· Analytics ✓</span>
-                    <span v-if="subscription.has_multi_branch" class="text-xs text-green-600 font-medium">· Multi-branch ✓</span>
+                    <!-- <span v-if="subscription.has_multi_branch" class="text-xs text-green-600 font-medium">· Multi-branch ✓</span> -->
                 </div>
             </div>
             <Link

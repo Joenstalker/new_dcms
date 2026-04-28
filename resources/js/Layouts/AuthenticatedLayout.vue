@@ -712,7 +712,7 @@ const menuCategories = computed(() => {
                         { name: 'Updates', route: 'settings.updates', permissions: ['manage system updates'], icon: 'refresh', badge: pendingUpdatesCount.value },
                     ]
                 },
-                { name: 'Branches', route: 'branches.index', icon: 'branch', feature: 'branches', permissions: ['manage branches'], featureKey: 'multi_branch' },
+                /* { name: 'Branches', route: 'branches.index', icon: 'branch', feature: 'branches', permissions: ['manage branches'], featureKey: 'multi_branch' }, */
             ]
         }
     ];
