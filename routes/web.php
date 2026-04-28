@@ -29,6 +29,13 @@ use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+use App\Http\Controllers\ModuleController;
+
+
+Route::resource('modules', ModuleController::class);
+
+
+
 Route::post('/github/webhook', [GitHubWebhookController::class, 'handle'])
     ->withoutMiddleware([ValidateCsrfToken::class])
     ->middleware([VerifyGitHubWebhookSignature::class, 'throttle:60,1']);
