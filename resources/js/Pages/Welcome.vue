@@ -21,7 +21,17 @@ import bgImage from '../../../public/images/landingpage-background.png';
 const page = usePage();
 const recaptchaSiteKey = computed(() => page.props.config?.recaptcha_site_key || '');
 
-const isGoogleSignInSupported = computed(() => false);
+const isGoogleSignInSupported = computed(() => {
+    if (!props.googleClientId || typeof window === 'undefined') {
+        return false;
+    }
+
+    const host = window.location.hostname;
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+
+    // Google Identity Services requires HTTPS, except for localhost origins.
+    return window.location.protocol === 'https:' || isLocalhost;
+});
 
 const props = defineProps({
     canLogin: {
@@ -862,7 +872,19 @@ onUnmounted(() => {
                         </PrimaryButton>
                     </div>
 
+                    <div v-if="isGoogleSignInSupported" class="relative flex items-center gap-4 my-6">
+                        <div class="flex-grow border-t border-gray-200"></div>
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">or</span>
+                        <div class="flex-grow border-t border-gray-200"></div>
+                    </div>
 
+                    <div v-if="isGoogleSignInSupported" class="flex justify-center">
+                        <div ref="googleButton" class="w-full max-w-[320px]"></div>
+                    </div>
+
+                    <p v-else-if="googleClientId" class="text-center text-xs text-amber-600 mt-2">
+                        Google Sign-In is unavailable on this domain. Use HTTPS or localhost.
+                    </p>
 
                     <!-- reCAPTCHA Notice -->
                     <p class="text-center text-[10px] text-gray-400 mt-3">

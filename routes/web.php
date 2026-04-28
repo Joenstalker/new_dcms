@@ -249,10 +249,8 @@ $registerCentralRoutes = function ($withNames = false) {
 
         // Platform Analytics
         $analyticsI = Route::get('/analytics', [AnalyticsController::class, 'index']);
-        $analyticsE = Route::post('/analytics/export', [AnalyticsController::class, 'export']);
         if ($withNames) {
             $analyticsI->name('analytics.index');
-            $analyticsE->name('analytics.export');
         }
 
         // Version Compliance

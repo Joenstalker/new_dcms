@@ -201,10 +201,10 @@ const submit = () => {
                         <Checkbox name="has_priority_support" v-model:checked="form.has_priority_support" class="checkbox-primary" />
                     </label>
 
-                    <label class="flex items-center justify-between p-3 hover:bg-base-200/50 transition-colors cursor-pointer">
+                    <!-- <label class="flex items-center justify-between p-3 hover:bg-base-200/50 transition-colors cursor-pointer">
                         <span class="text-xs font-medium text-base-content/70">Multi-branch Ready</span>
                         <Checkbox name="has_multi_branch" v-model:checked="form.has_multi_branch" class="checkbox-primary" />
-                    </label>
+                    </label> -->
                 </div>
 
                 <div class="mt-4">

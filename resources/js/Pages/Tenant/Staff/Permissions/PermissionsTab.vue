@@ -611,7 +611,7 @@ const permissionGroups = computed(() => {
 
         // Owner/Administration Features (delegatable)
         'analytics': 'Owner Features',
-        'branches': 'Owner Features',
+        // 'branches': 'Owner Features',
         'subscription': 'Owner Features',
         'billing portal': 'Owner Features',
         'manage clinic': 'Owner Features',
