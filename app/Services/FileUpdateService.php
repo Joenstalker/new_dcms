@@ -103,29 +103,25 @@ class FileUpdateService
     /**
      * Check if a file or directory path should be protected from updates.
      */
-   protected function isProtected(string $path): bool
-{
-    $protected = [
-        '.env',
-        'storage',
-        'public/storage',
-        'bootstrap/cache',
-        '.git',
-        'stripe.exe',
-        'vendor',
-    ];
+    protected function isProtected(string $path): bool
+    {
+        $protected = [
+            '.env',
+            'storage',
+            'public/storage',
+            'bootstrap/cache',
+            '.git',
+            'vendor', // Usually updated via composer, but for non-techy we might need to include it?
+                      // Actually, for non-techy, we should probably include vendor in the ZIP if possible,
+                      // or run composer install. But since this is a GitHub ZIP, it won't have vendor.
+        ];
 
-    foreach ($protected as $p) {
-        if ($path === $p || str_starts_with($path, $p . DIRECTORY_SEPARATOR)) {
-            return true;
+        foreach ($protected as $p) {
+            if ($path === $p || str_starts_with($path, $p . DIRECTORY_SEPARATOR)) {
+                return true;
+            }
         }
-    }
 
-    // 🔥 NEW: Block any nested storage/tenant* directories from being copied
-    if (str_contains($path, DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'tenant')) {
-        return true;
+        return false;
     }
-
-    return false;
-}
 }

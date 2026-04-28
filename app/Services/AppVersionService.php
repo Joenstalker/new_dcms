@@ -51,55 +51,32 @@ class AppVersionService
      */
     public static function getReleaseHistory(): array
     {
-        $cacheKey = 'github_release_history';
-        $cached = Cache::get($cacheKey);
-        if (is_array($cached) && ! empty($cached)) {
-            return $cached;
-        }
+        return Cache::remember('github_release_history', 3600, function () {
+            try {
+                $token = config('services.github.token');
+                $repo = config('services.github.repo');
 
-        try {
-            $token = config('services.github.token');
-            $repo = config('services.github.repo');
-
-            if (! $repo) {
-                Log::warning('AppVersionService: GITHUB_REPO not configured.');
-                return [];
-            }
-
-            $request = Http::withHeaders([
-                'Accept' => 'application/vnd.github.v3+json',
-                'User-Agent' => 'Laravel-OTA-Check',
-            ]);
-
-            if (! empty($token)) {
-                $request = $request->withToken($token);
-            }
-
-            $response = $request->timeout(10)
-                ->get("https://api.github.com/repos/{$repo}/releases");
-
-            if (! $response->successful()) {
-                Log::error('Failed to fetch GitHub release history.', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
+                $request = Http::withHeaders([
+                    'Accept' => 'application/vnd.github.v3+json',
+                    'User-Agent' => 'Laravel-OTA-Check',
                 ]);
-                return [];
-            }
 
-            $data = $response->json();
-            if (! is_array($data) || empty($data)) {
-                Log::warning('GitHub releases response is empty or invalid.', [
-                    'repo' => $repo,
-                ]);
-                return [];
-            }
+                if (! empty($token)) {
+                    $request->withToken($token);
+                }
 
-            Cache::put($cacheKey, $data, 3600);
-            return $data;
-        } catch (\Exception $e) {
-            Log::error('Failed to fetch GitHub release history: ' . $e->getMessage());
+                $response = $request->timeout(10)
+                    ->get("https://api.github.com/repos/{$repo}/releases");
+
+                if ($response->successful()) {
+                    return $response->json();
+                }
+            }
+            catch (\Exception $e) {
+                Log::error('Failed to fetch GitHub release history: ' . $e->getMessage());
+            }
             return [];
-        }
+        });
     }
 
     /**
@@ -117,7 +94,7 @@ class AppVersionService
             ]);
 
             if (! empty($token)) {
-                $request = $request->withToken($token);
+                $request->withToken($token);
             }
 
             $response = $request->timeout(10)

@@ -219,16 +219,13 @@ class FeatureOTAUpdateService
      */
     public function getPendingUpdates(string $tenantId)
     {
-        $tenant = Tenant::find($tenantId);
-        $tenantVersion = ltrim((string) ($tenant?->version ?? 'v1.0.0'), 'vV');
-
         // Auto-reset stuck updates (older than 5 minutes) for instant local testing
         TenantFeatureUpdate::where('tenant_id', $tenantId)
             ->where('status', TenantFeatureUpdate::STATUS_PROCESSING)
             ->where('updated_at', '<', now()->subMinutes(5))
             ->update(['status' => TenantFeatureUpdate::STATUS_PENDING]);
 
-        $updates = TenantFeatureUpdate::where('tenant_id', $tenantId)
+        return TenantFeatureUpdate::where('tenant_id', $tenantId)
             ->whereIn('status', [TenantFeatureUpdate::STATUS_PENDING, TenantFeatureUpdate::STATUS_PROCESSING, TenantFeatureUpdate::STATUS_FAILED])
             ->whereHas('feature', function ($query) {
                 $query->notArchived()->where('is_active', true);
@@ -236,37 +233,6 @@ class FeatureOTAUpdateService
             ->with('feature.systemRelease')
             ->orderBy('created_at', 'desc')
             ->get();
-
-        $hasAutoResolved = false;
-
-        $filtered = $updates->reject(function (TenantFeatureUpdate $update) use ($tenantVersion, &$hasAutoResolved) {
-            $feature = $update->feature;
-
-            if (! $feature || $feature->type !== 'system_version' || ! $feature->systemRelease) {
-                return false;
-            }
-
-            $releaseVersion = ltrim((string) $feature->systemRelease->version, 'vV');
-            if ($releaseVersion === '') {
-                return false;
-            }
-
-            // If tenant is already at/above this release, do not show stale pending rows.
-            if (version_compare($tenantVersion, $releaseVersion, '>=')) {
-                $update->markAsApplied();
-                $hasAutoResolved = true;
-                return true;
-            }
-
-            return false;
-        })->values();
-
-        if ($hasAutoResolved) {
-            Cache::forget("tenant_{$tenantId}_pending_updates_count");
-            Cache::forget("tenant_has_updates_{$tenantId}");
-        }
-
-        return $filtered;
     }
 
     /**

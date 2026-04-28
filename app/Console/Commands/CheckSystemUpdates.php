@@ -111,18 +111,8 @@ class CheckSystemUpdates extends Command
      */
     protected function broadcastSystemUpdate($otaService, $feature)
     {
-        $feature->loadMissing('systemRelease');
-        $releaseVersion = ltrim((string) optional($feature->systemRelease)->version, 'vV');
-
         $tenants = Tenant::all();
         foreach ($tenants as $tenant) {
-            $tenantVersion = ltrim((string) ($tenant->version ?? 'v1.0.0'), 'vV');
-
-            // Skip creating pending updates for tenants already on this version or newer.
-            if ($releaseVersion !== '' && version_compare($releaseVersion, $tenantVersion, '<=')) {
-                continue;
-            }
-
             // Check if record already exists
             $exists = TenantFeatureUpdate::where('tenant_id', $tenant->id)
                 ->where('feature_id', $feature->id)
